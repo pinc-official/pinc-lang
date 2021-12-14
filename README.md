@@ -4,7 +4,7 @@
 
 ## Base Types
 
-There are 3 base types you can create. `component`, `page` and `store`. Every type can have unlimited properties defined
+There are 4 (5?) base types you can create. (`site`?), `context`, `component`, `page` and `store`. Every type can have unlimited properties defined
 in it.
 
 ## Properties
@@ -14,7 +14,7 @@ Properties are defined with a key and a set of symbols, which define the type an
 **Examples:**
 
 ```
-class? = @String() @Default("")
+class? = @String() @Default(value: "")
 ```
 
 Defines a optional property with the name `class` of type String with a default value of `""`

@@ -3,16 +3,6 @@
   icon: "/images/svgs/page.svg"
 )
 page DefaultPage {
-  @Context {
-    theme =
-      @Ui(label: "Theme")
-      @Default("default")
-      @Selection(options: [
-        @Option(value: "default", label: "Default"),
-        @Option(value: "gold", label: "Gold"),
-      ])
-  }
-
   title = @Ui(label: "Title") @String()
   
   stage =

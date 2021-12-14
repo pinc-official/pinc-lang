@@ -1,0 +1,34 @@
+component LanguageSwitcher {
+  languageContext = @Context(name: Language)
+
+  @Template {
+    <ul class="LanguageSwitcher">
+        {for lang in languageContext.options {
+            <li class="LanguageSwitcher-language">
+                {if lang.value == languageContext.current {
+                    <span class="LanguageSwitcher-languageLink is-active">
+                        {lang.label}
+                    </span>
+                } else {
+                    <a class="LanguageSwitcher-languageLink" href="/${lang.value}">
+                        {lang.label}
+                    </a>
+                }}
+            </li>
+        }}
+    </ul>
+  }
+}
+
+// NOTE: I am not really happy with this solution, because we are losing the path of the current page.
+//       Path prefixing wouldn't be nice with the current api available within the template.
+//       You would need a lot more functionality to check if the url already contains a language path and change the behaviour accordingly.
+//       Also generating the URLs for the menu is a lot more difficult with the current flexibility of the API, as the CMS does not know, how you are
+//       matching the language context. So it can't generate the URLs for the menu. You would again need to prefix every url with the currently selected language.
+//
+//       Also the Router would not know, if it should ignore the first part of the path or not...
+//
+//       Maybe it would be a better idea to have the Language Context be pre-defined from the CMS / baked into the language itself.
+//       This way the CMS could generate the urls to the context automatically.
+//       BUT we would loose a lot of flexibility. With the current API you would be able, to change the Language Context based on the tld or subdomain of the url
+//       or any combination you like, as long as you are able to match it, given the current url.

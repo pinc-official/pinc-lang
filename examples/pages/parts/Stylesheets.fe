@@ -1,13 +1,13 @@
 component Stylesheets {
-  theme = @String()
+  theme = @Context(name: Theme)
 
   @Template {
     <link rel="stylesheet" href="/vendor/swiper/swiper.bundle.css" />
     <link rel="stylesheet" href="/css/main.css" />
-    {if context.theme == "gold" {
-      <link rel="stylesheet" href="/css/theme.gold.css" />
-    } else {
-      <link rel="stylesheet" href="/css/theme.default.css" />
+    {if theme.current == "light" {
+      <link rel="stylesheet" href="/css/theme.light.css" />
+    } else if theme.current == "dark" {
+      <link rel="stylesheet" href="/css/theme.dark.css" />
     }}
   }
 }
