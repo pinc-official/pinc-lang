@@ -1,0 +1,14 @@
+@@Ui(
+  label: "Reference",
+  icon: "/images/icons/duplicate.svg",
+  group: "Structure"
+)
+component Reference {
+  ref = 
+    @Ui(label: "Content Item")
+    @ContentSelect()
+
+  @Template {
+    {ref.@render}
+  }
+}

@@ -1,0 +1,13 @@
+component Stylesheets {
+  theme = @String()
+
+  @Template {
+    <link rel="stylesheet" href="/vendor/swiper/swiper.bundle.css" />
+    <link rel="stylesheet" href="/css/main.css" />
+    {if context.theme == "gold" {
+      <link rel="stylesheet" href="/css/theme.gold.css" />
+    } else {
+      <link rel="stylesheet" href="/css/theme.default.css" />
+    }}
+  }
+}

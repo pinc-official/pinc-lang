@@ -1,0 +1,76 @@
+@@Ui(
+  label: "Teaser",
+  icon: "/images/icons/teaser.svg"
+)
+component Teaser {
+  class? = @String() @Default("")
+
+  title =
+    @Ui(label: "Title", inline: true, initialValue: "")
+    @String(min_length: 0, max_length: 50, regex: "/.*/g")
+    @Default("lorem")
+
+  background =
+    @Ui(label: "Background")
+    @Default("primary")
+    @Selection(options: [
+      @Option(value: "primary", label: "Primär"),
+      @Option(value: "grey", label: "Grau"),
+      @Option(value: "white", label: "Weiß"),
+    ])
+
+  url? =
+    @Ui(label: "Url")
+    @Url(external: false)
+
+  contact? = 
+    @Ui(label: "Contact Person")
+    @Relation(store: Contacts)
+
+  categories = 
+    @Ui(label: "Categories")
+    @Relations(store: Categories, min: 1, max: 5)
+
+  blogPages =
+    @Query(
+      from: root,
+      queries: [
+        @Children(instanceOf: [!Page, !Teaser], deep: true),
+        @Filter(condition: title|length > 5)
+      ]
+    )
+
+  children = @Slot(name: Default, min: 1, max: 5, instanceOf: [Image, Video])
+
+  quote? = @Slot(name: Quote, max: 1, instanceOf: [Quote])
+
+  @Template {
+    <div class="Teaser Teaser--${background} ${class}" data-foo={lorem}>
+      <h4 class="Teaser-title">{title}</h4>
+      {if url {
+        <Teaser title={url}>
+          <Teaser.Default>{title}</Teaser.Default>
+          <Teaser.Quote>Lorem Ipsum dolor sit amet!</Teaser.Quote>
+        </Teaser>
+      } else {
+        {children}
+      }}
+
+
+      {if quote {
+        {quote}
+      }}
+
+      {if theme == "light" {
+        {for item in items {
+          <Teaser url={item.url} />
+        }}
+        {for page in blogPages {
+          {for category in page.categories {
+            <span>{category.name}</span>
+          }}
+        }}
+      }}
+    </div>
+  }
+};

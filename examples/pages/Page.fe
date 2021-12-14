@@ -1,0 +1,47 @@
+@@Ui(
+  label: "Page",
+  icon: "/images/svgs/page.svg"
+)
+page DefaultPage {
+  @Context {
+    theme =
+      @Ui(label: "Theme")
+      @Default("default")
+      @Selection(options: [
+        @Option(value: "default", label: "Default"),
+        @Option(value: "gold", label: "Gold"),
+      ])
+  }
+
+  title = @Ui(label: "Title") @String()
+  
+  stage =
+    @Ui(label: "Stage")
+    @Slot(name: Stage, instanceOf: [ImageStage, VideoStage])
+  
+  mainContent =
+    @Ui(label: "Content")
+    @Slot(name: MainContent, instanceOf: [!ImageStage, !VideoStage])
+
+  @Template {
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{title}</title>
+      <Stylesheets />
+    </head>
+    <body>
+      <Header />
+      <main>
+        {stage}
+        <Breadcrumb />
+        {mainContent}
+      </main>
+      <Footer />
+    </body>
+    </html>
+  }
+}
