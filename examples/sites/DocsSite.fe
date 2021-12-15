@@ -1,0 +1,47 @@
+@@Ui(
+  label: "Docs Site",
+  icon: "/images/icons/site-docs.svg",
+)
+@@Domain(
+  main: "docs.fennek-cms.com",
+  additional: [
+    "docs.fennek-cms.de",
+    "docs.fennek-cms.fr",
+  ]
+)
+site Docs {
+  languages =
+    @Ui(label: "Language")
+    @UrlContext(
+      name: Language,
+      options: [
+        @ContextOption(value: "en_US", label: "English"),
+        @ContextOption(value: "de_DE", label: "German", fallbacks: ["en_US"]),
+        @ContextOption(value: "de_AT", label: "Austian", fallbacks: ["de_DE"]),
+        @ContextOption(value: "fr_FR", label: "French", fallbacks: ["en_US"]),
+      ],
+      matchers: [
+        @UrlMatcher(match: "de_DE", tld: ".de"),
+        @UrlMatcher(match: "de_AT", tld: ".de", path: "/at"),
+        @UrlMatcher(match: "fr_FR", tld: ".fr"),
+        @UrlMatcher(match: "en_US", tld: ".com"),
+        @UrlMatcher(match: "en_US"), // This is the default case. Because it has no conditions set, it will always match.
+      ]
+    )
+
+  targeting =
+    @Ui(label: "Target")
+    @CookieContext(
+      name: Targeting,
+      options: [
+        @ContextOption(value: "unknown", label: "Unknown"),
+        @ContextOption(value: "developer", label: "Developer", fallbacks: ["unknown"]),
+        @ContextOption(value: "editor", label: "Editor", fallbacks: ["unknown"]),
+      ],
+      matchers: [
+        @CookieMatcher(match: "editor", key: "targeting", value: "editor"),
+        @CookieMatcher(match: "developer", key: "targeting", value: "developer"),
+        @CookieMatcher(match: "unknown"), // This is the default case. Because it has no conditions set, it will always match.
+      ]
+    )
+}

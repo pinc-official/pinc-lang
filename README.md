@@ -4,7 +4,7 @@
 
 ## Base Types
 
-There are 4 (5?) base types you can create. (`site`?), `context`, `component`, `page` and `store`. Every type can have unlimited properties defined
+There are 4 base types you can create. `site` `component`, `page` and `store`. Every type can have unlimited properties defined
 in it.
 
 ## Properties

@@ -1,0 +1,33 @@
+@@Ui(
+  label: "Main Site",
+  icon: "/images/icons/site-main.svg",
+)
+@@Domain(
+  main: "www.fennek-cms.com",
+  additional: ["fennek-cms.com"]
+)
+site Main {
+  languages =
+    @Ui(label: "Language")
+    @UrlContext(
+      name: Language,
+      options: [@ContextOption(value: "en_US", label: "English")],
+      matchers: [@UrlMatcher(match: "en_US")]
+    )
+
+  targeting =
+    @Ui(label: "Target")
+    @CookieContext(
+      name: Targeting,
+      options: [
+        @ContextOption(value: "unknown", label: "Unknown"),
+        @ContextOption(value: "developer", label: "Developer"),
+        @ContextOption(value: "editor", label: "Editor"),
+      ],
+      matchers: [
+        @CookieMatcher(match: "editor", key: "targeting", value: "editor"),
+        @CookieMatcher(match: "developer", key: "targeting", value: "developer"),
+        @CookieMatcher(match: "unknown"), // This is the default case. Because it has no conditions set, it will always match.
+      ]
+    )
+}
