@@ -1,5 +1,5 @@
 component LanguageSwitcher {
-  languageContext = @Context(name: Language)
+  languageContext = @NodeContext(name: Language)
   // `languageContext = site.languages` would do the same
 
   @Template {

@@ -12,7 +12,7 @@
 site Docs {
   languages =
     @Ui(label: "Language")
-    @UrlContext(
+    @NodeContext(
       name: Language,
       options: [
         @ContextOption(value: "en_US", label: "English"),
@@ -31,7 +31,7 @@ site Docs {
 
   targeting =
     @Ui(label: "Target")
-    @CookieContext(
+    @NodeContext(
       name: Targeting,
       options: [
         @ContextOption(value: "unknown", label: "Unknown"),
@@ -44,4 +44,6 @@ site Docs {
         @CookieMatcher(match: "unknown"), // This is the default case. Because it has no conditions set, it will always match.
       ]
     )
+
+  theme = @Context(name: Theme, value: "secondary")
 }

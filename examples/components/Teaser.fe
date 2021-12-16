@@ -3,16 +3,16 @@
   icon: "/images/icons/teaser.svg"
 )
 component Teaser {
-  class? = @String() @Default("")
+  class? = @String() @Default(value: "")
 
   title =
     @Ui(label: "Title", inline: true, initialValue: "")
     @String(min_length: 0, max_length: 50, regex: "/.*/g")
-    @Default("lorem")
+    @Default(value: "lorem")
 
   background =
     @Ui(label: "Background")
-    @Default("primary")
+    @Default(value: "primary")
     @Selection(options: [
       @Option(value: "primary", label: "Primär"),
       @Option(value: "grey", label: "Grau"),
@@ -44,6 +44,8 @@ component Teaser {
 
   quote? = @Slot(name: Quote, max: 1, instanceOf: [Quote])
 
+  theme = @Context(name: Theme)
+
   @Template {
     <div class="Teaser Teaser--${background} ${class}" data-foo={lorem}>
       <h4 class="Teaser-title">{title}</h4>
@@ -61,7 +63,7 @@ component Teaser {
         {quote}
       }}
 
-      {if theme == "light" {
+      {if theme == "secondary" {
         {for item in items {
           <Teaser url={item.url} />
         }}
