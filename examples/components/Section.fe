@@ -1,0 +1,53 @@
+component SectionIntro {
+  class? = @String() @Default(value: "")
+
+  headline = @String()
+  text? = @Richtext(b: true, i: true, u: true, a: true)
+
+  @Template {
+    <div class="SectionIntro ${class}">
+      <h2 class="SectionIntro-title">{headline}</h2>
+      {if text {
+        <div class="SectionIntro-text">{text}</div>
+      }}
+    </div>
+  }
+}
+
+@@Ui(
+  label: "Section",
+  icon: "/images/icons/group.svg",
+  group: "Structure",
+)
+component Section {
+  class? = @String() @Default(value: "")
+
+  show_intro = 
+    @Boolean() 
+    @Ui(label: "Show Intro above Section", initial_value: true)
+
+  intro_headline =
+    @String()
+    @If(condition: show_intro)
+    @Ui(inline: true, placeholder: "Enter Headline here...")
+
+  intro_text? =
+    @Richtext(b: true, i: true, u: true, a: true)
+    @If(condition: show_intro)
+    @Ui(inline: true, placeholder: "Enter Text here...")
+
+  content =
+    @Ui(label: "Section Content")
+    @Slot(name: Content, instanceOf: [!Section])
+
+  @Template {
+    <div class="Section ${class}">
+      {if show_intro {
+        <SectionIntro class="Section-intro" headline={intro_headline} text={intro_text} />
+      }}
+      <div class="Section-content">
+        {content}
+      </div>
+    </div>
+  }
+}
