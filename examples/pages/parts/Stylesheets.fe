@@ -1,13 +1,18 @@
 component Stylesheets {
   theme = @Context(name: Theme)
 
+  swiper    = @StaticAsset("/vendor/swiper/swiper.bundle.css")
+  main      = @StaticAsset("/css/main.css")
+  primary   = @StaticAsset("/css/theme.primary.css")
+  secondary = @StaticAsset("/css/theme.secondary.css")
+
   @Template {
-    <link rel="stylesheet" href="/vendor/swiper/swiper.bundle.css" />
-    <link rel="stylesheet" href="/css/main.css" />
-    {if theme.current == "light" {
-      <link rel="stylesheet" href="/css/theme.light.css" />
-    } else if theme.current == "dark" {
-      <link rel="stylesheet" href="/css/theme.dark.css" />
+    <link rel="stylesheet" href={swiper} />
+    <link rel="stylesheet" href={main} />
+    {if theme == "primary" {
+      <link rel="stylesheet" href={primary} />
+    } else if theme == "secondary" {
+      <link rel="stylesheet" href={secondary} />
     }}
   }
 }
