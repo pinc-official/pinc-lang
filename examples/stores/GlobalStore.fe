@@ -3,5 +3,5 @@
 	icon: "/images/icons/globe.svg",
 )
 store Global {
-	logo = @Asset(type: ["image/svg", "image/png"], upload: true, library: true)
+	logo = @Asset(type: ["image/svg", "image/png"], upload: true, library: true);
 }

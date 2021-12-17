@@ -27,7 +27,7 @@ site Docs {
         @UrlMatcher(match: "en_US", tld: ".com"),
         @UrlMatcher(match: "en_US"), // This is the default case. Because it has no conditions set, it will always match.
       ]
-    )
+    );
 
   targeting =
     @Ui(label: "Target")
@@ -43,9 +43,9 @@ site Docs {
         @CookieMatcher(match: "developer", key: "targeting", value: "developer"),
         @CookieMatcher(match: "unknown"), // This is the default case. Because it has no conditions set, it will always match.
       ]
-    )
+    );
 
-  theme = @String(value: "secondary") @Context(name: Theme)
+  theme = @String(value: "secondary") @Context(name: Theme);
 
-  mainNavigation = @PageTree(label: "Main Navigation", max_levels: 2)
+  mainNavigation = @PageTree(label: "Main Navigation", max_levels: 2);
 }

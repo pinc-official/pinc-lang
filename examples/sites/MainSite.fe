@@ -13,7 +13,7 @@ site Main {
       name: Language,
       options: [@ContextOption(value: "en_US", label: "English")],
       matchers: [@UrlMatcher(match: "en_US")]
-    )
+    );
 
   targeting =
     @Ui(label: "Target")
@@ -29,22 +29,22 @@ site Main {
         @CookieMatcher(match: "developer", key: "targeting", value: "developer"),
         @CookieMatcher(match: "unknown"), // This is the default case. Because it has no conditions set, it will always match.
       ]
-    )
+    );
 
-  theme = @String(value: "primary") @Context(name: Theme)
+  theme = @String(value: "primary") @Context(name: Theme);
 
-  mainNavigation = @PageTree(label: "Main Navigation", max_levels: 2)
-  metaNavigation = @PageTree(label: "Meta Navigation", instanceOf: [DefaultPage], max_levels: 1)
+  mainNavigation = @PageTree(label: "Main Navigation", max_levels: 2);
+  metaNavigation = @PageTree(label: "Meta Navigation", instanceOf: [DefaultPage], max_levels: 1);
 
-  title = @Ui(label: "Title") @String(value: "Homepage")
+  title = @Ui(label: "Title") @String(value: "Homepage");
 
   stage =
     @Ui(label: "Stage")
-    @Slot(name: Stage, instanceOf: [ImageStage], min: 1, max: 1)
+    @Slot(name: Stage, instanceOf: [ImageStage], min: 1, max: 1);
 
   mainContent =
     @Ui(label: "Content")
-    @Slot(name: MainContent, instanceOf: [Section], min: 1)
+    @Slot(name: MainContent, instanceOf: [Section], min: 1);
 
   @Template {
     <DefaultPage title={title}>

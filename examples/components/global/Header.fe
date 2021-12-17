@@ -1,5 +1,5 @@
 component Header {
-  logo = @Store(name: Global, property: logo)
+  logo = @Store(name: Global, property: logo);
 
   navLevel = @PartialTemplate(
     <li class="Header-navItem">

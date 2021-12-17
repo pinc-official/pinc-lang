@@ -4,25 +4,25 @@
   group: "Structure",
 )
 component Section {
-  class? = @String(value: "")
+  class? = @String(value: "");
 
   show_intro = 
     @Boolean(value: true)
-    @Ui(label: "Show Intro above Section")
+    @Ui(label: "Show Intro above Section");
 
   intro_headline =
     @String()
     @If(condition: show_intro)
-    @Ui(inline: true, placeholder: "Enter Headline here...")
+    @Ui(inline: true, placeholder: "Enter Headline here...");
 
   intro_text? =
     @Richtext(b: true, i: true, u: true, a: true)
     @If(condition: show_intro)
-    @Ui(inline: true, placeholder: "Enter Text here...")
+    @Ui(inline: true, placeholder: "Enter Text here...");
 
   content =
     @Ui(label: "Section Content")
-    @Slot(name: Content, instanceOf: [!Section])
+    @Slot(name: Content, instanceOf: [!Section]);
 
   context = @GetContext(name: CMS);
 
