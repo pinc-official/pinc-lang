@@ -1,0 +1,35 @@
+component Header {
+  logo = @Store(name: Global, property: logo)
+
+  navLevel = @PartialTemplate(
+    <li class="Header-navItem">
+      <a class="Header-navLink" href={page.url} target={page.target}>{page.title}</a>
+      {if page.sublevel {
+        <ul class="Header-sublevel">
+          {for page in page.sublevel {
+            {navLevel}
+          }}
+        </ul>
+      }}
+    </li>
+  )
+
+  @Template(
+    <header class="Header">
+      <div class="Header-container">
+          <div class="Header-logo">
+            <a class="Header-logoLink" href={site.url}>{logoTemplate}</a>
+          </div>
+          <div class="Header-content">
+            <nav class="Header-nav">
+              <ul>
+                {for page in site.mainNavigation {
+                  {navLevel}
+                }}
+              </ul>
+            </nav>
+          </div>
+      </div>
+    </header>
+  )
+}

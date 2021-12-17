@@ -6,7 +6,7 @@
 component Reference {
   ref = 
     @Ui(label: "Content Item")
-    @ContentSelect()
+    @ContentSelect(instanceOf: [!Section])
 
   @Template {
     {ref.@render}

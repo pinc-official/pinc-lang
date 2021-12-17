@@ -1,0 +1,7 @@
+@@Ui(
+	label: "Global",
+	icon: "/images/icons/globe.svg",
+)
+store Global {
+	logo = @Asset(type: ["image/svg", "image/png"], upload: true, library: true)
+}

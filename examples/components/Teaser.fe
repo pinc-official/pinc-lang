@@ -6,14 +6,13 @@ component Teaser {
   class? = @String() @Default(value: "")
 
   title =
-    @Ui(label: "Title", inline: true, initialValue: "")
-    @String(min_length: 0, max_length: 50, regex: "/.*/g")
+    @Ui(label: "Title", inline: true)
+    @String(value: "", min_length: 0, max_length: 50, regex: "/.*/g")
     @Default(value: "lorem")
 
   background =
     @Ui(label: "Background")
-    @Default(value: "primary")
-    @Selection(options: [
+    @Selection(value: "primary", options: [
       @Option(value: "primary", label: "Primär"),
       @Option(value: "grey", label: "Grau"),
       @Option(value: "white", label: "Weiß"),
@@ -44,7 +43,7 @@ component Teaser {
 
   quote? = @Slot(name: Quote, max: 1, instanceOf: [Quote])
 
-  theme = @Context(name: Theme)
+  theme = @GetContext(name: Theme)
 
   @Template {
     <div class="Teaser Teaser--${background} ${class}" data-foo={lorem}>

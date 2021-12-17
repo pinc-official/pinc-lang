@@ -45,5 +45,7 @@ site Docs {
       ]
     )
 
-  theme = @Context(name: Theme, value: "secondary")
+  theme = @String(value: "secondary") @Context(name: Theme)
+
+  mainNavigation = @PageTree(label: "Main Navigation", max_levels: 2)
 }

@@ -4,8 +4,8 @@
 
 ## Base Types
 
-There are 4 base types you can create. `site` `component`, `page` and `store`. Every type can have unlimited properties defined
-in it.
+There are 4 base types you can create. `site` `component`, `page` and `store`. Every type can have unlimited properties
+defined in it.
 
 ## Properties
 
@@ -21,14 +21,12 @@ Defines a optional property with the name `class` of type String with a default 
 
 ```
 title =
-  @Ui(inline: true, initialValue: "")
-  @String(min_length: 0, max_length: 50, regex: "/.*/g")
-  @Default(value: "lorem")
+  @Ui(inline: true)
+  @String(value: "", min_length: 0, max_length: 50, regex: "/.*/g")
 ```
 
-Defines a required property with the name `title` of type String with a default value of `"lorem"`. The Symbol `@Ui`
-defines the appearance of this proeprty within the ui of the cms. In this case, the title is inline editable and has an
-initial value of `""`.
+Defines a required property with the name `title` of type String with an initial value of `""`. The Symbol `@Ui` defines
+the appearance of this proeprty within the ui of the cms. In this case, the title is inline editable.
 
 ## Symbols
 
@@ -36,15 +34,15 @@ initial value of `""`.
 
 Defines the behavoiur of a property within the UI of the CMS. Available attributes are:
 
-| Attribute      | Description                                                                                                               | Required | Default |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------- | -------- | ------- |
-| `label`        | The label which should be used for the properties input. Only gets used, if the field is display in the @temp: Inspector. | false    | ""      |
-| `inline`       | Defines if the property is inline editable or editable only within the @temp: Inspector.                                  | false    | false   |
-| `initialValue` | Defines the value, which should be displayed in the ui, as soon as a new instance of the property is created              | false    | false   |
+| Attribute | Description                                                                                                               | Required | Default |
+| --------- | ------------------------------------------------------------------------------------------------------------------------- | -------- | ------- |
+| `label`   | The label which should be used for the properties input. Only gets used, if the field is display in the @temp: Inspector. | false    | ""      |
+| `inline`  | Defines if the property is inline editable or editable only within the @temp: Inspector.                                  | false    | false   |
 
 ### `@Default`
 
-Sets the default value of the property. If the value would be `null`, it gets assigned this value instead.
+Sets the default value of the property. If the value would be `null`, it gets assigned this value instead. @TODO: Do we
+really need the Default Symbol?
 
 | Attribute | Description                                   | Required | Default |
 | --------- | --------------------------------------------- | -------- | ------- |
@@ -55,40 +53,44 @@ Sets the default value of the property. If the value would be `null`, it gets as
 Sets the type of the property to `string` and renders a single-line (@TODO: How to define a multiline field?) input
 field in the CMS. You may provide the Symbol with the following additional attributes:
 
-| Attribute    | Description                                                                             | Required | Default    |
-| ------------ | --------------------------------------------------------------------------------------- | -------- | ---------- |
-| `min_length` | The minimum length of the string                                                        | false    | 0          |
-| `max_length` | The maximum length of the string                                                        | false    | `Infinity` |
-| `regex`      | A regex, which has to create a match with the provided value @TODO: Which regex syntax? | false    |            |
+| Attribute    | Description                                                                                                   | Required | Default    |
+| ------------ | ------------------------------------------------------------------------------------------------------------- | -------- | ---------- |
+| `value`      | The initial value of the string when displayed in the cms. When used in a template, this is the default value | false    |            |
+| `min_length` | The minimum length of the string                                                                              | false    | 0          |
+| `max_length` | The maximum length of the string                                                                              | false    | `Infinity` |
+| `regex`      | A regex, which has to create a match with the provided value @TODO: Which regex syntax?                       | false    |            |
 
 ### `@Number`
 
 Sets the type of the property to `number` and renders a number input in the ui. You may provide the Symbol with the
 following additional attributes:
 
-| Attribute  | Description                                          | Required | Default    |
-| ---------- | ---------------------------------------------------- | -------- | ---------- |
-| `min`      | The minimum allowed value of the number              | false    | 0          |
-| `max`      | The maximum allowed value of the number              | false    | `Infinity` |
-| `fraction` | The number of fractionals the number gets rounded to | false    | 0          |
+| Attribute  | Description                                                                                                   | Required | Default    |
+| ---------- | ------------------------------------------------------------------------------------------------------------- | -------- | ---------- |
+| `value`    | The initial value of the number when displayed in the cms. When used in a template, this is the default value | false    |            |
+| `min`      | The minimum allowed value of the number                                                                       | false    | 0          |
+| `max`      | The maximum allowed value of the number                                                                       | false    | `Infinity` |
+| `fraction` | The number of fractionals the number gets rounded to                                                          | false    | 0          |
 
 ### `@Boolean`
 
 Sets the type of the property to `boolean` and renders a checkbox in the ui. You may provide the Symbol with the
 following additional attributes:
 
-| Attribute | Description | Required | Default |
-| --------- | ----------- | -------- | ------- |
+| Attribute | Description                                                                                                    | Required | Default |
+| --------- | -------------------------------------------------------------------------------------------------------------- | -------- | ------- |
+| `value`   | The initial value of the boolean when displayed in the cms. When used in a template, this is the default value | false    | false   |
 
 ### `@Selection`
 
 Sets the type of the property to `string` and renders a select in the ui. You may provide the Symbol with the following
 additional attributes:
 
-| Attribute  | Description                                                                     | Required | Default |
-| ---------- | ------------------------------------------------------------------------------- | -------- | ------- |
-| `options`  | an array of `@Option` Symbols to be used a options                              | true     |         |
-| `multiple` | A boolean flag, indicating, if the user may select multiple, or just one option | false    | false   |
+| Attribute  | Description                                                                                                      | Required | Default |
+| ---------- | ---------------------------------------------------------------------------------------------------------------- | -------- | ------- |
+| `value`    | The initial value of the selection when displayed in the cms. When used in a template, this is the default value | false    |         |
+| `options`  | an array of `@Option` Symbols to be used a options                                                               | true     |         |
+| `multiple` | A boolean flag, indicating, if the user may select multiple, or just one option                                  | false    | false   |
 
 #### `@Option`
 
@@ -131,10 +133,10 @@ null, if nothing is found. If an array is returned to QuerySingle, only the firs
 
 You may provide the Symbol with the following additional attributes:
 
-| Attribute | Description                                                                           | Required | Default   |
-| --------- | ------------------------------------------------------------------------------------- | -------- | --------- |
-| `from`    | Specifies, from where the query should be executed. May be either `current` or `root` | false    | `current` |
-| `queries` | An array of Query Symbols to define the behavoiur of the Query                        | true     |           |
+| Attribute | Description                                                                                   | Required | Default   |
+| --------- | --------------------------------------------------------------------------------------------- | -------- | --------- |
+| `from`    | Specifies, from where the query should be executed. May be either `current`, `page` or `root` | false    | `current` |
+| `queries` | An array of Query Symbols to define the behavoiur of the Query                                | true     |           |
 
 #### `@Children`
 

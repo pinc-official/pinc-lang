@@ -2,16 +2,19 @@
   label: "Page",
   icon: "/images/svgs/page.svg"
 )
+@@Url(scheme: "${title}", suffix: ".html")
 page DefaultPage {
-  title = @Ui(label: "Title") @String()
-  
-  stage =
+  title = @Ui(label: "Title") @String(value: "New Page")
+
+  stage? =
     @Ui(label: "Stage")
     @Slot(name: Stage, instanceOf: [ImageStage, VideoStage])
-  
+
   mainContent =
     @Ui(label: "Content")
     @Slot(name: MainContent, instanceOf: [Section])
+
+  sublevel = @PageTree(label: "Sublevel")
 
   @Template {
     <!DOCTYPE html>

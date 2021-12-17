@@ -1,5 +1,5 @@
 component Stylesheets {
-  theme = @Context(name: Theme)
+  theme = @GetContext(name: Theme)
 
   swiper    = @StaticAsset("/vendor/swiper/swiper.bundle.css")
   main      = @StaticAsset("/css/main.css")
