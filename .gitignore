@@ -1,0 +1,17 @@
+_build
+_opam
+_release
+_esy
+
+.depend
+.merlin
+.*.swp
+*.install
+*.byte
+*.orig
+*.native
+
+node_modules
+
+.DS_Store
+

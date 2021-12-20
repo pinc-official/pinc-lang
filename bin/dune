@@ -1,0 +1,4 @@
+(executable
+ (name print)
+ (public_name print)
+ (libraries fennek_lang))
