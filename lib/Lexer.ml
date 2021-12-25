@@ -18,19 +18,6 @@ type t = {
   mutable mode : mode list;
 }
 
-let print_debug ~start_pos ~end_pos t token =
-  print_string t.src;
-  let start_col = start_pos.Position.column in
-  let end_col = end_pos.Position.column in
-  let prefix = String.make start_col ' ' in
-  let fill =
-    match end_col - start_col with
-    | 0 | 1 -> ""
-    | n     -> Printf.sprintf "%s^" (String.make (n - 2) '-')
-  in
-  let token = Token.to_string token in
-  Printf.printf "%s^%s (%s) - %i-%i\n" prefix fill token start_col end_col
-
 let make_position a = 
   Position.make
     ~filename: a.filename
@@ -309,6 +296,5 @@ let rec scan t = begin
       typ
   in
   let end_pos = make_position t in
-  (* let () = print_debug ~start_pos ~end_pos t token in *)
   Token.make ~start_pos ~end_pos token
 end
