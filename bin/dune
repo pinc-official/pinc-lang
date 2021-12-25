@@ -1,4 +1,11 @@
 (executable
  (name print)
  (public_name print)
- (libraries fennek_lang))
+ (modules print)
+ (libraries fennek_lang fennek_lib))
+
+(executable
+ (name print_tokens)
+ (public_name print_tokens)
+ (modules print_tokens)
+ (libraries fennek_lib))
