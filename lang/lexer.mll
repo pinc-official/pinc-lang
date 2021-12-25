@@ -42,7 +42,6 @@ let newline = '\r' | '\n' | "\r\n"
 let upper_id = ['A'-'Z'] ['a'-'z' 'A'-'Z']*
 let lower_id = ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
-let decorator = "@@" ['A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9']*
 let symbol = "@" ['A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9']*
 
 
@@ -76,7 +75,6 @@ rule read =
   | "*"           { STAR }
   | "/"           { SLASH }
   | "%"           { PERCENT }
-  | decorator     { DECORATOR (trim_left (Lexing.lexeme lexbuf) 2) }
   | symbol        { SYMBOL (trim_left (Lexing.lexeme lexbuf) 1) }
   | upper_id      { ID_UPPER (Lexing.lexeme lexbuf) }
   | lower_id      { check_keyword (Lexing.lexeme lexbuf) }

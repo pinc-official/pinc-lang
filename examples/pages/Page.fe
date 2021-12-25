@@ -1,8 +1,8 @@
-@@Ui(
+@Ui(
   label: "Page",
   icon: "/images/svgs/page.svg"
 )
-@@Url(scheme: "${title}", suffix: ".html")
+@Url(scheme: "${title}", suffix: ".html")
 page DefaultPage {
   title = @Ui(label: "Title") @String(value: "New Page");
 

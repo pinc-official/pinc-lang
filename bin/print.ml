@@ -14,32 +14,32 @@ and print_declaration decl =
   | Ast_Declaration.Component c -> print_component c
 
 and print_site site =
-  printf "site %S\n" site.ident;
-  site.decorators |> List.iter print_decorator
+  printf "site %s\n" site.ident;
+  site.symbols |> List.iter print_symbol
 
 and print_store store =
-  printf "store %S\n" store.ident;
-  store.decorators |> List.iter print_decorator
+  printf "store %s\n" store.ident;
+  store.symbols |> List.iter print_symbol
 
 and print_page page =
-  printf "page %S\n" page.ident;
-  page.decorators |> List.iter print_decorator
+  printf "page %s\n" page.ident;
+  page.symbols |> List.iter print_symbol
 
 and print_component component =
-  printf "component %S\n" component.ident;
-  component.decorators |> List.iter print_decorator
+  printf "component %s\n" component.ident;
+  component.symbols |> List.iter print_symbol
 
-and print_decorator decorator =
-  printf "decorator %S\n" decorator.ident;
-  decorator.attrs |> List.iter print_attr
+and print_symbol symbol =
+  printf "symbol %s\n" symbol.ident;
+  symbol.attrs |> List.iter print_attr
 
 and print_attr attr =
-  printf "attr %S\n" attr.name;
+  printf "attr %s\n" attr.name;
   print_expr attr.value
 
 and print_expr expr =
   match expr with
-  | Ast_Value.String s -> printf "string %S\n" s
+  | Ast_Value.String s -> printf "string %s\n" s
   | Ast_Value.Int i -> printf "string %i\n" i
   | Ast_Value.Bool b -> printf "string %b\n" b
   | Ast_Value.Array items -> items |> List.iter print_expr

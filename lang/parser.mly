@@ -21,7 +21,7 @@
 
 %token COMPONENT SITE PAGE STORE
 
-%token <string> DECORATOR SYMBOL
+%token <string> SYMBOL
 %token <string> ID_LOWER
 %token <string> ID_UPPER
 
@@ -44,21 +44,21 @@ declarations:
     { { loc = $startpos; declarations = d } }
 
 declaration:
-  | decorators = decorator*; SITE; ident = ID_UPPER; LEFT_BRACE; RIGHT_BRACE; {
-      Ast_Declaration.make_site decorators ident [] ""
+  | symbols = symbol*; SITE; ident = ID_UPPER; LEFT_BRACE; RIGHT_BRACE; {
+      Ast_Declaration.make_site symbols ident [] ""
     }
-  | decorators = decorator*; COMPONENT; ident = ID_UPPER; LEFT_BRACE; RIGHT_BRACE; {
-      Ast_Declaration.make_component decorators ident [] ""
+  | symbols = symbol*; COMPONENT; ident = ID_UPPER; LEFT_BRACE; RIGHT_BRACE; {
+      Ast_Declaration.make_component symbols ident [] ""
     }
-  | decorators = decorator*; PAGE; ident = ID_UPPER; LEFT_BRACE; RIGHT_BRACE; {
-      Ast_Declaration.make_page decorators ident [] ""
+  | symbols = symbol*; PAGE; ident = ID_UPPER; LEFT_BRACE; RIGHT_BRACE; {
+      Ast_Declaration.make_page symbols ident [] ""
     }
-  | decorators = decorator*; STORE; ident = ID_UPPER; LEFT_BRACE; RIGHT_BRACE; {
-      Ast_Declaration.make_store decorators ident []
+  | symbols = symbol*; STORE; ident = ID_UPPER; LEFT_BRACE; RIGHT_BRACE; {
+      Ast_Declaration.make_store symbols ident []
     }
 
-decorator:
-  | ident = DECORATOR; LEFT_PAREN; attrs = separated_list(COMMA, attr); RIGHT_PAREN; {
+symbol:
+  | ident = SYMBOL; LEFT_PAREN; attrs = separated_list(COMMA, attr); RIGHT_PAREN; {
       Ast_Decorator.make ident attrs
     }
 

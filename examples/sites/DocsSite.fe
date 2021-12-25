@@ -1,8 +1,8 @@
-@@Ui(
+@Ui(
   label: "Docs Site",
   icon: "/images/icons/site-docs.svg",
 )
-@@Domain(
+@Domain(
   main: "docs.fennek-cms.com",
   additional: [
     "docs.fennek-cms.de",

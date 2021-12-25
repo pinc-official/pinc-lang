@@ -1,40 +1,40 @@
 type site = {
-  decorators : Ast_Decorator.t list;
+  symbols : Ast_Decorator.t list;
   ident : string;
   properties : string list;
   template : string;
 }
 
 type page = {
-  decorators : Ast_Decorator.t list;
+  symbols : Ast_Decorator.t list;
   ident : string;
   properties : string list;
   template : string;
 }
 
 type component = {
-  decorators : Ast_Decorator.t list;
+  symbols : Ast_Decorator.t list;
   ident : string;
   properties : string list;
   template : string;
 }
 
 type store = {
-  decorators : Ast_Decorator.t list;
+  symbols : Ast_Decorator.t list;
   ident : string;
   properties : string list;
 }
 
 type t = Site of site | Page of page | Component of component | Store of store
 
-let make_store decorators ident properties =
-  Store { decorators; ident; properties }
+let make_store symbols ident properties =
+  Store { symbols; ident; properties }
 
-let make_component decorators ident properties template =
-  Component { decorators; ident; properties; template }
+let make_component symbols ident properties template =
+  Component { symbols; ident; properties; template }
 
-let make_page decorators ident properties template =
-  Page { decorators; ident; properties; template }
+let make_page symbols ident properties template =
+  Page { symbols; ident; properties; template }
 
-let make_site decorators ident properties template =
-  Site { decorators; ident; properties; template }
+let make_site symbols ident properties template =
+  Site { symbols; ident; properties; template }

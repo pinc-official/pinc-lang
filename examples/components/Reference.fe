@@ -1,4 +1,4 @@
-@@Ui(
+@Ui(
   label: "Reference",
   icon: "/images/icons/duplicate.svg",
   group: "Structure"

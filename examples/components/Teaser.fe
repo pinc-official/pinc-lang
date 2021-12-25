@@ -1,4 +1,4 @@
-@@Ui(
+@Ui(
   label: "Teaser",
   icon: "/images/icons/teaser.svg"
 )
