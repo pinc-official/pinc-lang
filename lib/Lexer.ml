@@ -91,15 +91,6 @@ let rec skip_whitespace t =
     skip_whitespace t;
   end
 
-let digitValue ch =
-  match ch with
-  | Chr ('0'..'9' as c) -> (Char.code c) - 48
-  | Chr ('a'..'f' as c) ->
-    (Char.code c) - (Char.code 'a') + 10
-  | Chr ('A'..'F' as c) ->
-    (Char.code c) + 32 - (Char.code 'a') + 10
-  | _ -> 16
-
 let scan_ident t = begin
   (* NOTE: List all vaid chars for identifiers here: *)
   let rec loop acc t =
