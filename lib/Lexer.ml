@@ -177,49 +177,43 @@ let scan_symbol t = begin
   | _ -> assert false (* TODO: Report invalid symbol *)
 end
 
-let scan_digits t = begin
-  let rec loop t =
-    match t.current with
-    | Chr '0'..'9' | Chr '_' -> next t; loop t
-    | _ -> ()
-  in loop t
-end
-
 let scan_number t = begin
-  let start_offset = t.offset in
+  let result = Buffer.create 5 in
+
+  let rec scan_digits t =
+    match t.current with
+    | Chr ('0'..'9' as c) -> Buffer.add_char result c; next t; scan_digits t
+    | Chr '_'             -> next t; scan_digits t
+    | _                   -> ()
+  in
 
   scan_digits t;
 
-  let is_float =
-    if t.current = Chr '.'
-      then
-        let () = next t in
-        let () = scan_digits t in
-        true
-      else
-        false
+  let is_float = match t.current with
+  | Chr '.' -> Buffer.add_char result '.'; next t; scan_digits t; true
+  | _       -> false
   in
 
   (* exponent part *)
-  let is_float =
-    match t.current with
-    | Chr 'e' | Chr 'E' | Chr 'p' | Chr 'P' ->
-      let () = match peek t with
-      | Chr '+' | Chr '-' -> next_n ~n:2 t
-      | _ -> next t
-      in
-      scan_digits t;
-      true
-    | _ -> is_float
-  in
-  let literal =
-    String.sub t.src start_offset (t.offset - start_offset)
+  let is_float = match t.current with
+  | Chr 'e' | Chr 'E' ->
+    Buffer.add_char result 'e'; next t;
+    let () = match t.current with
+    | Chr '+' -> Buffer.add_char result '+'; next t
+    | Chr '-' -> Buffer.add_char result '-'; next t
+    | _ -> ()
+    in
+    scan_digits t;
+    true
+  | _ -> is_float
   in
 
+  let result = Buffer.contents result in
+
   if is_float then
-    Token.FLOAT (float_of_string literal)
+    Token.FLOAT (float_of_string result)
   else
-    Token.INT (int_of_string literal)
+    Token.INT (int_of_string result)
 end
 
 let skip_comment t = begin
@@ -252,13 +246,16 @@ let rec scan t = begin
   | Chr ':' -> next t; Token.COLON
   | Chr ',' -> next t; Token.COMMA
   | Chr ';' -> next t; Token.SEMICOLON
-  | Chr '.' -> next t; Token.DOT
-  
   | Chr '-' -> next t; Token.MINUS
   | Chr '+' -> next t; Token.PLUS
   | Chr '/' -> next t; Token.SLASH
   | Chr '%' -> next t; Token.PERCENT
   
+  | Chr '.' -> (
+    match peek t with
+    | Chr '0'..'9' -> scan_number t
+    | _            -> next t; Token.DOT
+  )
   | Chr '@' -> (
     match peek t with
     | Chr 'A'..'Z' -> scan_symbol t

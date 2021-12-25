@@ -26,19 +26,25 @@
   site
   Upper Ident: Docs
   {
+  Lower Ident: floats
+  =
+  [
+  Float: 1000.462000
+  ,
+  Float: 1.000000
+  ,
+  Float: 1.433200
+  ,
+  Float: 0.500000
+  ,
+  Float: 10000000000.000000
+  ,
+  Float: 100.000000
+  ,
+  Float: 0.000010
+  ,
+  Float: 0.010000
+  ,
+  Float: 0.010000
+  ]
   }
-
-  $ esy x print ./data.fe
-  ./data.fe:1:1
-  site Docs
-  symbol Ui
-  attr label
-  string Docs Site
-  attr icon
-  string /images/icons/site-docs.svg
-  symbol Domain
-  attr main
-  string docs.fennek-cms.com
-  attr additional
-  string docs.fennek-cms.de
-  string docs.fennek-cms.fr
