@@ -2,7 +2,7 @@
  (name print)
  (public_name print)
  (modules print)
- (libraries fennek_lang fennek_lib))
+ (libraries fennek_lib))
 
 (executable
  (name print_tokens)

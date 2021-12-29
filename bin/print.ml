@@ -1,5 +1,4 @@
-open Fennek_lang
-open Lexing
+open Fennek_lib
 open Printf
 
 let rec print_ast (ast : Ast.t) =
@@ -45,35 +44,21 @@ and print_expr expr =
   | Ast_Value.Array items -> items |> List.iter print_expr
 
 and print_location pos =
-  let fname = pos.pos_fname in
-  let lnum = pos.pos_lnum in
-  let col = pos.pos_cnum - pos.pos_bol + 1 in
+  let fname = pos.Position.filename in
+  let lnum = pos.line in
+  let col = pos.column in
   Printf.printf "%s:%d:%d\n" fname lnum col
 
-let parse_with_error lexbuf =
-  try Parser.program Lexer.read lexbuf with
-  | Lexer.SyntaxError msg ->
-      print_location lexbuf.lex_curr_p;
-      eprintf "Syntax Error: %s" msg;
-      None
-  | Parser.Error ->
-      print_location lexbuf.lex_curr_p;
-      eprintf "Parser Error";
-      exit (-1)
+let parse_and_print p = print_ast (Parser.scan p)
 
-let rec parse_and_print lexbuf =
-  match parse_with_error lexbuf with
-  | Some value ->
-      print_ast value;
-      parse_and_print lexbuf
-  | None -> ()
+let file_contents chan = really_input_string chan (in_channel_length chan)
 
 let main =
   let filename = Sys.argv.(1) in
   let chan = open_in filename in
-  let lexbuf = Lexing.from_channel chan in
-  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-  parse_and_print lexbuf;
+  let src = file_contents chan in
+  let parser = Parser.make ~filename src in
+  let () = parse_and_print parser in
   close_in chan
 
 let () = main
