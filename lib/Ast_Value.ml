@@ -1,1 +1,1 @@
-type t = String of string | Int of int | Bool of bool | Array of t list
+type t = String of string | Int of int | Float of float | Bool of bool | Array of t list

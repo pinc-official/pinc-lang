@@ -49,3 +49,20 @@
   Token.RIGHT_BRACK
   Token.SEMICOLON
   Token.RIGHT_BRACE
+
+  $ esy x print ./data.fe
+  ./data.fe:1:0
+  component Docs
+  symbol Ui
+  attr label
+  string Docs Site
+  attr icon
+  string /images/icons/site-docs.svg
+  symbol Domain
+  attr main
+  string docs.fennek-cms.com
+  attr additional
+  array [
+    string docs.fennek-cms.de
+    string docs.fennek-cms.fr
+  ]

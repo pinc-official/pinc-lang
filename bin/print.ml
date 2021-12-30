@@ -39,9 +39,16 @@ and print_attr attr =
 and print_expr expr =
   match expr with
   | Ast_Value.String s -> printf "string %s\n" s
-  | Ast_Value.Int i -> printf "string %i\n" i
-  | Ast_Value.Bool b -> printf "string %b\n" b
-  | Ast_Value.Array items -> items |> List.iter print_expr
+  | Ast_Value.Float f -> printf "float %f\n" f
+  | Ast_Value.Int i -> printf "int %i\n" i
+  | Ast_Value.Bool b -> printf "bool %b\n" b
+  | Ast_Value.Array items ->
+    printf "array [\n";
+    List.iter (fun v -> (
+      printf "  "; 
+      print_expr v
+    )) items;
+    printf "]\n";
 
 and print_location pos =
   let fname = pos.Position.filename in

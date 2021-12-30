@@ -1,3 +1,5 @@
+exception Parser_Error of string
+
 type t = {
   mutable lexer: Lexer.t;
   mutable token: Token.t;
@@ -22,8 +24,7 @@ let expect token t = begin
   if test then
     next t
   else (
-    print_endline (Token.to_string t.token.typ);
-    assert false; (* TODO: *)
+    raise (Parser_Error (Printf.sprintf "Expected: %s, got %s" (Token.to_string token) (Token.to_string t.token.typ)))
   )
   
 end
@@ -41,60 +42,91 @@ let make ~filename src = begin
   t
 end
 
-let parse_region ?(list=false) ~f t = begin
-  let rec loop acc =
-    match f t with
-    | Some r -> loop (r::acc)
-    | None when t.token.typ = Token.END_OF_INPUT || list -> List.rev acc
-    | None -> assert false (* TODO: *)
-    in
-  loop []
+module Helpers = struct
+  let separated_list ~sep ~fn t = begin
+    let rec loop acc = begin
+      let has_sep = optional sep t in
+      match fn t with
+      | Some r -> 
+        if has_sep || acc = []
+          then loop (r::acc)
+          else raise (Parser_Error (Printf.sprintf "Expected list to be separated by %s" (Token.to_string sep)))
+      | None   -> List.rev acc
+    end in
+    loop []
+  end
+
+
+  let non_empty_separated_list ~sep ~fn t = begin
+    let res = separated_list ~sep ~fn t in
+    if res = [] then raise (Parser_Error (Printf.sprintf "Expected list to not be empty"));
+    res
+  end
+
+  let list ~fn t = begin
+    let rec loop acc = begin
+      match fn t with
+      | Some r -> loop (r::acc)
+      | None   -> List.rev acc
+    end in
+    loop []
+  end
+
+  let non_empty_list ~fn t = begin
+    let res = list ~fn t in
+    if res = [] then raise (Parser_Error (Printf.sprintf "Expected list to not be empty"));
+    res
+  end
 end
 
-let parse_attr_value t = begin
-  match t.token.typ with
-  | Token.STRING s -> next t; Ast_Value.String s
-  | _ -> assert false
-end
-
-let parse_attr t = begin
-  match t.token.typ with
-  | Token.IDENT_LOWER ident ->
-    next t;
-    expect Token.COLON t;
-    let value = parse_attr_value t in
-    optional Token.COMMA t |> ignore;
-    Some (Ast_Attr.make ident value)
-  | _ -> None
-end
-
-let parse_symbol_attrs t = begin
-  parse_region t ~list:true ~f:parse_attr
-end
-
-let parse_symbol t = begin
-  match t.token.typ with
-  | Token.SYMBOL ident ->
-    next t;
-    begin match t.token.typ with
-    | Token.LEFT_PAREN -> 
-      next t;
-      let attrs = parse_symbol_attrs t in
-      expect Token.RIGHT_PAREN t;
-      Some (Ast_Symbol.make ident attrs)
+module Rules = struct
+  let rec value t = begin
+    match t.token.typ with
+    | Token.STRING s      -> next t; Some (Ast_Value.String s)
+    | Token.INT i         -> next t; Some (Ast_Value.Int i)
+    | Token.FLOAT f       -> next t; Some (Ast_Value.Float f)
+    | Token.KEYWORD_TRUE  -> next t; Some (Ast_Value.Bool true)
+    | Token.KEYWORD_FALSE -> next t; Some (Ast_Value.Bool false)
+    | Token.LEFT_BRACK    -> begin
+        next t;
+        let values = Helpers.separated_list ~sep:Token.COMMA ~fn:value t in
+        expect Token.RIGHT_BRACK t;
+        Some (Ast_Value.Array values)
+      end
     | _ -> None
-    end
-  | _ -> None
-end
-
-let parse_symbols t = begin
-  parse_region t ~list:true ~f:parse_symbol
+  end
+  
+  let attr t = begin
+    match t.token.typ with
+    | Token.IDENT_LOWER ident ->
+      next t;
+      expect Token.COLON t;
+      begin match value t with
+      | Some v -> Some (Ast_Attr.make ident v)
+      | None -> None
+      end
+    | _ -> None
+  end
+  
+  let symbol t = begin
+    match t.token.typ with
+    | Token.SYMBOL ident ->
+      next t;
+      begin match t.token.typ with
+      | Token.LEFT_PAREN ->
+        t |> expect Token.LEFT_PAREN;
+        let attrs = t |> Helpers.separated_list ~fn:attr ~sep:Token.COMMA in
+        t |> expect Token.RIGHT_PAREN;
+        Some (Ast_Symbol.make ident attrs)
+      | _ -> None
+      end
+    | _ -> None
+  end
 end
 
 let scan t = begin
   let start_pos = t.token.start_pos in
-  let symbols = parse_symbols t in
-  print_endline (Token.to_string t.token.typ);
+  let symbols = t |> Helpers.list ~fn:Rules.symbol in
   let declarations = match t.token.typ with
   | Token.KEYWORD_SITE ->
     next t;
