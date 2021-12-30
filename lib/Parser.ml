@@ -82,33 +82,38 @@ end
 module Rules = struct
   let rec value t = begin
     match t.token.typ with
-    | Token.STRING s      -> next t; Some (Ast_Value.String s)
-    | Token.INT i         -> next t; Some (Ast_Value.Int i)
-    | Token.FLOAT f       -> next t; Some (Ast_Value.Float f)
-    | Token.KEYWORD_TRUE  -> next t; Some (Ast_Value.Bool true)
-    | Token.KEYWORD_FALSE -> next t; Some (Ast_Value.Bool false)
+    | Token.STRING s      -> next t; Some (Ast.Value.String s)
+    | Token.INT i         -> next t; Some (Ast.Value.Int i)
+    | Token.FLOAT f       -> next t; Some (Ast.Value.Float f)
+    | Token.KEYWORD_TRUE  -> next t; Some (Ast.Value.Bool true)
+    | Token.KEYWORD_FALSE -> next t; Some (Ast.Value.Bool false)
     | Token.LEFT_BRACK    -> begin
         next t;
         let values = Helpers.separated_list ~sep:Token.COMMA ~fn:value t in
         expect Token.RIGHT_BRACK t;
-        Some (Ast_Value.Array values)
+        Some (Ast.Value.Array values)
+      end
+    | Token.SYMBOL _ -> begin
+        match symbol t with
+        | Some s -> Some (Ast.Value.Symbol s)
+        | None   -> None
       end
     | _ -> None
   end
   
-  let attr t = begin
+  and attr t = begin
     match t.token.typ with
-    | Token.IDENT_LOWER ident ->
+    | Token.IDENT_LOWER name ->
       next t;
       expect Token.COLON t;
       begin match value t with
-      | Some v -> Some (Ast_Attr.make ident v)
-      | None -> None
+      | Some value -> Some Ast.Attr.{ name; value }
+      | None       -> None
       end
     | _ -> None
   end
   
-  let symbol t = begin
+  and symbol t = begin
     match t.token.typ with
     | Token.SYMBOL ident ->
       next t;
@@ -117,7 +122,7 @@ module Rules = struct
         t |> expect Token.LEFT_PAREN;
         let attrs = t |> Helpers.separated_list ~fn:attr ~sep:Token.COMMA in
         t |> expect Token.RIGHT_PAREN;
-        Some (Ast_Symbol.make ident attrs)
+        Some Ast.Symbol.{ ident; attrs }
       | _ -> None
       end
     | _ -> None
@@ -131,8 +136,8 @@ let scan t = begin
   | Token.KEYWORD_SITE ->
     next t;
     begin match t.token.typ with
-    | Token.IDENT_UPPER name ->
-      Ast_Declaration.make_component ~symbols ~properties:[] ~template:"" name
+    | Token.IDENT_UPPER ident ->
+      Ast.Declaration.Component({ symbols; ident; properties=[]; template="" })
     | _ -> assert false (* TODO: *)
     end
   | _ -> assert false (* TODO: *)

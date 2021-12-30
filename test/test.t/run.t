@@ -21,6 +21,7 @@
   Token.STRING: .......... docs.fennek-cms.de
   Token.COMMA
   Token.STRING: .......... docs.fennek-cms.fr
+  Token.COMMA
   Token.RIGHT_BRACK
   Token.RIGHT_PAREN
   Token.KEYWORD_SITE
@@ -50,19 +51,21 @@
   Token.SEMICOLON
   Token.RIGHT_BRACE
 
-  $ esy x print ./data.fe
+  $ esy x print_ast ./data.fe
   ./data.fe:1:0
   component Docs
-  symbol Ui
-  attr label
-  string Docs Site
-  attr icon
-  string /images/icons/site-docs.svg
-  symbol Domain
-  attr main
-  string docs.fennek-cms.com
-  attr additional
-  array [
-    string docs.fennek-cms.de
-    string docs.fennek-cms.fr
-  ]
+    symbol Ui (
+      attr label
+        string Docs Site
+      attr icon
+        string /images/icons/site-docs.svg
+    )
+    symbol Domain (
+      attr main
+        string docs.fennek-cms.com
+      attr additional
+        array [
+          string docs.fennek-cms.de
+          string docs.fennek-cms.fr
+        ]
+    )

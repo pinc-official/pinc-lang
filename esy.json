@@ -15,8 +15,8 @@
     "buildDev": "dune build --promote-install-files --root . --only-package #{self.name}"
   },
   "scripts": {
-    "test": "esy dune runtest",
-    "test:u": "esy dune promote"
+    "test": "dune runtest",
+    "test:u": "dune promote"
   },
   "dependencies": {
     "@opam/menhir": "*",

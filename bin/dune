@@ -1,7 +1,7 @@
 (executable
- (name print)
- (public_name print)
- (modules print)
+ (name print_ast)
+ (public_name print_ast)
+ (modules print_ast)
  (libraries fennek_lib))
 
 (executable
