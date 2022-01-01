@@ -53,7 +53,7 @@
 
   $ esy x print_ast ./data.fe
   ./data.fe:1:0
-  component Docs
+  site Docs
     symbol Ui (
       attr label
         string Docs Site

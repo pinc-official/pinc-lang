@@ -1,61 +1,116 @@
-module rec Symbol: sig
-  type ident = string
+module rec SourceLocation: sig
   type t = {
-    ident: ident;
-    attrs: Attr.t list;
+    source: string;
+    pos_start: Position.t;
+    pos_end: Position.t;
+  }
+end = SourceLocation
+
+and Operator: sig
+  type binary = 
+  | EQUAL | NOT_EQUAL
+  | GREATER | GREATER_EQUAL
+  | LESS | LESS_EQUAL
+  | PLUS | MINUS | TIMES | DIV
+  | IN
+
+  type logical = AND | OR
+
+  type unary =
+  | NEGATIVE | POSITIVE
+  | NOT
+end = Operator
+
+and Identifier: sig
+  type t = string
+end = Identifier
+
+and Literal: sig
+  type t = 
+    | String of string
+    | Int of int
+    | Float of float
+    | Bool of bool
+end = Literal
+
+and Symbol: sig
+  type t = {
+    identifier: string;
+    attributes: Attribute.t list;
+    body: Statement.t option;
   }
 end = Symbol
 
-and Value: sig
-  type t = 
-    | String of string 
-    | Int of int 
-    | Float of float 
-    | Bool of bool 
-    | Array of t list
-    | Symbol of Symbol.t
-end = Value
-
-and Attr: sig
+and Attribute: sig
   type t = {
-    name: string;
-    value: Value.t
+    key: Identifier.t;
+    value: Expression.t
   }
-end = Attr
+end = Attribute
+
+and Expression: sig
+  type t = 
+    | Literal of Literal.t
+    | Array of Expression.t list
+    | Symbols of Symbol.t list
+    | Conditional of {
+      condition: Expression.t;
+      consequent: Expression.t;
+      alternate: Expression.t option;
+    }
+    | Unary of {
+      operator: Operator.unary;
+      argument: Expression.t;
+    }
+    | Binary of {
+      left: Expression.t;
+      right: Expression.t;
+      operator: Operator.binary;
+    }
+    | Logical of {
+      left: Expression.t;
+      right: Expression.t;
+      operator: Operator.logical
+    }
+    | Assignment of {
+      left: Identifier.t;
+      right: Expression.t;
+    }
+end = Expression
+
+and Statement: sig
+  type t = 
+    | Break
+    | Continue
+    | Expression of Expression.t
+    | Block of Statement.t list
+    | ForIn of {
+      left: Identifier.t;
+      right: Expression.t;
+      body: Statement.t list
+    }
+end = Statement
+
 
 and Declaration: sig
-  type site = {
-    symbols: Symbol.t list;
-    ident: string;
-    properties: string list;
-    template: string;
+  type content = {
+    identifier: Identifier.t;
+    attributes: Symbol.t list;
+    body: Statement.t;
   }
 
-  type page = {
-    symbols: Symbol.t list;
-    ident: string;
-    properties: string list;
-    template: string;
-  }
-
-  type component = {
-    symbols: Symbol.t list;
-    ident: string;
-    properties: string list;
-    template: string;
-  }
-
-  type store = {
-    symbols: Symbol.t list;
-    ident: string;
-    properties: string list;
-  }
-
-  type t = Site of site | Page of page | Component of component | Store of store
+  type t =
+    | Site of content
+    | Page of content
+    | Component of content
+    | Store of content
 end = Declaration
 
+and File: sig
+  type t = {
+    location: Position.t;
+    declarations: Declaration.t list;
+  }
+end = File
 
-type t = {
-  loc: Position.t;
-  declarations: Declaration.t list
-}
+type t = File.t list

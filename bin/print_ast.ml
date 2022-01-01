@@ -1,8 +1,8 @@
 open Fennek_lib
 open Printf
 
-let rec print_ast (ast : Ast.t) =
-  print_location ast.loc;
+let rec print_ast (ast : Ast.File.t) =
+  print_location ast.location;
   ast.declarations |> List.iter print_declaration
 
 and print_declaration decl =
@@ -13,44 +13,50 @@ and print_declaration decl =
   | Ast.Declaration.Component c -> print_component c
 
 and print_site site =
-  printf "site %s\n" site.ident;
-  site.symbols |> List.iter (print_symbol ~ind:2)
+  printf "site %s\n" site.identifier;
+  site.attributes |> List.iter (print_symbol ~ind:2)
 
 and print_store store =
-  printf "store %s\n" store.ident;
-  store.symbols |> List.iter (print_symbol ~ind:2)
+  printf "store %s\n" store.identifier;
+  store.attributes |> List.iter (print_symbol ~ind:2)
 
 and print_page page =
-  printf "page %s\n" page.ident;
-  page.symbols |> List.iter (print_symbol ~ind:2)
+  printf "page %s\n" page.identifier;
+  page.attributes |> List.iter (print_symbol ~ind:2)
 
 and print_component component =
-  printf "component %s\n" component.ident;
-  component.symbols |> List.iter (print_symbol ~ind:2)
+  printf "component %s\n" component.identifier;
+  component.attributes |> List.iter (print_symbol ~ind:2)
 
 and print_symbol ~ind symbol =
   let indent = String.make ind ' ' in
-  printf "%ssymbol %s (\n" indent symbol.Ast.Symbol.ident;
-  symbol.attrs |> List.iter (print_attr ~ind:(ind + 2));
+  printf "%ssymbol %s (\n" indent symbol.Ast.Symbol.identifier;
+  symbol.attributes |> List.iter (print_attr ~ind:(ind + 2));
   printf "%s)\n" indent;
 
 and print_attr ~ind attr =
   let indent = String.make ind ' ' in
-  printf "%sattr %s\n" indent attr.Ast.Attr.name;
+  printf "%sattr %s\n" indent attr.Ast.Attribute.key;
   attr.value |> print_expr ~ind:(ind + 2)
 
 and print_expr ~ind expr =
   let indent = String.make ind ' ' in
   match expr with
-  | Ast.Value.String s -> printf "%sstring %s\n" indent s
-  | Ast.Value.Float f -> printf "%sfloat %f\n" indent f
-  | Ast.Value.Int i -> printf "%sint %i\n" indent i
-  | Ast.Value.Bool b -> printf "%sbool %b\n" indent b
-  | Ast.Value.Symbol s -> print_symbol ~ind:(ind + 2) s;
-  | Ast.Value.Array items ->
+  | Ast.Expression.Literal l -> print_literal ~ind l;
+  | Ast.Expression.Symbols s -> s |> List.iter (print_symbol ~ind);
+  | Ast.Expression.Array items ->
     printf "%sarray [\n" indent;
     items |> List.iter (print_expr ~ind:(ind + 2));
     printf "%s]\n" indent;
+  | _ -> () (* TODO: *)
+
+and print_literal ~ind lit =
+  let indent = String.make ind ' ' in
+  match lit with
+  | Ast.Literal.String s -> printf "%sstring %s\n" indent s
+  | Ast.Literal.Float f -> printf "%sfloat %f\n" indent f
+  | Ast.Literal.Int i -> printf "%sint %i\n" indent i
+  | Ast.Literal.Bool b -> printf "%sbool %b\n" indent b
 
 and print_location pos =
   let fname = pos.Position.filename in
