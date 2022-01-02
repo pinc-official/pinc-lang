@@ -50,6 +50,7 @@ end = Attribute
 
 and Expression: sig
   type t = 
+    | Identifier of Identifier.t
     | Literal of Literal.t
     | Array of Expression.t list
     | Symbols of Symbol.t list

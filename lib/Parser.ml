@@ -14,8 +14,8 @@ let rec next ?prev_token t = begin
   match token.typ with
   | Token.COMMENT -> next t
   | _             ->
-  t.token      <- token;
-  t.prev_token <- Some prev_token;
+    t.token      <- token;
+    t.prev_token <- Some prev_token;
 end
 
 let optional token t =
@@ -148,6 +148,20 @@ module Rules = struct
         Ast.Expression.Unary { operator; argument; }
       )
       end
+    | Token.IDENT_LOWER identifier -> begin
+        next t;
+        if t |> optional Token.EQUAL then
+          let expression = expr t in
+          expect Token.SEMICOLON t;
+          match expression with
+          | Some right -> Some (Ast.Expression.Assignment { left = identifier; right })
+          | None       -> assert false (* TODO: Exception *)
+        else
+          Some (Ast.Expression.Identifier identifier)
+      end
+    | Token.IDENT_UPPER identifier ->
+      next t;
+      Some (Ast.Expression.Identifier identifier)
     | Token.STRING _
     | Token.INT _
     | Token.FLOAT _
@@ -157,13 +171,6 @@ module Rules = struct
         literal |> Option.map (fun o ->
           Ast.Expression.Literal o
         )
-      end
-    | Token.IDENT_LOWER left -> begin
-        next t;
-        expect Token.EQUAL t;
-        let* right = expr t in
-        expect Token.SEMICOLON t;
-        Some (Ast.Expression.Assignment { left; right })
       end
     | _ -> None
   end
