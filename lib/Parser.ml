@@ -8,10 +8,12 @@ type t = {
 
 let (let*) = Option.bind
 
-let next ?prev_token t = begin
+let rec next ?prev_token t = begin
   let prev_token = prev_token |> Option.value ~default:t.token in
   let token = Lexer.scan t.lexer in
-
+  match token.typ with
+  | Token.COMMENT -> next t
+  | _             ->
   t.token      <- token;
   t.prev_token <- Some prev_token;
 end

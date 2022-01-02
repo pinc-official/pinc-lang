@@ -1,4 +1,6 @@
 type token_type =
+  | COMMENT
+
   | IDENT_LOWER of string
   | IDENT_UPPER of string
   | INT of int
@@ -100,6 +102,7 @@ let to_string = function
   | KEYWORD_SITE      -> "Token.KEYWORD_SITE"
   | KEYWORD_PAGE      -> "Token.KEYWORD_PAGE"
   | KEYWORD_STORE     -> "Token.KEYWORD_STORE"
+  | COMMENT           -> "Token.COMMENT"
   | END_OF_INPUT      -> "Token.END_OF_INPUT"
 
 let keyword_of_string = function

@@ -226,9 +226,13 @@ let rec scan t = begin
   | Chr ';' -> next t; Token.SEMICOLON
   | Chr '-' -> next t; Token.MINUS
   | Chr '+' -> next t; Token.PLUS
-  | Chr '/' -> next t; Token.SLASH
   | Chr '%' -> next t; Token.PERCENT
   
+  | Chr '/' -> (
+    match peek t with
+    | Chr '/' -> skip_comment t; Token.COMMENT
+    | _       -> next t; Token.SLASH
+  )
   | Chr '.' -> (
     match peek t with
     | Chr '0'..'9' -> scan_number t
