@@ -51,8 +51,14 @@ type token_type =
   | KEYWORD_STORE
 
   | END_OF_INPUT
+[@@deriving show { with_path = false }]
 
-type t = { typ : token_type; start_pos : Position.t; end_pos : Position.t }
+type t = {
+  typ: token_type;
+  start_pos: Position.t;
+  end_pos: Position.t;
+}
+[@@deriving show { with_path = false }]
 
 let make ~start_pos ~end_pos typ = { typ; start_pos; end_pos }
 

@@ -3,6 +3,7 @@ type t = {
   line: int;
   column: int;
 }
+[@@deriving show { with_path = false }]
 
 let make ~filename ~line ~column = {
   filename;

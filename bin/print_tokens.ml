@@ -7,7 +7,7 @@ let main =
   let lexer = Fennek_lib.Lexer.make ~filename src in
   let lexbuf = ref (Fennek_lib.Lexer.scan lexer) in
   let () = while match !lexbuf.typ with | Fennek_lib.Token.END_OF_INPUT -> false | _ -> true do
-    print_endline (!lexbuf.typ |> Fennek_lib.Token.to_string);
+    print_endline (Fennek_lib.Token.show !lexbuf);
     lexbuf := Fennek_lib.Lexer.scan lexer
   done in
   close_in chan

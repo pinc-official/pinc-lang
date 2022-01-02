@@ -10,8 +10,8 @@ type t = {
   mutable current : char';
 
   mutable offset : int;
-  mutable line_offset : int;
 
+  mutable line_offset : int;
   mutable line : int;
   mutable column : int;
 
@@ -48,13 +48,11 @@ let next t =
       t.line        <- succ t.line;
     | _ -> ()
   in
-  if next_offset < String.length t.src then (
-    t.offset  <- next_offset;
-    t.current <- Chr (String.unsafe_get t.src t.offset);
-  ) else (
-    t.offset  <- String.length t.src;
-    t.current <- EOF
-  )
+  t.column  <- next_offset - t.line_offset;
+  t.offset  <- next_offset;
+  t.current <- if next_offset < String.length t.src
+    then Chr (String.unsafe_get t.src t.offset)
+    else EOF
 
 let next_n ~n t = begin
   for _ = 1 to n do

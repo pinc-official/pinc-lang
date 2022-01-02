@@ -1,2 +1,4 @@
 (library
- (name fennek_lib))
+ (name fennek_lib)
+ (preprocess
+  (pps ppx_deriving.show)))

@@ -1,117 +1,121 @@
-module rec SourceLocation: sig
+module SourceLocation = struct
   type t = {
     source: string;
     pos_start: Position.t;
     pos_end: Position.t;
   }
-end = SourceLocation
+  [@@deriving show { with_path = false }]
+end
 
-and Operator: sig
+module Operator = struct
   type binary = 
   | EQUAL | NOT_EQUAL
   | GREATER | GREATER_EQUAL
   | LESS | LESS_EQUAL
   | PLUS | MINUS | TIMES | DIV
   | IN
+  [@@deriving show { with_path = false }]
 
   type logical = AND | OR
+  [@@deriving show { with_path = false }]
 
   type unary =
   | NEGATIVE | POSITIVE
   | NOT
-end = Operator
+  [@@deriving show { with_path = false }]
+end
 
-and Identifier: sig
-  type t = string
-end = Identifier
+type literal =
+  | StringLiteral of string
+  | IntLiteral of int
+  | FloatLiteral of float
+  | BoolLiteral of bool
+[@@deriving show { with_path = false }]
 
-and Literal: sig
-  type t = 
-    | String of string
-    | Int of int
-    | Float of float
-    | Bool of bool
-end = Literal
-
-and Symbol: sig
-  type t = {
-    identifier: string;
-    attributes: Attribute.t list;
-    body: Statement.t option;
+and expression = 
+  | IdentifierExpression of string
+  | LiteralExpression of literal
+  | ArrayExpression of expression list
+  | SymbolsExpression of symbol list
+  | ConditionalExpression of {
+    condition: expression;
+    consequent: expression;
+    alternate: expression option;
   }
-end = Symbol
-
-and Attribute: sig
-  type t = {
-    key: Identifier.t;
-    value: Expression.t
+  | UnaryExpression of {
+    operator: Operator.unary;
+    argument: expression;
   }
-end = Attribute
-
-and Expression: sig
-  type t = 
-    | Identifier of Identifier.t
-    | Literal of Literal.t
-    | Array of Expression.t list
-    | Symbols of Symbol.t list
-    | Conditional of {
-      condition: Expression.t;
-      consequent: Expression.t;
-      alternate: Expression.t option;
-    }
-    | Unary of {
-      operator: Operator.unary;
-      argument: Expression.t;
-    }
-    | Binary of {
-      left: Expression.t;
-      right: Expression.t;
-      operator: Operator.binary;
-    }
-    | Logical of {
-      left: Expression.t;
-      right: Expression.t;
-      operator: Operator.logical
-    }
-    | Assignment of {
-      left: Identifier.t;
-      right: Expression.t;
-    }
-end = Expression
-
-and Statement: sig
-  type t = 
-    | Break
-    | Continue
-    | Expression of Expression.t
-    | Block of Statement.t list
-    | ForIn of {
-      left: Identifier.t;
-      right: Expression.t;
-      body: Statement.t list
-    }
-end = Statement
-
-
-and Declaration: sig
-  type content = {
-    identifier: Identifier.t;
-    attributes: Attribute.t list option;
-    body: Statement.t;
+  | BinaryExpression of {
+    left: expression;
+    right: expression;
+    operator: Operator.binary;
   }
-
-  type t =
-    | Site of content
-    | Page of content
-    | Component of content
-    | Store of content
-end = Declaration
-
-and File: sig
-  type t = {
-    location: Position.t;
-    declarations: Declaration.t list;
+  | LogicalExpression of {
+    left: expression;
+    right: expression;
+    operator: Operator.logical
   }
-end = File
+  | AssignmentExpression of {
+    left: expression;
+    right: expression;
+  }
+[@@deriving show { with_path = false }]
 
-type t = File.t list
+and attribute = {
+  key: string;
+  value: expression
+}
+[@@deriving show { with_path = false }]
+
+and symbol = {
+  name: string;
+  attributes: attribute list;
+  body: statement option;
+}
+[@@deriving show { with_path = false }]
+
+and statement = 
+  | BreakStmt
+  | ContinueStmt
+  | ExpressionStmt of expression
+  | BlockStmt of statement list
+  | ForInStmt of {
+    left: expression;
+    right: expression;
+    body: statement list
+  }
+[@@deriving show { with_path = false }]
+
+and declaration =
+  | Site of {
+    identifier: expression;
+    attributes: attribute list option;
+    body: statement;
+  }
+  | Page of {
+    identifier: expression;
+    attributes: attribute list option;
+    body: statement;
+  }
+  | Component of {
+    identifier: expression;
+    attributes: attribute list option;
+    body: statement;
+  }
+  | Store of {
+    identifier: expression;
+    attributes: attribute list option;
+    body: statement;
+  }
+[@@deriving show { with_path = false }]
+
+and file = {
+  location: Position.t;
+  declarations: declaration list;
+}
+[@@deriving show { with_path = false }]
+
+
+and t = file list
+[@@deriving show { with_path = false }]

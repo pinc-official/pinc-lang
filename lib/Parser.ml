@@ -93,11 +93,11 @@ module Rules = struct
 
   and literal t = begin
     match t.token.typ with
-    | Token.STRING s      -> next t; Some (Ast.Literal.String s)
-    | Token.INT i         -> next t; Some (Ast.Literal.Int i)
-    | Token.FLOAT f       -> next t; Some (Ast.Literal.Float f)
-    | Token.KEYWORD_TRUE  -> next t; Some (Ast.Literal.Bool true)
-    | Token.KEYWORD_FALSE -> next t; Some (Ast.Literal.Bool false)
+    | Token.STRING s      -> next t; Some (Ast.StringLiteral s)
+    | Token.INT i         -> next t; Some (Ast.IntLiteral i)
+    | Token.FLOAT f       -> next t; Some (Ast.FloatLiteral f)
+    | Token.KEYWORD_TRUE  -> next t; Some (Ast.BoolLiteral true)
+    | Token.KEYWORD_FALSE -> next t; Some (Ast.BoolLiteral false)
     | _ -> None
   end
 
@@ -107,11 +107,11 @@ module Rules = struct
         next t;
         let expressions = Helpers.separated_list ~sep:Token.COMMA ~fn:expr t in
         expect Token.RIGHT_BRACK t;
-        Some (Ast.Expression.Array expressions)
+        Some (Ast.ArrayExpression expressions)
       end
     | Token.SYMBOL _ -> begin
         let symbols = Helpers.list ~fn:symbol t in
-        Some (Ast.Expression.Symbols symbols)
+        Some (Ast.SymbolsExpression symbols)
       end
     | Token.KEYWORD_IF -> begin
         next t;
@@ -129,7 +129,7 @@ module Rules = struct
           else None
         in
 
-        Some (Ast.Expression.Conditional {
+        Some (Ast.ConditionalExpression {
           condition;
           consequent;
           alternate;
@@ -145,7 +145,7 @@ module Rules = struct
       next t;
       let argument = expr t in
       argument |> Option.map (fun argument ->
-        Ast.Expression.Unary { operator; argument; }
+        Ast.UnaryExpression { operator; argument; }
       )
       end
     | Token.IDENT_LOWER identifier -> begin
@@ -154,14 +154,14 @@ module Rules = struct
           let expression = expr t in
           expect Token.SEMICOLON t;
           match expression with
-          | Some right -> Some (Ast.Expression.Assignment { left = identifier; right })
+          | Some right -> Some (Ast.AssignmentExpression { left = IdentifierExpression identifier; right })
           | None       -> assert false (* TODO: Exception *)
         else
-          Some (Ast.Expression.Identifier identifier)
+          Some (Ast.IdentifierExpression identifier)
       end
     | Token.IDENT_UPPER identifier ->
       next t;
-      Some (Ast.Expression.Identifier identifier)
+      Some (Ast.IdentifierExpression identifier)
     | Token.STRING _
     | Token.INT _
     | Token.FLOAT _
@@ -169,7 +169,7 @@ module Rules = struct
     | Token.KEYWORD_FALSE -> begin
         let literal = literal t in
         literal |> Option.map (fun o ->
-          Ast.Expression.Literal o
+          Ast.LiteralExpression o
         )
       end
     | _ -> None
@@ -179,28 +179,29 @@ module Rules = struct
     match t.token.typ with
     | Token.KEYWORD_BREAK ->
       next t; 
-      Some Ast.Statement.Break
+      Some Ast.BreakStmt
     | Token.KEYWORD_CONTINUE ->
       next t; 
-      Some Ast.Statement.Continue
+      Some Ast.ContinueStmt
     | Token.LEFT_BRACE ->
       next t;
       let statements = Helpers.list ~fn:statement t in
       t |> expect Token.RIGHT_BRACE;
-      Some (Ast.Statement.Block statements)
+      Some (Ast.BlockStmt statements)
     | Token.KEYWORD_FOR -> begin
       next t;
       match t.token.typ with
-      | Token.IDENT_LOWER left ->
+      | Token.IDENT_LOWER identifier ->
         next t;
         let* right = expr t in
         let body = Helpers.list ~fn:statement t in
-        Some (Ast.Statement.ForIn { left; right; body; })
+        let left = Ast.IdentifierExpression identifier in
+        Some (Ast.ForInStmt { left; right; body; })
       | _ -> assert false (* TODO: Error Message :) *)
       end
     | _ ->
       match expr t with
-      | Some expr -> Some (Ast.Statement.Expression expr)
+      | Some expr -> Some (Ast.ExpressionStmt expr)
       | None      -> None
   end
 
@@ -211,14 +212,14 @@ module Rules = struct
       expect Token.COLON t;
       let value = expr t in
       value |> Option.map (fun value ->
-        Ast.Attribute.{ key; value }
+        Ast.{ key; value }
       )
     | _ -> None
   end
   
   and symbol t = begin
     match t.token.typ with
-    | Token.SYMBOL identifier ->
+    | Token.SYMBOL name ->
       next t;
       begin match t.token.typ with
       | Token.LEFT_PAREN ->
@@ -232,7 +233,7 @@ module Rules = struct
         ) else (
           None
         ) in
-        Some Ast.Symbol.{ identifier; attributes; body }
+        Some Ast.{ name; attributes; body }
       | _ -> None
       end
     | _ -> None
@@ -241,25 +242,23 @@ module Rules = struct
   and declaration t = begin
     match t.token.typ with
     | (Token.KEYWORD_SITE | Token.KEYWORD_PAGE | Token.KEYWORD_COMPONENT | Token.KEYWORD_STORE) as typ -> begin
-      next t;
-      let identifier = expect_identifier ~typ:`Upper t in
-      let attributes = if optional Token.LEFT_PAREN t then
-        let attributes = Helpers.separated_list ~sep:Token.COMMA ~fn:attribute t in
-        t |> expect Token.RIGHT_PAREN;
-        Some attributes
-      else
-        None
-      in
-      let payload = match statement t with
-      | Some body -> Ast.Declaration.{ identifier; attributes; body }
-      | None -> assert false
-      in
-      match typ with
-        | Token.KEYWORD_SITE      -> Some (Ast.Declaration.Site payload)
-        | Token.KEYWORD_PAGE      -> Some (Ast.Declaration.Page payload)
-        | Token.KEYWORD_COMPONENT -> Some (Ast.Declaration.Component payload)
-        | Token.KEYWORD_STORE     -> Some (Ast.Declaration.Store payload)
-        | _                       -> assert false
+        next t;
+        let identifier = expect_identifier ~typ:`Upper t in
+        let identifier = Ast.IdentifierExpression identifier in
+        let attributes = if optional Token.LEFT_PAREN t then
+          let attributes = Helpers.separated_list ~sep:Token.COMMA ~fn:attribute t in
+          t |> expect Token.RIGHT_PAREN;
+          Some attributes
+        else
+          None
+        in
+        match typ, statement t with
+        | Token.KEYWORD_SITE, Some body -> Some (Ast.Site { identifier; attributes; body })
+        | Token.KEYWORD_PAGE, Some body -> Some (Ast.Page { identifier; attributes; body })
+        | Token.KEYWORD_COMPONENT, Some body -> Some (Ast.Component { identifier; attributes; body })
+        | Token.KEYWORD_STORE, Some body -> Some (Ast.Store { identifier; attributes; body })
+        | _, None -> assert false
+        | _       -> assert false
       end
     | Token.END_OF_INPUT -> None
     | _ -> assert false
@@ -270,5 +269,5 @@ let scan t = begin
   let start_pos = t.token.start_pos in
   let declarations = t |> Helpers.list ~fn:Rules.declaration in
 
-  Ast.File.{location = start_pos; declarations}
+  Ast.{location = start_pos; declarations}
 end
