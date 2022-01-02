@@ -1,9 +1,8 @@
-@Ui(
+component Section(
   label: "Section",
   icon: "/images/icons/group.svg",
   group: "Structure",
-)
-component Section {
+) {
   class? = @String(value: "");
 
   show_intro = 

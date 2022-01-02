@@ -1,5 +1,6 @@
   $ esy x print_tokens ./data.fe
-  Token.SYMBOL: .......... Ui
+  Token.KEYWORD_SITE
+  Token.IDENT_UPPER: ..... Docs
   Token.LEFT_PAREN
   Token.IDENT_LOWER: ..... label
   Token.COLON
@@ -8,14 +9,12 @@
   Token.IDENT_LOWER: ..... icon
   Token.COLON
   Token.STRING: .......... /images/icons/site-docs.svg
-  Token.RIGHT_PAREN
-  Token.SYMBOL: .......... Domain
-  Token.LEFT_PAREN
-  Token.IDENT_LOWER: ..... main
+  Token.COMMA
+  Token.IDENT_LOWER: ..... domain
   Token.COLON
   Token.STRING: .......... docs.fennek-cms.com
   Token.COMMA
-  Token.IDENT_LOWER: ..... additional
+  Token.IDENT_LOWER: ..... additional_domains
   Token.COLON
   Token.LEFT_BRACK
   Token.STRING: .......... docs.fennek-cms.de
@@ -24,8 +23,6 @@
   Token.COMMA
   Token.RIGHT_BRACK
   Token.RIGHT_PAREN
-  Token.KEYWORD_SITE
-  Token.IDENT_UPPER: ..... Docs
   Token.LEFT_BRACE
   Token.IDENT_LOWER: ..... floats
   Token.EQUAL
@@ -54,18 +51,14 @@
   $ esy x print_ast ./data.fe
   ./data.fe:1:0
   site Docs
-    symbol Ui (
-      attr label
-        string Docs Site
-      attr icon
-        string /images/icons/site-docs.svg
-    )
-    symbol Domain (
-      attr main
-        string docs.fennek-cms.com
-      attr additional
-        array [
-          string docs.fennek-cms.de
-          string docs.fennek-cms.fr
-        ]
-    )
+    attr label
+      string Docs Site
+    attr icon
+      string /images/icons/site-docs.svg
+    attr domain
+      string docs.fennek-cms.com
+    attr additional_domains
+      array [
+        string docs.fennek-cms.de
+        string docs.fennek-cms.fr
+      ]

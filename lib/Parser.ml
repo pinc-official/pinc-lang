@@ -84,7 +84,14 @@ module Helpers = struct
 end
 
 module Rules = struct
-  let rec literal t = begin
+  let rec expect_identifier ?(typ=`All) t = begin
+    match t.token.typ with
+    | Token.IDENT_UPPER i when typ = `Upper || typ = `All -> next t; i
+    | Token.IDENT_LOWER i when typ = `Lower || typ = `All -> next t; i
+    | _ -> assert false (* TODO: Error message *)
+  end
+
+  and literal t = begin
     match t.token.typ with
     | Token.STRING s      -> next t; Some (Ast.Literal.String s)
     | Token.INT i         -> next t; Some (Ast.Literal.Int i)
@@ -224,56 +231,37 @@ module Rules = struct
     | _ -> None
   end
 
-  and declaration ~attributes t = begin
+  and declaration t = begin
     match t.token.typ with
-    | Token.KEYWORD_SITE -> begin
+    | (Token.KEYWORD_SITE | Token.KEYWORD_PAGE | Token.KEYWORD_COMPONENT | Token.KEYWORD_STORE) as typ -> begin
       next t;
-      match t.token.typ with
-      | Token.IDENT_UPPER identifier -> begin
-          next t;
-          let* body = statement t in
-          Some (Ast.Declaration.Site { identifier; attributes; body })
-        end
-      | _ -> assert false (* TODO: Error Message *)
+      let identifier = expect_identifier ~typ:`Upper t in
+      let attributes = if optional Token.LEFT_PAREN t then
+        let attributes = Helpers.separated_list ~sep:Token.COMMA ~fn:attribute t in
+        t |> expect Token.RIGHT_PAREN;
+        Some attributes
+      else
+        None
+      in
+      let payload = match statement t with
+      | Some body -> Ast.Declaration.{ identifier; attributes; body }
+      | None -> assert false
+      in
+      match typ with
+        | Token.KEYWORD_SITE      -> Some (Ast.Declaration.Site payload)
+        | Token.KEYWORD_PAGE      -> Some (Ast.Declaration.Page payload)
+        | Token.KEYWORD_COMPONENT -> Some (Ast.Declaration.Component payload)
+        | Token.KEYWORD_STORE     -> Some (Ast.Declaration.Store payload)
+        | _                       -> assert false
       end
-    | Token.KEYWORD_PAGE -> begin
-      next t;
-      match t.token.typ with
-      | Token.IDENT_UPPER identifier -> begin
-          next t;
-          let* body = statement t in
-          Some (Ast.Declaration.Page { identifier; attributes; body })
-        end
-      | _ -> assert false (* TODO: Error Message *)
-      end
-    | Token.KEYWORD_COMPONENT -> begin
-      next t;
-      match t.token.typ with
-      | Token.IDENT_UPPER identifier -> begin
-          next t;
-          let* body = statement t in
-          Some (Ast.Declaration.Component { identifier; attributes; body })
-        end
-      | _ -> assert false (* TODO: Error Message *)
-      end
-    | Token.KEYWORD_STORE -> begin
-      next t;
-      match t.token.typ with
-      | Token.IDENT_UPPER identifier -> begin
-          next t;
-          let* body = statement t in
-          Some (Ast.Declaration.Store { identifier; attributes; body })
-        end
-      | _ -> assert false (* TODO: Error Message *)
-      end
-    | _ -> None
+    | Token.END_OF_INPUT -> None
+    | _ -> assert false
   end
 end
 
 let scan t = begin
   let start_pos = t.token.start_pos in
-  let attributes = t |> Helpers.list ~fn:Rules.symbol in
-  let declarations = t |> Helpers.list ~fn:(Rules.declaration ~attributes) in
+  let declarations = t |> Helpers.list ~fn:Rules.declaration in
 
   Ast.File.{location = start_pos; declarations}
 end

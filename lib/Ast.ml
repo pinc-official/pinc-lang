@@ -95,7 +95,7 @@ end = Statement
 and Declaration: sig
   type content = {
     identifier: Identifier.t;
-    attributes: Symbol.t list;
+    attributes: Attribute.t list option;
     body: Statement.t;
   }
 

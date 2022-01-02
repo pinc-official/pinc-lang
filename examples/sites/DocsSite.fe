@@ -1,15 +1,12 @@
-@Ui(
+site Docs(
   label: "Docs Site",
   icon: "/images/icons/site-docs.svg",
-)
-@Domain(
-  main: "docs.fennek-cms.com",
-  additional: [
+  domain: "docs.fennek-cms.com",
+  additional_domains: [
     "docs.fennek-cms.de",
     "docs.fennek-cms.fr",
   ]
-)
-site Docs {
+) {
   languages =
     @Ui(label: "Language")
     @NodeContext(

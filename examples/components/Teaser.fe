@@ -1,8 +1,7 @@
-@Ui(
+component Teaser(
   label: "Teaser",
   icon: "/images/icons/teaser.svg"
-)
-component Teaser {
+) {
   class? = @String() @Default(value: "");
 
   title =

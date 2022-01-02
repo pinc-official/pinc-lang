@@ -14,19 +14,19 @@ and print_declaration decl =
 
 and print_site site =
   printf "site %s\n" site.identifier;
-  site.attributes |> List.iter (print_symbol ~ind:2)
+  site.attributes |> Option.iter (List.iter (print_attr ~ind:2))
 
 and print_store store =
   printf "store %s\n" store.identifier;
-  store.attributes |> List.iter (print_symbol ~ind:2)
+  store.attributes |> Option.iter (List.iter (print_attr ~ind:2))
 
 and print_page page =
   printf "page %s\n" page.identifier;
-  page.attributes |> List.iter (print_symbol ~ind:2)
+  page.attributes |> Option.iter (List.iter (print_attr ~ind:2))
 
 and print_component component =
   printf "component %s\n" component.identifier;
-  component.attributes |> List.iter (print_symbol ~ind:2)
+  component.attributes |> Option.iter (List.iter (print_attr ~ind:2))
 
 and print_symbol ~ind symbol =
   let indent = String.make ind ' ' in

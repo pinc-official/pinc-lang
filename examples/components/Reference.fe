@@ -1,9 +1,8 @@
-@Ui(
+component Reference(
   label: "Reference",
   icon: "/images/icons/duplicate.svg",
   group: "Structure"
-)
-component Reference {
+) {
   ref = 
     @Ui(label: "Content Item")
     @ContentSelect(instanceOf: [!Section]);

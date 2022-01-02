@@ -1,14 +1,11 @@
-@Ui(
+site Docs(
   label: "Docs Site",
-  icon: "/images/icons/site-docs.svg"
-)
-@Domain(
-  main: "docs.fennek-cms.com",
-  additional: [
+  icon: "/images/icons/site-docs.svg",
+  domain: "docs.fennek-cms.com",
+  additional_domains: [
     "docs.fennek-cms.de",
     "docs.fennek-cms.fr",
   ]
-)
-site Docs {
+) {
   floats = [1_000.462, 1., 1.4332, .5, 1e10, 1e+2, 1e-5, 1.e-2, 0.1e-1];
 }
