@@ -1,10 +1,10 @@
 component Stylesheets {
   theme = @GetContext(name: Theme);
 
-  swiper    = @StaticAsset("/vendor/swiper/swiper.bundle.css");
-  main      = @StaticAsset("/css/main.css");
-  primary   = @StaticAsset("/css/theme.primary.css");
-  secondary = @StaticAsset("/css/theme.secondary.css");
+  swiper    = @StaticAsset(path: "/vendor/swiper/swiper.bundle.css");
+  main      = @StaticAsset(path: "/css/main.css");
+  primary   = @StaticAsset(path: "/css/theme.primary.css");
+  secondary = @StaticAsset(path: "/css/theme.secondary.css");
 
   @Template {
     <link rel="stylesheet" href={swiper} />
