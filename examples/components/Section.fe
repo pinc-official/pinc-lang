@@ -37,14 +37,14 @@ component Section(
     @Ui(label: "Section Content")
     @Slot(name: Content, instanceOf: [!Section]);
 
-  cms   = @GetContext(name: CMS);
+  context = @GetContext(name: CMS);
 
   @Template {
     <div class="Section ${class}">
       {if (show_intro) {
         <div class="Section-intro ${class}">
           <h2 class="Section-introTitle">{headline}</h2>
-          {if (text || cms.editMode) {
+          {if (text || context.editMode) {
             <div class="Section-introText">{text}</div>
           }}
         </div>
