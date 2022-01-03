@@ -10,12 +10,12 @@ component Header {
           <div class="Header-content">
             <nav class="Header-nav">
               <ul>
-                {for page in site.mainNavigation {
+                {for (page in site.mainNavigation) {
                   <li class="Header-navItem">
                     <a class="Header-navLink" href={page.url} target={page.target}>{page.title}</a>
-                    {if page.sublevel {
+                    {if (page.sublevel) {
                       <ul class="Header-sublevel">
-                        {for page in page.sublevel {
+                        {for (page in page.sublevel) {
                           <li class="Header-navItem">
                             <a class="Header-navLink" href={page.url} target={page.target}>{page.title}</a>
                           </li>

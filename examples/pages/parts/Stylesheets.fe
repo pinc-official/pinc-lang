@@ -9,9 +9,9 @@ component Stylesheets {
   @Template {
     <link rel="stylesheet" href={swiper} />
     <link rel="stylesheet" href={main} />
-    {if theme == "primary" {
+    {if (theme == "primary") {
       <link rel="stylesheet" href={primary} />
-    } else if theme == "secondary" {
+    } else if (theme == "secondary") {
       <link rel="stylesheet" href={secondary} />
     }}
   }

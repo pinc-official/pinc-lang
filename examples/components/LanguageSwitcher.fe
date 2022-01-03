@@ -3,9 +3,9 @@ component LanguageSwitcher {
 
   @Template {
     <ul class="LanguageSwitcher">
-        {for lang in languageContext.options {
+        {for (lang in languageContext.options) {
             <li class="LanguageSwitcher-language">
-                {if lang.value == languageContext.current {
+                {if (lang.value == languageContext.current) {
                     <span class="LanguageSwitcher-languageLink is-active">
                         {lang.label}
                     </span>

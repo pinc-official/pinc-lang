@@ -9,15 +9,15 @@ component Section(
     @Boolean(value: true)
     @Ui(label: "Show Intro above Section");
 
-  intro_headline =
-    @String()
-    @If(condition: show_intro)
-    @Ui(inline: true, placeholder: "Enter Headline here...");
+  intro_headline = if (show_intro) {
+    @Ui(inline: true, placeholder: "Enter Headline here...")
+    @String
+  };
 
-  intro_text? =
+  intro_text? = if (show_intro) {
+    @Ui(inline: true, placeholder: "Enter Text here...")
     @Richtext(b: true, i: true, u: true, a: true)
-    @If(condition: show_intro)
-    @Ui(inline: true, placeholder: "Enter Text here...");
+  };
 
   content =
     @Ui(label: "Section Content")
@@ -27,10 +27,10 @@ component Section(
 
   @Template {
     <div class="Section ${class}">
-      {if show_intro {
+      {if (show_intro) {
         <div class="Section-intro ${class}">
           <h2 class="Section-introTitle">{headline}</h2>
-          {if text || context.editMode {
+          {if (text || context.editMode) {
             <div class="Section-introText">{text}</div>
           }}
         </div>

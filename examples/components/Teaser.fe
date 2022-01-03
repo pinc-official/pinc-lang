@@ -2,7 +2,7 @@ component Teaser(
   label: "Teaser",
   icon: "/images/icons/teaser.svg"
 ) {
-  class? = @String() @Default(value: "");
+  class? = @String @Default(value: "");
 
   title =
     @Ui(label: "Title", inline: true)
@@ -47,7 +47,7 @@ component Teaser(
   @Template {
     <div class="Teaser Teaser--${background} ${class}" data-foo={lorem}>
       <h4 class="Teaser-title">{title}</h4>
-      {if url {
+      {if (url) {
         <Teaser title={url}>
           <Teaser.Default>{title}</Teaser.Default>
           <Teaser.Quote>Lorem Ipsum dolor sit amet!</Teaser.Quote>
@@ -57,16 +57,16 @@ component Teaser(
       }}
 
 
-      {if quote {
+      {if (quote) {
         {quote}
       }}
 
-      {if theme == "secondary" {
-        {for item in items {
+      {if (theme == "secondary") {
+        {for (item in items) {
           <Teaser url={item.url} />
         }}
-        {for page in blogPages {
-          {for category in page.categories {
+        {for (page in blogPages) {
+          {for (category in page.categories) {
             <span>{category.name}</span>
           }}
         }}
