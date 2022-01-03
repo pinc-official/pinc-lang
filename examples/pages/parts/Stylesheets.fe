@@ -6,6 +6,17 @@ component Stylesheets {
   primary   = @StaticAsset(path: "/css/theme.primary.css");
   secondary = @StaticAsset(path: "/css/theme.secondary.css");
 
+  // You can't use Components inside a Portal Template.
+  // This is to prevent the possible modification of the portal while rendering a portal item.
+  // Which would result in an infinite loop.
+
+  // We could also allow components here and tell the compiler to ignore portal modifications in this tree.
+  // This could be confusing though...?
+
+  stylesheets = @Portal(name: Stylesheets, value: stylesheet_url) {
+    <link rel="stylesheet" href={stylesheet_url} />
+  };
+
   @Template {
     <link rel="stylesheet" href={swiper} />
     <link rel="stylesheet" href={main} />
@@ -14,5 +25,6 @@ component Stylesheets {
     } else if (theme == "secondary") {
       <link rel="stylesheet" href={secondary} />
     }}
+    {stylesheets}
   }
 }

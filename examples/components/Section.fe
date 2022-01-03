@@ -3,6 +3,20 @@ component Section(
   icon: "/images/icons/group.svg",
   group: "Structure",
 ) {
+  theme = @GetContext(name: Theme);
+
+  // With this change we have to allow Symbols as executable items.
+  // So if we see a Symbol at a top level, it will be treated as an execution.
+  // Only certain Symbols are executable. Trying to execute a @String for example would result in an error.
+
+  // Should we maybe add a new Syntax variant to execute Symbols?
+  // For Example: >@Portal(...);
+
+  @Portal(name: Stylesheets, push: @StaticAsset(path: "/css/Section.css"));
+  if (theme == "secondary") {
+    @Portal(name: Stylesheets, push: @StaticAsset(path: "/css/Section-secondary.css"));
+  }
+
   class? = @String(value: "");
 
   show_intro = 
@@ -23,14 +37,14 @@ component Section(
     @Ui(label: "Section Content")
     @Slot(name: Content, instanceOf: [!Section]);
 
-  context = @GetContext(name: CMS);
+  cms   = @GetContext(name: CMS);
 
   @Template {
     <div class="Section ${class}">
       {if (show_intro) {
         <div class="Section-intro ${class}">
           <h2 class="Section-introTitle">{headline}</h2>
-          {if (text || context.editMode) {
+          {if (text || cms.editMode) {
             <div class="Section-introText">{text}</div>
           }}
         </div>
