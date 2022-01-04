@@ -157,11 +157,12 @@ module Rules = struct
       end
     | Token.IDENT_LOWER identifier -> begin
         next t;
+        let nullable = t |> optional Token.QUESTIONMARK in
         if t |> optional Token.EQUAL then
           let expression = expr t in
           expect Token.SEMICOLON t;
           match expression with
-          | Some right -> Some (Ast.AssignmentExpression { left = IdentifierExpression identifier; right })
+          | Some right -> Some (Ast.AssignmentExpression { nullable; left = IdentifierExpression identifier; right })
           | None       -> assert false (* TODO: Exception *)
         else
           Some (Ast.IdentifierExpression identifier)
@@ -185,10 +186,10 @@ module Rules = struct
   and statement t = begin
     match t.token.typ with
     | Token.KEYWORD_BREAK ->
-      next t; 
+      next t;
       Some Ast.BreakStmt
     | Token.KEYWORD_CONTINUE ->
-      next t; 
+      next t;
       Some Ast.ContinueStmt
     | Token.LEFT_BRACE ->
       next t;

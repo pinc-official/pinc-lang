@@ -225,6 +225,7 @@ let rec scan t = begin
   | Chr '-' -> next t; Token.MINUS
   | Chr '+' -> next t; Token.PLUS
   | Chr '%' -> next t; Token.PERCENT
+  | Chr '?' -> next t; Token.QUESTIONMARK
   
   | Chr '/' -> (
     match peek t with
