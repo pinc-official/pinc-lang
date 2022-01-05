@@ -2,20 +2,20 @@ site Main(
   label: "Main Site",
   icon: "/images/icons/site-main.svg",
   domain: "www.fennek-cms.com",
-  additional_domains: ["fennek-cms.com"]
+  additionalDomains: ["fennek-cms.com"]
 ) {
   languages =
-    @Ui(label: "Language")
     @NodeContext(
-      name: Language,
+      id: Language,
+      label: "Language"
       options: [@ContextOption(value: "en_US", label: "English")],
       matchers: [@UrlMatcher(match: "en_US")]
     );
 
   targeting =
-    @Ui(label: "Target")
     @NodeContext(
-      name: Targeting,
+      id: Targeting,
+      label: "Target"
       options: [
         @ContextOption(value: "unknown", label: "Unknown"),
         @ContextOption(value: "developer", label: "Developer"),
@@ -28,20 +28,18 @@ site Main(
       ]
     );
 
-  theme = @String(value: "primary") @Context(name: Theme);
+  theme = @Context(id: Theme, value: "primary");
 
-  mainNavigation = @PageTree(label: "Main Navigation", max_levels: 2);
-  metaNavigation = @PageTree(label: "Meta Navigation", instanceOf: [DefaultPage], max_levels: 1);
+  mainNavigation = @PageTree(label: "Main Navigation", maxLevels: 2);
+  metaNavigation = @PageTree(label: "Meta Navigation", instanceOf: [DefaultPage], maxLevels: 1);
 
-  title = @Ui(label: "Title") @String(value: "Homepage");
+  title = @String(label: "Title", value: "Homepage");
 
   stage =
-    @Ui(label: "Stage")
-    @Slot(name: Stage, instanceOf: [ImageStage], min: 1, max: 1);
+    @Slot(label: "Stage", id: Stage, instanceOf: [ImageStage], min: 1, max: 1);
 
   mainContent =
-    @Ui(label: "Content")
-    @Slot(name: MainContent, instanceOf: [Section], min: 1);
+    @Slot(label: "Content", id: MainContent, instanceOf: [Section], min: 1);
 
   @Template {
     <DefaultPage title={title}>

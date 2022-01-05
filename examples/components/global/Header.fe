@@ -1,5 +1,5 @@
 component Header {
-  logo = @Store(name: Global, property: logo);
+  logo = @Store(id: Global, property: logo);
 
   @Template {
     <header class="Header">

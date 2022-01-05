@@ -3,32 +3,27 @@ component Section(
   icon: "/images/icons/group.svg",
   group: "Structure",
 ) {
-  class? = @String(value: "");
+  class? = @String();
 
   show_intro = 
-    @Boolean(value: true)
-    @Ui(label: "Show Intro above Section");
+    @Boolean(label: "Show Intro above Section", value: true);
 
   intro_headline = if (show_intro) {
-    @Ui(inline: true, placeholder: "Enter Headline here...")
-    @String
+    @String(inline: true, placeholder: "Enter Headline here...")
   };
 
   intro_text? = if (show_intro) {
-    @Ui(inline: true, placeholder: "Enter Text here...")
-    @Richtext(b: true, i: true, u: true, a: true)
+    @Richtext(inline: true, placeholder: "Enter Text here...", b: true, i: true, u: true, a: true)
   };
 
-  content =
-    @Ui(label: "Section Content")
-    @Slot(name: Content, instanceOf: [!Section]);
+  content = @Slot(id: Content, label: "Section Content", instanceOf: [!Section]);
 
-  context = @GetContext(name: CMS);
+  context = @GetContext(id: CMS);
 
   @Template {
-    <div class="Section ${class}">
+    <div class="Section ${class|default("")}">
       {if (show_intro) {
-        <div class="Section-intro ${class}">
+        <div class="Section-intro">
           <h2 class="Section-introTitle">{headline}</h2>
           {if (text || context.editMode) {
             <div class="Section-introText">{text}</div>

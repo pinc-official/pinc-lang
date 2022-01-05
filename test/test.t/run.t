@@ -38,14 +38,14 @@
     end_pos = { filename = "./data.fe"; line = 4; column = 31 } }
   { typ = COMMA; start_pos = { filename = "./data.fe"; line = 4; column = 31 };
     end_pos = { filename = "./data.fe"; line = 4; column = 32 } }
-  { typ = (IDENT_LOWER "additional_domains");
+  { typ = (IDENT_LOWER "additionalDomains");
     start_pos = { filename = "./data.fe"; line = 5; column = 2 };
+    end_pos = { filename = "./data.fe"; line = 5; column = 19 } }
+  { typ = COLON; start_pos = { filename = "./data.fe"; line = 5; column = 19 };
     end_pos = { filename = "./data.fe"; line = 5; column = 20 } }
-  { typ = COLON; start_pos = { filename = "./data.fe"; line = 5; column = 20 };
-    end_pos = { filename = "./data.fe"; line = 5; column = 21 } }
   { typ = LEFT_BRACK;
-    start_pos = { filename = "./data.fe"; line = 5; column = 22 };
-    end_pos = { filename = "./data.fe"; line = 5; column = 23 } }
+    start_pos = { filename = "./data.fe"; line = 5; column = 21 };
+    end_pos = { filename = "./data.fe"; line = 5; column = 22 } }
   { typ = (STRING "docs.fennek-cms.de");
     start_pos = { filename = "./data.fe"; line = 6; column = 4 };
     end_pos = { filename = "./data.fe"; line = 6; column = 24 } }
@@ -153,7 +153,7 @@
                { key = "domain";
                  value =
                  (LiteralExpression (StringLiteral "docs.fennek-cms.com")) };
-               { key = "additional_domains";
+               { key = "additionalDomains";
                  value =
                  (ArrayExpression
                     [(LiteralExpression (StringLiteral "docs.fennek-cms.de"));

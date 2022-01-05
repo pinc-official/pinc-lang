@@ -1,7 +1,7 @@
 store Global(
   label: "Global",
   icon: "/images/icons/globe.svg",
-  available_in: [Main, Docs]
+  availableIn: [Main, Docs]
 ) {
 	logo = @Asset(type: ["image/svg", "image/png"], upload: true, library: true);
 }

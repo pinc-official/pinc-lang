@@ -14,39 +14,18 @@ Properties are defined with a key and a set of symbols, which define the type an
 **Examples:**
 
 ```
-class? = @String() @Default(value: "")
+class? = @String();
 ```
 
 Defines a optional property with the name `class` of type String with a default value of `""`
 
 ```
-title =
-  @Ui(inline: true)
-  @String(value: "", min_length: 0, max_length: 50, regex: "/.*/g")
+title = @String(inline: true, value: "", min_length: 0, max_length: 50, regex: "/.*/g");
 ```
 
-Defines a required property with the name `title` of type String with an initial value of `""`. The Symbol `@Ui` defines
-the appearance of this proeprty within the ui of the cms. In this case, the title is inline editable.
+Defines a required inline-editable property with the name `title` of type String with an initial value of `""`.
 
 ## Symbols
-
-### `@Ui`
-
-Defines the behavoiur of a property within the UI of the CMS. Available attributes are:
-
-| Attribute | Description                                                                                                               | Required | Default |
-| --------- | ------------------------------------------------------------------------------------------------------------------------- | -------- | ------- |
-| `label`   | The label which should be used for the properties input. Only gets used, if the field is display in the @temp: Inspector. | false    | ""      |
-| `inline`  | Defines if the property is inline editable or editable only within the @temp: Inspector.                                  | false    | false   |
-
-### `@Default`
-
-Sets the default value of the property. If the value would be `null`, it gets assigned this value instead. @TODO: Do we
-really need the Default Symbol?
-
-| Attribute | Description                                   | Required | Default |
-| --------- | --------------------------------------------- | -------- | ------- |
-| `value`   | The value which should be used as the default | true     |         |
 
 ### `@String`
 

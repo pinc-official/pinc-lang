@@ -2,7 +2,7 @@ site Docs(
   label: "Docs Site",
   icon: "/images/icons/site-docs.svg",
   domain: "docs.fennek-cms.com",
-  additional_domains: [
+  additionalDomains: [
     "docs.fennek-cms.de",
     "docs.fennek-cms.fr",
   ]
