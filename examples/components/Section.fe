@@ -12,9 +12,9 @@ component Section(
   // Should we maybe add a new Syntax variant to execute Symbols?
   // For Example: >@Portal(...);
 
-  @Portal(name: Stylesheets, push: @StaticAsset(path: "/css/Section.css"));
+  @Portal(id: Stylesheets, push: @StaticAsset(path: "/css/Section.css"));
   if (theme == "secondary") {
-    @Portal(name: Stylesheets, push: @StaticAsset(path: "/css/Section-secondary.css"));
+    @Portal(id: Stylesheets, push: @StaticAsset(path: "/css/Section-secondary.css"));
   }
 
   class? = @String();

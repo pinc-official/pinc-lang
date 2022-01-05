@@ -13,7 +13,7 @@ component Stylesheets {
   // We could also allow components here and tell the compiler to ignore portal modifications in this tree.
   // This could be confusing though...?
 
-  stylesheets = @Portal(name: Stylesheets, value: stylesheet_url) {
+  stylesheets = @Portal(id: Stylesheets, value: stylesheet_url) {
     <link rel="stylesheet" href={stylesheet_url} />
   };
 
