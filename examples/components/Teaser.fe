@@ -2,50 +2,51 @@ component Teaser(
   label: "Teaser",
   icon: "/images/icons/teaser.svg"
 ) {
-  class? = @String @Default(value: "");
+  class? = @String();
 
   title =
-    @Ui(label: "Title", inline: true)
-    @String(value: "", min_length: 0, max_length: 50, regex: "/.*/g")
-    @Default(value: "lorem");
+    @String( 
+      placeholder: "Title",
+      inline: true,
+      minLength: 0,
+      maxLength: 50,
+      regex: "/.*/g"
+    );
 
   background =
-    @Ui(label: "Background")
-    @Selection(value: "primary", options: [
-      @Option(value: "primary", label: "Primär"),
-      @Option(value: "grey", label: "Grau"),
-      @Option(value: "white", label: "Weiß"),
-    ]);
+    @Selection(
+      label: "Background", 
+      value: "primary",
+      options: [
+        @Option(value: "primary", label: "Primär"),
+        @Option(value: "grey", label: "Grau"),
+        @Option(value: "white", label: "Weiß"),
+      ]
+    );
 
-  url? =
-    @Ui(label: "Url")
-    @Url(external: false);
+  url? = @Url(label: "Url", external: false);
 
-  contact? = 
-    @Ui(label: "Contact Person")
-    @Relation(store: Contacts);
+  contact? = @Relation(label: "Contact Person", storeId: Contacts);
 
-  categories = 
-    @Ui(label: "Categories")
-    @Relations(store: Categories, min: 1, max: 5);
+  categories = @Relations(label: "Categories", storeId: Categories, min: 1, max: 5);
 
   blogPages =
     @Query(
       from: root,
       queries: [
         @Children(instanceOf: [!Page, !Teaser], deep: true),
-        @Filter(condition: title|length > 5)
+        @Filter(value: el, condition: el.title|length > 5)
       ]
     );
 
-  children = @Slot(name: Default, min: 1, max: 5, instanceOf: [Image, Video]);
+  children = @Slot(label: "Content", id: Default, min: 1, max: 5, instanceOf: [Image, Video]);
 
-  quote? = @Slot(name: Quote, max: 1, instanceOf: [Quote]);
+  quote? = @Slot(label "Quote", id: Quote, max: 1, instanceOf: [Quote]);
 
-  theme = @GetContext(name: Theme);
+  theme = @GetContext(id: Theme);
 
   @Template {
-    <div class="Teaser Teaser--${background} ${class}" data-foo={lorem}>
+    <div class="Teaser Teaser--${background} ${class|default("")}" data-foo={lorem}>
       <h4 class="Teaser-title">{title}</h4>
       {if (url) {
         <Teaser title={url}>

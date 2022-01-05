@@ -57,6 +57,7 @@ and expression =
     operator: Operator.logical
   }
   | AssignmentExpression of {
+    nullable: bool;
     left: expression;
     right: expression;
   }

@@ -225,6 +225,7 @@ let rec scan t = begin
   | Chr '-' -> next t; Token.MINUS
   | Chr '+' -> next t; Token.PLUS
   | Chr '%' -> next t; Token.PERCENT
+  | Chr '?' -> next t; Token.QUESTIONMARK
   
   | Chr '/' -> (
     match peek t with
@@ -279,12 +280,12 @@ let rec scan t = begin
   )
 
   | EOF -> Token.END_OF_INPUT
-  | Chr _c -> 
+  | Chr c -> 
       (* if we arrive here, we're dealing with an unknown character,
        * report the error and continue scanning... *)
+      let pos = make_position t in
+      print_endline (Printf.sprintf "Unknown Character %c at %i:%i" c pos.line pos.column);
       next t;
-      (* let end_pos = make_position t in *)
-      (* scanner.err ~startPos ~endPos (Diagnostics.unknownUchar ch); *)
       let Token.{typ; _} = scan t in
       typ
   in

@@ -2,15 +2,15 @@ site Docs(
   label: "Docs Site",
   icon: "/images/icons/site-docs.svg",
   domain: "docs.fennek-cms.com",
-  additional_domains: [
+  additionalDomains: [
     "docs.fennek-cms.de",
     "docs.fennek-cms.fr",
   ]
 ) {
   languages =
-    @Ui(label: "Language")
     @NodeContext(
-      name: Language,
+      id: Language,
+      label: "Language",
       options: [
         @ContextOption(value: "en_US", label: "English"),
         @ContextOption(value: "de_DE", label: "German", fallbacks: ["en_US"]),
@@ -27,9 +27,9 @@ site Docs(
     );
 
   targeting =
-    @Ui(label: "Target")
     @NodeContext(
-      name: Targeting,
+      id: Targeting,
+      label: "Target",
       options: [
         @ContextOption(value: "unknown", label: "Unknown"),
         @ContextOption(value: "developer", label: "Developer", fallbacks: ["unknown"]),
@@ -42,7 +42,7 @@ site Docs(
       ]
     );
 
-  theme = @String(value: "secondary") @Context(name: Theme);
+  theme = @Context(id: Theme, value: "secondary");
 
-  mainNavigation = @PageTree(label: "Main Navigation", max_levels: 2);
+  mainNavigation = @PageTree(label: "Main Navigation", maxLevels: 2);
 }

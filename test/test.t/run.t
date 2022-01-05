@@ -38,14 +38,14 @@
     end_pos = { filename = "./data.fe"; line = 4; column = 31 } }
   { typ = COMMA; start_pos = { filename = "./data.fe"; line = 4; column = 31 };
     end_pos = { filename = "./data.fe"; line = 4; column = 32 } }
-  { typ = (IDENT_LOWER "additional_domains");
+  { typ = (IDENT_LOWER "additionalDomains");
     start_pos = { filename = "./data.fe"; line = 5; column = 2 };
+    end_pos = { filename = "./data.fe"; line = 5; column = 19 } }
+  { typ = COLON; start_pos = { filename = "./data.fe"; line = 5; column = 19 };
     end_pos = { filename = "./data.fe"; line = 5; column = 20 } }
-  { typ = COLON; start_pos = { filename = "./data.fe"; line = 5; column = 20 };
-    end_pos = { filename = "./data.fe"; line = 5; column = 21 } }
   { typ = LEFT_BRACK;
-    start_pos = { filename = "./data.fe"; line = 5; column = 22 };
-    end_pos = { filename = "./data.fe"; line = 5; column = 23 } }
+    start_pos = { filename = "./data.fe"; line = 5; column = 21 };
+    end_pos = { filename = "./data.fe"; line = 5; column = 22 } }
   { typ = (STRING "docs.fennek-cms.de");
     start_pos = { filename = "./data.fe"; line = 6; column = 4 };
     end_pos = { filename = "./data.fe"; line = 6; column = 24 } }
@@ -68,68 +68,72 @@
   { typ = (IDENT_LOWER "floats");
     start_pos = { filename = "./data.fe"; line = 10; column = 2 };
     end_pos = { filename = "./data.fe"; line = 10; column = 8 } }
-  { typ = EQUAL; start_pos = { filename = "./data.fe"; line = 10; column = 9 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 10 } }
+  { typ = QUESTIONMARK;
+    start_pos = { filename = "./data.fe"; line = 10; column = 8 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 9 } }
+  { typ = EQUAL;
+    start_pos = { filename = "./data.fe"; line = 10; column = 10 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 11 } }
   { typ = LEFT_BRACK;
-    start_pos = { filename = "./data.fe"; line = 10; column = 11 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 12 } }
-  { typ = (FLOAT 1000.462);
     start_pos = { filename = "./data.fe"; line = 10; column = 12 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 21 } }
-  { typ = COMMA;
-    start_pos = { filename = "./data.fe"; line = 10; column = 21 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 13 } }
+  { typ = (FLOAT 1000.462);
+    start_pos = { filename = "./data.fe"; line = 10; column = 13 };
     end_pos = { filename = "./data.fe"; line = 10; column = 22 } }
+  { typ = COMMA;
+    start_pos = { filename = "./data.fe"; line = 10; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 23 } }
   { typ = (FLOAT 1.);
-    start_pos = { filename = "./data.fe"; line = 10; column = 23 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 25 } }
-  { typ = COMMA;
-    start_pos = { filename = "./data.fe"; line = 10; column = 25 };
+    start_pos = { filename = "./data.fe"; line = 10; column = 24 };
     end_pos = { filename = "./data.fe"; line = 10; column = 26 } }
+  { typ = COMMA;
+    start_pos = { filename = "./data.fe"; line = 10; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 27 } }
   { typ = (FLOAT 1.4332);
-    start_pos = { filename = "./data.fe"; line = 10; column = 27 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 33 } }
-  { typ = COMMA;
-    start_pos = { filename = "./data.fe"; line = 10; column = 33 };
+    start_pos = { filename = "./data.fe"; line = 10; column = 28 };
     end_pos = { filename = "./data.fe"; line = 10; column = 34 } }
+  { typ = COMMA;
+    start_pos = { filename = "./data.fe"; line = 10; column = 34 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 35 } }
   { typ = (FLOAT 0.5);
-    start_pos = { filename = "./data.fe"; line = 10; column = 35 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 37 } }
-  { typ = COMMA;
-    start_pos = { filename = "./data.fe"; line = 10; column = 37 };
+    start_pos = { filename = "./data.fe"; line = 10; column = 36 };
     end_pos = { filename = "./data.fe"; line = 10; column = 38 } }
+  { typ = COMMA;
+    start_pos = { filename = "./data.fe"; line = 10; column = 38 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 39 } }
   { typ = (FLOAT 10000000000.);
-    start_pos = { filename = "./data.fe"; line = 10; column = 39 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 43 } }
-  { typ = COMMA;
-    start_pos = { filename = "./data.fe"; line = 10; column = 43 };
+    start_pos = { filename = "./data.fe"; line = 10; column = 40 };
     end_pos = { filename = "./data.fe"; line = 10; column = 44 } }
+  { typ = COMMA;
+    start_pos = { filename = "./data.fe"; line = 10; column = 44 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 45 } }
   { typ = (FLOAT 100.);
-    start_pos = { filename = "./data.fe"; line = 10; column = 45 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 49 } }
-  { typ = COMMA;
-    start_pos = { filename = "./data.fe"; line = 10; column = 49 };
+    start_pos = { filename = "./data.fe"; line = 10; column = 46 };
     end_pos = { filename = "./data.fe"; line = 10; column = 50 } }
+  { typ = COMMA;
+    start_pos = { filename = "./data.fe"; line = 10; column = 50 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 51 } }
   { typ = (FLOAT 1e-05);
-    start_pos = { filename = "./data.fe"; line = 10; column = 51 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 55 } }
-  { typ = COMMA;
-    start_pos = { filename = "./data.fe"; line = 10; column = 55 };
+    start_pos = { filename = "./data.fe"; line = 10; column = 52 };
     end_pos = { filename = "./data.fe"; line = 10; column = 56 } }
-  { typ = (FLOAT 0.01);
-    start_pos = { filename = "./data.fe"; line = 10; column = 57 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 62 } }
   { typ = COMMA;
-    start_pos = { filename = "./data.fe"; line = 10; column = 62 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 63 } }
+    start_pos = { filename = "./data.fe"; line = 10; column = 56 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 57 } }
   { typ = (FLOAT 0.01);
-    start_pos = { filename = "./data.fe"; line = 10; column = 64 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 70 } }
-  { typ = RIGHT_BRACK;
-    start_pos = { filename = "./data.fe"; line = 10; column = 70 };
+    start_pos = { filename = "./data.fe"; line = 10; column = 58 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 63 } }
+  { typ = COMMA;
+    start_pos = { filename = "./data.fe"; line = 10; column = 63 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 64 } }
+  { typ = (FLOAT 0.01);
+    start_pos = { filename = "./data.fe"; line = 10; column = 65 };
     end_pos = { filename = "./data.fe"; line = 10; column = 71 } }
-  { typ = SEMICOLON;
+  { typ = RIGHT_BRACK;
     start_pos = { filename = "./data.fe"; line = 10; column = 71 };
     end_pos = { filename = "./data.fe"; line = 10; column = 72 } }
+  { typ = SEMICOLON;
+    start_pos = { filename = "./data.fe"; line = 10; column = 72 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 73 } }
   { typ = RIGHT_BRACE;
     start_pos = { filename = "./data.fe"; line = 11; column = 0 };
     end_pos = { filename = "./data.fe"; line = 11; column = 1 } }
@@ -149,7 +153,7 @@
                { key = "domain";
                  value =
                  (LiteralExpression (StringLiteral "docs.fennek-cms.com")) };
-               { key = "additional_domains";
+               { key = "additionalDomains";
                  value =
                  (ArrayExpression
                     [(LiteralExpression (StringLiteral "docs.fennek-cms.de"));
@@ -159,7 +163,8 @@
        body =
        (BlockStmt
           [(ExpressionStmt
-              AssignmentExpression {left = (IdentifierExpression "floats");
+              AssignmentExpression {nullable = true;
+                left = (IdentifierExpression "floats");
                 right =
                 (ArrayExpression
                    [(LiteralExpression (FloatLiteral 1000.462));

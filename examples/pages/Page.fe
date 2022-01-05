@@ -1,18 +1,14 @@
 page DefaultPage(
   label: "Page",
   icon: "/images/svgs/page.svg",
-  url_scheme: "${title}",
-  url_suffix: ".html"
+  urlScheme: "${title}",
+  urlSuffix: ".html"
 ) {
-  title = @Ui(label: "Title") @String(value: "New Page");
+  title = @String(label: "Title", value: "New Page");
 
-  stage? =
-    @Ui(label: "Stage")
-    @Slot(name: Stage, instanceOf: [ImageStage, VideoStage]);
+  stage? = @Slot(label: "Stage", id: Stage, instanceOf: [ImageStage, VideoStage]);
 
-  mainContent =
-    @Ui(label: "Content")
-    @Slot(name: MainContent, instanceOf: [Section]);
+  mainContent = @Slot(label: "Content", id: MainContent, instanceOf: [Section]);
 
   sublevel = @PageTree(label: "Sublevel");
 

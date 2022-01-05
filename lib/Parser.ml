@@ -28,6 +28,7 @@ let expect token t = begin
   if test then
     next t
   else (
+    print_endline (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
     raise (Parser_Error (Printf.sprintf "Expected: %s, got %s" (Token.to_string token) (Token.to_string t.token.typ)))
   )
   
@@ -54,7 +55,10 @@ module Helpers = struct
       | Some r -> 
         if has_sep || acc = []
           then loop (r::acc)
-          else raise (Parser_Error (Printf.sprintf "Expected list to be separated by %s" (Token.to_string sep)))
+          else (
+            print_endline (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
+            raise (Parser_Error (Printf.sprintf "Expected list to be separated by %s" (Token.to_string sep)))
+          )
       | None   -> List.rev acc
     end in
     loop []
@@ -63,7 +67,10 @@ module Helpers = struct
 
   let non_empty_separated_list ~sep ~fn t = begin
     let res = separated_list ~sep ~fn t in
-    if res = [] then raise (Parser_Error (Printf.sprintf "Expected list to not be empty"));
+    if res = [] then (
+      print_endline (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
+      raise (Parser_Error (Printf.sprintf "Expected list to not be empty"))
+    );
     res
   end
 
@@ -150,11 +157,12 @@ module Rules = struct
       end
     | Token.IDENT_LOWER identifier -> begin
         next t;
+        let nullable = t |> optional Token.QUESTIONMARK in
         if t |> optional Token.EQUAL then
           let expression = expr t in
           expect Token.SEMICOLON t;
           match expression with
-          | Some right -> Some (Ast.AssignmentExpression { left = IdentifierExpression identifier; right })
+          | Some right -> Some (Ast.AssignmentExpression { nullable; left = IdentifierExpression identifier; right })
           | None       -> assert false (* TODO: Exception *)
         else
           Some (Ast.IdentifierExpression identifier)
@@ -178,10 +186,10 @@ module Rules = struct
   and statement t = begin
     match t.token.typ with
     | Token.KEYWORD_BREAK ->
-      next t; 
+      next t;
       Some Ast.BreakStmt
     | Token.KEYWORD_CONTINUE ->
-      next t; 
+      next t;
       Some Ast.ContinueStmt
     | Token.LEFT_BRACE ->
       next t;
@@ -252,13 +260,16 @@ module Rules = struct
         else
           None
         in
-        match typ, statement t with
-        | Token.KEYWORD_SITE, Some body -> Some (Ast.Site { identifier; attributes; body })
-        | Token.KEYWORD_PAGE, Some body -> Some (Ast.Page { identifier; attributes; body })
-        | Token.KEYWORD_COMPONENT, Some body -> Some (Ast.Component { identifier; attributes; body })
-        | Token.KEYWORD_STORE, Some body -> Some (Ast.Store { identifier; attributes; body })
-        | _, None -> assert false
-        | _       -> assert false
+        let body = match statement t with 
+        | None -> assert false
+        | Some body -> body
+        in
+        match typ with
+        | Token.KEYWORD_SITE -> Some (Ast.Site { identifier; attributes; body })
+        | Token.KEYWORD_PAGE -> Some (Ast.Page { identifier; attributes; body })
+        | Token.KEYWORD_COMPONENT -> Some (Ast.Component { identifier; attributes; body })
+        | Token.KEYWORD_STORE -> Some (Ast.Store { identifier; attributes; body })
+        | _ -> assert false
       end
     | Token.END_OF_INPUT -> None
     | _ -> assert false

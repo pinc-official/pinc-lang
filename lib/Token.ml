@@ -18,6 +18,7 @@ type token_type =
   | COMMA
   | SEMICOLON
   | DOT
+  | QUESTIONMARK
   | PIPE
   | EQUAL
   | NOT
@@ -81,6 +82,7 @@ let to_string = function
   | COLON             -> "Token.COLON"
   | COMMA             -> "Token.COMMA"
   | DOT               -> "Token.DOT"
+  | QUESTIONMARK      -> "Token.QUESTIONMARK"
   | PIPE              -> "Token.PIPE"
   | EQUAL             -> "Token.EQUAL"
   | NOT_EQUAL         -> "Token.NOT_EQUAL"
