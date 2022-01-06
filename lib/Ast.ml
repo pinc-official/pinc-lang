@@ -19,11 +19,12 @@ module Operator = struct
   type logical = AND | OR
   [@@deriving show { with_path = false }]
 
-  type unary =
-  | NEGATIVE | POSITIVE
-  | NOT
+  type unary = NEGATIVE | NOT
   [@@deriving show { with_path = false }]
 end
+
+type identifier = | Id of string
+[@@deriving show { with_path = false }]
 
 type literal =
   | StringLiteral of string
@@ -32,11 +33,20 @@ type literal =
   | BoolLiteral of bool
 [@@deriving show { with_path = false }]
 
-and expression = 
-  | IdentifierExpression of string
+and expression =
+  | IdentifierExpression of identifier
   | LiteralExpression of literal
   | ArrayExpression of expression list
-  | SymbolsExpression of symbol list
+  | SymbolExpression of symbol
+
+  | ForInExpression of {
+    left: identifier;
+    right: expression;
+    body: statement list
+  }
+
+  | BlockExpression of statement list
+
   | ConditionalExpression of {
     condition: expression;
     consequent: expression;
@@ -48,17 +58,12 @@ and expression =
   }
   | BinaryExpression of {
     left: expression;
-    right: expression;
     operator: Operator.binary;
+    right: expression;
   }
   | LogicalExpression of {
     left: expression;
-    right: expression;
-    operator: Operator.logical
-  }
-  | AssignmentExpression of {
-    nullable: bool;
-    left: expression;
+    operator: Operator.logical;
     right: expression;
   }
 [@@deriving show { with_path = false }]
@@ -79,44 +84,40 @@ and symbol = {
 and statement = 
   | BreakStmt
   | ContinueStmt
-  | ExpressionStmt of expression
-  | BlockStmt of statement list
-  | ForInStmt of {
-    left: expression;
+  | DeclarationStmt of {
+    nullable: bool;
+    left: identifier;
     right: expression;
-    body: statement list
   }
+  | ExpressionStmt of expression
 [@@deriving show { with_path = false }]
 
 and declaration =
   | Site of {
-    identifier: expression;
+    location: Position.t;
+    identifier: identifier;
     attributes: attribute list option;
-    body: statement;
+    body: statement list;
   }
   | Page of {
-    identifier: expression;
+    location: Position.t;
+    identifier: identifier;
     attributes: attribute list option;
-    body: statement;
+    body: statement list;
   }
   | Component of {
-    identifier: expression;
+    location: Position.t;
+    identifier: identifier;
     attributes: attribute list option;
-    body: statement;
+    body: statement list;
   }
   | Store of {
-    identifier: expression;
+    location: Position.t;
+    identifier: identifier;
     attributes: attribute list option;
-    body: statement;
+    body: statement list;
   }
 [@@deriving show { with_path = false }]
 
-and file = {
-  location: Position.t;
-  declarations: declaration list;
-}
-[@@deriving show { with_path = false }]
-
-
-and t = file list
+and t = declaration list
 [@@deriving show { with_path = false }]

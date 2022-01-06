@@ -139,43 +139,40 @@
     end_pos = { filename = "./data.fe"; line = 11; column = 1 } }
 
   $ esy x print_ast ./data.fe
-  { location = { filename = "./data.fe"; line = 1; column = 0 };
-    declarations =
-    [Site {identifier = (IdentifierExpression "Docs");
-       attributes =
-       (Some [{ key = "label";
-                value = (LiteralExpression (StringLiteral "Docs Site")) };
-               { key = "icon";
-                 value =
-                 (LiteralExpression
-                    (StringLiteral "/images/icons/site-docs.svg"))
-                 };
-               { key = "domain";
-                 value =
-                 (LiteralExpression (StringLiteral "docs.fennek-cms.com")) };
-               { key = "additionalDomains";
-                 value =
-                 (ArrayExpression
-                    [(LiteralExpression (StringLiteral "docs.fennek-cms.de"));
-                      (LiteralExpression (StringLiteral "docs.fennek-cms.fr"))])
-                 }
-               ]);
-       body =
-       (BlockStmt
-          [(ExpressionStmt
-              AssignmentExpression {nullable = true;
-                left = (IdentifierExpression "floats");
-                right =
-                (ArrayExpression
-                   [(LiteralExpression (FloatLiteral 1000.462));
-                     (LiteralExpression (FloatLiteral 1.));
-                     (LiteralExpression (FloatLiteral 1.4332));
-                     (LiteralExpression (FloatLiteral 0.5));
-                     (LiteralExpression (FloatLiteral 10000000000.));
-                     (LiteralExpression (FloatLiteral 100.));
-                     (LiteralExpression (FloatLiteral 1e-05));
-                     (LiteralExpression (FloatLiteral 0.01));
-                     (LiteralExpression (FloatLiteral 0.01))])})
-            ])}
-      ]
-    }
+  [Site {location = { filename = "./data.fe"; line = 1; column = 0 };
+     identifier = (Id "Docs");
+     attributes =
+     (Some [{ key = "label";
+              value = (LiteralExpression (StringLiteral "Docs Site")) };
+             { key = "icon";
+               value =
+               (LiteralExpression (StringLiteral "/images/icons/site-docs.svg"))
+               };
+             { key = "domain";
+               value =
+               (LiteralExpression (StringLiteral "docs.fennek-cms.com")) };
+             { key = "additionalDomains";
+               value =
+               (ArrayExpression
+                  [(LiteralExpression (StringLiteral "docs.fennek-cms.de"));
+                    (LiteralExpression (StringLiteral "docs.fennek-cms.fr"))])
+               }
+             ]);
+     body =
+     [(ExpressionStmt
+         (BlockExpression
+            [DeclarationStmt {nullable = true; left = (Id "floats");
+               right =
+               (ArrayExpression
+                  [(LiteralExpression (FloatLiteral 1000.462));
+                    (LiteralExpression (FloatLiteral 1.));
+                    (LiteralExpression (FloatLiteral 1.4332));
+                    (LiteralExpression (FloatLiteral 0.5));
+                    (LiteralExpression (FloatLiteral 10000000000.));
+                    (LiteralExpression (FloatLiteral 100.));
+                    (LiteralExpression (FloatLiteral 1e-05));
+                    (LiteralExpression (FloatLiteral 0.01));
+                    (LiteralExpression (FloatLiteral 0.01))])}
+              ]))
+       ]}
+    ]

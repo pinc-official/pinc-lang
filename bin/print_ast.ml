@@ -1,7 +1,7 @@
 open Fennek_lib
 
-let print_ast (ast : Ast.file) =
-  print_endline (Ast.show_file ast)
+let print_ast (ast : Ast.t) =
+  print_endline (Ast.show ast)
 
 let parse_and_print p = print_ast (Parser.scan p)
 
