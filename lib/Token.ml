@@ -51,6 +51,11 @@ type token_type =
   | KEYWORD_PAGE
   | KEYWORD_STORE
 
+  | TEMPLATE
+  | HTML_OPEN_TAG of string
+  | HTML_CLOSE_TAG of string
+  | LESS_SLASH
+
   | END_OF_INPUT
 [@@deriving show { with_path = false }]
 
@@ -111,6 +116,10 @@ let to_string = function
   | KEYWORD_PAGE      -> "Token.KEYWORD_PAGE"
   | KEYWORD_STORE     -> "Token.KEYWORD_STORE"
   | COMMENT           -> "Token.COMMENT"
+  | TEMPLATE          -> "Token.TEMPLATE"
+  | HTML_OPEN_TAG s   -> Printf.sprintf "Token.HTML_OPEN_TAG ... %s" s
+  | HTML_CLOSE_TAG s  -> Printf.sprintf "Token.HTML_CLOSE_TAG ... %s" s
+  | LESS_SLASH        -> "Token.LESS_SLASH"
   | END_OF_INPUT      -> "Token.END_OF_INPUT"
 
 let keyword_of_string = function

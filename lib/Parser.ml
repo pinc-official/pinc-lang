@@ -108,6 +108,77 @@ module Rules = struct
     | _ -> None
   end
 
+  and attribute ?(sep=Token.COLON) t = begin
+    match t.token.typ with
+    | Token.IDENT_LOWER key ->
+      next t;
+      expect sep t;
+      let value = expr t in
+      value |> Option.map (fun value ->
+        Ast.{ key; value }
+      )
+    | _ -> None
+  end
+
+  and template_node t = begin
+    match t.token.typ with
+    | Token.STRING s ->
+      next t;
+      Some (Ast.TextTemplateNode s)
+    | Token.LEFT_BRACE ->
+      next t;
+      (* t.lexer |> Lexer.setNormalMode; *)
+      let expression = match expr t with
+      | Some e -> Ast.ExpressionTemplateNode e
+      | None   -> assert false; (* TODO: Error Message *)
+      in
+      (* t.lexer |> Lexer.popNormalMode; *)
+      t |> expect Token.RIGHT_BRACE;
+      Some expression
+    | Token.HTML_OPEN_TAG tag -> begin
+      next t;
+      let attributes = Helpers.list ~fn:(attribute ~sep:Token.EQUAL) t in
+      let self_closing = t |> optional Token.SLASH in
+      t |> expect Token.GREATER;
+      let children = if self_closing
+        then []
+        else (
+          let children = t |> Helpers.list ~fn:template_node in
+          t |> expect (Token.HTML_CLOSE_TAG tag);
+          children
+        )
+      in
+      Some (Ast.HtmlTemplateNode { tag; self_closing; attributes; children; })
+    end
+    | Token.LESS ->
+      next t;
+      let node = match t.token.typ with
+      | Token.IDENT_UPPER name -> begin
+        next t;
+        let attributes = Helpers.list ~fn:(attribute ~sep:Token.EQUAL) t in
+        let self_closing = t |> optional Token.SLASH in
+        t |> expect Token.GREATER;
+        let children = if self_closing
+          then []
+          else (
+            let children = t |> Helpers.list ~fn:template_node in
+            t |> expect Token.LESS_SLASH;
+            t |> expect (Token.IDENT_LOWER name);
+            t |> expect Token.GREATER;
+            children
+          )
+        in
+        t |> expect Token.LESS_SLASH;
+        t |> expect (Token.IDENT_LOWER name);
+        t |> expect Token.GREATER;
+        Ast.ComponentTemplateNode { identifier = Id name; self_closing; attributes; children; }
+      end
+      | _ -> assert false (* TODO: Error Message *)
+      in
+      Some node
+    | _ -> None
+  end
+
   and expr t = begin
     match t.token.typ with
     | Token.LEFT_BRACK -> begin
@@ -116,23 +187,44 @@ module Rules = struct
         expect Token.RIGHT_BRACK t;
         Some (Ast.ArrayExpression expressions)
       end
-    | Token.SYMBOL _ -> begin
-        match symbol t with
-        | Some symbol -> Some (Ast.SymbolExpression symbol)
-        | None -> assert false (* TODO: Error Message *)
+    | Token.SYMBOL name -> begin
+        next t;
+        t |> expect Token.LEFT_PAREN;
+        let attributes = t |> Helpers.separated_list ~fn:attribute ~sep:Token.COMMA in
+        t |> expect Token.RIGHT_PAREN;
+
+        let body = if t |> optional Token.LEFT_BRACE then (
+          let body = statement t in
+          t |> expect Token.RIGHT_BRACE;
+          body
+        ) else (
+          None
+        ) in
+
+        Some (Ast.SymbolExpression { name; attributes; body; })
       end
+    | Token.HTML_OPEN_TAG _ ->
+      let template_nodes = t |> Helpers.list ~fn:template_node in
+      Some (Ast.TemplateExpression template_nodes)
+    | Token.TEMPLATE ->
+      next t;
+      t.lexer |> Lexer.setTemplateBlockMode;
+      t |> expect Token.LEFT_BRACE;
+      let template_nodes = t |> Helpers.list ~fn:template_node in
+      t.lexer |> Lexer.popTemplateBlockMode;
+      t |> expect Token.RIGHT_BRACE;
+      Some (Ast.TemplateExpression template_nodes)
     | Token.KEYWORD_IF -> begin
         next t;
 
         expect Token.LEFT_PAREN t;
         let* condition = expr t in
         expect Token.RIGHT_PAREN t;
-        
-        expect Token.LEFT_BRACE t;
-        let* consequent = expr t in
-        expect Token.RIGHT_BRACE t;
 
-        let alternate = if optional Token.KEYWORD_ELSE t
+        let* consequent = expr t in
+
+        let alternate = 
+          if optional Token.KEYWORD_ELSE t
           then expr t
           else None
         in
@@ -212,45 +304,6 @@ module Rules = struct
       | None      -> None
   end
 
-  and attribute t = begin
-    match t.token.typ with
-    | Token.IDENT_LOWER key ->
-      next t;
-      expect Token.COLON t;
-      let value = expr t in
-      value |> Option.map (fun value ->
-        Ast.{ key; value }
-      )
-    | _ -> None
-  end
-  
-  and symbol t = begin
-    match t.token.typ with
-    | Token.SYMBOL name ->
-      next t;
-      begin match t.token.typ with
-      | Token.LEFT_PAREN ->
-        t |> expect Token.LEFT_PAREN;
-        let attributes = t |> Helpers.separated_list ~fn:attribute ~sep:Token.COMMA in
-        t |> expect Token.RIGHT_PAREN;
-        let body = if t |> optional Token.LEFT_BRACE then (
-          let body = statement t in
-          t |> expect Token.RIGHT_BRACE;
-          body
-        ) else (
-          None
-        ) in
-        let symbol: Ast.symbol = {
-          name;
-          attributes;
-          body;
-        } in
-        Some symbol
-      | _ -> None
-      end
-    | _ -> None
-  end
-
   and declaration t = begin
     match t.token.typ with
     | (Token.KEYWORD_SITE | Token.KEYWORD_PAGE | Token.KEYWORD_COMPONENT | Token.KEYWORD_STORE) as typ -> begin
@@ -267,10 +320,10 @@ module Rules = struct
         in
         let body = Helpers.non_empty_list ~fn:statement t in
         match typ with
-        | Token.KEYWORD_SITE      -> Some (Ast.Site      { location = start_pos; identifier; attributes; body })
-        | Token.KEYWORD_PAGE      -> Some (Ast.Page      { location = start_pos; identifier; attributes; body })
-        | Token.KEYWORD_COMPONENT -> Some (Ast.Component { location = start_pos; identifier; attributes; body })
-        | Token.KEYWORD_STORE     -> Some (Ast.Store     { location = start_pos; identifier; attributes; body })
+        | Token.KEYWORD_SITE      -> Some (Ast.SiteDeclaration      { location = start_pos; identifier; attributes; body })
+        | Token.KEYWORD_PAGE      -> Some (Ast.PageDeclaration      { location = start_pos; identifier; attributes; body })
+        | Token.KEYWORD_COMPONENT -> Some (Ast.ComponentDeclaration { location = start_pos; identifier; attributes; body })
+        | Token.KEYWORD_STORE     -> Some (Ast.StoreDeclaration     { location = start_pos; identifier; attributes; body })
         | _ -> assert false
       end
     | Token.END_OF_INPUT -> None

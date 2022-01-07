@@ -33,6 +33,22 @@ type literal =
   | BoolLiteral of bool
 [@@deriving show { with_path = false }]
 
+and template_node =
+  | HtmlTemplateNode of {
+    tag: string;
+    self_closing: bool;
+    attributes: attribute list;
+    children: template_node list;
+  }
+  | ComponentTemplateNode of {
+    identifier: identifier;
+    self_closing: bool;
+    attributes: attribute list;
+    children: template_node list;
+  }
+  | ExpressionTemplateNode of expression
+  | TextTemplateNode of string
+
 and expression =
   | IdentifierExpression of identifier
   | LiteralExpression of literal
@@ -44,6 +60,8 @@ and expression =
     right: expression;
     body: statement list
   }
+
+  | TemplateExpression of template_node list
 
   | BlockExpression of statement list
 
@@ -93,25 +111,25 @@ and statement =
 [@@deriving show { with_path = false }]
 
 and declaration =
-  | Site of {
+  | SiteDeclaration of {
     location: Position.t;
     identifier: identifier;
     attributes: attribute list option;
     body: statement list;
   }
-  | Page of {
+  | PageDeclaration of {
     location: Position.t;
     identifier: identifier;
     attributes: attribute list option;
     body: statement list;
   }
-  | Component of {
+  | ComponentDeclaration of {
     location: Position.t;
     identifier: identifier;
     attributes: attribute list option;
     body: statement list;
   }
-  | Store of {
+  | StoreDeclaration of {
     location: Position.t;
     identifier: identifier;
     attributes: attribute list option;

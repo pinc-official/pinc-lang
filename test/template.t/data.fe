@@ -1,0 +1,25 @@
+component Section(
+  label: "Section",
+  icon: "/images/icons/group.svg",
+  group: "Structure",
+) {
+
+  content = "Hello, World!";
+
+  @Template {
+    <section class="Section">
+      {if (intro) {
+        foobar = "foo";
+        if (foobar) {
+          <div />
+        } else {
+          barfoo = "3";
+          <span />
+        }
+      }}
+      <div class="Section-content">
+        {content}
+      </div>
+    </section>
+  }
+}

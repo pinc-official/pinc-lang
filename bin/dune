@@ -2,10 +2,7 @@
  (name print_ast)
  (public_name print_ast)
  (modules print_ast)
- (libraries fennek_lib))
+ (libraries fennek_lib unix))
 
-(executable
- (name print_tokens)
- (public_name print_tokens)
- (modules print_tokens)
- (libraries fennek_lib))
+(cram
+ (deps %{bin:print_ast}))
