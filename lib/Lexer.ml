@@ -1,5 +1,3 @@
-exception SyntaxError of string
-
 type mode = Normal | TemplateAttributes | Template | TemplateBlock
 [@@deriving show { with_path = false }]
 
@@ -146,9 +144,10 @@ let scan_ident t = begin
 end
 
 let scan_string t = begin
+  let start_pos = make_position t in
   let rec loop acc t =
     match t.current with
-    | `EOF -> assert false (* TODO: Report unterminated string *)
+    | `EOF -> Diagnostics.report ~start_pos ~end_pos:(make_position t) Diagnostics.NonTerminatedString
     | `Chr '\\' -> (
       match peek t with 
       | `Chr ' '  -> next_n ~n:2 t; loop (acc ^ String.make 1 '\\') t
@@ -160,8 +159,8 @@ let scan_string t = begin
       | `Chr 'r'  -> next_n ~n:2 t; loop (acc ^ String.make 1 '\r') t
       | `Chr 't'  -> next_n ~n:2 t; loop (acc ^ String.make 1 '\t') t
       | `Chr '\\' -> next_n ~n:2 t; loop (acc ^ String.make 1 '\\') t
-      | `Chr _    -> assert false (* TODO: Report unknown escape *)
-      | `EOF      -> assert false (* TODO: Report unterminated string *)
+      | `Chr _    -> Diagnostics.report ~start_pos:(make_position t) ~end_pos:(make_position t) (Diagnostics.Message "Unknown escape sequence in string.")
+      | `EOF      -> Diagnostics.report ~start_pos ~end_pos:(make_position t) Diagnostics.NonTerminatedString
     )
     | `Chr '"' -> next t; acc
     | `Chr c ->
@@ -175,6 +174,7 @@ let scan_string t = begin
 end
 
 let scan_symbol_or_template t = begin
+  let start_pos = make_position t in
   let rec loop acc t =
     match t.current with
     | `Chr ('A'..'Z' as c)
@@ -193,7 +193,9 @@ let scan_symbol_or_template t = begin
   | s          -> begin
     match s.[0] with
     | 'A'..'Z' -> Token.SYMBOL found
-    | _ -> assert false (* TODO: Report invalid symbol *)
+    | _ -> 
+      Diagnostics.report ~start_pos ~end_pos:(make_position t)
+      (Diagnostics.Message (Printf.sprintf "Invalid Symbol! Symbols have to start with an uppercase character. Did you mean to write @%s?" (String.capitalize_ascii found)))
   end
 end
 
@@ -218,18 +220,20 @@ let scan_html_open_tag t = begin
 end
 
 let scan_html_close_tag t = begin
+  let start_pos = make_position t in
   (* NEXT twice to skip the beginning </ chars *)
   next_n ~n:2 t;
   let ident = get_html_tag_ident t in
   match t.current with
   | `Chr '>' -> next t; Token.HTML_CLOSE_TAG ident
-  | _        -> assert false (* TODO: Error message :) *)
+  | _        -> Diagnostics.report ~start_pos ~end_pos:(make_position t) (ExpectedToken Token.GREATER)
 end
 
 let scan_template_text t = begin
+  let start_pos = make_position t in
   let rec loop acc t =
     match t.current with
-    | `EOF -> assert false (* TODO: Report unterminated string *)
+    | `EOF -> Diagnostics.report ~start_pos ~end_pos:(make_position t) Diagnostics.NonTerminatedTemplate
     | `Chr '<' -> (
       match peek t with
       | `Chr '/'      -> acc
@@ -274,7 +278,7 @@ let scan_number t = begin
 
   let is_float = match t.current with
   | `Chr '.' -> Buffer.add_char result '.'; next t; scan_digits t; true
-  | _       -> false
+  | _        -> false
   in
 
   (* exponent part *)
@@ -311,7 +315,7 @@ let skip_comment t = begin
   skip t
 end
 
-let rec scan t = begin
+let scan t = begin
   skip_whitespace t;
   let start_pos = make_position t in
 
@@ -326,7 +330,7 @@ let rec scan t = begin
       | `Chr '/'      -> popTemplateMode t; scan_html_close_tag t;
       | _             -> scan_template_text t
     )
-    | `EOF     -> assert false
+    | `EOF     -> Diagnostics.report ~start_pos ~end_pos:(make_position t) Diagnostics.NonTerminatedTemplate
     | _        -> scan_template_text t
   end else begin match t.current with
     | `Chr 'A'..'Z' | `Chr 'a'..'z' when inTemplateAttributesMode t -> scan_html_ident t
@@ -360,14 +364,13 @@ let rec scan t = begin
     )
     | `Chr '@' -> (
       match peek t with
-      | `Chr 'A'..'Z'                    -> scan_symbol_or_template t
-      | `Chr _ as c when is_whitespace c -> assert false (* TODO: REPORT UNKNOWN TOKEN @ *)
-      | _                                -> assert false (* TODO: Report invalid symbol syntax *)
+      | `Chr 'A'..'Z' | `Chr 'a'..'z'    -> scan_symbol_or_template t
+      | _ -> Diagnostics.report ~start_pos ~end_pos:(make_position t) (Diagnostics.UnknownCharacter '@')
     )
     | `Chr '&' -> (
       match peek t with
       | `Chr '&' -> next_n ~n:2 t; Token.LOGICAL_AND
-      | _       -> assert false (* TODO: REPORT UNKNOWN TOKEN & *)
+      | _       -> Diagnostics.report ~start_pos ~end_pos:(make_position t) (Diagnostics.UnknownCharacter '&')
     )
     | `Chr '|' -> (
       match peek t with
@@ -405,18 +408,11 @@ let rec scan t = begin
         setTemplateAttributesMode t;
         scan_html_open_tag t;
       | c when ((is_whitespace t.prev) && (is_whitespace c)) -> next t; Token.LESS
-      | _             -> assert false (* TODO: REPORT UNKNOWN TOKEN < *)
+      | _             -> Diagnostics.report ~start_pos ~end_pos:(make_position t) (Diagnostics.UnknownCharacter '<')
     )
 
     | `EOF -> Token.END_OF_INPUT
-    | `Chr c -> 
-        (* if we arrive here, we're dealing with an unknown character,
-        * report the error and continue scanning... *)
-        let pos = make_position t in
-        print_endline (Printf.sprintf "Unknown Character %c at %i:%i" c pos.line pos.column);
-        next t;
-        let Token.{typ; _} = scan t in
-        typ
+    | `Chr c -> Diagnostics.report ~start_pos ~end_pos:(make_position t) (Diagnostics.UnknownCharacter c) (* NOTE: Maybe we can ignore this and continue scanning... *)
   end in
   (* print_endline (Token.to_string token); *)
   let end_pos = make_position t in
