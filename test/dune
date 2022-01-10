@@ -1,2 +1,2 @@
 (cram
- (deps %{bin:print_ast}))
+ (deps %{bin:print_ast} %{bin:print}))

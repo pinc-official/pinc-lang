@@ -8,6 +8,7 @@ component Section(
 
   @Template {
     <section class="Section">
+      <div />
       {if (intro) {
         foobar = "foo";
         if (foobar) {
@@ -19,6 +20,9 @@ component Section(
       }}
       <div class="Section-content">
         {content}
+      </div>
+      <div class="Section-footer">
+        Lorem Ipsum dolor sit amet!!
       </div>
     </section>
   }

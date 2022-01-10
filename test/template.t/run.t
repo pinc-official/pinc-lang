@@ -1,3 +1,8 @@
+  $ esy x print ./data.fe
+  <section class="Section"><div ></div><div class="Section-content"></div><div class="Section-footer">Lorem Ipsum dolor sit amet!!
+        </div></section>
+
+
   $ esy x print_ast ./data.fe
   [ComponentDeclaration {
      location = { filename = "./data.fe"; line = 1; column = 1 };
@@ -25,49 +30,51 @@
                           }
                          ];
                        children =
-                       [(ExpressionTemplateNode
-                           ConditionalExpression {
-                             condition = (IdentifierExpression (Id "intro"));
-                             consequent =
-                             (BlockExpression
-                                [DeclarationStmt {nullable = false;
-                                   left = (Id "foobar");
-                                   right =
-                                   (LiteralExpression (StringLiteral "foo"))};
-                                  (ExpressionStmt
-                                     ConditionalExpression {
-                                       condition =
-                                       (IdentifierExpression (Id "foobar"));
-                                       consequent =
-                                       (BlockExpression
-                                          [(ExpressionStmt
-                                              (TemplateExpression
-                                                 [HtmlTemplateNode {
-                                                    tag = "div";
-                                                    self_closing = true;
-                                                    attributes = [];
-                                                    children = []}
-                                                   ]))
-                                            ]);
-                                       alternate =
-                                       (Some (BlockExpression
-                                                [DeclarationStmt {
-                                                   nullable = false;
-                                                   left = (Id "barfoo");
-                                                   right =
-                                                   (LiteralExpression
-                                                      (StringLiteral "3"))};
-                                                  (ExpressionStmt
-                                                     (TemplateExpression
-                                                        [HtmlTemplateNode {
-                                                           tag = "span";
-                                                           self_closing = true;
-                                                           attributes = [];
-                                                           children = []}
-                                                          ]))
-                                                  ]))})
-                                  ]);
-                             alternate = None});
+                       [HtmlTemplateNode {tag = "div"; self_closing = true;
+                          attributes = []; children = []};
+                         (ExpressionTemplateNode
+                            ConditionalExpression {
+                              condition = (IdentifierExpression (Id "intro"));
+                              consequent =
+                              (BlockExpression
+                                 [DeclarationStmt {nullable = false;
+                                    left = (Id "foobar");
+                                    right =
+                                    (LiteralExpression (StringLiteral "foo"))};
+                                   (ExpressionStmt
+                                      ConditionalExpression {
+                                        condition =
+                                        (IdentifierExpression (Id "foobar"));
+                                        consequent =
+                                        (BlockExpression
+                                           [(ExpressionStmt
+                                               (TemplateExpression
+                                                  [HtmlTemplateNode {
+                                                     tag = "div";
+                                                     self_closing = true;
+                                                     attributes = [];
+                                                     children = []}
+                                                    ]))
+                                             ]);
+                                        alternate =
+                                        (Some (BlockExpression
+                                                 [DeclarationStmt {
+                                                    nullable = false;
+                                                    left = (Id "barfoo");
+                                                    right =
+                                                    (LiteralExpression
+                                                       (StringLiteral "3"))};
+                                                   (ExpressionStmt
+                                                      (TemplateExpression
+                                                         [HtmlTemplateNode {
+                                                            tag = "span";
+                                                            self_closing = true;
+                                                            attributes = [];
+                                                            children = []}
+                                                           ]))
+                                                   ]))})
+                                   ]);
+                              alternate = None});
                          HtmlTemplateNode {tag = "div"; self_closing = false;
                            attributes =
                            [{ key = "class";
@@ -79,6 +86,18 @@
                            children =
                            [(ExpressionTemplateNode
                                (IdentifierExpression (Id "content")))
+                             ]};
+                         HtmlTemplateNode {tag = "div"; self_closing = false;
+                           attributes =
+                           [{ key = "class";
+                              value =
+                              (LiteralExpression
+                                 (StringLiteral "Section-footer"))
+                              }
+                             ];
+                           children =
+                           [(TextTemplateNode
+                               "Lorem Ipsum dolor sit amet!!\n      ")
                              ]}
                          ]}
                       ]))

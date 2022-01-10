@@ -4,5 +4,11 @@
  (modules print_ast)
  (libraries fennek_lib unix))
 
+(executable
+ (name print)
+ (public_name print)
+ (modules print)
+ (libraries fennek_lib unix))
+
 (cram
- (deps %{bin:print_ast}))
+ (deps %{bin:print_ast} %{bin:print}))

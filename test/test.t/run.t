@@ -1,3 +1,7 @@
+  $ esy x print ./data.fe
+  
+
+
   $ esy x print_ast ./data.fe
   [SiteDeclaration {
      location = { filename = "./data.fe"; line = 1; column = 1 };
