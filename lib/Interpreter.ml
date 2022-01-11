@@ -3,7 +3,7 @@ type scope = {
 }
 
 type context = {
-  output: Buffer.t;
+  output: string;
   models: string -> Ast.literal option;
   mutable scope: scope list;
 }
@@ -11,13 +11,15 @@ type context = {
 let add_scope ctx = begin
   let identifiers = Hashtbl.create 10 in
   let scope = { identifiers } in
-  ctx.scope <- scope::ctx.scope
+  ctx.scope <- scope::ctx.scope;
+  ctx
 end
 
 let pop_scope ctx = begin
-  ctx.scope <- match ctx.scope with
+  ctx.scope <- (match ctx.scope with
   | [] -> []
-  | _hd::tl -> tl
+  | _hd::tl -> tl);
+  ctx
 end
 
 let literal_to_string = function
@@ -26,51 +28,55 @@ let literal_to_string = function
   | Ast.FloatLiteral f  -> string_of_float f
   | Ast.BoolLiteral b   -> if b then "true" else "false"
 
-let output x ctx = Buffer.add_string ctx.output (literal_to_string x); ctx
+let output x ctx = {
+  ctx with
+  output = ctx.output ^ (literal_to_string x);
+}
 
-let rec eval_template ctx = function
+let cross_fold f list ctx = List.fold_left (fun acc curr -> f curr acc) ctx list
+
+let rec eval_html_attr (attr: Ast.attribute) ctx =
+  ctx
+  |> output (StringLiteral attr.key) 
+  |> output (StringLiteral "=\"")
+  |> eval_expr attr.value
+  |> output (StringLiteral "\"")
+
+and eval_template template ctx = match template with
   | Ast.TextTemplateNode text -> ctx |> output (StringLiteral text)
   | Ast.HtmlTemplateNode { tag; attributes; children; _ } ->
-    let ctx = ctx |> output (StringLiteral (Printf.sprintf "<%s " tag)) in
-    let ctx = attributes |> List.fold_left (fun ctx (attr: Ast.attribute) -> (
-      let ctx = ctx |> output (StringLiteral attr.key) in
-      let ctx = ctx |> output (StringLiteral "=\"") in
-      let ctx = eval_expr ctx attr.value in
-      let ctx = ctx |> output (StringLiteral "\"") in
-      ctx
-    )) ctx in
-    let ctx = ctx |> output (StringLiteral ">") in
-    let ctx = children |> List.fold_left eval_template ctx in
-    let ctx = ctx |> output (StringLiteral ("</" ^ tag ^ ">")) in
     ctx
-  | Ast.ExpressionTemplateNode expr -> eval_expr ctx expr
+    |> output (StringLiteral (Printf.sprintf "<%s " tag))
+    |> cross_fold eval_html_attr attributes
+    |> output (StringLiteral ">")
+    |> cross_fold eval_template children
+    |> output (StringLiteral ("</" ^ tag ^ ">"))
+  | Ast.ExpressionTemplateNode expr -> ctx |> eval_expr expr
   | Ast.ComponentTemplateNode { identifier=_; attributes=_; children=_; _ } -> ctx (* TODO: *)
 
-and eval_expr ctx = function
+and eval_expr expr ctx = match expr with
   | Ast.LiteralExpression l         -> ctx |> output l
-  | Ast.BlockExpression s           -> 
-    add_scope ctx;
-    let ctx = s |> List.fold_left eval_statement ctx in
-    pop_scope ctx;
+  | Ast.BlockExpression statement   ->
     ctx
+      |> add_scope
+      |> cross_fold eval_statement statement
+      |> pop_scope
   | Ast.IdentifierExpression (Id id) -> begin
-    let value = ctx.scope |> List.find_map (fun scope -> (
-      Hashtbl.find_opt scope.identifiers id
-    )) in
+    let value = ctx.scope |> List.find_map (fun scope -> Hashtbl.find_opt scope.identifiers id) in
     match value with
     | None -> failwith "Unbound identifier" (* Unbound identifier *)
-    | Some v -> eval_expr ctx v
+    | Some v -> ctx |> eval_expr v
   end
   | Ast.ArrayExpression _           -> ctx (* TODO: *)
   | Ast.SymbolExpression _          -> ctx (* TODO: *)
   | Ast.ForInExpression _           -> ctx (* TODO: *)
-  | Ast.TemplateExpression t        -> t |> List.fold_left eval_template ctx
+  | Ast.TemplateExpression t        -> ctx |> cross_fold eval_template t
   | Ast.ConditionalExpression _     -> ctx (* TODO: *)
   | Ast.UnaryExpression _           -> ctx (* TODO: *)
   | Ast.BinaryExpression _          -> ctx (* TODO: *)
   | Ast.LogicalExpression _         -> ctx (* TODO: *)
 
-and eval_statement ctx = function
+and eval_statement stmt ctx = match stmt with
   | Ast.BreakStmt           -> ctx (* TODO: *)
   | Ast.ContinueStmt        -> ctx (* TODO: *)
   | Ast.DeclarationStmt { nullable=_; left = Id ident; right; } -> begin
@@ -79,25 +85,24 @@ and eval_statement ctx = function
     | scope::_ -> Hashtbl.replace scope.identifiers ident right;
     ctx
   end
-  | Ast.ExpressionStmt expr -> eval_expr ctx expr
+  | Ast.ExpressionStmt expr -> ctx |> eval_expr expr
 
-let eval_declaration ctx = function
-  | Ast.ComponentDeclaration { body; _ } -> body |> List.fold_left eval_statement ctx
-  | Ast.SiteDeclaration { body; _ }      -> body |> List.fold_left eval_statement ctx
-  | Ast.PageDeclaration { body; _ }      -> body |> List.fold_left eval_statement ctx
-  | Ast.StoreDeclaration { body; _ }     -> body |> List.fold_left eval_statement ctx
+let eval_declaration declaration ctx = match declaration with
+  | Ast.ComponentDeclaration { body; _ } -> ctx |> cross_fold eval_statement body
+  | Ast.SiteDeclaration { body; _ }      -> ctx |> cross_fold eval_statement body
+  | Ast.PageDeclaration { body; _ }      -> ctx |> cross_fold eval_statement body
+  | Ast.StoreDeclaration { body; _ }     -> ctx |> cross_fold eval_statement body
 
-let eval ~ctx ast = ast |> List.fold_left eval_declaration ctx
+let eval ~ctx ast = ctx |> cross_fold eval_declaration ast
 
-let init_context ?(models=(fun _ -> None)) () =
-  let output = Buffer.create 1024 in
-  let top_level_identifiers = Hashtbl.create 10 in
+let init_context ?(models=(fun _ -> None)) () = begin
   let ctx = {
-    output;
-    scope = [{ identifiers = top_level_identifiers }];
+    output = "";
+    scope = [{ identifiers = Hashtbl.create 10 }];
     models;
   } in
   ctx
+end
 
 let file_contents chan = really_input_string chan (in_channel_length chan)
 
@@ -108,4 +113,4 @@ let from_file ?(models=[]) ~filename () =
   let parser = Parser.make ~filename src in
   let ast    = Parser.scan parser in
   let resulting_ctx = eval ~ctx ast in
-  Buffer.contents resulting_ctx.output
+  resulting_ctx.output
