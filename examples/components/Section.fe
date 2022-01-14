@@ -3,22 +3,21 @@ component Section(
   icon: "/images/icons/group.svg",
   group: "Structure",
 ) {
-  class? = @String();
+  let class? = @String();
 
-  show_intro = 
-    @Boolean(label: "Show Intro above Section", value: true);
+  let show_intro =  @Boolean(label: "Show Intro above Section", value: true);
 
-  intro_headline = if (show_intro) {
+  let intro_headline = if (show_intro) {
     @String(inline: true, placeholder: "Enter Headline here...")
   };
 
-  intro_text? = if (show_intro) {
+  let intro_text? = if (show_intro) {
     @Richtext(inline: true, placeholder: "Enter Text here...", b: true, i: true, u: true, a: true)
   };
 
-  content = @Slot(id: Content, label: "Section Content", instanceOf: [!Section]);
+  let content = @Slot(id: Content, label: "Section Content", instanceOf: [!Section]);
 
-  context = @GetContext(id: CMS);
+  let context = @GetContext(id: CMS);
 
   @Template {
     <div class="Section ${class|default("")}">

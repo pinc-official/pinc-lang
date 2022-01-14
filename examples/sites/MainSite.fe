@@ -4,7 +4,7 @@ site Main(
   domain: "www.fennek-cms.com",
   additionalDomains: ["fennek-cms.com"]
 ) {
-  languages =
+  let languages =
     @NodeContext(
       id: Language,
       label: "Language"
@@ -12,7 +12,7 @@ site Main(
       matchers: [@UrlMatcher(match: "en_US")]
     );
 
-  targeting =
+  let targeting =
     @NodeContext(
       id: Targeting,
       label: "Target"
@@ -28,17 +28,17 @@ site Main(
       ]
     );
 
-  theme = @Context(id: Theme, value: "primary");
+  let theme = @Context(id: Theme, value: "primary");
 
-  mainNavigation = @PageTree(label: "Main Navigation", maxLevels: 2);
-  metaNavigation = @PageTree(label: "Meta Navigation", instanceOf: [DefaultPage], maxLevels: 1);
+  let mainNavigation = @PageTree(label: "Main Navigation", maxLevels: 2);
+  let metaNavigation = @PageTree(label: "Meta Navigation", instanceOf: [DefaultPage], maxLevels: 1);
 
-  title = @String(label: "Title", value: "Homepage");
+  let title = @String(label: "Title", value: "Homepage");
 
-  stage =
+  let stage =
     @Slot(label: "Stage", id: Stage, instanceOf: [ImageStage], min: 1, max: 1);
 
-  mainContent =
+  let mainContent =
     @Slot(label: "Content", id: MainContent, instanceOf: [Section], min: 1);
 
   @Template {

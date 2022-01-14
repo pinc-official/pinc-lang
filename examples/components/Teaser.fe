@@ -2,9 +2,9 @@ component Teaser(
   label: "Teaser",
   icon: "/images/icons/teaser.svg"
 ) {
-  class? = @String();
+  let class? = @String();
 
-  title =
+  let title =
     @String( 
       placeholder: "Title",
       inline: true,
@@ -13,7 +13,7 @@ component Teaser(
       regex: "/.*/g"
     );
 
-  background =
+  let background =
     @Selection(
       label: "Background", 
       value: "primary",
@@ -24,13 +24,13 @@ component Teaser(
       ]
     );
 
-  url? = @Url(label: "Url", external: false);
+  let url? = @Url(label: "Url", external: false);
 
-  contact? = @Relation(label: "Contact Person", storeId: Contacts);
+  let contact? = @Relation(label: "Contact Person", storeId: Contacts);
 
-  categories = @Relations(label: "Categories", storeId: Categories, min: 1, max: 5);
+  let categories = @Relations(label: "Categories", storeId: Categories, min: 1, max: 5);
 
-  blogPages =
+  let blogPages =
     @Query(
       from: root,
       queries: [
@@ -39,11 +39,11 @@ component Teaser(
       ]
     );
 
-  children = @Slot(label: "Content", id: Default, min: 1, max: 5, instanceOf: [Image, Video]);
+  let children = @Slot(label: "Content", id: Default, min: 1, max: 5, instanceOf: [Image, Video]);
 
-  quote? = @Slot(label "Quote", id: Quote, max: 1, instanceOf: [Quote]);
+  let quote? = @Slot(label "Quote", id: Quote, max: 1, instanceOf: [Quote]);
 
-  theme = @GetContext(id: Theme);
+  let theme = @GetContext(id: Theme);
 
   @Template {
     <div class="Teaser Teaser--${background} ${class|default("")}" data-foo={lorem}>

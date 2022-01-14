@@ -288,8 +288,9 @@ module Rules = struct
     | Token.KEYWORD_CONTINUE ->
       next t;
       Some Ast.ContinueStmt
-    | Token.IDENT_LOWER identifier -> begin
+    | Token.KEYWORD_LET -> begin
       next t;
+      let identifier = expect_identifier t in
       let nullable = t |> optional Token.QUESTIONMARK in
       t |> expect Token.EQUAL;
       let expression = expr t in

@@ -38,6 +38,7 @@ type token_type =
   | GREATER_EQUAL
   | LESS_EQUAL
 
+  | KEYWORD_LET
   | KEYWORD_TRUE
   | KEYWORD_FALSE
   | KEYWORD_IF
@@ -105,6 +106,7 @@ let to_string = function
   | STAR_STAR         -> "**"
   | SLASH             -> "/"
   | PERCENT           -> "%"
+  | KEYWORD_LET       -> "let"
   | KEYWORD_IF        -> "if"
   | KEYWORD_ELSE      -> "else"
   | KEYWORD_FOR       -> "for"
@@ -123,6 +125,7 @@ let to_string = function
   | END_OF_INPUT      -> "(EOF)"
 
 let is_keyword = function
+| KEYWORD_LET
 | KEYWORD_TRUE
 | KEYWORD_FALSE
 | KEYWORD_IF
@@ -138,6 +141,7 @@ let is_keyword = function
 | _             -> false
 
 let keyword_of_string = function
+| "let" -> Some KEYWORD_LET
 | "true" -> Some KEYWORD_TRUE
 | "false" -> Some KEYWORD_FALSE
 | "if" -> Some KEYWORD_IF

@@ -4,18 +4,18 @@ component Section(
   group: "Structure",
 ) {
 
-  content = "Hello, World!";
-  intro = true;
+  let content = "Hello, World!";
+  let intro = true;
 
   @Template {
     <section class="Section">
       <div />
       {if (intro) {
-        foobar = "foo";
+        let foobar = "foo";
         if (foobar) {
           <div />
         } else {
-          barfoo = "3";
+          let barfoo = "3";
           <span />
         }
       }}

@@ -7,7 +7,7 @@ site Docs(
     "docs.fennek-cms.fr",
   ]
 ) {
-  languages =
+  let languages =
     @NodeContext(
       id: Language,
       label: "Language",
@@ -26,7 +26,7 @@ site Docs(
       ]
     );
 
-  targeting =
+  let targeting =
     @NodeContext(
       id: Targeting,
       label: "Target",
@@ -42,7 +42,7 @@ site Docs(
       ]
     );
 
-  theme = @Context(id: Theme, value: "secondary");
+  let theme = @Context(id: Theme, value: "secondary");
 
-  mainNavigation = @PageTree(label: "Main Navigation", maxLevels: 2);
+  let mainNavigation = @PageTree(label: "Main Navigation", maxLevels: 2);
 }
