@@ -27,6 +27,7 @@ type identifier = | Id of string
 [@@deriving show { with_path = false }]
 
 type literal =
+  | NullLiteral
   | StringLiteral of string
   | IntLiteral of int
   | FloatLiteral of float

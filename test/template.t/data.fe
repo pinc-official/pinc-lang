@@ -5,6 +5,7 @@ component Section(
 ) {
 
   content = "Hello, World!";
+  intro = true;
 
   @Template {
     <section class="Section">

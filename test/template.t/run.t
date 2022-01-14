@@ -1,5 +1,5 @@
   $ esy x print ./data.fe
-  <section class="Section"><div ></div><div class="Section-content">Hello, World!</div><div class="Section-footer">Lorem Ipsum dolor sit amet!!
+  <section class="Section"><div></div><div></div><div class="Section-content">Hello, World!</div><div class="Section-footer">Lorem Ipsum dolor sit amet!!
         </div></section>
 
 
@@ -21,6 +21,8 @@
          (BlockExpression
             [DeclarationStmt {nullable = false; left = (Id "content");
                right = (LiteralExpression (StringLiteral "Hello, World!"))};
+              DeclarationStmt {nullable = false; left = (Id "intro");
+                right = (LiteralExpression (BoolLiteral true))};
               (ExpressionStmt
                  (TemplateExpression
                     [HtmlTemplateNode {tag = "section"; self_closing = false;
