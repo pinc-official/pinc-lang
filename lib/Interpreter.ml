@@ -12,21 +12,16 @@ type scope = {
 type state = {
   output: string;
   models: string -> Ast.literal option;
-  mutable scope: scope list;
+  scope: scope list;
 }
 
 let add_scope state = begin
   let identifiers = Hashtbl.create 10 in
   let scope = { identifiers } in
-  state.scope <- scope::state.scope;
-  state
-end
-
-let pop_scope state = begin
-  state.scope <- (match state.scope with
-  | [] -> []
-  | _hd::tl -> tl);
-  state
+  {
+    state
+    with scope = scope::state.scope
+  }
 end
 
 let literal_to_string = function
@@ -37,8 +32,8 @@ let literal_to_string = function
   | Ast.BoolLiteral b   -> if b then "true" else "false"
 
 let is_true = function
-  | Ast.NullLiteral -> false
-  | Ast.BoolLiteral b -> b
+  | Ast.NullLiteral     -> false
+  | Ast.BoolLiteral b   -> b
   | Ast.StringLiteral s -> s |> String.trim |> String.length > 0
   | Ast.IntLiteral _    -> true
   | Ast.FloatLiteral _  -> true
@@ -48,17 +43,10 @@ let output x state = {
   output = state.output ^ (literal_to_string x);
 }
 
-let cross_fold f list state = List.fold_left (fun acc curr -> f curr acc) state list
-
 let rec literal_of_expr state expr = match expr with
-  | Ast.LiteralExpression l         -> l
+  | Ast.LiteralExpression l -> l
   
-  | Ast.BlockExpression statements  ->
-    ignore @@ (state |> add_scope);
-    let template_list = statements |> List.map (fun t -> Ast.LiteralExpression (eval_statement state t)) in
-    let array_expr = Ast.ArrayExpression template_list in
-    ignore @@ (state |> pop_scope);
-    literal_of_expr state array_expr
+  | Ast.BlockExpression statements -> eval_block state statements
 
   | Ast.IdentifierExpression (Id id) -> begin
     let value = state.scope |> List.find_map (fun scope -> Hashtbl.find_opt scope.identifiers id) in
@@ -67,35 +55,41 @@ let rec literal_of_expr state expr = match expr with
     | Some v -> v
   end
 
-  | Ast.ArrayExpression exprs        ->
-    let res = exprs |> List.map (literal_of_expr state) |> List.map literal_to_string |> String.concat "" in
-    StringLiteral res
+  | Ast.ArrayExpression expressions ->
+    StringLiteral ( 
+      expressions
+      |> List.map (literal_of_expr state)
+      |> List.map literal_to_string
+      |> String.concat ""
+    )
 
-  | Ast.SymbolExpression _          -> StringLiteral "" (* TODO: *)
+  | Ast.SymbolExpression _          -> NullLiteral (* TODO: *)
 
-  | Ast.ForInExpression _           -> StringLiteral "" (* TODO: *)
+  | Ast.ForInExpression _           -> NullLiteral (* TODO: *)
 
-  | Ast.TemplateExpression t        ->
-    let template_list = t |> List.map (fun t -> Ast.LiteralExpression (StringLiteral (template_to_string state t))) in
-    let array_expr = Ast.ArrayExpression template_list in
-    literal_of_expr state array_expr
+  | Ast.TemplateExpression template_nodes ->
+    StringLiteral ( 
+      template_nodes 
+      |> List.map (template_to_string state)
+      |> String.concat ""
+    )
   
   | Ast.ConditionalExpression {condition; consequent; alternate} ->
-    if condition |> literal_of_expr state |> is_true then
-      consequent |> literal_of_expr state
-    else begin match alternate with
-      | Some alt -> alt |> literal_of_expr state
-      | None -> NullLiteral
-    end
+    if condition |> literal_of_expr state |> is_true
+      then consequent |> literal_of_expr state
+      else begin match alternate with
+        | Some alt -> alt |> literal_of_expr state
+        | None -> NullLiteral
+      end
 
-  | Ast.UnaryExpression _           -> StringLiteral "" (* TODO: *)
+  | Ast.UnaryExpression _           -> NullLiteral (* TODO: *)
 
-  | Ast.BinaryExpression _          -> StringLiteral "" (* TODO: *)
+  | Ast.BinaryExpression _          -> NullLiteral (* TODO: *)
 
-  | Ast.LogicalExpression _         -> StringLiteral "" (* TODO: *)
+  | Ast.LogicalExpression _         -> NullLiteral (* TODO: *)
 
 and html_attr_to_string state (attr: Ast.attribute) =
-  let buf = Buffer.create 512 in
+  let buf = Buffer.create 64 in
   Buffer.add_string buf attr.key;
   Buffer.add_string buf "=\"";
   literal_of_expr state attr.value |> literal_to_string |> Buffer.add_string buf;
@@ -105,7 +99,7 @@ and html_attr_to_string state (attr: Ast.attribute) =
 and template_to_string state template = match template with
   | Ast.TextTemplateNode text -> text
   | Ast.HtmlTemplateNode { tag; attributes; children; _ } ->
-    let buf = Buffer.create 512 in
+    let buf = Buffer.create 256 in
     Buffer.add_string buf ("<" ^ tag);
     if not (List.is_empty attributes) then begin
       Buffer.add_string buf " ";
@@ -118,7 +112,14 @@ and template_to_string state template = match template with
   | Ast.ExpressionTemplateNode expr -> literal_to_string (literal_of_expr state expr)
   | Ast.ComponentTemplateNode { identifier=_; attributes=_; children=_; _ } -> "" (* TODO: *)
 
-and eval_statement state stmt = match stmt with
+and eval_block state = begin
+  let state = state |> add_scope in
+  let result = List.fold_left (fun _acc curr -> eval_statement state curr) Ast.NullLiteral in
+  result
+end
+
+and eval_statement state stmt = begin 
+  match stmt with
   | Ast.BreakStmt           -> NullLiteral (* TODO: *)
   | Ast.ContinueStmt        -> NullLiteral (* TODO: *)
   | Ast.DeclarationStmt { nullable; left = Id ident; right; } -> begin
@@ -133,12 +134,12 @@ and eval_statement state stmt = match stmt with
     NullLiteral
   end
   | Ast.ExpressionStmt expr -> literal_of_expr state expr
-
+end
 let eval_declaration state declaration = match declaration with
-  | Ast.ComponentDeclaration { body; _ } -> List.fold_left (fun _ curr -> eval_statement state curr) NullLiteral body
-  | Ast.SiteDeclaration { body; _ }      -> List.fold_left (fun _ curr -> eval_statement state curr) NullLiteral body
-  | Ast.PageDeclaration { body; _ }      -> List.fold_left (fun _ curr -> eval_statement state curr) NullLiteral body
-  | Ast.StoreDeclaration { body; _ }     -> List.fold_left (fun _ curr -> eval_statement state curr) NullLiteral body
+  | Ast.ComponentDeclaration { body; _ } -> eval_block state body
+  | Ast.SiteDeclaration { body; _ }      -> eval_block state body
+  | Ast.PageDeclaration { body; _ }      -> eval_block state body
+  | Ast.StoreDeclaration { body; _ }     -> eval_block state body
 
 let eval ~state ast =
   List.fold_left (fun state curr -> output (eval_declaration state curr) state) state ast
@@ -146,7 +147,7 @@ let eval ~state ast =
 let init_state ?(models=(fun _ -> None)) () = begin
   let state = {
     output = "";
-    scope = [{ identifiers = Hashtbl.create 10 }];
+    scope = [];
     models;
   } in
   state
