@@ -166,7 +166,7 @@ module Rules = struct
     | _ -> None
   end
 
-  and parse_expression t = begin
+  and parse_expression_part t = begin
     match t.token.typ with
     (* PARSING BLOCK EXPRESSION *)
     | Token.LEFT_BRACE -> begin
@@ -284,6 +284,52 @@ module Rules = struct
       end
 
     | _ -> None
+  end
+
+  and parse_binary_operator t = begin
+    match t.token.typ with
+    | Token.LOGICAL_AND -> next t; Some Ast.Operator.AND
+    | Token.LOGICAL_OR  -> next t; Some Ast.Operator.OR
+
+    | Token.EQUAL_EQUAL -> next t; Some Ast.Operator.EQUAL
+    | Token.NOT_EQUAL -> next t; Some Ast.Operator.NOT_EQUAL
+
+    | Token.GREATER -> next t; Some Ast.Operator.GREATER
+    | Token.GREATER_EQUAL -> next t; Some Ast.Operator.GREATER_EQUAL
+    | Token.LESS -> next t; Some Ast.Operator.LESS
+    | Token.LESS_EQUAL -> next t; Some Ast.Operator.LESS_EQUAL
+
+    | Token.PLUS -> next t; Some Ast.Operator.PLUS
+    | Token.MINUS -> next t; Some Ast.Operator.MINUS
+    | Token.STAR -> next t; Some Ast.Operator.TIMES
+    | Token.SLASH -> next t; Some Ast.Operator.DIV
+    | Token.STAR_STAR -> next t; Some Ast.Operator.POW
+
+    | Token.KEYWORD_IN -> next t; Some Ast.Operator.IN
+
+    | _ -> None
+  end
+
+  and parse_expression t = begin
+    let* left = parse_expression_part t in
+    (* TODO: 
+      Mhmm...is this the best way to do this?
+      We are only looking for binary operators when we are not in template mode.
+      This is to ensure, we are not parsing the end of a html tag <div> as a binary operator (GREATER).
+      Maybe we can also do this in the lexer...
+    *)
+    if Lexer.inNormalMode t.lexer then
+      match parse_binary_operator t with
+      | Some operator ->
+        begin
+          let right = parse_expression_part t in
+          match right with
+          | Some right -> Some (Ast.BinaryExpression { left; operator; right })
+          | None       -> failwith "Expected expression"
+        end
+      | None -> Some left
+    else
+      Some left
   end
 
   and parse_statement t = begin

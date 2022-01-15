@@ -17,25 +17,46 @@ let add_scope state = begin
   }
 end
 
-let literal_to_string = function
-  | Ast.NullLiteral     -> ""
-  | Ast.StringLiteral s -> s
-  | Ast.IntLiteral i    -> string_of_int i
-  | Ast.FloatLiteral f  -> string_of_float f
-  | Ast.BoolLiteral b   -> if b then "true" else "false"
+module Literal = struct
+  type t = Ast.literal
 
-let is_true = function
-  | Ast.NullLiteral     -> false
-  | Ast.BoolLiteral b   -> b
-  | Ast.StringLiteral s -> s |> String.trim |> String.length > 0
-  | Ast.IntLiteral _    -> true
-  | Ast.FloatLiteral _  -> true
+  let to_string = function
+    | Ast.NullLiteral     -> ""
+    | Ast.StringLiteral s -> s
+    | Ast.IntLiteral i    -> string_of_int i
+    | Ast.FloatLiteral f  -> string_of_float f
+    | Ast.BoolLiteral b   -> if b then "true" else "false"
 
-let negate_literal l = not (is_true l)
+  let is_true = function
+    | Ast.NullLiteral     -> false
+    | Ast.BoolLiteral b   -> b
+    | Ast.StringLiteral s -> s |> String.trim |> String.length > 0
+    | Ast.IntLiteral _    -> true
+    | Ast.FloatLiteral _  -> true
+
+  let neg l = not (is_true l)
+  
+  let equal a b = match a, b with
+    | Ast.StringLiteral a, Ast.StringLiteral b -> String.equal a b
+    | Ast.IntLiteral a, Ast.IntLiteral b       -> Int.equal a b
+    | Ast.FloatLiteral a, Ast.FloatLiteral b   -> Float.equal a b
+    | Ast.BoolLiteral a, Ast.BoolLiteral b     -> Bool.equal a b
+    | Ast.NullLiteral, Ast.NullLiteral         -> true
+    | _ -> false
+
+  let compare a b = match a, b with
+    | Ast.StringLiteral a, Ast.StringLiteral b -> String.compare a b
+    | Ast.IntLiteral a, Ast.IntLiteral b       -> Int.compare a b
+    | Ast.FloatLiteral a, Ast.FloatLiteral b   -> Float.compare a b
+    | Ast.BoolLiteral a, Ast.BoolLiteral b     -> Bool.compare a b
+    | Ast.NullLiteral, Ast.NullLiteral         -> 0
+    | _ -> failwith "Nope"
+
+end
 
 let output x state = {
   state with
-  output = state.output ^ (literal_to_string x);
+  output = state.output ^ (Literal.to_string x);
 }
 
 let rec literal_of_expr state expr = match expr with
@@ -54,7 +75,7 @@ let rec literal_of_expr state expr = match expr with
     StringLiteral ( 
       expressions
       |> List.map (literal_of_expr state)
-      |> List.map literal_to_string
+      |> List.map Literal.to_string
       |> String.concat ""
     )
 
@@ -70,7 +91,7 @@ let rec literal_of_expr state expr = match expr with
     )
   
   | Ast.ConditionalExpression {condition; consequent; alternate} ->
-    if condition |> literal_of_expr state |> is_true
+    if condition |> literal_of_expr state |> Literal.is_true
       then consequent |> literal_of_expr state
       else begin match alternate with
         | Some alt -> alt |> literal_of_expr state
@@ -80,16 +101,34 @@ let rec literal_of_expr state expr = match expr with
   | Ast.UnaryExpression { operator; argument; } ->
     let res = argument |> literal_of_expr state in
     begin match operator, res with
-    | Ast.Operator.NOT, literal -> Ast.BoolLiteral (negate_literal literal)
+    | Ast.Operator.NOT, literal -> Ast.BoolLiteral (Literal.neg literal)
     | Ast.Operator.NEGATIVE, IntLiteral i -> Ast.IntLiteral (Int.neg i)
     | Ast.Operator.NEGATIVE, FloatLiteral f -> Ast.FloatLiteral (Float.neg f)
     | Ast.Operator.NEGATIVE, _ -> failwith "Invalid usage of unary - operator"
     end
 
-  | Ast.BinaryExpression _          -> NullLiteral (* TODO: *)
+  | Ast.BinaryExpression { left; operator; right; } ->
+    let a = lazy (left |> literal_of_expr state) in
+    let b = lazy (right |> literal_of_expr state) in
+    begin match operator with
+    | Ast.Operator.NOT_EQUAL -> BoolLiteral (not (Literal.equal (Lazy.force a) (Lazy.force b)))
+    | Ast.Operator.EQUAL -> BoolLiteral (Literal.equal (Lazy.force a) (Lazy.force b))
+    | Ast.Operator.LESS -> BoolLiteral (Literal.compare (Lazy.force a) (Lazy.force b) < 0)
+    | Ast.Operator.LESS_EQUAL -> BoolLiteral (Literal.compare (Lazy.force a) (Lazy.force b) <= 0)
+    | Ast.Operator.GREATER -> BoolLiteral (Literal.compare (Lazy.force a) (Lazy.force b) > 0)
+    | Ast.Operator.GREATER_EQUAL -> BoolLiteral (Literal.compare (Lazy.force a) (Lazy.force b) >= 0)
+    | Ast.Operator.PLUS -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
+    | Ast.Operator.MINUS -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
+    | Ast.Operator.TIMES -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
+    | Ast.Operator.DIV -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
+    | Ast.Operator.POW -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
+    | Ast.Operator.IN -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
+    | Ast.Operator.AND -> BoolLiteral (Literal.is_true (Lazy.force a) && Literal.is_true (Lazy.force b))
+    | Ast.Operator.OR -> BoolLiteral (Literal.is_true (Lazy.force a) || Literal.is_true (Lazy.force b))
+    end
 
 and html_attr_to_string state (attr: Ast.attribute) =
-  let value = literal_of_expr state attr.value |> literal_to_string in
+  let value = literal_of_expr state attr.value |> Literal.to_string in
   let key = attr.key in
   Printf.sprintf "%s=\"%s\"" key value
 
@@ -111,7 +150,7 @@ and template_to_string state template = match template with
       (if attributes <> "" then " " ^ attributes else "")
       children
       tag
-  | Ast.ExpressionTemplateNode expr -> literal_to_string (literal_of_expr state expr)
+  | Ast.ExpressionTemplateNode expr -> Literal.to_string (literal_of_expr state expr)
   | Ast.ComponentTemplateNode { identifier=_; attributes=_; children=_; _ } -> "" (* TODO: *)
 
 and eval_block state = begin

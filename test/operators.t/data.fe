@@ -7,6 +7,19 @@ component Operators {
       !true = {!true} {"\n"}
       -1 = {-1} {"\n"}
       -2.5 = {-2.5} {"\n"}
+      {"\n"}
+      true == true = {true == true} {"\n"}
+      true != true = {true != true} {"\n"}
+      true && true = {true && true} {"\n"}
+      true && false = {true && false} {"\n"}
+      true || false = {true || false} {"\n"}
+      false || false = {false || false} {"\n"}
+      {"\n"}
+      1 > 2 = {1 > 2} {"\n"}
+      1 < 2 = {1 < 2} {"\n"}
+      1 <= 1 = {1 <= 1} {"\n"}
+      2 <= 1 = {2 <= 1} {"\n"}
+      1 >= 1 = {1 >= 1} {"\n"}
     </div>
   }
 }

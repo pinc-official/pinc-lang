@@ -6,6 +6,19 @@
   !true = false
   -1 = -1
   -2.5 = -2.5
+  
+  true == true = true
+  true != true = false
+  true && true = true
+  true && false = false
+  true || false = true
+  false || false = false
+  
+  1 > 2 = false
+  1 < 2 = true
+  1 <= 1 = true
+  2 <= 1 = false
+  1 >= 1 = true
   </div>
 
 
@@ -191,18 +204,332 @@
   { typ = RIGHT_BRACE;
     start_pos = { filename = "./data.fe"; line = 9; column = 26 };
     end_pos = { filename = "./data.fe"; line = 9; column = 27 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 10; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 8 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 10; column = 8 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 12 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 10; column = 12 };
+    end_pos = { filename = "./data.fe"; line = 10; column = 13 } }
+  { typ = (STRING "true == true = ");
+    start_pos = { filename = "./data.fe"; line = 11; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 11; column = 22 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 11; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 11; column = 23 } }
+  { typ = KEYWORD_TRUE;
+    start_pos = { filename = "./data.fe"; line = 11; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 11; column = 27 } }
+  { typ = EQUAL_EQUAL;
+    start_pos = { filename = "./data.fe"; line = 11; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 11; column = 30 } }
+  { typ = KEYWORD_TRUE;
+    start_pos = { filename = "./data.fe"; line = 11; column = 31 };
+    end_pos = { filename = "./data.fe"; line = 11; column = 35 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 11; column = 35 };
+    end_pos = { filename = "./data.fe"; line = 11; column = 36 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 11; column = 37 };
+    end_pos = { filename = "./data.fe"; line = 11; column = 38 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 11; column = 38 };
+    end_pos = { filename = "./data.fe"; line = 11; column = 42 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 11; column = 42 };
+    end_pos = { filename = "./data.fe"; line = 11; column = 43 } }
+  { typ = (STRING "true != true = ");
+    start_pos = { filename = "./data.fe"; line = 12; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 12; column = 22 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 12; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 12; column = 23 } }
+  { typ = KEYWORD_TRUE;
+    start_pos = { filename = "./data.fe"; line = 12; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 12; column = 27 } }
+  { typ = NOT_EQUAL;
+    start_pos = { filename = "./data.fe"; line = 12; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 12; column = 30 } }
+  { typ = KEYWORD_TRUE;
+    start_pos = { filename = "./data.fe"; line = 12; column = 31 };
+    end_pos = { filename = "./data.fe"; line = 12; column = 35 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 12; column = 35 };
+    end_pos = { filename = "./data.fe"; line = 12; column = 36 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 12; column = 37 };
+    end_pos = { filename = "./data.fe"; line = 12; column = 38 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 12; column = 38 };
+    end_pos = { filename = "./data.fe"; line = 12; column = 42 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 12; column = 42 };
+    end_pos = { filename = "./data.fe"; line = 12; column = 43 } }
+  { typ = (STRING "true && true = ");
+    start_pos = { filename = "./data.fe"; line = 13; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 13; column = 22 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 13; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 13; column = 23 } }
+  { typ = KEYWORD_TRUE;
+    start_pos = { filename = "./data.fe"; line = 13; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 13; column = 27 } }
+  { typ = LOGICAL_AND;
+    start_pos = { filename = "./data.fe"; line = 13; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 13; column = 30 } }
+  { typ = KEYWORD_TRUE;
+    start_pos = { filename = "./data.fe"; line = 13; column = 31 };
+    end_pos = { filename = "./data.fe"; line = 13; column = 35 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 13; column = 35 };
+    end_pos = { filename = "./data.fe"; line = 13; column = 36 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 13; column = 37 };
+    end_pos = { filename = "./data.fe"; line = 13; column = 38 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 13; column = 38 };
+    end_pos = { filename = "./data.fe"; line = 13; column = 42 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 13; column = 42 };
+    end_pos = { filename = "./data.fe"; line = 13; column = 43 } }
+  { typ = (STRING "true && false = ");
+    start_pos = { filename = "./data.fe"; line = 14; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 14; column = 23 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 14; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 14; column = 24 } }
+  { typ = KEYWORD_TRUE;
+    start_pos = { filename = "./data.fe"; line = 14; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 14; column = 28 } }
+  { typ = LOGICAL_AND;
+    start_pos = { filename = "./data.fe"; line = 14; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 14; column = 31 } }
+  { typ = KEYWORD_FALSE;
+    start_pos = { filename = "./data.fe"; line = 14; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 14; column = 37 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 14; column = 37 };
+    end_pos = { filename = "./data.fe"; line = 14; column = 38 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 14; column = 39 };
+    end_pos = { filename = "./data.fe"; line = 14; column = 40 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 14; column = 40 };
+    end_pos = { filename = "./data.fe"; line = 14; column = 44 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 14; column = 44 };
+    end_pos = { filename = "./data.fe"; line = 14; column = 45 } }
+  { typ = (STRING "true || false = ");
+    start_pos = { filename = "./data.fe"; line = 15; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 15; column = 23 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 15; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 15; column = 24 } }
+  { typ = KEYWORD_TRUE;
+    start_pos = { filename = "./data.fe"; line = 15; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 15; column = 28 } }
+  { typ = LOGICAL_OR;
+    start_pos = { filename = "./data.fe"; line = 15; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 15; column = 31 } }
+  { typ = KEYWORD_FALSE;
+    start_pos = { filename = "./data.fe"; line = 15; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 15; column = 37 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 15; column = 37 };
+    end_pos = { filename = "./data.fe"; line = 15; column = 38 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 15; column = 39 };
+    end_pos = { filename = "./data.fe"; line = 15; column = 40 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 15; column = 40 };
+    end_pos = { filename = "./data.fe"; line = 15; column = 44 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 15; column = 44 };
+    end_pos = { filename = "./data.fe"; line = 15; column = 45 } }
+  { typ = (STRING "false || false = ");
+    start_pos = { filename = "./data.fe"; line = 16; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 16; column = 24 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 16; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 16; column = 25 } }
+  { typ = KEYWORD_FALSE;
+    start_pos = { filename = "./data.fe"; line = 16; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 16; column = 30 } }
+  { typ = LOGICAL_OR;
+    start_pos = { filename = "./data.fe"; line = 16; column = 31 };
+    end_pos = { filename = "./data.fe"; line = 16; column = 33 } }
+  { typ = KEYWORD_FALSE;
+    start_pos = { filename = "./data.fe"; line = 16; column = 34 };
+    end_pos = { filename = "./data.fe"; line = 16; column = 39 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 16; column = 39 };
+    end_pos = { filename = "./data.fe"; line = 16; column = 40 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 16; column = 41 };
+    end_pos = { filename = "./data.fe"; line = 16; column = 42 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 16; column = 42 };
+    end_pos = { filename = "./data.fe"; line = 16; column = 46 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 16; column = 46 };
+    end_pos = { filename = "./data.fe"; line = 16; column = 47 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 17; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 17; column = 8 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 17; column = 8 };
+    end_pos = { filename = "./data.fe"; line = 17; column = 12 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 17; column = 12 };
+    end_pos = { filename = "./data.fe"; line = 17; column = 13 } }
+  { typ = (STRING "1 > 2 = ");
+    start_pos = { filename = "./data.fe"; line = 18; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 18; column = 15 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 18; column = 15 };
+    end_pos = { filename = "./data.fe"; line = 18; column = 16 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 18; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 18; column = 17 } }
+  { typ = GREATER;
+    start_pos = { filename = "./data.fe"; line = 18; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 18; column = 19 } }
+  { typ = (INT 2);
+    start_pos = { filename = "./data.fe"; line = 18; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 18; column = 21 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 18; column = 21 };
+    end_pos = { filename = "./data.fe"; line = 18; column = 22 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 18; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 18; column = 24 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 18; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 18; column = 28 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 18; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 18; column = 29 } }
+  { typ = (STRING "1 < 2 = ");
+    start_pos = { filename = "./data.fe"; line = 19; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 19; column = 15 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 19; column = 15 };
+    end_pos = { filename = "./data.fe"; line = 19; column = 16 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 19; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 19; column = 17 } }
+  { typ = LESS; start_pos = { filename = "./data.fe"; line = 19; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 19; column = 19 } }
+  { typ = (INT 2);
+    start_pos = { filename = "./data.fe"; line = 19; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 19; column = 21 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 19; column = 21 };
+    end_pos = { filename = "./data.fe"; line = 19; column = 22 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 19; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 19; column = 24 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 19; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 19; column = 28 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 19; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 19; column = 29 } }
+  { typ = (STRING "1 <= 1 = ");
+    start_pos = { filename = "./data.fe"; line = 20; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 20; column = 16 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 20; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 20; column = 17 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 20; column = 17 };
+    end_pos = { filename = "./data.fe"; line = 20; column = 18 } }
+  { typ = LESS_EQUAL;
+    start_pos = { filename = "./data.fe"; line = 20; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 20; column = 21 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 20; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 20; column = 23 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 20; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 20; column = 24 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 20; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 20; column = 26 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 20; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 20; column = 30 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 20; column = 30 };
+    end_pos = { filename = "./data.fe"; line = 20; column = 31 } }
+  { typ = (STRING "2 <= 1 = ");
+    start_pos = { filename = "./data.fe"; line = 21; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 21; column = 16 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 21; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 21; column = 17 } }
+  { typ = (INT 2);
+    start_pos = { filename = "./data.fe"; line = 21; column = 17 };
+    end_pos = { filename = "./data.fe"; line = 21; column = 18 } }
+  { typ = LESS_EQUAL;
+    start_pos = { filename = "./data.fe"; line = 21; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 21; column = 21 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 21; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 21; column = 23 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 21; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 21; column = 24 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 21; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 21; column = 26 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 21; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 21; column = 30 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 21; column = 30 };
+    end_pos = { filename = "./data.fe"; line = 21; column = 31 } }
+  { typ = (STRING "1 >= 1 = ");
+    start_pos = { filename = "./data.fe"; line = 22; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 22; column = 16 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 22; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 22; column = 17 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 22; column = 17 };
+    end_pos = { filename = "./data.fe"; line = 22; column = 18 } }
+  { typ = GREATER_EQUAL;
+    start_pos = { filename = "./data.fe"; line = 22; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 22; column = 21 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 22; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 22; column = 23 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 22; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 22; column = 24 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 22; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 22; column = 26 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 22; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 22; column = 30 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 22; column = 30 };
+    end_pos = { filename = "./data.fe"; line = 22; column = 31 } }
   { typ = (HTML_CLOSE_TAG "div");
-    start_pos = { filename = "./data.fe"; line = 10; column = 5 };
-    end_pos = { filename = "./data.fe"; line = 10; column = 11 } }
+    start_pos = { filename = "./data.fe"; line = 23; column = 5 };
+    end_pos = { filename = "./data.fe"; line = 23; column = 11 } }
   { typ = RIGHT_BRACE;
-    start_pos = { filename = "./data.fe"; line = 11; column = 3 };
-    end_pos = { filename = "./data.fe"; line = 11; column = 4 } }
+    start_pos = { filename = "./data.fe"; line = 24; column = 3 };
+    end_pos = { filename = "./data.fe"; line = 24; column = 4 } }
   { typ = RIGHT_BRACE;
-    start_pos = { filename = "./data.fe"; line = 12; column = 1 };
-    end_pos = { filename = "./data.fe"; line = 12; column = 2 } }
+    start_pos = { filename = "./data.fe"; line = 25; column = 1 };
+    end_pos = { filename = "./data.fe"; line = 25; column = 2 } }
   { typ = END_OF_INPUT;
-    start_pos = { filename = "./data.fe"; line = 13; column = 1 };
-    end_pos = { filename = "./data.fe"; line = 13; column = 1 } }
+    start_pos = { filename = "./data.fe"; line = 26; column = 1 };
+    end_pos = { filename = "./data.fe"; line = 26; column = 1 } }
 
 
   $ esy x print_ast ./data.fe
@@ -257,6 +584,98 @@
                         (ExpressionTemplateNode
                            UnaryExpression {operator = NEGATIVE;
                              argument = (LiteralExpression (FloatLiteral 2.5))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "true == true = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (BoolLiteral true));
+                             operator = EQUAL;
+                             right = (LiteralExpression (BoolLiteral true))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "true != true = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (BoolLiteral true));
+                             operator = NOT_EQUAL;
+                             right = (LiteralExpression (BoolLiteral true))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "true && true = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (BoolLiteral true));
+                             operator = AND;
+                             right = (LiteralExpression (BoolLiteral true))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "true && false = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (BoolLiteral true));
+                             operator = AND;
+                             right = (LiteralExpression (BoolLiteral false))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "true || false = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (BoolLiteral true));
+                             operator = OR;
+                             right = (LiteralExpression (BoolLiteral false))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "false || false = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (BoolLiteral false));
+                             operator = OR;
+                             right = (LiteralExpression (BoolLiteral false))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 > 2 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = GREATER;
+                             right = (LiteralExpression (IntLiteral 2))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 < 2 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = LESS;
+                             right = (LiteralExpression (IntLiteral 2))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 <= 1 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = LESS_EQUAL;
+                             right = (LiteralExpression (IntLiteral 1))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "2 <= 1 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 2));
+                             operator = LESS_EQUAL;
+                             right = (LiteralExpression (IntLiteral 1))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 >= 1 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = GREATER_EQUAL;
+                             right = (LiteralExpression (IntLiteral 1))});
                         (ExpressionTemplateNode
                            (LiteralExpression (StringLiteral "\n")))
                         ]}
