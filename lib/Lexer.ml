@@ -383,7 +383,10 @@ let scan t = begin
     | `Chr ':' -> next t; Token.COLON
     | `Chr ',' -> next t; Token.COMMA
     | `Chr ';' -> next t; Token.SEMICOLON
-    | `Chr '-' -> next t; Token.MINUS
+    | `Chr '-' -> 
+        if is_whitespace (peek t)
+          then ( next t; Token.MINUS )
+          else ( next t; Token.UNARY_MINUS )
     | `Chr '+' -> next t; Token.PLUS
     | `Chr '%' -> next t; Token.PERCENT
     | `Chr '?' -> next t; Token.QUESTIONMARK

@@ -149,7 +149,8 @@
   { typ = LEFT_BRACE;
     start_pos = { filename = "./data.fe"; line = 8; column = 12 };
     end_pos = { filename = "./data.fe"; line = 8; column = 13 } }
-  { typ = MINUS; start_pos = { filename = "./data.fe"; line = 8; column = 13 };
+  { typ = UNARY_MINUS;
+    start_pos = { filename = "./data.fe"; line = 8; column = 13 };
     end_pos = { filename = "./data.fe"; line = 8; column = 14 } }
   { typ = (INT 1);
     start_pos = { filename = "./data.fe"; line = 8; column = 14 };
@@ -172,7 +173,8 @@
   { typ = LEFT_BRACE;
     start_pos = { filename = "./data.fe"; line = 9; column = 14 };
     end_pos = { filename = "./data.fe"; line = 9; column = 15 } }
-  { typ = MINUS; start_pos = { filename = "./data.fe"; line = 9; column = 15 };
+  { typ = UNARY_MINUS;
+    start_pos = { filename = "./data.fe"; line = 9; column = 15 };
     end_pos = { filename = "./data.fe"; line = 9; column = 16 } }
   { typ = (FLOAT 2.5);
     start_pos = { filename = "./data.fe"; line = 9; column = 16 };

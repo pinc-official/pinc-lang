@@ -25,6 +25,7 @@ type token_type =
   | GREATER
   | LESS
   | PLUS
+  | UNARY_MINUS
   | MINUS
   | STAR
   | STAR_STAR
@@ -104,6 +105,7 @@ let to_string = function
   | LESS_EQUAL        -> "<="
   | PLUS              -> "+"
   | MINUS             -> "-"
+  | UNARY_MINUS       -> "-"
   | STAR              -> "*"
   | STAR_STAR         -> "**"
   | SLASH             -> "/"

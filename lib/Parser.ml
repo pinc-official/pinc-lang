@@ -252,10 +252,10 @@ module Rules = struct
       Some (Ast.TemplateExpression template_nodes)
 
     (* PARSING UNARY EXPRESSION *)
-    | (Token.NOT | Token.MINUS) as o -> begin
+    | (Token.NOT | Token.UNARY_MINUS) as o -> begin
       let operator = match o with
-      | Token.NOT   -> Ast.Operator.NOT
-      | Token.MINUS -> Ast.Operator.NEGATIVE
+      | Token.NOT         -> Ast.Operator.NOT
+      | Token.UNARY_MINUS -> Ast.Operator.NEGATIVE
       | _ -> assert false
       in
       next t;
