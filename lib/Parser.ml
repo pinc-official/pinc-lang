@@ -148,7 +148,7 @@ module Rules = struct
           children
         )
       in
-      Some (Ast.HtmlTemplateNode { tag; self_closing; attributes; children; })
+      Some (Ast.HtmlTemplateNode { tag; attributes; children; })
     end
     | Token.LESS ->
       next t;
@@ -171,7 +171,7 @@ module Rules = struct
         t |> expect Token.LESS_SLASH;
         t |> expect (Token.IDENT_LOWER name);
         t |> expect Token.GREATER;
-        Ast.ComponentTemplateNode { identifier = Id name; self_closing; attributes; children; }
+        Ast.ComponentTemplateNode { identifier = Id name; attributes; children; }
       end
       | _ -> assert false (* TODO: Error Message *)
       in

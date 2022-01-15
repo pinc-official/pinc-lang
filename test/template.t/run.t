@@ -25,15 +25,15 @@
                 right = (LiteralExpression (BoolLiteral true))};
               (ExpressionStmt
                  (TemplateExpression
-                    [HtmlTemplateNode {tag = "section"; self_closing = false;
+                    [HtmlTemplateNode {tag = "section";
                        attributes =
                        [{ key = "class";
                           value = (LiteralExpression (StringLiteral "Section"))
                           }
                          ];
                        children =
-                       [HtmlTemplateNode {tag = "div"; self_closing = true;
-                          attributes = []; children = []};
+                       [HtmlTemplateNode {tag = "div"; attributes = [];
+                          children = []};
                          (ExpressionTemplateNode
                             ConditionalExpression {
                               condition = (IdentifierExpression (Id "intro"));
@@ -53,7 +53,6 @@
                                                (TemplateExpression
                                                   [HtmlTemplateNode {
                                                      tag = "div";
-                                                     self_closing = true;
                                                      attributes = [];
                                                      children = []}
                                                     ]))
@@ -70,14 +69,13 @@
                                                       (TemplateExpression
                                                          [HtmlTemplateNode {
                                                             tag = "span";
-                                                            self_closing = true;
                                                             attributes = [];
                                                             children = []}
                                                            ]))
                                                    ]))})
                                    ]);
                               alternate = None});
-                         HtmlTemplateNode {tag = "div"; self_closing = false;
+                         HtmlTemplateNode {tag = "div";
                            attributes =
                            [{ key = "class";
                               value =
@@ -89,7 +87,7 @@
                            [(ExpressionTemplateNode
                                (IdentifierExpression (Id "content")))
                              ]};
-                         HtmlTemplateNode {tag = "div"; self_closing = false;
+                         HtmlTemplateNode {tag = "div";
                            attributes =
                            [{ key = "class";
                               value =

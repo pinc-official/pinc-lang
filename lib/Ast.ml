@@ -37,13 +37,11 @@ type literal =
 and template_node =
   | HtmlTemplateNode of {
     tag: string;
-    self_closing: bool;
     attributes: attribute list;
     children: template_node list;
   }
   | ComponentTemplateNode of {
     identifier: identifier;
-    self_closing: bool;
     attributes: attribute list;
     children: template_node list;
   }
