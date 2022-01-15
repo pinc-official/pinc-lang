@@ -31,6 +31,8 @@ let is_true = function
   | Ast.IntLiteral _    -> true
   | Ast.FloatLiteral _  -> true
 
+let negate_literal l = not (is_true l)
+
 let output x state = {
   state with
   output = state.output ^ (literal_to_string x);
@@ -75,7 +77,14 @@ let rec literal_of_expr state expr = match expr with
         | None -> NullLiteral
       end
 
-  | Ast.UnaryExpression _           -> NullLiteral (* TODO: *)
+  | Ast.UnaryExpression { operator; argument; } ->
+    let res = argument |> literal_of_expr state in
+    begin match operator, res with
+    | Ast.Operator.NOT, literal -> Ast.BoolLiteral (negate_literal literal)
+    | Ast.Operator.NEGATIVE, IntLiteral i -> Ast.IntLiteral (Int.neg i)
+    | Ast.Operator.NEGATIVE, FloatLiteral f -> Ast.FloatLiteral (Float.neg f)
+    | Ast.Operator.NEGATIVE, _ -> failwith "Invalid usage of unary - operator"
+    end
 
   | Ast.BinaryExpression _          -> NullLiteral (* TODO: *)
 

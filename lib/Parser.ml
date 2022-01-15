@@ -222,7 +222,7 @@ module Rules = struct
           alternate;
         })
       end
-    | (Token.NOT | Token.MINUS | Token.PLUS) as o -> begin
+    | (Token.NOT | Token.MINUS) as o -> begin
       let operator = match o with
       | Token.NOT   -> Ast.Operator.NOT
       | Token.MINUS -> Ast.Operator.NEGATIVE

@@ -378,8 +378,8 @@ let scan t = begin
     | `Chr ')' -> next t; Token.RIGHT_PAREN
     | `Chr '[' -> next t; Token.LEFT_BRACK
     | `Chr ']' -> next t; Token.RIGHT_BRACK
-    | `Chr '{' -> next t; Token.LEFT_BRACE
-    | `Chr '}' -> next t; Token.RIGHT_BRACE
+    | `Chr '{' -> setNormalMode t; next t; Token.LEFT_BRACE (* NOTE: Do we always want to go into normal mode when seeing { ? *)
+    | `Chr '}' -> popNormalMode t; next t; Token.RIGHT_BRACE
     | `Chr ':' -> next t; Token.COLON
     | `Chr ',' -> next t; Token.COMMA
     | `Chr ';' -> next t; Token.SEMICOLON
