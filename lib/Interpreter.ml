@@ -20,12 +20,13 @@ end
 module Literal = struct
   type t = Ast.literal
 
-  let to_string = function
+  let rec to_string = function
     | Ast.NullLiteral     -> ""
     | Ast.StringLiteral s -> s
     | Ast.IntLiteral i    -> string_of_int i
     | Ast.FloatLiteral f  -> string_of_float f
     | Ast.BoolLiteral b   -> if b then "true" else "false"
+    | Ast.ArrayLiteral l  -> l |> List.map to_string |> String.concat ""
 
   let is_true = function
     | Ast.NullLiteral     -> false
@@ -33,14 +34,16 @@ module Literal = struct
     | Ast.StringLiteral s -> s |> String.trim |> String.length > 0
     | Ast.IntLiteral _    -> true
     | Ast.FloatLiteral _  -> true
+    | Ast.ArrayLiteral l  -> l |> List.length > 0 (* TODO: Is a list of only null values also not true? *)
 
   let neg l = not (is_true l)
   
   let equal a b = match a, b with
     | Ast.StringLiteral a, Ast.StringLiteral b -> String.equal a b
-    | Ast.IntLiteral a, Ast.IntLiteral b       -> Int.equal a b
-    | Ast.FloatLiteral a, Ast.FloatLiteral b   -> Float.equal a b
-    | Ast.BoolLiteral a, Ast.BoolLiteral b     -> Bool.equal a b
+    | Ast.IntLiteral a, Ast.IntLiteral b       -> a = b
+    | Ast.FloatLiteral a, Ast.FloatLiteral b   -> a = b
+    | Ast.BoolLiteral a, Ast.BoolLiteral b     -> a = b
+    | Ast.ArrayLiteral a, Ast.ArrayLiteral b   -> a = b
     | Ast.NullLiteral, Ast.NullLiteral         -> true
     | _ -> false
 
@@ -49,6 +52,7 @@ module Literal = struct
     | Ast.IntLiteral a, Ast.IntLiteral b       -> Int.compare a b
     | Ast.FloatLiteral a, Ast.FloatLiteral b   -> Float.compare a b
     | Ast.BoolLiteral a, Ast.BoolLiteral b     -> Bool.compare a b
+    | Ast.ArrayLiteral a, Ast.ArrayLiteral b   -> List.length a - List.length b
     | Ast.NullLiteral, Ast.NullLiteral         -> 0
     | _ -> failwith "Nope"
 
@@ -71,13 +75,7 @@ let rec literal_of_expr state expr = match expr with
     | Some v -> v
   end
 
-  | Ast.ArrayExpression expressions ->
-    StringLiteral ( 
-      expressions
-      |> List.map (literal_of_expr state)
-      |> List.map Literal.to_string
-      |> String.concat ""
-    )
+  | Ast.ArrayExpression expressions -> ArrayLiteral (expressions |> List.map (literal_of_expr state))
 
   | Ast.SymbolExpression _          -> NullLiteral (* TODO: *)
 

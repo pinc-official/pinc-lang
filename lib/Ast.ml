@@ -30,6 +30,7 @@ type literal =
   | IntLiteral of int
   | FloatLiteral of float
   | BoolLiteral of bool
+  | ArrayLiteral of literal list
 [@@deriving show { with_path = false }]
 
 and template_node =
