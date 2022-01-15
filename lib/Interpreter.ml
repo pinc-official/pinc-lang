@@ -1,10 +1,3 @@
-module List = struct
-  include List
-  let is_empty = function
-  | [] -> true
-  | _ -> false
-end
-
 type scope = {
   identifiers: (string, Ast.literal) Hashtbl.t
 }
@@ -89,26 +82,28 @@ let rec literal_of_expr state expr = match expr with
   | Ast.LogicalExpression _         -> NullLiteral (* TODO: *)
 
 and html_attr_to_string state (attr: Ast.attribute) =
-  let buf = Buffer.create 64 in
-  Buffer.add_string buf attr.key;
-  Buffer.add_string buf "=\"";
-  literal_of_expr state attr.value |> literal_to_string |> Buffer.add_string buf;
-  Buffer.add_string buf "\"";
-  Buffer.contents buf
+  let value = literal_of_expr state attr.value |> literal_to_string in
+  let key = attr.key in
+  Printf.sprintf "%s=\"%s\"" key value
 
 and template_to_string state template = match template with
   | Ast.TextTemplateNode text -> text
   | Ast.HtmlTemplateNode { tag; attributes; children; _ } ->
-    let buf = Buffer.create 256 in
-    Buffer.add_string buf ("<" ^ tag);
-    if not (List.is_empty attributes) then begin
-      Buffer.add_string buf " ";
-      Buffer.add_string buf (List.fold_left (fun acc curr -> acc ^ html_attr_to_string state curr) "" attributes);
-    end;
-    Buffer.add_string buf ">";
-    Buffer.add_string buf (List.fold_left (fun acc curr -> acc ^ template_to_string state curr) "" children);
-    Buffer.add_string buf ("</" ^ tag ^ ">");
-    Buffer.contents buf
+    let attributes = 
+      attributes 
+      |> List.map (html_attr_to_string state) 
+      |> String.concat " "
+    in
+    let children = 
+      children 
+      |> List.map (template_to_string state)
+      |> String.concat ""
+    in
+    Printf.sprintf "<%s%s>%s</%s>"
+      tag
+      (if attributes <> "" then " " ^ attributes else "")
+      children
+      tag
   | Ast.ExpressionTemplateNode expr -> literal_to_string (literal_of_expr state expr)
   | Ast.ComponentTemplateNode { identifier=_; attributes=_; children=_; _ } -> "" (* TODO: *)
 
