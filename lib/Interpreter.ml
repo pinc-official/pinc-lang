@@ -88,8 +88,6 @@ let rec literal_of_expr state expr = match expr with
 
   | Ast.BinaryExpression _          -> NullLiteral (* TODO: *)
 
-  | Ast.LogicalExpression _         -> NullLiteral (* TODO: *)
-
 and html_attr_to_string state (attr: Ast.attribute) =
   let value = literal_of_expr state attr.value |> literal_to_string in
   let key = attr.key in

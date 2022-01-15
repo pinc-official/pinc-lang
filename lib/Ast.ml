@@ -12,11 +12,9 @@ module Operator = struct
   | EQUAL | NOT_EQUAL
   | GREATER | GREATER_EQUAL
   | LESS | LESS_EQUAL
-  | PLUS | MINUS | TIMES | DIV
+  | PLUS | MINUS | TIMES | DIV | POW
   | IN
-  [@@deriving show { with_path = false }]
-
-  type logical = AND | OR
+  | AND | OR
   [@@deriving show { with_path = false }]
 
   type unary = NEGATIVE | NOT
@@ -76,11 +74,6 @@ and expression =
   | BinaryExpression of {
     left: expression;
     operator: Operator.binary;
-    right: expression;
-  }
-  | LogicalExpression of {
-    left: expression;
-    operator: Operator.logical;
     right: expression;
   }
 [@@deriving show { with_path = false }]
