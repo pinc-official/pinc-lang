@@ -7,7 +7,7 @@ site Main(
   let languages =
     @NodeContext(
       id: Language,
-      label: "Language"
+      label: "Language",
       options: [@ContextOption(value: "en_US", label: "English")],
       matchers: [@UrlMatcher(match: "en_US")]
     );
@@ -15,7 +15,7 @@ site Main(
   let targeting =
     @NodeContext(
       id: Targeting,
-      label: "Target"
+      label: "Target",
       options: [
         @ContextOption(value: "unknown", label: "Unknown"),
         @ContextOption(value: "developer", label: "Developer"),
@@ -43,12 +43,12 @@ site Main(
 
   @Template {
     <DefaultPage title={title}>
-      <DefaultPage.Stage>
+      <DefaultPageStage>
         {stage}
-      </DefaultPage.Stage>
-      <DefaultPage.MainContent>
+      </DefaultPageStage>
+      <DefaultPageMainContent>
         {mainContent}
-      </DefaultPage.MainContent>
+      </DefaultPageMainContent>
     </DefaultPage>
   }
 }
