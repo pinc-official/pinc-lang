@@ -1,7 +1,7 @@
 type mode = Normal | TemplateAttributes | Template | TemplateBlock
 [@@deriving show { with_path = false }]
 
-type char' = [ | `Chr of Char.t | `EOF ]
+type char' = [ | `Chr of char | `EOF ]
 
 type t = {
   filename: string;
@@ -200,6 +200,7 @@ let scan_symbol_or_template t = begin
 end
 
 let get_html_tag_ident t = begin
+  let start_pos = make_position t in
   let rec loop acc t =
     match t.current with
     | `Chr ('a'..'z' as c)
@@ -210,22 +211,55 @@ let get_html_tag_ident t = begin
   in
   let ident = loop "" t in
   skip_whitespace t;
-  ident
+  match ident.[0] with
+  | 'a'..'z' -> ident
+  | _ -> 
+    Diagnostics.report ~start_pos ~end_pos:(make_position t)
+      (Diagnostics.Message (Printf.sprintf "Invalid HTML tag! HTML tags have to start with a lowercase letter. Instead saw: %s" ident))
 end
 
-let scan_html_open_tag t = begin
+let get_uppercase_ident t = begin
+  (* NOTE: List all vaid chars for identifiers here: *)
+  let rec loop acc t =
+    match t.current with
+    | `Chr ('A'..'Z' as c)
+    | `Chr ('a'..'z' as c)
+    | `Chr ('0'..'9' as c)
+    | `Chr ('_' as c) ->
+      next t;
+      loop (acc ^ String.make 1 c) t
+    | _ -> acc
+  in
+  loop "" t
+end
+
+let scan_open_tag t = begin
+  let start_pos = make_position t in
   (* NEXT once to skip the beginning < char *)
   next t;
-  Token.HTML_OPEN_TAG (get_html_tag_ident t)
+  match t.current with
+  | `Chr 'a'..'z' -> Token.HTML_OPEN_TAG (get_html_tag_ident t)
+  | `Chr 'A'..'Z' -> Token.COMPONENT_OPEN_TAG (get_uppercase_ident t)
+  | `Chr c        ->
+    Diagnostics.report ~start_pos ~end_pos:(make_position t)
+      (Diagnostics.Message (Printf.sprintf "Invalid Template tag! Template tags have to start with an uppercase or lowercase letter. Instead saw: %c" c))
+  | `EOF -> Diagnostics.report ~start_pos ~end_pos:(make_position t) Diagnostics.NonTerminatedTemplate
 end
 
-let scan_html_close_tag t = begin
+let scan_close_tag t = begin
   let start_pos = make_position t in
   (* NEXT twice to skip the beginning </ chars *)
   next_n ~n:2 t;
-  let ident = get_html_tag_ident t in
+  let close_tag = match t.current with
+  | `Chr 'a'..'z' -> Token.HTML_CLOSE_TAG (get_html_tag_ident t)
+  | `Chr 'A'..'Z' -> Token.COMPONENT_CLOSE_TAG (get_uppercase_ident t)
+  | `Chr c        ->
+    Diagnostics.report ~start_pos ~end_pos:(make_position t)
+      (Diagnostics.Message (Printf.sprintf "Invalid Template tag! Template tags have to start with an uppercase or lowercase letter. Instead saw: %c" c))
+  | `EOF -> Diagnostics.report ~start_pos ~end_pos:(make_position t) Diagnostics.NonTerminatedTemplate
+  in
   match t.current with
-  | `Chr '>' -> next t; Token.HTML_CLOSE_TAG ident
+  | `Chr '>' -> next t; close_tag
   | _        -> Diagnostics.report ~start_pos ~end_pos:(make_position t) (ExpectedToken Token.GREATER)
 end
 
@@ -326,8 +360,9 @@ let scan t = begin
     | `Chr '}' -> popNormalMode t; next t; Token.RIGHT_BRACE
     | `Chr '<' -> (
       match peek t with
-      | `Chr 'a'..'z' -> setTemplateMode t; setTemplateAttributesMode t; scan_html_open_tag t;
-      | `Chr '/'      -> popTemplateMode t; scan_html_close_tag t;
+      | `Chr 'a'..'z'
+      | `Chr 'A'..'Z' -> setTemplateMode t; setTemplateAttributesMode t; scan_open_tag t;
+      | `Chr '/'      -> popTemplateMode t; scan_close_tag t;
       | _             -> scan_template_text t
     )
     | `EOF     -> Diagnostics.report ~start_pos ~end_pos:(make_position t) Diagnostics.NonTerminatedTemplate
@@ -402,11 +437,9 @@ let scan t = begin
     | `Chr '<' -> (
       match peek t with
       | `Chr '='      -> next_n ~n:2 t; Token.LESS_EQUAL
-      | `Chr '/'      -> popTemplateMode t; scan_html_close_tag t;
-      | `Chr 'a'..'z' ->
-        setTemplateMode t;
-        setTemplateAttributesMode t;
-        scan_html_open_tag t;
+      | `Chr '/'      -> popTemplateMode t; scan_close_tag t;
+      | `Chr 'a'..'z'
+      | `Chr 'A'..'Z' -> setTemplateMode t; setTemplateAttributesMode t; scan_open_tag t;
       | c when ((is_whitespace t.prev) && (is_whitespace c)) -> next t; Token.LESS
       | _             -> Diagnostics.report ~start_pos ~end_pos:(make_position t) (Diagnostics.UnknownCharacter '<')
     )

@@ -55,6 +55,8 @@ type token_type =
   | TEMPLATE
   | HTML_OPEN_TAG of string
   | HTML_CLOSE_TAG of string
+  | COMPONENT_OPEN_TAG of string
+  | COMPONENT_CLOSE_TAG of string
   | LESS_SLASH
 
   | END_OF_INPUT
@@ -121,6 +123,8 @@ let to_string = function
   | TEMPLATE          -> "@Template"
   | HTML_OPEN_TAG s   -> Printf.sprintf "<%s>" s
   | HTML_CLOSE_TAG s  -> Printf.sprintf "</%s>" s
+  | COMPONENT_OPEN_TAG s   -> Printf.sprintf "<%s>" s
+  | COMPONENT_CLOSE_TAG s  -> Printf.sprintf "</%s>" s
   | LESS_SLASH        -> "</"
   | END_OF_INPUT      -> "(EOF)"
 

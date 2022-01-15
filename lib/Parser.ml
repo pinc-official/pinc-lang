@@ -127,12 +127,10 @@ module Rules = struct
       Some (Ast.TextTemplateNode s)
     | Token.LEFT_BRACE ->
       next t;
-      (* t.lexer |> Lexer.setNormalMode; *)
       let expression = match expr t with
       | Some e -> Ast.ExpressionTemplateNode e
       | None   -> assert false; (* TODO: Error Message *)
       in
-      (* t.lexer |> Lexer.popNormalMode; *)
       t |> expect Token.RIGHT_BRACE;
       Some expression
     | Token.HTML_OPEN_TAG tag -> begin
@@ -150,32 +148,21 @@ module Rules = struct
       in
       Some (Ast.HtmlTemplateNode { tag; attributes; children; })
     end
-    | Token.LESS ->
+    | Token.COMPONENT_OPEN_TAG identifier -> begin
       next t;
-      let node = match t.token.typ with
-      | Token.IDENT_UPPER name -> begin
-        next t;
-        let attributes = Helpers.list ~fn:(attribute ~sep:Token.EQUAL) t in
-        let self_closing = t |> optional Token.SLASH in
-        t |> expect Token.GREATER;
-        let children = if self_closing
-          then []
-          else (
-            let children = t |> Helpers.list ~fn:template_node in
-            t |> expect Token.LESS_SLASH;
-            t |> expect (Token.IDENT_LOWER name);
-            t |> expect Token.GREATER;
-            children
-          )
-        in
-        t |> expect Token.LESS_SLASH;
-        t |> expect (Token.IDENT_LOWER name);
-        t |> expect Token.GREATER;
-        Ast.ComponentTemplateNode { identifier = Id name; attributes; children; }
-      end
-      | _ -> assert false (* TODO: Error Message *)
+      let attributes = Helpers.list ~fn:(attribute ~sep:Token.EQUAL) t in
+      let self_closing = t |> optional Token.SLASH in
+      t |> expect Token.GREATER;
+      let children = if self_closing
+        then []
+        else (
+          let children = t |> Helpers.list ~fn:template_node in
+          t |> expect (Token.COMPONENT_CLOSE_TAG identifier);
+          children
+        )
       in
-      Some node
+      Some (Ast.ComponentTemplateNode { identifier = Id identifier; attributes; children; })
+    end
     | _ -> None
   end
 
