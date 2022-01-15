@@ -268,6 +268,7 @@ let scan_template_text t = begin
   let rec loop acc t =
     match t.current with
     | `EOF -> Diagnostics.report ~start_pos ~end_pos:(make_position t) Diagnostics.NonTerminatedTemplate
+    | `Chr '{' -> acc
     | `Chr '<' -> (
       match peek t with
       | `Chr '/'      -> acc
