@@ -168,31 +168,80 @@ module Rules = struct
 
   and expr t = begin
     match t.token.typ with
+    (* PARSING BLOCK EXPRESSION *)
+    | Token.LEFT_BRACE -> begin
+      next t;
+      let statements = Helpers.list ~fn:statement t in
+      t |> expect Token.RIGHT_BRACE;
+      Some (Ast.BlockExpression statements)
+    end
+
+    (* PARSING FOR IN EXPRESSION *)
+    | Token.KEYWORD_FOR -> begin
+      next t;
+      match t.token.typ with
+      | Token.IDENT_LOWER identifier ->
+        next t;
+        let* right = expr t in
+        let body = Helpers.list ~fn:statement t in
+        let left = Ast.Id identifier in
+        Some (Ast.ForInExpression { left; right; body; })
+      | _ -> assert false (* TODO: Error Message :) *)
+    end
+
+    (* PARSING IF EXPRESSION *)
+    | Token.KEYWORD_IF -> begin
+      next t;
+      expect Token.LEFT_PAREN t;
+      let* condition = expr t in
+      expect Token.RIGHT_PAREN t;
+      let* consequent = expr t in
+      let alternate = 
+        if optional Token.KEYWORD_ELSE t
+        then expr t
+        else None
+      in
+      Some (Ast.ConditionalExpression {
+        condition;
+        consequent;
+        alternate;
+      })
+    end
+
+    (* PARSING ARRAY EXPRESSION *)
     | Token.LEFT_BRACK -> begin
         next t;
         let expressions = Helpers.separated_list ~sep:Token.COMMA ~fn:expr t in
         expect Token.RIGHT_BRACK t;
         Some (Ast.ArrayExpression expressions)
       end
+
+    (* PARSING SYMBOL EXPRESSION *)
     | Token.SYMBOL name -> begin
-        next t;
-        t |> expect Token.LEFT_PAREN;
-        let attributes = t |> Helpers.separated_list ~fn:attribute ~sep:Token.COMMA in
-        t |> expect Token.RIGHT_PAREN;
+      next t;
+      t |> expect Token.LEFT_PAREN;
+      let attributes = t |> Helpers.separated_list ~fn:attribute ~sep:Token.COMMA in
+      t |> expect Token.RIGHT_PAREN;
 
-        let body = if t |> optional Token.LEFT_BRACE then (
-          let body = statement t in
-          t |> expect Token.RIGHT_BRACE;
-          body
-        ) else (
-          None
-        ) in
+      let body = if t |> optional Token.LEFT_BRACE then (
+        let body = statement t in
+        t |> expect Token.RIGHT_BRACE;
+        body
+      ) else (
+        None
+      ) in
 
-        Some (Ast.SymbolExpression { name; attributes; body; })
-      end
-    | Token.HTML_OPEN_TAG _ ->
+      Some (Ast.SymbolExpression { name; attributes; body; })
+    end
+
+    (* PARSING TEMPLATE EXPRESSION *)
+    | Token.HTML_OPEN_TAG _
+    | Token.COMPONENT_OPEN_TAG _ -> begin
       let template_nodes = t |> Helpers.list ~fn:template_node in
       Some (Ast.TemplateExpression template_nodes)
+    end
+
+    (* PARSING TEMPLATE EXPRESSION *)
     | Token.TEMPLATE ->
       next t;
       t.lexer |> Lexer.setTemplateBlockMode;
@@ -201,27 +250,8 @@ module Rules = struct
       t.lexer |> Lexer.popTemplateBlockMode;
       t |> expect Token.RIGHT_BRACE;
       Some (Ast.TemplateExpression template_nodes)
-    | Token.KEYWORD_IF -> begin
-        next t;
 
-        expect Token.LEFT_PAREN t;
-        let* condition = expr t in
-        expect Token.RIGHT_PAREN t;
-
-        let* consequent = expr t in
-
-        let alternate = 
-          if optional Token.KEYWORD_ELSE t
-          then expr t
-          else None
-        in
-
-        Some (Ast.ConditionalExpression {
-          condition;
-          consequent;
-          alternate;
-        })
-      end
+    (* PARSING UNARY EXPRESSION *)
     | (Token.NOT | Token.MINUS) as o -> begin
       let operator = match o with
       | Token.NOT   -> Ast.Operator.NOT
@@ -234,26 +264,14 @@ module Rules = struct
         Ast.UnaryExpression { operator; argument; }
       )
       end
-    | Token.LEFT_BRACE ->
-      next t;
-      let statements = Helpers.list ~fn:statement t in
-      t |> expect Token.RIGHT_BRACE;
-      Some (Ast.BlockExpression statements)
-    | Token.KEYWORD_FOR -> begin
-      next t;
-      match t.token.typ with
-      | Token.IDENT_LOWER identifier ->
-        next t;
-        let* right = expr t in
-        let body = Helpers.list ~fn:statement t in
-        let left = Ast.Id identifier in
-        Some (Ast.ForInExpression { left; right; body; })
-      | _ -> assert false (* TODO: Error Message :) *)
-    end
+
+    (* PARSING IDENTIFIER EXPRESSION *)
     | Token.IDENT_LOWER identifier
     | Token.IDENT_UPPER identifier ->
       next t;
       Some (Ast.IdentifierExpression (Id identifier))
+
+    (* PARSING LITERAL EXPRESSION *)
     | Token.STRING _
     | Token.INT _
     | Token.FLOAT _
@@ -264,6 +282,7 @@ module Rules = struct
           Ast.LiteralExpression o
         )
       end
+
     | _ -> None
   end
 
