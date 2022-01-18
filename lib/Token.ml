@@ -6,7 +6,7 @@ type token_type =
   | INT of int
   | FLOAT of float
   | STRING of string
-  | SYMBOL of string
+  | TAG of string
 
   | LEFT_PAREN
   | RIGHT_PAREN
@@ -76,7 +76,7 @@ let to_string = function
   | FLOAT f           -> Printf.sprintf "%f" f
   | INT i             -> Printf.sprintf "%i" i
   | STRING s          -> Printf.sprintf "%S" s
-  | SYMBOL s          -> Printf.sprintf "@%s" (String.capitalize_ascii s)
+  | TAG s             -> Printf.sprintf "#%s" (String.capitalize_ascii s)
   | IDENT_LOWER s     -> Printf.sprintf "%s" (String.lowercase_ascii s)
   | IDENT_UPPER s     -> Printf.sprintf "%s" (String.capitalize_ascii s)
   | KEYWORD_TRUE      -> "true"

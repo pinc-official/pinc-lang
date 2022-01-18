@@ -5,43 +5,43 @@ site Main(
   additionalDomains: ["fennek-cms.com"]
 ) {
   let languages =
-    @NodeContext(
+    #NodeContext(
       id: Language,
       label: "Language",
-      options: [@ContextOption(value: "en_US", label: "English")],
-      matchers: [@UrlMatcher(match: "en_US")]
+      options: [#ContextOption(value: "en_US", label: "English")],
+      matchers: [#UrlMatcher(match: "en_US")]
     );
 
   let targeting =
-    @NodeContext(
+    #NodeContext(
       id: Targeting,
       label: "Target",
       options: [
-        @ContextOption(value: "unknown", label: "Unknown"),
-        @ContextOption(value: "developer", label: "Developer"),
-        @ContextOption(value: "editor", label: "Editor"),
+        #ContextOption(value: "unknown", label: "Unknown"),
+        #ContextOption(value: "developer", label: "Developer"),
+        #ContextOption(value: "editor", label: "Editor"),
       ],
       matchers: [
-        @CookieMatcher(match: "editor", key: "targeting", value: "editor"),
-        @CookieMatcher(match: "developer", key: "targeting", value: "developer"),
-        @CookieMatcher(match: "unknown"), // This is the default case. Because it has no conditions set, it will always match.
+        #CookieMatcher(match: "editor", key: "targeting", value: "editor"),
+        #CookieMatcher(match: "developer", key: "targeting", value: "developer"),
+        #CookieMatcher(match: "unknown"), // This is the default case. Because it has no conditions set, it will always match.
       ]
     );
 
-  let theme = @Context(id: Theme, value: "primary");
+  let theme = #Context(id: Theme, value: "primary");
 
-  let mainNavigation = @PageTree(label: "Main Navigation", maxLevels: 2);
-  let metaNavigation = @PageTree(label: "Meta Navigation", instanceOf: [DefaultPage], maxLevels: 1);
+  let mainNavigation = #PageTree(label: "Main Navigation", maxLevels: 2);
+  let metaNavigation = #PageTree(label: "Meta Navigation", instanceOf: [DefaultPage], maxLevels: 1);
 
-  let title = @String(label: "Title", value: "Homepage");
+  let title = #String(label: "Title", value: "Homepage");
 
   let stage =
-    @Slot(label: "Stage", id: Stage, instanceOf: [ImageStage], min: 1, max: 1);
+    #Slot(label: "Stage", id: Stage, instanceOf: [ImageStage], min: 1, max: 1);
 
   let mainContent =
-    @Slot(label: "Content", id: MainContent, instanceOf: [Section], min: 1);
+    #Slot(label: "Content", id: MainContent, instanceOf: [Section], min: 1);
 
-  @Template {
+  #Template {
     <DefaultPage title={title}>
       <DefaultPageStage>
         {stage}

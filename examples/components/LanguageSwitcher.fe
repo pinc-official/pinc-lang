@@ -1,5 +1,5 @@
 component LanguageSwitcher {
-  let languageContext = @GetNodeContext(id: Language);
+  let languageContext = #GetNodeContext(id: Language);
 
   @Template {
     <ul class="LanguageSwitcher">

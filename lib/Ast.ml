@@ -51,7 +51,7 @@ and expression =
   | IdentifierExpression of identifier
   | LiteralExpression of literal
   | ArrayExpression of expression list
-  | SymbolExpression of symbol
+  | TagExpression of tag
 
   | ForInExpression of {
     left: identifier;
@@ -85,7 +85,7 @@ and attribute = {
 }
 [@@deriving show { with_path = false }]
 
-and symbol = {
+and tag = {
   name: string;
   attributes: attribute list;
   body: statement option;

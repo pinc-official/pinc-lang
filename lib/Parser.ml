@@ -216,8 +216,8 @@ module Rules = struct
         Some (Ast.ArrayExpression expressions)
       end
 
-    (* PARSING SYMBOL EXPRESSION *)
-    | Token.SYMBOL name -> begin
+    (* PARSING TAG EXPRESSION *)
+    | Token.TAG name -> begin
       next t;
       t |> expect Token.LEFT_PAREN;
       let attributes = t |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA in
@@ -231,7 +231,7 @@ module Rules = struct
         None
       ) in
 
-      Some (Ast.SymbolExpression { name; attributes; body; })
+      Some (Ast.TagExpression { name; attributes; body; })
     end
 
     (* PARSING TEMPLATE EXPRESSION *)

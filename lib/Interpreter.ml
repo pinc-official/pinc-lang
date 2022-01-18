@@ -77,7 +77,7 @@ let rec literal_of_expr state expr = match expr with
 
   | Ast.ArrayExpression expressions -> ArrayLiteral (expressions |> List.map (literal_of_expr state))
 
-  | Ast.SymbolExpression _          -> NullLiteral (* TODO: *)
+  | Ast.TagExpression _          -> NullLiteral (* TODO: *)
 
   | Ast.ForInExpression _           -> NullLiteral (* TODO: *)
 

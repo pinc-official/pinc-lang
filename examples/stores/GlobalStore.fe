@@ -3,5 +3,5 @@ store Global(
   icon: "/images/icons/globe.svg",
   availableIn: [Main, Docs]
 ) {
-	let logo = @Asset(type: ["image/svg", "image/png"], upload: true, library: true);
+	let logo = #Asset(type: ["image/svg", "image/png"], upload: true, library: true);
 }

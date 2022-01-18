@@ -173,7 +173,7 @@ let scan_string t = begin
   Token.STRING found
 end
 
-let scan_symbol_or_template t = begin
+let scan_tag_or_template t = begin
   let start_pos = make_position t in
   let rec loop acc t =
     match t.current with
@@ -185,17 +185,17 @@ let scan_symbol_or_template t = begin
       loop (acc ^ String.make 1 c) t
     | _ -> acc
   in
-  (* NEXT once to skip the beginning @ symbol *)
+  (* NEXT once to skip the beginning # symbol *)
   next t;
   let found = loop "" t in
   match found with
   | "Template" -> Token.TEMPLATE
   | s          -> begin
     match s.[0] with
-    | 'A'..'Z' -> Token.SYMBOL found
+    | 'A'..'Z' -> Token.TAG found
     | _ -> 
       Diagnostics.report ~start_pos ~end_pos:(make_position t)
-      (Diagnostics.Message (Printf.sprintf "Invalid Symbol! Symbols have to start with an uppercase character. Did you mean to write @%s?" (String.capitalize_ascii found)))
+      (Diagnostics.Message (Printf.sprintf "Invalid Tag! Tags have to start with an uppercase character. Did you mean to write #%s?" (String.capitalize_ascii found)))
   end
 end
 
@@ -401,9 +401,9 @@ let scan t = begin
       | `Chr '0'..'9' -> scan_number t
       | _            -> next t; Token.DOT
     )
-    | `Chr '@' -> (
+    | `Chr '#' -> (
       match peek t with
-      | `Chr 'A'..'Z' | `Chr 'a'..'z'    -> scan_symbol_or_template t
+      | `Chr 'A'..'Z' | `Chr 'a'..'z'    -> scan_tag_or_template t
       | _ -> Diagnostics.report ~start_pos ~end_pos:(make_position t) (Diagnostics.UnknownCharacter '@')
     )
     | `Chr '&' -> (

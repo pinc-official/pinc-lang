@@ -1,12 +1,12 @@
 component Stylesheets {
-  let theme = @GetContext(id: Theme);
+  let theme = #GetContext(id: Theme);
 
-  let swiper    = @StaticAsset(path: "/vendor/swiper/swiper.bundle.css");
-  let main      = @StaticAsset(path: "/css/main.css");
-  let primary   = @StaticAsset(path: "/css/theme.primary.css");
-  let secondary = @StaticAsset(path: "/css/theme.secondary.css");
+  let swiper    = #StaticAsset(path: "/vendor/swiper/swiper.bundle.css");
+  let main      = #StaticAsset(path: "/css/main.css");
+  let primary   = #StaticAsset(path: "/css/theme.primary.css");
+  let secondary = #StaticAsset(path: "/css/theme.secondary.css");
 
-  @Template {
+  #Template {
     <link rel="stylesheet" href={swiper} />
     <link rel="stylesheet" href={main} />
     {if (theme == "primary") {
