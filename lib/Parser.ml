@@ -49,10 +49,16 @@ end
 
 module Helpers = struct
   let expect_identifier ?(typ=`All) t = begin
+    let start_pos = Lexer.make_position t.lexer in
     match t.token.typ with
     | Token.IDENT_UPPER i when typ = `Upper || typ = `All -> next t; i
     | Token.IDENT_LOWER i when typ = `Lower || typ = `All -> next t; i
-    | _ -> assert false (* TODO: Error message *)
+    | token when typ = `Lower ->
+      Diagnostics.report ~start_pos ~end_pos:(Lexer.make_position t.lexer) (Diagnostics.ExpectedLowerIdent token)
+    | token when typ = `Upper ->
+      Diagnostics.report ~start_pos ~end_pos:(Lexer.make_position t.lexer) (Diagnostics.ExpectedUpperIdent token)
+    | token ->
+      Diagnostics.report ~start_pos ~end_pos:(Lexer.make_position t.lexer) (Diagnostics.ExpectedIdent token)
   end
 
   let separated_list ~sep ~fn t = begin
