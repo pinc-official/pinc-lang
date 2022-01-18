@@ -7,8 +7,20 @@
 
 - Test wether all possible html attributes are parsing correctly. (`:`)
 
+- Do we need Objects / Maps? (`{ foo: "bar" }`)
+
+- Do we want the programmer to be able to add new Tags to the cms to implement new editors?
+
 ## Parser
 
 - Operator precedence
 
 - for in Expression: Needs testing
+
+- Functions / Lambdas
+
+- Pipe operator
+
+- `.` operator for object access
+
+- String Templates (`"Section--${alignment}"`)
