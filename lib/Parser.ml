@@ -185,14 +185,14 @@ module Rules = struct
     (* PARSING FOR IN EXPRESSION *)
     | Token.KEYWORD_FOR -> begin
       next t;
-      match t.token.typ with
-      | Token.IDENT_LOWER identifier ->
-        next t;
-        let* right = parse_expression t in
-        let body = Helpers.list ~fn:parse_statement t in
-        let left = Ast.Id identifier in
-        Some (Ast.ForInExpression { left; right; body; })
-      | _ -> assert false (* TODO: Error Message :) *)
+      expect Token.LEFT_PAREN t;
+      let identifier = Helpers.expect_identifier ~typ:`Lower t in
+      expect Token.KEYWORD_IN t;
+      let* right = parse_expression t in
+      expect Token.RIGHT_PAREN t;
+      let body = Helpers.list ~fn:parse_statement t in
+      let left = Ast.Id identifier in
+      Some (Ast.ForInExpression { left; right; body; })
     end
 
     (* PARSING IF EXPRESSION *)
