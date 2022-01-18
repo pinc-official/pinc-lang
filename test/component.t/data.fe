@@ -1,7 +1,7 @@
 component SubComponent {
   let content = "Hello, SubComponent!";
 
-  @Template {
+  #Template {
     <div class="SubComponent" data-foo="bar">
       {content}
     </div>
@@ -13,7 +13,7 @@ component Section(
   icon: "/images/icons/group.svg",
   group: "Structure",
 ) {
-  @Template {
+  #Template {
     <section class="Section">
       <SubComponent />
     </section>

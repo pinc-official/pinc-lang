@@ -1,5 +1,5 @@
 component Operators {
-  @Template {
+  #Template {
     <div>{"\n"}
       ![1] = {![1]} {"\n"}
       ![] = {![]} {"\n"}

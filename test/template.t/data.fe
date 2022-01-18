@@ -7,7 +7,7 @@ component Section(
   let content = "Hello, World!";
   let intro = true;
 
-  @Template {
+  #Template {
     <section class="Section">
       <div />
       {if (intro) {
