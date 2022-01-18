@@ -204,6 +204,7 @@ let get_html_tag_ident t = begin
   let rec loop acc t =
     match t.current with
     | `Chr ('a'..'z' as c)
+    | `Chr ('0'..'9' as c)
     | `Chr ('-' as c) ->
       next t;
       loop (acc ^ String.make 1 c) t
@@ -283,7 +284,7 @@ let scan_template_text t = begin
   Token.STRING found
 end
 
-let scan_html_ident t = begin
+let scan_html_attribute_ident t = begin
   (* NOTE: List all vaid chars for html identifiers here: *)
   let rec loop acc t =
     match t.current with
@@ -369,7 +370,7 @@ let scan t = begin
     | `EOF     -> Diagnostics.report ~start_pos ~end_pos:(make_position t) Diagnostics.NonTerminatedTemplate
     | _        -> scan_template_text t
   end else begin match t.current with
-    | `Chr 'A'..'Z' | `Chr 'a'..'z' when inTemplateAttributesMode t -> scan_html_ident t
+    | `Chr 'A'..'Z' | `Chr 'a'..'z' when inTemplateAttributesMode t -> scan_html_attribute_ident t
     | `Chr 'A'..'Z' | `Chr 'a'..'z' | `Chr '_' -> scan_ident t
     | `Chr '0'..'9' -> scan_number t
     
