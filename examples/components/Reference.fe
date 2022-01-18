@@ -3,7 +3,7 @@ component Reference(
   icon: "/images/icons/duplicate.svg",
   group: "Structure"
 ) {
-  ref = @ContentSelect(label: "Content Item", instanceOf: [!Section]);
+  let ref = #ContentSelect(label: "Content Item", instanceOf: [!Section]);
 
   @Template {
     {ref.@render}

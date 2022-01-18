@@ -6,7 +6,7 @@ type token_type =
   | INT of int
   | FLOAT of float
   | STRING of string
-  | SYMBOL of string
+  | TAG of string
 
   | LEFT_PAREN
   | RIGHT_PAREN
@@ -25,6 +25,7 @@ type token_type =
   | GREATER
   | LESS
   | PLUS
+  | UNARY_MINUS
   | MINUS
   | STAR
   | STAR_STAR
@@ -38,6 +39,7 @@ type token_type =
   | GREATER_EQUAL
   | LESS_EQUAL
 
+  | KEYWORD_LET
   | KEYWORD_TRUE
   | KEYWORD_FALSE
   | KEYWORD_IF
@@ -50,6 +52,13 @@ type token_type =
   | KEYWORD_SITE
   | KEYWORD_PAGE
   | KEYWORD_STORE
+
+  | TEMPLATE
+  | HTML_OPEN_TAG of string
+  | HTML_CLOSE_TAG of string
+  | COMPONENT_OPEN_TAG of string
+  | COMPONENT_CLOSE_TAG of string
+  | LESS_SLASH
 
   | END_OF_INPUT
 [@@deriving show { with_path = false }]
@@ -64,56 +73,81 @@ type t = {
 let make ~start_pos ~end_pos typ = { typ; start_pos; end_pos }
 
 let to_string = function
-  | FLOAT f           -> Printf.sprintf "Token.FLOAT: ........... %f" f
-  | INT i             -> Printf.sprintf "Token.INT: ............. %i" i
-  | STRING s          -> Printf.sprintf "Token.STRING: .......... %s" s
-  | SYMBOL s          -> Printf.sprintf "Token.SYMBOL: .......... %s" s
-  | IDENT_LOWER s     -> Printf.sprintf "Token.IDENT_LOWER: ..... %s" s
-  | IDENT_UPPER s     -> Printf.sprintf "Token.IDENT_UPPER: ..... %s" s
-  | KEYWORD_TRUE      -> "Token.KEYWORD_TRUE"
-  | KEYWORD_FALSE     -> "Token.KEYWORD_FALSE"
-  | LEFT_PAREN        -> "Token.LEFT_PAREN"
-  | RIGHT_PAREN       -> "Token.RIGHT_PAREN"
-  | LEFT_BRACE        -> "Token.LEFT_BRACE"
-  | RIGHT_BRACE       -> "Token.RIGHT_BRACE"
-  | LEFT_BRACK        -> "Token.LEFT_BRACK"
-  | RIGHT_BRACK       -> "Token.RIGHT_BRACK"
-  | SEMICOLON         -> "Token.SEMICOLON"
-  | COLON             -> "Token.COLON"
-  | COMMA             -> "Token.COMMA"
-  | DOT               -> "Token.DOT"
-  | QUESTIONMARK      -> "Token.QUESTIONMARK"
-  | PIPE              -> "Token.PIPE"
-  | EQUAL             -> "Token.EQUAL"
-  | NOT_EQUAL         -> "Token.NOT_EQUAL"
-  | EQUAL_EQUAL       -> "Token.EQUAL_EQUAL"
-  | LOGICAL_AND       -> "Token.LOGICAL_AND"
-  | LOGICAL_OR        -> "Token.LOGICAL_OR"
-  | NOT               -> "Token.NOT"
-  | GREATER           -> "Token.GREATER"
-  | GREATER_EQUAL     -> "Token.GREATER_EQUAL"
-  | LESS              -> "Token.LESS"
-  | LESS_EQUAL        -> "Token.LESS_EQUAL"
-  | PLUS              -> "Token.PLUS"
-  | MINUS             -> "Token.MINUS"
-  | STAR              -> "Token.STAR"
-  | STAR_STAR         -> "Token.STAR_STAR"
-  | SLASH             -> "Token.SLASH"
-  | PERCENT           -> "Token.PERCENT"
-  | KEYWORD_IF        -> "Token.KEYWORD_IF"
-  | KEYWORD_ELSE      -> "Token.KEYWORD_ELSE"
-  | KEYWORD_FOR       -> "Token.KEYWORD_FOR"
-  | KEYWORD_IN        -> "Token.KEYWORD_IN"
-  | KEYWORD_BREAK     -> "Token.KEYWORD_BREAK"
-  | KEYWORD_CONTINUE  -> "Token.KEYWORD_CONTINUE"
-  | KEYWORD_COMPONENT -> "Token.KEYWORD_COMPONENT"
-  | KEYWORD_SITE      -> "Token.KEYWORD_SITE"
-  | KEYWORD_PAGE      -> "Token.KEYWORD_PAGE"
-  | KEYWORD_STORE     -> "Token.KEYWORD_STORE"
-  | COMMENT           -> "Token.COMMENT"
-  | END_OF_INPUT      -> "Token.END_OF_INPUT"
+  | FLOAT f           -> Printf.sprintf "%f" f
+  | INT i             -> Printf.sprintf "%i" i
+  | STRING s          -> Printf.sprintf "%S" s
+  | TAG s             -> Printf.sprintf "#%s" (String.capitalize_ascii s)
+  | IDENT_LOWER s     -> Printf.sprintf "%s" (String.lowercase_ascii s)
+  | IDENT_UPPER s     -> Printf.sprintf "%s" (String.capitalize_ascii s)
+  | KEYWORD_TRUE      -> "true"
+  | KEYWORD_FALSE     -> "false"
+  | LEFT_PAREN        -> "("
+  | RIGHT_PAREN       -> ")"
+  | LEFT_BRACE        -> "{"
+  | RIGHT_BRACE       -> "}"
+  | LEFT_BRACK        -> "["
+  | RIGHT_BRACK       -> "]"
+  | SEMICOLON         -> ";"
+  | COLON             -> ":"
+  | COMMA             -> ","
+  | DOT               -> "."
+  | QUESTIONMARK      -> "?"
+  | PIPE              -> "|"
+  | EQUAL             -> "="
+  | NOT_EQUAL         -> "!="
+  | EQUAL_EQUAL       -> "=="
+  | LOGICAL_AND       -> "&&"
+  | LOGICAL_OR        -> "||"
+  | NOT               -> "!"
+  | GREATER           -> ">"
+  | GREATER_EQUAL     -> ">="
+  | LESS              -> "<"
+  | LESS_EQUAL        -> "<="
+  | PLUS              -> "+"
+  | MINUS             -> "-"
+  | UNARY_MINUS       -> "-"
+  | STAR              -> "*"
+  | STAR_STAR         -> "**"
+  | SLASH             -> "/"
+  | PERCENT           -> "%"
+  | KEYWORD_LET       -> "let"
+  | KEYWORD_IF        -> "if"
+  | KEYWORD_ELSE      -> "else"
+  | KEYWORD_FOR       -> "for"
+  | KEYWORD_IN        -> "in"
+  | KEYWORD_BREAK     -> "break"
+  | KEYWORD_CONTINUE  -> "continue"
+  | KEYWORD_COMPONENT -> "component"
+  | KEYWORD_SITE      -> "site"
+  | KEYWORD_PAGE      -> "page"
+  | KEYWORD_STORE     -> "store"
+  | COMMENT           -> "// Comment"
+  | TEMPLATE          -> "@Template"
+  | HTML_OPEN_TAG s   -> Printf.sprintf "<%s>" s
+  | HTML_CLOSE_TAG s  -> Printf.sprintf "</%s>" s
+  | COMPONENT_OPEN_TAG s   -> Printf.sprintf "<%s>" s
+  | COMPONENT_CLOSE_TAG s  -> Printf.sprintf "</%s>" s
+  | LESS_SLASH        -> "</"
+  | END_OF_INPUT      -> "(EOF)"
+
+let is_keyword = function
+| KEYWORD_LET
+| KEYWORD_TRUE
+| KEYWORD_FALSE
+| KEYWORD_IF
+| KEYWORD_ELSE
+| KEYWORD_FOR
+| KEYWORD_IN
+| KEYWORD_BREAK
+| KEYWORD_CONTINUE
+| KEYWORD_COMPONENT
+| KEYWORD_SITE
+| KEYWORD_PAGE
+| KEYWORD_STORE -> true
+| _             -> false
 
 let keyword_of_string = function
+| "let" -> Some KEYWORD_LET
 | "true" -> Some KEYWORD_TRUE
 | "false" -> Some KEYWORD_FALSE
 | "if" -> Some KEYWORD_IF

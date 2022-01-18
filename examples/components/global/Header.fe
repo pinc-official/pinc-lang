@@ -1,7 +1,7 @@
 component Header {
-  logo = @Store(id: Global, property: logo);
+  let logo = #Store(id: Global, property: logo);
 
-  @Template {
+  #Template {
     <header class="Header">
       <div class="Header-container">
           <div class="Header-logo">

@@ -1,0 +1,21 @@
+component SubComponent {
+  let content = "Hello, SubComponent!";
+
+  @Template {
+    <div class="SubComponent" data-foo="bar">
+      {content}
+    </div>
+  }
+}
+
+component Section(
+  label: "Section",
+  icon: "/images/icons/group.svg",
+  group: "Structure",
+) {
+  @Template {
+    <section class="Section">
+      <SubComponent />
+    </section>
+  }
+}

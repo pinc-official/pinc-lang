@@ -2,10 +2,10 @@ component Teaser(
   label: "Teaser",
   icon: "/images/icons/teaser.svg"
 ) {
-  class? = @String();
+  let class? = #String();
 
-  title =
-    @String( 
+  let title =
+    #String( 
       placeholder: "Title",
       inline: true,
       minLength: 0,
@@ -13,39 +13,39 @@ component Teaser(
       regex: "/.*/g"
     );
 
-  background =
-    @Selection(
+  let background =
+    #Selection(
       label: "Background", 
       value: "primary",
       options: [
-        @Option(value: "primary", label: "Primär"),
-        @Option(value: "grey", label: "Grau"),
-        @Option(value: "white", label: "Weiß"),
+        #Option(value: "primary", label: "Primär"),
+        #Option(value: "grey", label: "Grau"),
+        #Option(value: "white", label: "Weiß"),
       ]
     );
 
-  url? = @Url(label: "Url", external: false);
+  let url? = #Url(label: "Url", external: false);
 
-  contact? = @Relation(label: "Contact Person", storeId: Contacts);
+  let contact? = #Relation(label: "Contact Person", storeId: Contacts);
 
-  categories = @Relations(label: "Categories", storeId: Categories, min: 1, max: 5);
+  let categories = #Relations(label: "Categories", storeId: Categories, min: 1, max: 5);
 
-  blogPages =
-    @Query(
+  let blogPages =
+    #Query(
       from: root,
       queries: [
-        @Children(instanceOf: [!Page, !Teaser], deep: true),
-        @Filter(value: el, condition: el.title|length > 5)
+        #Children(instanceOf: [!Page, !Teaser], deep: true),
+        #Filter(value: el, condition: el.title|length > 5)
       ]
     );
 
-  children = @Slot(label: "Content", id: Default, min: 1, max: 5, instanceOf: [Image, Video]);
+  let children = #Slot(label: "Content", id: Default, min: 1, max: 5, instanceOf: [Image, Video]);
 
-  quote? = @Slot(label "Quote", id: Quote, max: 1, instanceOf: [Quote]);
+  let quote? = #Slot(label "Quote", id: Quote, max: 1, instanceOf: [Quote]);
 
-  theme = @GetContext(id: Theme);
+  let theme = #GetContext(id: Theme);
 
-  @Template {
+  #Template {
     <div class="Teaser Teaser--${background} ${class|default("")}" data-foo={lorem}>
       <h4 class="Teaser-title">{title}</h4>
       {if (url) {

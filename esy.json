@@ -19,17 +19,11 @@
     "test:u": "esy x dune promote"
   },
   "dependencies": {
-    "@opam/menhir": "*",
-    "@opam/ocamlformat": "0.20.1",
-    "@opam/ocamlformat-rpc": "0.20.1",
-    "@opam/ppx_deriving": "*",
-    "@opam/re": "*",
-    "@opam/uucp": "*",
-    "@opam/uutf": "*"
+    "@opam/ppx_deriving": "*"
   },
   "devDependencies": {
     "@opam/dune": "< 3.0.0",
-    "@opam/ocaml-lsp-server": "1.9.0",
-    "ocaml": "4.12.0"
+    "@opam/ocaml-lsp-server": "1.9.1",
+    "ocaml": "4.13.1000"
   }
 }

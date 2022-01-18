@@ -3,38 +3,34 @@ component Section(
   icon: "/images/icons/group.svg",
   group: "Structure",
 ) {
-  theme = @GetContext(id: Theme);
+  let theme = #GetContext(id: Theme);
 
-  // With this change we have to allow Symbols as executable items.
-  // So if we see a Symbol at a top level, it will be treated as an execution.
-  // Only certain Symbols are executable. Trying to execute a @String for example would result in an error.
+  // With this change we have to allow Tags as executable items.
+  // So if we see a Tag at a top level, it will be treated as an execution.
+  // Only certain Tags are executable. Trying to execute a #String for example would result in an error.
 
-  // Should we maybe add a new Syntax variant to execute Symbols?
-  // For Example: >@Portal(...);
-
-  @Portal(id: Stylesheets, push: @StaticAsset(path: "/css/Section.css"));
+  #Portal(id: Stylesheets, push: #StaticAsset(path: "/css/Section.css"));
   if (theme == "secondary") {
-    @Portal(id: Stylesheets, push: @StaticAsset(path: "/css/Section-secondary.css"));
+    #Portal(id: Stylesheets, push: #StaticAsset(path: "/css/Section-secondary.css"));
   }
 
-  class? = @String();
+  let class? = #String();
 
-  show_intro = 
-    @Boolean(label: "Show Intro above Section", value: true);
+  let show_intro =  #Boolean(label: "Show Intro above Section", value: true);
 
-  intro_headline = if (show_intro) {
-    @String(inline: true, placeholder: "Enter Headline here...")
+  let intro_headline = if (show_intro) {
+    #String(inline: true, placeholder: "Enter Headline here...")
   };
 
-  intro_text? = if (show_intro) {
-    @Richtext(inline: true, placeholder: "Enter Text here...", b: true, i: true, u: true, a: true)
+  let intro_text? = if (show_intro) {
+    #Richtext(inline: true, placeholder: "Enter Text here...", b: true, i: true, u: true, a: true)
   };
 
-  content = @Slot(id: Content, label: "Section Content", instanceOf: [!Section]);
+  let content = #Slot(id: Content, label: "Section Content", instanceOf: [!Section]);
 
-  context = @GetContext(id: CMS);
+  let context = #GetContext(id: CMS);
 
-  @Template {
+  #Template {
     <div class="Section ${class|default("")}">
       {if (show_intro) {
         <div class="Section-intro">

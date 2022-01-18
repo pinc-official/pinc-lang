@@ -48,6 +48,13 @@ let make ~filename src = begin
 end
 
 module Helpers = struct
+  let expect_identifier ?(typ=`All) t = begin
+    match t.token.typ with
+    | Token.IDENT_UPPER i when typ = `Upper || typ = `All -> next t; i
+    | Token.IDENT_LOWER i when typ = `Lower || typ = `All -> next t; i
+    | _ -> assert false (* TODO: Error message *)
+  end
+
   let separated_list ~sep ~fn t = begin
     let rec loop acc = begin
       let has_sep = optional sep t in
@@ -91,14 +98,7 @@ module Helpers = struct
 end
 
 module Rules = struct
-  let rec expect_identifier ?(typ=`All) t = begin
-    match t.token.typ with
-    | Token.IDENT_UPPER i when typ = `Upper || typ = `All -> next t; i
-    | Token.IDENT_LOWER i when typ = `Lower || typ = `All -> next t; i
-    | _ -> assert false (* TODO: Error message *)
-  end
-
-  and literal t = begin
+  let rec parse_literal t = begin
     match t.token.typ with
     | Token.STRING s      -> next t; Some (Ast.StringLiteral s)
     | Token.INT i         -> next t; Some (Ast.IntLiteral i)
@@ -108,82 +108,231 @@ module Rules = struct
     | _ -> None
   end
 
-  and expr t = begin
+  and parse_attribute ?(sep=Token.COLON) t = begin
     match t.token.typ with
+    | Token.IDENT_LOWER key ->
+      next t;
+      expect sep t;
+      let value = parse_expression t in
+      value |> Option.map (fun value ->
+        Ast.{ key; value }
+      )
+    | _ -> None
+  end
+
+  and parse_template_node t = begin
+    match t.token.typ with
+    | Token.STRING s ->
+      next t;
+      Some (Ast.TextTemplateNode s)
+    | Token.LEFT_BRACE ->
+      next t;
+      let expression = match parse_expression t with
+      | Some e -> Ast.ExpressionTemplateNode e
+      | None   -> assert false; (* TODO: Error Message *)
+      in
+      t |> expect Token.RIGHT_BRACE;
+      Some expression
+    | Token.HTML_OPEN_TAG tag -> begin
+      next t;
+      let attributes = Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL) t in
+      let self_closing = t |> optional Token.SLASH in
+      t |> expect Token.GREATER;
+      let children = if self_closing
+        then []
+        else (
+          let children = t |> Helpers.list ~fn:parse_template_node in
+          t |> expect (Token.HTML_CLOSE_TAG tag);
+          children
+        )
+      in
+      Some (Ast.HtmlTemplateNode { tag; attributes; children; })
+    end
+    | Token.COMPONENT_OPEN_TAG identifier -> begin
+      next t;
+      let attributes = Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL) t in
+      let self_closing = t |> optional Token.SLASH in
+      t |> expect Token.GREATER;
+      let children = if self_closing
+        then []
+        else (
+          let children = t |> Helpers.list ~fn:parse_template_node in
+          t |> expect (Token.COMPONENT_CLOSE_TAG identifier);
+          children
+        )
+      in
+      Some (Ast.ComponentTemplateNode { identifier = Id identifier; attributes; children; })
+    end
+    | _ -> None
+  end
+
+  and parse_expression_part t = begin
+    match t.token.typ with
+    (* PARSING BLOCK EXPRESSION *)
+    | Token.LEFT_BRACE -> begin
+      next t;
+      let statements = Helpers.list ~fn:parse_statement t in
+      t |> expect Token.RIGHT_BRACE;
+      Some (Ast.BlockExpression statements)
+    end
+
+    (* PARSING FOR IN EXPRESSION *)
+    | Token.KEYWORD_FOR -> begin
+      next t;
+      match t.token.typ with
+      | Token.IDENT_LOWER identifier ->
+        next t;
+        let* right = parse_expression t in
+        let body = Helpers.list ~fn:parse_statement t in
+        let left = Ast.Id identifier in
+        Some (Ast.ForInExpression { left; right; body; })
+      | _ -> assert false (* TODO: Error Message :) *)
+    end
+
+    (* PARSING IF EXPRESSION *)
+    | Token.KEYWORD_IF -> begin
+      next t;
+      expect Token.LEFT_PAREN t;
+      let* condition = parse_expression t in
+      expect Token.RIGHT_PAREN t;
+      let* consequent = parse_expression t in
+      let alternate = 
+        if optional Token.KEYWORD_ELSE t
+        then parse_expression t
+        else None
+      in
+      Some (Ast.ConditionalExpression {
+        condition;
+        consequent;
+        alternate;
+      })
+    end
+
+    (* PARSING ARRAY EXPRESSION *)
     | Token.LEFT_BRACK -> begin
         next t;
-        let expressions = Helpers.separated_list ~sep:Token.COMMA ~fn:expr t in
+        let expressions = Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t in
         expect Token.RIGHT_BRACK t;
         Some (Ast.ArrayExpression expressions)
       end
-    | Token.SYMBOL _ -> begin
-        let symbols = Helpers.list ~fn:symbol t in
-        Some (Ast.SymbolsExpression symbols)
-      end
-    | Token.KEYWORD_IF -> begin
-        next t;
 
-        expect Token.LEFT_PAREN t;
-        let* condition = expr t in
-        expect Token.RIGHT_PAREN t;
-        
-        expect Token.LEFT_BRACE t;
-        let* consequent = expr t in
-        expect Token.RIGHT_BRACE t;
+    (* PARSING TAG EXPRESSION *)
+    | Token.TAG name -> begin
+      next t;
+      t |> expect Token.LEFT_PAREN;
+      let attributes = t |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA in
+      t |> expect Token.RIGHT_PAREN;
 
-        let alternate = if optional Token.KEYWORD_ELSE t
-          then expr t
-          else None
-        in
+      let body = if t |> optional Token.LEFT_BRACE then (
+        let body = parse_statement t in
+        t |> expect Token.RIGHT_BRACE;
+        body
+      ) else (
+        None
+      ) in
 
-        Some (Ast.ConditionalExpression {
-          condition;
-          consequent;
-          alternate;
-        })
-      end
-    | (Token.NOT | Token.MINUS | Token.PLUS) as o -> begin
+      Some (Ast.TagExpression { name; attributes; body; })
+    end
+
+    (* PARSING TEMPLATE EXPRESSION *)
+    | Token.HTML_OPEN_TAG _
+    | Token.COMPONENT_OPEN_TAG _ -> begin
+      let template_nodes = t |> Helpers.list ~fn:parse_template_node in
+      Some (Ast.TemplateExpression template_nodes)
+    end
+
+    (* PARSING TEMPLATE EXPRESSION *)
+    | Token.TEMPLATE ->
+      next t;
+      t.lexer |> Lexer.setTemplateBlockMode;
+      t |> expect Token.LEFT_BRACE;
+      let template_nodes = t |> Helpers.list ~fn:parse_template_node in
+      t.lexer |> Lexer.popTemplateBlockMode;
+      t |> expect Token.RIGHT_BRACE;
+      Some (Ast.TemplateExpression template_nodes)
+
+    (* PARSING UNARY EXPRESSION *)
+    | (Token.NOT | Token.UNARY_MINUS) as o -> begin
       let operator = match o with
-      | Token.NOT   -> Ast.Operator.NOT
-      | Token.MINUS -> Ast.Operator.NEGATIVE
-      | Token.PLUS  -> Ast.Operator.POSITIVE
+      | Token.NOT         -> Ast.Operator.NOT
+      | Token.UNARY_MINUS -> Ast.Operator.NEGATIVE
       | _ -> assert false
       in
       next t;
-      let argument = expr t in
+      let argument = parse_expression t in
       argument |> Option.map (fun argument ->
         Ast.UnaryExpression { operator; argument; }
       )
       end
-    | Token.IDENT_LOWER identifier -> begin
-        next t;
-        let nullable = t |> optional Token.QUESTIONMARK in
-        if t |> optional Token.EQUAL then
-          let expression = expr t in
-          expect Token.SEMICOLON t;
-          match expression with
-          | Some right -> Some (Ast.AssignmentExpression { nullable; left = IdentifierExpression identifier; right })
-          | None       -> assert false (* TODO: Exception *)
-        else
-          Some (Ast.IdentifierExpression identifier)
-      end
+
+    (* PARSING IDENTIFIER EXPRESSION *)
+    | Token.IDENT_LOWER identifier
     | Token.IDENT_UPPER identifier ->
       next t;
-      Some (Ast.IdentifierExpression identifier)
+      Some (Ast.IdentifierExpression (Id identifier))
+
+    (* PARSING LITERAL EXPRESSION *)
     | Token.STRING _
     | Token.INT _
     | Token.FLOAT _
     | Token.KEYWORD_TRUE 
     | Token.KEYWORD_FALSE -> begin
-        let literal = literal t in
+        let literal = parse_literal t in
         literal |> Option.map (fun o ->
           Ast.LiteralExpression o
         )
       end
+
     | _ -> None
   end
 
-  and statement t = begin
+  and parse_binary_operator t = begin
+    match t.token.typ with
+    | Token.LOGICAL_AND -> next t; Some Ast.Operator.AND
+    | Token.LOGICAL_OR  -> next t; Some Ast.Operator.OR
+
+    | Token.EQUAL_EQUAL -> next t; Some Ast.Operator.EQUAL
+    | Token.NOT_EQUAL -> next t; Some Ast.Operator.NOT_EQUAL
+
+    | Token.GREATER -> next t; Some Ast.Operator.GREATER
+    | Token.GREATER_EQUAL -> next t; Some Ast.Operator.GREATER_EQUAL
+    | Token.LESS -> next t; Some Ast.Operator.LESS
+    | Token.LESS_EQUAL -> next t; Some Ast.Operator.LESS_EQUAL
+
+    | Token.PLUS -> next t; Some Ast.Operator.PLUS
+    | Token.MINUS -> next t; Some Ast.Operator.MINUS
+    | Token.STAR -> next t; Some Ast.Operator.TIMES
+    | Token.SLASH -> next t; Some Ast.Operator.DIV
+    | Token.STAR_STAR -> next t; Some Ast.Operator.POW
+
+    | Token.KEYWORD_IN -> next t; Some Ast.Operator.IN
+
+    | _ -> None
+  end
+
+  and parse_expression t = begin
+    let* left = parse_expression_part t in
+    (* TODO: 
+      Mhmm...is this the best way to do this?
+      We are only looking for binary operators when we are not in template mode.
+      This is to ensure, we are not parsing the end of a html tag <div> as a binary operator (GREATER).
+      Maybe we can also do this in the lexer...
+    *)
+    if Lexer.inNormalMode t.lexer then
+      match parse_binary_operator t with
+      | Some operator ->
+        begin
+          let right = parse_expression_part t in
+          match right with
+          | Some right -> Some (Ast.BinaryExpression { left; operator; right })
+          | None       -> failwith "Expected expression"
+        end
+      | None -> Some left
+    else
+      Some left
+  end
+
+  and parse_statement t = begin
     match t.token.typ with
     | Token.KEYWORD_BREAK ->
       next t;
@@ -191,84 +340,43 @@ module Rules = struct
     | Token.KEYWORD_CONTINUE ->
       next t;
       Some Ast.ContinueStmt
-    | Token.LEFT_BRACE ->
+    | Token.KEYWORD_LET -> begin
       next t;
-      let statements = Helpers.list ~fn:statement t in
-      t |> expect Token.RIGHT_BRACE;
-      Some (Ast.BlockStmt statements)
-    | Token.KEYWORD_FOR -> begin
-      next t;
-      match t.token.typ with
-      | Token.IDENT_LOWER identifier ->
-        next t;
-        let* right = expr t in
-        let body = Helpers.list ~fn:statement t in
-        let left = Ast.IdentifierExpression identifier in
-        Some (Ast.ForInStmt { left; right; body; })
-      | _ -> assert false (* TODO: Error Message :) *)
-      end
+      let identifier = Helpers.expect_identifier t in
+      let nullable = t |> optional Token.QUESTIONMARK in
+      t |> expect Token.EQUAL;
+      let expression = parse_expression t in
+      expect Token.SEMICOLON t;
+      match expression with
+      | Some right -> Some (Ast.DeclarationStmt { nullable; left = Id identifier; right })
+      | None       -> assert false (* TODO: Exception *)
+    end
     | _ ->
-      match expr t with
+      match parse_expression t with
       | Some expr -> Some (Ast.ExpressionStmt expr)
       | None      -> None
   end
 
-  and attribute t = begin
-    match t.token.typ with
-    | Token.IDENT_LOWER key ->
-      next t;
-      expect Token.COLON t;
-      let value = expr t in
-      value |> Option.map (fun value ->
-        Ast.{ key; value }
-      )
-    | _ -> None
-  end
-  
-  and symbol t = begin
-    match t.token.typ with
-    | Token.SYMBOL name ->
-      next t;
-      begin match t.token.typ with
-      | Token.LEFT_PAREN ->
-        t |> expect Token.LEFT_PAREN;
-        let attributes = t |> Helpers.separated_list ~fn:attribute ~sep:Token.COMMA in
-        t |> expect Token.RIGHT_PAREN;
-        let body = if t |> optional Token.LEFT_BRACE then (
-          let body = statement t in
-          t |> expect Token.RIGHT_BRACE;
-          body
-        ) else (
-          None
-        ) in
-        Some Ast.{ name; attributes; body }
-      | _ -> None
-      end
-    | _ -> None
-  end
-
-  and declaration t = begin
+  and parse_declaration t = begin
     match t.token.typ with
     | (Token.KEYWORD_SITE | Token.KEYWORD_PAGE | Token.KEYWORD_COMPONENT | Token.KEYWORD_STORE) as typ -> begin
+        let start_pos = t.token.start_pos in
         next t;
-        let identifier = expect_identifier ~typ:`Upper t in
-        let identifier = Ast.IdentifierExpression identifier in
+        let identifier = Helpers.expect_identifier ~typ:`Upper t in
+        let identifier = Ast.Id identifier in
         let attributes = if optional Token.LEFT_PAREN t then
-          let attributes = Helpers.separated_list ~sep:Token.COMMA ~fn:attribute t in
+          let attributes = Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t in
           t |> expect Token.RIGHT_PAREN;
           Some attributes
         else
           None
         in
-        let body = match statement t with 
-        | None -> assert false
-        | Some body -> body
-        in
+        let body = Helpers.non_empty_list ~fn:parse_statement t in
         match typ with
-        | Token.KEYWORD_SITE -> Some (Ast.Site { identifier; attributes; body })
-        | Token.KEYWORD_PAGE -> Some (Ast.Page { identifier; attributes; body })
-        | Token.KEYWORD_COMPONENT -> Some (Ast.Component { identifier; attributes; body })
-        | Token.KEYWORD_STORE -> Some (Ast.Store { identifier; attributes; body })
+        | Token.KEYWORD_SITE      -> Some (Ast.SiteDeclaration      { location = start_pos; identifier; attributes; body })
+        | Token.KEYWORD_PAGE      -> Some (Ast.PageDeclaration      { location = start_pos; identifier; attributes; body })
+        | Token.KEYWORD_COMPONENT -> Some (Ast.ComponentDeclaration { location = start_pos; identifier; attributes; body })
+        | Token.KEYWORD_STORE     -> Some (Ast.StoreDeclaration     { location = start_pos; identifier; attributes; body })
         | _ -> assert false
       end
     | Token.END_OF_INPUT -> None
@@ -277,8 +385,7 @@ module Rules = struct
 end
 
 let scan t = begin
-  let start_pos = t.token.start_pos in
-  let declarations = t |> Helpers.list ~fn:Rules.declaration in
+  let declarations = t |> Helpers.list ~fn:Rules.parse_declaration in
 
-  Ast.{location = start_pos; declarations}
+  declarations
 end

@@ -12,31 +12,57 @@ module Operator = struct
   | EQUAL | NOT_EQUAL
   | GREATER | GREATER_EQUAL
   | LESS | LESS_EQUAL
-  | PLUS | MINUS | TIMES | DIV
+  | PLUS | MINUS | TIMES | DIV | POW
   | IN
+  | AND | OR
   [@@deriving show { with_path = false }]
 
-  type logical = AND | OR
-  [@@deriving show { with_path = false }]
-
-  type unary =
-  | NEGATIVE | POSITIVE
-  | NOT
+  type unary = NEGATIVE | NOT
   [@@deriving show { with_path = false }]
 end
 
+type identifier = | Id of string
+[@@deriving show { with_path = false }]
+
 type literal =
+  | NullLiteral
   | StringLiteral of string
   | IntLiteral of int
   | FloatLiteral of float
   | BoolLiteral of bool
+  | ArrayLiteral of literal list
 [@@deriving show { with_path = false }]
 
-and expression = 
-  | IdentifierExpression of string
+and template_node =
+  | HtmlTemplateNode of {
+    tag: string;
+    attributes: attribute list;
+    children: template_node list;
+  }
+  | ComponentTemplateNode of {
+    identifier: identifier;
+    attributes: attribute list;
+    children: template_node list;
+  }
+  | ExpressionTemplateNode of expression
+  | TextTemplateNode of string
+
+and expression =
+  | IdentifierExpression of identifier
   | LiteralExpression of literal
   | ArrayExpression of expression list
-  | SymbolsExpression of symbol list
+  | TagExpression of tag
+
+  | ForInExpression of {
+    left: identifier;
+    right: expression;
+    body: statement list
+  }
+
+  | TemplateExpression of template_node list
+
+  | BlockExpression of statement list
+
   | ConditionalExpression of {
     condition: expression;
     consequent: expression;
@@ -48,17 +74,7 @@ and expression =
   }
   | BinaryExpression of {
     left: expression;
-    right: expression;
     operator: Operator.binary;
-  }
-  | LogicalExpression of {
-    left: expression;
-    right: expression;
-    operator: Operator.logical
-  }
-  | AssignmentExpression of {
-    nullable: bool;
-    left: expression;
     right: expression;
   }
 [@@deriving show { with_path = false }]
@@ -69,7 +85,7 @@ and attribute = {
 }
 [@@deriving show { with_path = false }]
 
-and symbol = {
+and tag = {
   name: string;
   attributes: attribute list;
   body: statement option;
@@ -79,44 +95,40 @@ and symbol = {
 and statement = 
   | BreakStmt
   | ContinueStmt
-  | ExpressionStmt of expression
-  | BlockStmt of statement list
-  | ForInStmt of {
-    left: expression;
+  | DeclarationStmt of {
+    nullable: bool;
+    left: identifier;
     right: expression;
-    body: statement list
   }
+  | ExpressionStmt of expression
 [@@deriving show { with_path = false }]
 
 and declaration =
-  | Site of {
-    identifier: expression;
+  | SiteDeclaration of {
+    location: Position.t;
+    identifier: identifier;
     attributes: attribute list option;
-    body: statement;
+    body: statement list;
   }
-  | Page of {
-    identifier: expression;
+  | PageDeclaration of {
+    location: Position.t;
+    identifier: identifier;
     attributes: attribute list option;
-    body: statement;
+    body: statement list;
   }
-  | Component of {
-    identifier: expression;
+  | ComponentDeclaration of {
+    location: Position.t;
+    identifier: identifier;
     attributes: attribute list option;
-    body: statement;
+    body: statement list;
   }
-  | Store of {
-    identifier: expression;
+  | StoreDeclaration of {
+    location: Position.t;
+    identifier: identifier;
     attributes: attribute list option;
-    body: statement;
+    body: statement list;
   }
 [@@deriving show { with_path = false }]
 
-and file = {
-  location: Position.t;
-  declarations: declaration list;
-}
-[@@deriving show { with_path = false }]
-
-
-and t = file list
+and t = declaration list
 [@@deriving show { with_path = false }]
