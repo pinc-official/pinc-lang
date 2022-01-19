@@ -17,6 +17,8 @@
 
 - for in Expression: Needs testing
 
+- for in with range Expression
+
 - Functions / Lambdas
 
 - Pipe operator
