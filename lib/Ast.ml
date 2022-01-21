@@ -54,8 +54,14 @@ and expression =
   | TagExpression of tag
 
   | ForInExpression of {
-    left: identifier;
-    right: expression;
+    iterator: identifier;
+    iterable: expression;
+    body: statement list
+  }
+  | ForInRangeExpression of {
+    iterator: identifier;
+    from: expression;
+    upto: expression;
     body: statement list
   }
 

@@ -187,12 +187,20 @@ module Rules = struct
       next t;
       expect Token.LEFT_PAREN t;
       let identifier = Helpers.expect_identifier ~typ:`Lower t in
+      let iterator = Ast.Id identifier in
       expect Token.KEYWORD_IN t;
-      let* right = parse_expression t in
-      expect Token.RIGHT_PAREN t;
-      let body = Helpers.list ~fn:parse_statement t in
-      let left = Ast.Id identifier in
-      Some (Ast.ForInExpression { left; right; body; })
+      let* expr1 = parse_expression t in
+      if optional Token.KEYWORD_TO t then (
+        let* expr2 = parse_expression t in
+        expect Token.RIGHT_PAREN t;
+        let body = Helpers.list ~fn:parse_statement t in
+        Some (Ast.ForInRangeExpression { iterator; from=expr1; upto=expr2; body; })
+      ) else (
+        expect Token.RIGHT_PAREN t;
+        let body = Helpers.list ~fn:parse_statement t in
+        Some (Ast.ForInExpression { iterator; iterable=expr1; body; })
+      )
+
     end
 
     (* PARSING IF EXPRESSION *)

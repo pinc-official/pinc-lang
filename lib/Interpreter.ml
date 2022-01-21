@@ -37,6 +37,16 @@ module Literal = struct
     | Ast.ArrayLiteral l  -> l |> List.length > 0 (* TODO: Is a list of only null values also not true? *)
 
   let neg l = not (is_true l)
+
+  let is_numeric t = match t with
+    | Ast.IntLiteral _   -> true
+    | Ast.FloatLiteral _ -> true
+    | _ -> false
+
+  let int_of_literal t = match t with
+    | Ast.IntLiteral i   -> Some i
+    | Ast.FloatLiteral f -> Some (int_of_float f)
+    | _ -> None
   
   let equal a b = match a, b with
     | Ast.StringLiteral a, Ast.StringLiteral b -> String.equal a b
@@ -63,6 +73,10 @@ let output x state = {
   output = state.output ^ (Literal.to_string x);
 }
 
+let add_literal_to_scope ~ident ~literal state = match state.scope with
+| [] -> assert false
+| scope::_ -> Hashtbl.replace scope.identifiers ident literal
+
 let rec literal_of_expr state expr = match expr with
   | Ast.LiteralExpression l -> l
   
@@ -80,6 +94,38 @@ let rec literal_of_expr state expr = match expr with
   | Ast.TagExpression _          -> NullLiteral (* TODO: *)
 
   | Ast.ForInExpression _           -> NullLiteral (* TODO: *)
+
+  | Ast.ForInRangeExpression { iterator; from; upto; body } -> begin
+    let from = from |> literal_of_expr state in
+    let upto = upto |> literal_of_expr state in
+
+    let (from, upto) = begin match from, upto with
+    | Ast.IntLiteral from, Ast.IntLiteral upto -> from, upto
+    | Ast.IntLiteral _, _                      -> failwith "Can't construct range in for loop. The end of your range is not of type int."
+    | _               , Ast.IntLiteral _       -> failwith "Can't construct range in for loop. The start of your range is not of type int."
+    | _               , _                      -> failwith "Can't construct range in for loop. The start and end of your range are not of type int."
+    end in
+
+    let state = state |> add_scope in
+
+    let rec loop acc curr target =
+      if curr >= target then
+        let literal = Ast.IntLiteral curr in
+        let ident = match iterator with | Id t -> t in
+        state |> add_literal_to_scope ~ident ~literal;
+        let r = eval_block state body in
+        loop (r :: acc) (curr - 1) target
+      else acc
+    in
+    
+    let result = if from < upto then
+      loop [] upto from 
+    else 
+      List.rev (loop [] from upto)
+    in
+
+    Ast.ArrayLiteral result
+  end
 
   | Ast.TemplateExpression template_nodes ->
     StringLiteral ( 
@@ -162,14 +208,11 @@ and eval_statement state stmt = begin
   | Ast.BreakStmt           -> NullLiteral (* TODO: *)
   | Ast.ContinueStmt        -> NullLiteral (* TODO: *)
   | Ast.DeclarationStmt { nullable; left = Id ident; right; } -> begin
-    match state.scope with
-    | [] -> assert false
-    | scope::_ -> 
-      let literal = literal_of_expr state right in
-      begin match literal with
-      | NullLiteral when not nullable -> failwith "Not Nullable!!"
-      | _ -> Hashtbl.replace scope.identifiers ident literal
-      end;
+    let literal = literal_of_expr state right in
+    begin match literal with
+    | NullLiteral when not nullable -> failwith "Not Nullable!!"
+    | _ -> state |> add_literal_to_scope ~ident ~literal
+    end;
     NullLiteral
   end
   | Ast.ExpressionStmt expr -> literal_of_expr state expr
