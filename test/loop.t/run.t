@@ -10,11 +10,9 @@
   <div class="item">7</div>
   <div class="item">8</div>
   <div class="item">9</div>
-  <div class="item">10</div>
   
   0 to 0
-        <div class="item">0</div>
-  
+        
   -10 to 10
         <div class="item">-10</div>
   <div class="item">-9</div>
@@ -36,7 +34,6 @@
   <div class="item">7</div>
   <div class="item">8</div>
   <div class="item">9</div>
-  <div class="item">10</div>
   </section>
 
 

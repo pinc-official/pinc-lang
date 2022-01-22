@@ -107,21 +107,25 @@ let rec literal_of_expr state expr = match expr with
     end in
 
     let state = state |> add_scope in
+    let ident = match iterator with | Id t -> t in
 
-    let rec loop acc curr target =
-      if curr >= target then
+    let rec loop ~dir acc curr target =
+      let (><) = match dir with | `Up -> (>) | `Down -> (<) in
+      let (-+) = match dir with | `Up -> (-) | `Down -> (+) in
+      if curr >< target then
+        let curr = (curr -+ 1) in
         let literal = Ast.IntLiteral curr in
-        let ident = match iterator with | Id t -> t in
         state |> add_literal_to_scope ~ident ~literal;
         let r = eval_block state body in
-        loop (r :: acc) (curr - 1) target
-      else acc
+        loop (r :: acc) curr target ~dir
+      else
+        acc
     in
-    
-    let result = if from < upto then
-      loop [] upto from 
-    else 
-      List.rev (loop [] from upto)
+
+    let result = if from <= upto then
+      loop [] upto from ~dir:`Up
+    else
+      loop [] upto from ~dir:`Down
     in
 
     Ast.ArrayLiteral result
