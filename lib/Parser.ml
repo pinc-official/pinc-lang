@@ -319,8 +319,6 @@ module Rules = struct
     | Token.SLASH -> next t; Some Ast.Operator.DIV
     | Token.STAR_STAR -> next t; Some Ast.Operator.POW
 
-    | Token.KEYWORD_IN -> next t; Some Ast.Operator.IN
-
     | _ -> None
   end
 

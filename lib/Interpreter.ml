@@ -170,7 +170,6 @@ let rec literal_of_expr state expr = match expr with
     | Ast.Operator.TIMES -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
     | Ast.Operator.DIV -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
     | Ast.Operator.POW -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
-    | Ast.Operator.IN -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
     | Ast.Operator.AND -> BoolLiteral (Literal.is_true (Lazy.force a) && Literal.is_true (Lazy.force b))
     | Ast.Operator.OR -> BoolLiteral (Literal.is_true (Lazy.force a) || Literal.is_true (Lazy.force b))
     end
