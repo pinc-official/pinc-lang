@@ -93,9 +93,33 @@ let rec literal_of_expr state expr = match expr with
 
   | Ast.TagExpression _          -> NullLiteral (* TODO: *)
 
-  | Ast.ForInExpression _           -> NullLiteral (* TODO: *)
+  | Ast.ForInExpression { iterator=Id ident; iterable; body; } -> begin
+    let iterable = iterable |> literal_of_expr state in
+    let state = state |> add_scope in
+    match iterable with
+    | Ast.ArrayLiteral l ->
+      let loop literal = begin
+        state |> add_literal_to_scope ~ident ~literal;
+        eval_block state body
+      end in
+      Ast.ArrayLiteral (l |> List.map loop)
 
-  | Ast.ForInRangeExpression { iterator; from; upto; body } -> begin
+    | Ast.StringLiteral s ->
+      let explode s = List.init (String.length s) (String.unsafe_get s) in
+      let loop c = begin
+        let literal = Ast.StringLiteral (String.make 1 c) in
+        state |> add_literal_to_scope ~ident ~literal;
+        eval_block state body
+      end in
+      Ast.ArrayLiteral (s |> explode |> List.map loop)
+
+    | NullLiteral -> ArrayLiteral []
+    | IntLiteral _ -> failwith "Cannot iterate over int value"
+    | FloatLiteral _ -> failwith "Cannot iterate over float value"
+    | BoolLiteral _ -> failwith "Cannot iterate over boolean value"
+  end
+
+  | Ast.ForInRangeExpression { iterator=Id ident; from; upto; body } -> begin
     let from = from |> literal_of_expr state in
     let upto = upto |> literal_of_expr state in
 
@@ -107,7 +131,6 @@ let rec literal_of_expr state expr = match expr with
     end in
 
     let state = state |> add_scope in
-    let ident = match iterator with | Id t -> t in
 
     let rec loop ~dir acc curr target =
       let (><) = match dir with | `Up -> (>) | `Down -> (<) in

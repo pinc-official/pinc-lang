@@ -6,6 +6,10 @@ component C {
     i
   };
 
+  let string_array = ["one", "two", "three", "!"];
+
+  let null_value? = if(false) "something";
+
   #Template {
     <section>
       0 to 10
@@ -21,6 +25,25 @@ component C {
       -10 to 10
       {for (i in -10 to 10) { <div class="item">{i}</div> {"\n"} }}
 
+      {"\n"}
+
+      array
+      {for (i in array) { <div class="item">{i}</div> {"\n"} }}
+
+      {"\n"}
+
+      string
+      {for (c in "String!") { <div class="item">{c}</div> {"\n"} }}
+
+      {"\n"}
+
+      string array
+      {for (s in string_array) { <div class="item">{s}</div> {"\n"} }}
+
+      {"\n"}
+
+      null value
+      {for (s in null_value) { <div class="item">{s}</div> {"\n"} }}
     </section>
   }
 }

@@ -15,9 +15,7 @@
 
 - Operator precedence
 
-- for in Expression: Needs testing
-
-- for in with range Expression
+- range expression as `..` and `...`
 
 - Functions / Lambdas
 
