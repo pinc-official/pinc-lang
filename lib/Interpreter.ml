@@ -165,11 +165,62 @@ let rec literal_of_expr state expr = match expr with
     | Ast.Operator.LESS_EQUAL -> BoolLiteral (Literal.compare (Lazy.force a) (Lazy.force b) <= 0)
     | Ast.Operator.GREATER -> BoolLiteral (Literal.compare (Lazy.force a) (Lazy.force b) > 0)
     | Ast.Operator.GREATER_EQUAL -> BoolLiteral (Literal.compare (Lazy.force a) (Lazy.force b) >= 0)
-    | Ast.Operator.PLUS -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
-    | Ast.Operator.MINUS -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
-    | Ast.Operator.TIMES -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
-    | Ast.Operator.DIV -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
-    | Ast.Operator.POW -> failwith "NOT YET IMPLEMENTED" (* TODO: *)
+    | Ast.Operator.PLUS -> (
+      match Lazy.force a, Lazy.force b with
+      | Ast.IntLiteral a, Ast.IntLiteral b     -> Ast.IntLiteral (a + b)
+      | Ast.FloatLiteral a, Ast.FloatLiteral b -> Ast.FloatLiteral (a +. b)
+      | Ast.FloatLiteral a, Ast.IntLiteral b   -> Ast.FloatLiteral (a +. float_of_int b)
+      | Ast.IntLiteral a, Ast.FloatLiteral b   -> Ast.FloatLiteral (float_of_int a +. b)
+      | _ -> failwith "Trying to add non numeric literals."
+    )
+    | Ast.Operator.MINUS -> (
+      match Lazy.force a, Lazy.force b with
+      | Ast.IntLiteral a, Ast.IntLiteral b     -> Ast.IntLiteral (a - b)
+      | Ast.FloatLiteral a, Ast.FloatLiteral b -> Ast.FloatLiteral (a -. b)
+      | Ast.FloatLiteral a, Ast.IntLiteral b   -> Ast.FloatLiteral (a -. float_of_int b)
+      | Ast.IntLiteral a, Ast.FloatLiteral b   -> Ast.FloatLiteral (float_of_int a -. b)
+      | _ -> failwith "Trying to subtract non numeric literals."
+    )
+    | Ast.Operator.TIMES -> (
+      match Lazy.force a, Lazy.force b with
+      | Ast.IntLiteral a, Ast.IntLiteral b     -> Ast.IntLiteral (a * b)
+      | Ast.FloatLiteral a, Ast.FloatLiteral b -> Ast.FloatLiteral (a *. b)
+      | Ast.FloatLiteral a, Ast.IntLiteral b   -> Ast.FloatLiteral (a *. float_of_int b)
+      | Ast.IntLiteral a, Ast.FloatLiteral b   -> Ast.FloatLiteral (float_of_int a *. b)
+      | _ -> failwith "Trying to multiply non numeric literals."
+    )
+    | Ast.Operator.DIV -> (
+      match Lazy.force a, Lazy.force b with
+      | Ast.IntLiteral a, Ast.IntLiteral b     -> Ast.IntLiteral (a / b)
+      | Ast.FloatLiteral a, Ast.FloatLiteral b -> Ast.FloatLiteral (a /. b)
+      | Ast.FloatLiteral a, Ast.IntLiteral b   -> Ast.FloatLiteral (a /. float_of_int b)
+      | Ast.IntLiteral a, Ast.FloatLiteral b   -> Ast.FloatLiteral (float_of_int a /. b)
+      | _ -> failwith "Trying to divide non numeric literals."
+    )
+    | Ast.Operator.POW -> (
+      match Lazy.force a, Lazy.force b with
+      | Ast.IntLiteral a, Ast.IntLiteral b     -> 
+        let r = (float_of_int a ** float_of_int b) in
+        if Float.is_integer r 
+          then Ast.IntLiteral (int_of_float r) 
+          else Ast.FloatLiteral r
+      | Ast.FloatLiteral a, Ast.FloatLiteral b ->
+        let r =  (a ** b) in
+        if Float.is_integer r 
+          then Ast.IntLiteral (int_of_float r) 
+          else Ast.FloatLiteral r
+      | Ast.FloatLiteral a, Ast.IntLiteral b   -> 
+        let r = (a ** float_of_int b) in
+        if Float.is_integer r 
+          then Ast.IntLiteral (int_of_float r) 
+          else Ast.FloatLiteral r
+      | Ast.IntLiteral a, Ast.FloatLiteral b   ->
+        let r = (float_of_int a ** b) in
+        if Float.is_integer r 
+          then Ast.IntLiteral (int_of_float r) 
+          else Ast.FloatLiteral r
+      | _ -> failwith "Trying to raise non numeric literals."
+    )
     | Ast.Operator.AND -> BoolLiteral (Literal.is_true (Lazy.force a) && Literal.is_true (Lazy.force b))
     | Ast.Operator.OR -> BoolLiteral (Literal.is_true (Lazy.force a) || Literal.is_true (Lazy.force b))
     end

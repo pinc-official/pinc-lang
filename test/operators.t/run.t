@@ -24,6 +24,31 @@
   [1] == [2] = false
   [1, 2] >= [5] = true
   [1] >= [1,2,3] = false
+  
+  1 + 1 = 2
+  1.3 + 1.5 = 2.8
+  1 + 1.2 = 2.2
+  2.73 + 3 = 5.73
+  
+  1 - 1 = 0
+  1.3 - 1.5 = -0.2
+  1 - 1.2 = -0.2
+  2.73 - 3 = -0.27
+  
+  1 * 1 = 1
+  1.3 * 1.5 = 1.95
+  1 * 1.2 = 1.2
+  2.73 * 3 = 8.19
+  
+  1 / 1 = 1
+  1.3 / 1.5 = 0.866666666667
+  1 / 1.2 = 0.833333333333
+  2.73 / 3 = 0.91
+  
+  3 ** 1 = 3
+  3 ** 2 = 9
+  3 ** 3 = 27
+  2.73 ** 3 = 20.346417
   </div>
 
 
@@ -706,18 +731,595 @@
   { typ = RIGHT_BRACE;
     start_pos = { filename = "./data.fe"; line = 27; column = 46 };
     end_pos = { filename = "./data.fe"; line = 27; column = 47 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 28; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 28; column = 8 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 28; column = 8 };
+    end_pos = { filename = "./data.fe"; line = 28; column = 12 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 28; column = 12 };
+    end_pos = { filename = "./data.fe"; line = 28; column = 13 } }
+  { typ = (STRING "1 + 1 = ");
+    start_pos = { filename = "./data.fe"; line = 29; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 29; column = 15 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 29; column = 15 };
+    end_pos = { filename = "./data.fe"; line = 29; column = 16 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 29; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 29; column = 17 } }
+  { typ = PLUS; start_pos = { filename = "./data.fe"; line = 29; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 29; column = 19 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 29; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 29; column = 21 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 29; column = 21 };
+    end_pos = { filename = "./data.fe"; line = 29; column = 22 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 29; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 29; column = 24 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 29; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 29; column = 28 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 29; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 29; column = 29 } }
+  { typ = (STRING "1.3 + 1.5 = ");
+    start_pos = { filename = "./data.fe"; line = 30; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 30; column = 19 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 30; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 30; column = 20 } }
+  { typ = (FLOAT 1.3);
+    start_pos = { filename = "./data.fe"; line = 30; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 30; column = 23 } }
+  { typ = PLUS; start_pos = { filename = "./data.fe"; line = 30; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 30; column = 25 } }
+  { typ = (FLOAT 1.5);
+    start_pos = { filename = "./data.fe"; line = 30; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 30; column = 29 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 30; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 30; column = 30 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 30; column = 31 };
+    end_pos = { filename = "./data.fe"; line = 30; column = 32 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 30; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 30; column = 36 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 30; column = 36 };
+    end_pos = { filename = "./data.fe"; line = 30; column = 37 } }
+  { typ = (STRING "1 + 1.2 = ");
+    start_pos = { filename = "./data.fe"; line = 31; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 31; column = 17 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 31; column = 17 };
+    end_pos = { filename = "./data.fe"; line = 31; column = 18 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 31; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 31; column = 19 } }
+  { typ = PLUS; start_pos = { filename = "./data.fe"; line = 31; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 31; column = 21 } }
+  { typ = (FLOAT 1.2);
+    start_pos = { filename = "./data.fe"; line = 31; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 31; column = 25 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 31; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 31; column = 26 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 31; column = 27 };
+    end_pos = { filename = "./data.fe"; line = 31; column = 28 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 31; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 31; column = 32 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 31; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 31; column = 33 } }
+  { typ = (STRING "2.73 + 3 = ");
+    start_pos = { filename = "./data.fe"; line = 32; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 32; column = 18 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 32; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 32; column = 19 } }
+  { typ = (FLOAT 2.73);
+    start_pos = { filename = "./data.fe"; line = 32; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 32; column = 23 } }
+  { typ = PLUS; start_pos = { filename = "./data.fe"; line = 32; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 32; column = 25 } }
+  { typ = (INT 3);
+    start_pos = { filename = "./data.fe"; line = 32; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 32; column = 27 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 32; column = 27 };
+    end_pos = { filename = "./data.fe"; line = 32; column = 28 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 32; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 32; column = 30 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 32; column = 30 };
+    end_pos = { filename = "./data.fe"; line = 32; column = 34 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 32; column = 34 };
+    end_pos = { filename = "./data.fe"; line = 32; column = 35 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 33; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 33; column = 8 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 33; column = 8 };
+    end_pos = { filename = "./data.fe"; line = 33; column = 12 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 33; column = 12 };
+    end_pos = { filename = "./data.fe"; line = 33; column = 13 } }
+  { typ = (STRING "1 - 1 = ");
+    start_pos = { filename = "./data.fe"; line = 34; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 34; column = 15 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 34; column = 15 };
+    end_pos = { filename = "./data.fe"; line = 34; column = 16 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 34; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 34; column = 17 } }
+  { typ = MINUS;
+    start_pos = { filename = "./data.fe"; line = 34; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 34; column = 19 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 34; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 34; column = 21 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 34; column = 21 };
+    end_pos = { filename = "./data.fe"; line = 34; column = 22 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 34; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 34; column = 24 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 34; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 34; column = 28 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 34; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 34; column = 29 } }
+  { typ = (STRING "1.3 - 1.5 = ");
+    start_pos = { filename = "./data.fe"; line = 35; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 35; column = 19 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 35; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 35; column = 20 } }
+  { typ = (FLOAT 1.3);
+    start_pos = { filename = "./data.fe"; line = 35; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 35; column = 23 } }
+  { typ = MINUS;
+    start_pos = { filename = "./data.fe"; line = 35; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 35; column = 25 } }
+  { typ = (FLOAT 1.5);
+    start_pos = { filename = "./data.fe"; line = 35; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 35; column = 29 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 35; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 35; column = 30 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 35; column = 31 };
+    end_pos = { filename = "./data.fe"; line = 35; column = 32 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 35; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 35; column = 36 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 35; column = 36 };
+    end_pos = { filename = "./data.fe"; line = 35; column = 37 } }
+  { typ = (STRING "1 - 1.2 = ");
+    start_pos = { filename = "./data.fe"; line = 36; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 36; column = 17 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 36; column = 17 };
+    end_pos = { filename = "./data.fe"; line = 36; column = 18 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 36; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 36; column = 19 } }
+  { typ = MINUS;
+    start_pos = { filename = "./data.fe"; line = 36; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 36; column = 21 } }
+  { typ = (FLOAT 1.2);
+    start_pos = { filename = "./data.fe"; line = 36; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 36; column = 25 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 36; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 36; column = 26 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 36; column = 27 };
+    end_pos = { filename = "./data.fe"; line = 36; column = 28 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 36; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 36; column = 32 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 36; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 36; column = 33 } }
+  { typ = (STRING "2.73 - 3 = ");
+    start_pos = { filename = "./data.fe"; line = 37; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 37; column = 18 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 37; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 37; column = 19 } }
+  { typ = (FLOAT 2.73);
+    start_pos = { filename = "./data.fe"; line = 37; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 37; column = 23 } }
+  { typ = MINUS;
+    start_pos = { filename = "./data.fe"; line = 37; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 37; column = 25 } }
+  { typ = (INT 3);
+    start_pos = { filename = "./data.fe"; line = 37; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 37; column = 27 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 37; column = 27 };
+    end_pos = { filename = "./data.fe"; line = 37; column = 28 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 37; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 37; column = 30 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 37; column = 30 };
+    end_pos = { filename = "./data.fe"; line = 37; column = 34 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 37; column = 34 };
+    end_pos = { filename = "./data.fe"; line = 37; column = 35 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 38; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 38; column = 8 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 38; column = 8 };
+    end_pos = { filename = "./data.fe"; line = 38; column = 12 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 38; column = 12 };
+    end_pos = { filename = "./data.fe"; line = 38; column = 13 } }
+  { typ = (STRING "1 * 1 = ");
+    start_pos = { filename = "./data.fe"; line = 39; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 39; column = 15 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 39; column = 15 };
+    end_pos = { filename = "./data.fe"; line = 39; column = 16 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 39; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 39; column = 17 } }
+  { typ = STAR; start_pos = { filename = "./data.fe"; line = 39; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 39; column = 19 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 39; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 39; column = 21 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 39; column = 21 };
+    end_pos = { filename = "./data.fe"; line = 39; column = 22 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 39; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 39; column = 24 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 39; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 39; column = 28 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 39; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 39; column = 29 } }
+  { typ = (STRING "1.3 * 1.5 = ");
+    start_pos = { filename = "./data.fe"; line = 40; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 40; column = 19 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 40; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 40; column = 20 } }
+  { typ = (FLOAT 1.3);
+    start_pos = { filename = "./data.fe"; line = 40; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 40; column = 23 } }
+  { typ = STAR; start_pos = { filename = "./data.fe"; line = 40; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 40; column = 25 } }
+  { typ = (FLOAT 1.5);
+    start_pos = { filename = "./data.fe"; line = 40; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 40; column = 29 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 40; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 40; column = 30 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 40; column = 31 };
+    end_pos = { filename = "./data.fe"; line = 40; column = 32 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 40; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 40; column = 36 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 40; column = 36 };
+    end_pos = { filename = "./data.fe"; line = 40; column = 37 } }
+  { typ = (STRING "1 * 1.2 = ");
+    start_pos = { filename = "./data.fe"; line = 41; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 41; column = 17 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 41; column = 17 };
+    end_pos = { filename = "./data.fe"; line = 41; column = 18 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 41; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 41; column = 19 } }
+  { typ = STAR; start_pos = { filename = "./data.fe"; line = 41; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 41; column = 21 } }
+  { typ = (FLOAT 1.2);
+    start_pos = { filename = "./data.fe"; line = 41; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 41; column = 25 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 41; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 41; column = 26 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 41; column = 27 };
+    end_pos = { filename = "./data.fe"; line = 41; column = 28 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 41; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 41; column = 32 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 41; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 41; column = 33 } }
+  { typ = (STRING "2.73 * 3 = ");
+    start_pos = { filename = "./data.fe"; line = 42; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 42; column = 18 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 42; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 42; column = 19 } }
+  { typ = (FLOAT 2.73);
+    start_pos = { filename = "./data.fe"; line = 42; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 42; column = 23 } }
+  { typ = STAR; start_pos = { filename = "./data.fe"; line = 42; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 42; column = 25 } }
+  { typ = (INT 3);
+    start_pos = { filename = "./data.fe"; line = 42; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 42; column = 27 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 42; column = 27 };
+    end_pos = { filename = "./data.fe"; line = 42; column = 28 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 42; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 42; column = 30 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 42; column = 30 };
+    end_pos = { filename = "./data.fe"; line = 42; column = 34 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 42; column = 34 };
+    end_pos = { filename = "./data.fe"; line = 42; column = 35 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 43; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 43; column = 8 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 43; column = 8 };
+    end_pos = { filename = "./data.fe"; line = 43; column = 12 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 43; column = 12 };
+    end_pos = { filename = "./data.fe"; line = 43; column = 13 } }
+  { typ = (STRING "1 / 1 = ");
+    start_pos = { filename = "./data.fe"; line = 44; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 44; column = 15 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 44; column = 15 };
+    end_pos = { filename = "./data.fe"; line = 44; column = 16 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 44; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 44; column = 17 } }
+  { typ = SLASH;
+    start_pos = { filename = "./data.fe"; line = 44; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 44; column = 19 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 44; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 44; column = 21 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 44; column = 21 };
+    end_pos = { filename = "./data.fe"; line = 44; column = 22 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 44; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 44; column = 24 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 44; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 44; column = 28 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 44; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 44; column = 29 } }
+  { typ = (STRING "1.3 / 1.5 = ");
+    start_pos = { filename = "./data.fe"; line = 45; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 45; column = 19 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 45; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 45; column = 20 } }
+  { typ = (FLOAT 1.3);
+    start_pos = { filename = "./data.fe"; line = 45; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 45; column = 23 } }
+  { typ = SLASH;
+    start_pos = { filename = "./data.fe"; line = 45; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 45; column = 25 } }
+  { typ = (FLOAT 1.5);
+    start_pos = { filename = "./data.fe"; line = 45; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 45; column = 29 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 45; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 45; column = 30 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 45; column = 31 };
+    end_pos = { filename = "./data.fe"; line = 45; column = 32 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 45; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 45; column = 36 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 45; column = 36 };
+    end_pos = { filename = "./data.fe"; line = 45; column = 37 } }
+  { typ = (STRING "1 / 1.2 = ");
+    start_pos = { filename = "./data.fe"; line = 46; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 46; column = 17 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 46; column = 17 };
+    end_pos = { filename = "./data.fe"; line = 46; column = 18 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 46; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 46; column = 19 } }
+  { typ = SLASH;
+    start_pos = { filename = "./data.fe"; line = 46; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 46; column = 21 } }
+  { typ = (FLOAT 1.2);
+    start_pos = { filename = "./data.fe"; line = 46; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 46; column = 25 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 46; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 46; column = 26 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 46; column = 27 };
+    end_pos = { filename = "./data.fe"; line = 46; column = 28 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 46; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 46; column = 32 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 46; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 46; column = 33 } }
+  { typ = (STRING "2.73 / 3 = ");
+    start_pos = { filename = "./data.fe"; line = 47; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 47; column = 18 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 47; column = 18 };
+    end_pos = { filename = "./data.fe"; line = 47; column = 19 } }
+  { typ = (FLOAT 2.73);
+    start_pos = { filename = "./data.fe"; line = 47; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 47; column = 23 } }
+  { typ = SLASH;
+    start_pos = { filename = "./data.fe"; line = 47; column = 24 };
+    end_pos = { filename = "./data.fe"; line = 47; column = 25 } }
+  { typ = (INT 3);
+    start_pos = { filename = "./data.fe"; line = 47; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 47; column = 27 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 47; column = 27 };
+    end_pos = { filename = "./data.fe"; line = 47; column = 28 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 47; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 47; column = 30 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 47; column = 30 };
+    end_pos = { filename = "./data.fe"; line = 47; column = 34 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 47; column = 34 };
+    end_pos = { filename = "./data.fe"; line = 47; column = 35 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 48; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 48; column = 8 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 48; column = 8 };
+    end_pos = { filename = "./data.fe"; line = 48; column = 12 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 48; column = 12 };
+    end_pos = { filename = "./data.fe"; line = 48; column = 13 } }
+  { typ = (STRING "3 ** 1 = ");
+    start_pos = { filename = "./data.fe"; line = 49; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 49; column = 16 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 49; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 49; column = 17 } }
+  { typ = (INT 3);
+    start_pos = { filename = "./data.fe"; line = 49; column = 17 };
+    end_pos = { filename = "./data.fe"; line = 49; column = 18 } }
+  { typ = STAR_STAR;
+    start_pos = { filename = "./data.fe"; line = 49; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 49; column = 21 } }
+  { typ = (INT 1);
+    start_pos = { filename = "./data.fe"; line = 49; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 49; column = 23 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 49; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 49; column = 24 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 49; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 49; column = 26 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 49; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 49; column = 30 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 49; column = 30 };
+    end_pos = { filename = "./data.fe"; line = 49; column = 31 } }
+  { typ = (STRING "3 ** 2 = ");
+    start_pos = { filename = "./data.fe"; line = 50; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 50; column = 16 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 50; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 50; column = 17 } }
+  { typ = (INT 3);
+    start_pos = { filename = "./data.fe"; line = 50; column = 17 };
+    end_pos = { filename = "./data.fe"; line = 50; column = 18 } }
+  { typ = STAR_STAR;
+    start_pos = { filename = "./data.fe"; line = 50; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 50; column = 21 } }
+  { typ = (INT 2);
+    start_pos = { filename = "./data.fe"; line = 50; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 50; column = 23 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 50; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 50; column = 24 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 50; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 50; column = 26 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 50; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 50; column = 30 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 50; column = 30 };
+    end_pos = { filename = "./data.fe"; line = 50; column = 31 } }
+  { typ = (STRING "3 ** 3 = ");
+    start_pos = { filename = "./data.fe"; line = 51; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 51; column = 16 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 51; column = 16 };
+    end_pos = { filename = "./data.fe"; line = 51; column = 17 } }
+  { typ = (INT 3);
+    start_pos = { filename = "./data.fe"; line = 51; column = 17 };
+    end_pos = { filename = "./data.fe"; line = 51; column = 18 } }
+  { typ = STAR_STAR;
+    start_pos = { filename = "./data.fe"; line = 51; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 51; column = 21 } }
+  { typ = (INT 3);
+    start_pos = { filename = "./data.fe"; line = 51; column = 22 };
+    end_pos = { filename = "./data.fe"; line = 51; column = 23 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 51; column = 23 };
+    end_pos = { filename = "./data.fe"; line = 51; column = 24 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 51; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 51; column = 26 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 51; column = 26 };
+    end_pos = { filename = "./data.fe"; line = 51; column = 30 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 51; column = 30 };
+    end_pos = { filename = "./data.fe"; line = 51; column = 31 } }
+  { typ = (STRING "2.73 ** 3 = ");
+    start_pos = { filename = "./data.fe"; line = 52; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 52; column = 19 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 52; column = 19 };
+    end_pos = { filename = "./data.fe"; line = 52; column = 20 } }
+  { typ = (FLOAT 2.73);
+    start_pos = { filename = "./data.fe"; line = 52; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 52; column = 24 } }
+  { typ = STAR_STAR;
+    start_pos = { filename = "./data.fe"; line = 52; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 52; column = 27 } }
+  { typ = (INT 3);
+    start_pos = { filename = "./data.fe"; line = 52; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 52; column = 29 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 52; column = 29 };
+    end_pos = { filename = "./data.fe"; line = 52; column = 30 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 52; column = 31 };
+    end_pos = { filename = "./data.fe"; line = 52; column = 32 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 52; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 52; column = 36 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 52; column = 36 };
+    end_pos = { filename = "./data.fe"; line = 52; column = 37 } }
   { typ = (HTML_CLOSE_TAG "div");
-    start_pos = { filename = "./data.fe"; line = 29; column = 5 };
-    end_pos = { filename = "./data.fe"; line = 29; column = 11 } }
+    start_pos = { filename = "./data.fe"; line = 54; column = 5 };
+    end_pos = { filename = "./data.fe"; line = 54; column = 11 } }
   { typ = RIGHT_BRACE;
-    start_pos = { filename = "./data.fe"; line = 30; column = 3 };
-    end_pos = { filename = "./data.fe"; line = 30; column = 4 } }
+    start_pos = { filename = "./data.fe"; line = 55; column = 3 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 4 } }
   { typ = RIGHT_BRACE;
-    start_pos = { filename = "./data.fe"; line = 31; column = 1 };
-    end_pos = { filename = "./data.fe"; line = 31; column = 2 } }
+    start_pos = { filename = "./data.fe"; line = 56; column = 1 };
+    end_pos = { filename = "./data.fe"; line = 56; column = 2 } }
   { typ = END_OF_INPUT;
-    start_pos = { filename = "./data.fe"; line = 32; column = 1 };
-    end_pos = { filename = "./data.fe"; line = 32; column = 1 } }
+    start_pos = { filename = "./data.fe"; line = 57; column = 1 };
+    end_pos = { filename = "./data.fe"; line = 57; column = 1 } }
 
 
   $ esy x print_ast ./data.fe
@@ -917,6 +1519,176 @@
                                 [(LiteralExpression (IntLiteral 1));
                                   (LiteralExpression (IntLiteral 2));
                                   (LiteralExpression (IntLiteral 3))])});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 + 1 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = PLUS;
+                             right = (LiteralExpression (IntLiteral 1))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1.3 + 1.5 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (FloatLiteral 1.3));
+                             operator = PLUS;
+                             right = (LiteralExpression (FloatLiteral 1.5))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 + 1.2 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = PLUS;
+                             right = (LiteralExpression (FloatLiteral 1.2))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "2.73 + 3 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (FloatLiteral 2.73));
+                             operator = PLUS;
+                             right = (LiteralExpression (IntLiteral 3))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 - 1 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = MINUS;
+                             right = (LiteralExpression (IntLiteral 1))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1.3 - 1.5 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (FloatLiteral 1.3));
+                             operator = MINUS;
+                             right = (LiteralExpression (FloatLiteral 1.5))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 - 1.2 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = MINUS;
+                             right = (LiteralExpression (FloatLiteral 1.2))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "2.73 - 3 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (FloatLiteral 2.73));
+                             operator = MINUS;
+                             right = (LiteralExpression (IntLiteral 3))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 * 1 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = TIMES;
+                             right = (LiteralExpression (IntLiteral 1))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1.3 * 1.5 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (FloatLiteral 1.3));
+                             operator = TIMES;
+                             right = (LiteralExpression (FloatLiteral 1.5))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 * 1.2 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = TIMES;
+                             right = (LiteralExpression (FloatLiteral 1.2))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "2.73 * 3 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (FloatLiteral 2.73));
+                             operator = TIMES;
+                             right = (LiteralExpression (IntLiteral 3))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 / 1 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = DIV;
+                             right = (LiteralExpression (IntLiteral 1))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1.3 / 1.5 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (FloatLiteral 1.3));
+                             operator = DIV;
+                             right = (LiteralExpression (FloatLiteral 1.5))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "1 / 1.2 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 1));
+                             operator = DIV;
+                             right = (LiteralExpression (FloatLiteral 1.2))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "2.73 / 3 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (FloatLiteral 2.73));
+                             operator = DIV;
+                             right = (LiteralExpression (IntLiteral 3))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "3 ** 1 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 3));
+                             operator = POW;
+                             right = (LiteralExpression (IntLiteral 1))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "3 ** 2 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 3));
+                             operator = POW;
+                             right = (LiteralExpression (IntLiteral 2))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "3 ** 3 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (IntLiteral 3));
+                             operator = POW;
+                             right = (LiteralExpression (IntLiteral 3))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "2.73 ** 3 = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (FloatLiteral 2.73));
+                             operator = POW;
+                             right = (LiteralExpression (IntLiteral 3))});
                         (ExpressionTemplateNode
                            (LiteralExpression (StringLiteral "\n")))
                         ]}
