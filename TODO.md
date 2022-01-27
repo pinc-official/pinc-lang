@@ -24,5 +24,3 @@
 - `.` operator for object access
 
 - String Templates (`"Section--${alignment}"`)
-
-- String Concat (`++`?)

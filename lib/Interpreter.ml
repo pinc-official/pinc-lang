@@ -188,6 +188,11 @@ let rec literal_of_expr state expr = match expr with
     | Ast.Operator.LESS_EQUAL -> BoolLiteral (Literal.compare (Lazy.force a) (Lazy.force b) <= 0)
     | Ast.Operator.GREATER -> BoolLiteral (Literal.compare (Lazy.force a) (Lazy.force b) > 0)
     | Ast.Operator.GREATER_EQUAL -> BoolLiteral (Literal.compare (Lazy.force a) (Lazy.force b) >= 0)
+    | Ast.Operator.CONCAT -> (
+      match Lazy.force a, Lazy.force b with
+      | Ast.StringLiteral a, Ast.StringLiteral b -> Ast.StringLiteral (a ^ b)
+      | _ -> failwith "Trying to concat non string literals."
+    )
     | Ast.Operator.PLUS -> (
       match Lazy.force a, Lazy.force b with
       | Ast.IntLiteral a, Ast.IntLiteral b     -> Ast.IntLiteral (a + b)

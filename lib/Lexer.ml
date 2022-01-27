@@ -388,7 +388,11 @@ let scan t = begin
         if is_whitespace (peek t)
           then ( next t; Token.MINUS )
           else ( next t; Token.UNARY_MINUS )
-    | `Chr '+' -> next t; Token.PLUS
+    | `Chr '+' -> (
+      match peek t with
+      | `Chr '+' -> next_n ~n:2 t; Token.PLUSPLUS
+      | _        -> next t; Token.PLUS
+    )
     | `Chr '%' -> next t; Token.PERCENT
     | `Chr '?' -> next t; Token.QUESTIONMARK
     

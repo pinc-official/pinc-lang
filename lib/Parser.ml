@@ -313,6 +313,7 @@ module Rules = struct
     | Token.LESS -> next t; Some Ast.Operator.LESS
     | Token.LESS_EQUAL -> next t; Some Ast.Operator.LESS_EQUAL
 
+    | Token.PLUSPLUS -> next t; Some Ast.Operator.CONCAT
     | Token.PLUS -> next t; Some Ast.Operator.PLUS
     | Token.MINUS -> next t; Some Ast.Operator.MINUS
     | Token.STAR -> next t; Some Ast.Operator.TIMES
@@ -334,7 +335,7 @@ module Rules = struct
       match parse_binary_operator t with
       | Some operator ->
         begin
-          let right = parse_expression_part t in
+          let right = parse_expression t in
           match right with
           | Some right -> Some (Ast.BinaryExpression { left; operator; right })
           | None       -> failwith "Expected expression"

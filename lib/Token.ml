@@ -38,6 +38,7 @@ type token_type =
   | EQUAL_EQUAL
   | GREATER_EQUAL
   | LESS_EQUAL
+  | PLUSPLUS
 
   | KEYWORD_LET
   | KEYWORD_TRUE
@@ -104,6 +105,7 @@ let to_string = function
   | GREATER_EQUAL     -> ">="
   | LESS              -> "<"
   | LESS_EQUAL        -> "<="
+  | PLUSPLUS          -> "++"
   | PLUS              -> "+"
   | MINUS             -> "-"
   | UNARY_MINUS       -> "-"

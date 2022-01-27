@@ -13,6 +13,7 @@ module Operator = struct
   | GREATER | GREATER_EQUAL
   | LESS | LESS_EQUAL
   | PLUS | MINUS | TIMES | DIV | POW
+  | CONCAT
   | AND | OR
   [@@deriving show { with_path = false }]
 

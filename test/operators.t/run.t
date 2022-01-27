@@ -49,6 +49,9 @@
   3 ** 2 = 9
   3 ** 3 = 27
   2.73 ** 3 = 20.346417
+  
+  "a" ++ "b" = ab
+  "a" ++ "b" ++ "c" = abc
   </div>
 
 
@@ -1308,18 +1311,87 @@
   { typ = RIGHT_BRACE;
     start_pos = { filename = "./data.fe"; line = 52; column = 36 };
     end_pos = { filename = "./data.fe"; line = 52; column = 37 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 53; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 53; column = 8 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 53; column = 8 };
+    end_pos = { filename = "./data.fe"; line = 53; column = 12 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 53; column = 12 };
+    end_pos = { filename = "./data.fe"; line = 53; column = 13 } }
+  { typ = (STRING "\"a\" ++ \"b\" = ");
+    start_pos = { filename = "./data.fe"; line = 54; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 54; column = 20 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 54; column = 20 };
+    end_pos = { filename = "./data.fe"; line = 54; column = 21 } }
+  { typ = (STRING "a");
+    start_pos = { filename = "./data.fe"; line = 54; column = 21 };
+    end_pos = { filename = "./data.fe"; line = 54; column = 24 } }
+  { typ = PLUSPLUS;
+    start_pos = { filename = "./data.fe"; line = 54; column = 25 };
+    end_pos = { filename = "./data.fe"; line = 54; column = 27 } }
+  { typ = (STRING "b");
+    start_pos = { filename = "./data.fe"; line = 54; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 54; column = 31 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 54; column = 31 };
+    end_pos = { filename = "./data.fe"; line = 54; column = 32 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 54; column = 33 };
+    end_pos = { filename = "./data.fe"; line = 54; column = 34 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 54; column = 34 };
+    end_pos = { filename = "./data.fe"; line = 54; column = 38 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 54; column = 38 };
+    end_pos = { filename = "./data.fe"; line = 54; column = 39 } }
+  { typ = (STRING "\"a\" ++ \"b\" ++ \"c\" = ");
+    start_pos = { filename = "./data.fe"; line = 55; column = 7 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 27 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 55; column = 27 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 28 } }
+  { typ = (STRING "a");
+    start_pos = { filename = "./data.fe"; line = 55; column = 28 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 31 } }
+  { typ = PLUSPLUS;
+    start_pos = { filename = "./data.fe"; line = 55; column = 32 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 34 } }
+  { typ = (STRING "b");
+    start_pos = { filename = "./data.fe"; line = 55; column = 35 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 38 } }
+  { typ = PLUSPLUS;
+    start_pos = { filename = "./data.fe"; line = 55; column = 39 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 41 } }
+  { typ = (STRING "c");
+    start_pos = { filename = "./data.fe"; line = 55; column = 42 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 45 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 55; column = 45 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 46 } }
+  { typ = LEFT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 55; column = 47 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 48 } }
+  { typ = (STRING "\n");
+    start_pos = { filename = "./data.fe"; line = 55; column = 48 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 52 } }
+  { typ = RIGHT_BRACE;
+    start_pos = { filename = "./data.fe"; line = 55; column = 52 };
+    end_pos = { filename = "./data.fe"; line = 55; column = 53 } }
   { typ = (HTML_CLOSE_TAG "div");
-    start_pos = { filename = "./data.fe"; line = 54; column = 5 };
-    end_pos = { filename = "./data.fe"; line = 54; column = 11 } }
+    start_pos = { filename = "./data.fe"; line = 57; column = 5 };
+    end_pos = { filename = "./data.fe"; line = 57; column = 11 } }
   { typ = RIGHT_BRACE;
-    start_pos = { filename = "./data.fe"; line = 55; column = 3 };
-    end_pos = { filename = "./data.fe"; line = 55; column = 4 } }
+    start_pos = { filename = "./data.fe"; line = 58; column = 3 };
+    end_pos = { filename = "./data.fe"; line = 58; column = 4 } }
   { typ = RIGHT_BRACE;
-    start_pos = { filename = "./data.fe"; line = 56; column = 1 };
-    end_pos = { filename = "./data.fe"; line = 56; column = 2 } }
+    start_pos = { filename = "./data.fe"; line = 59; column = 1 };
+    end_pos = { filename = "./data.fe"; line = 59; column = 2 } }
   { typ = END_OF_INPUT;
-    start_pos = { filename = "./data.fe"; line = 57; column = 1 };
-    end_pos = { filename = "./data.fe"; line = 57; column = 1 } }
+    start_pos = { filename = "./data.fe"; line = 60; column = 1 };
+    end_pos = { filename = "./data.fe"; line = 60; column = 1 } }
 
 
   $ esy x print_ast ./data.fe
@@ -1689,6 +1761,28 @@
                              left = (LiteralExpression (FloatLiteral 2.73));
                              operator = POW;
                              right = (LiteralExpression (IntLiteral 3))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "\"a\" ++ \"b\" = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (StringLiteral "a"));
+                             operator = CONCAT;
+                             right = (LiteralExpression (StringLiteral "b"))});
+                        (ExpressionTemplateNode
+                           (LiteralExpression (StringLiteral "\n")));
+                        (TextTemplateNode "\"a\" ++ \"b\" ++ \"c\" = ");
+                        (ExpressionTemplateNode
+                           BinaryExpression {
+                             left = (LiteralExpression (StringLiteral "a"));
+                             operator = CONCAT;
+                             right =
+                             BinaryExpression {
+                               left = (LiteralExpression (StringLiteral "b"));
+                               operator = CONCAT;
+                               right = (LiteralExpression (StringLiteral "c"))}});
                         (ExpressionTemplateNode
                            (LiteralExpression (StringLiteral "\n")))
                         ]}
