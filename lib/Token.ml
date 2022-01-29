@@ -18,6 +18,8 @@ type token_type =
   | COMMA
   | SEMICOLON
   | DOT
+  | DOTDOT
+  | DOTDOTDOT
   | QUESTIONMARK
   | PIPE
   | EQUAL
@@ -48,7 +50,6 @@ type token_type =
   | KEYWORD_FOR
   | KEYWORD_IN
   | KEYWORD_REVERSE
-  | KEYWORD_TO
   | KEYWORD_BREAK
   | KEYWORD_CONTINUE
   | KEYWORD_COMPONENT
@@ -94,6 +95,8 @@ let to_string = function
   | COLON             -> ":"
   | COMMA             -> ","
   | DOT               -> "."
+  | DOTDOT            -> ".."
+  | DOTDOTDOT         -> "..."
   | QUESTIONMARK      -> "?"
   | PIPE              -> "|"
   | EQUAL             -> "="
@@ -120,7 +123,6 @@ let to_string = function
   | KEYWORD_FOR       -> "for"
   | KEYWORD_IN        -> "in"
   | KEYWORD_REVERSE   -> "reverse"
-  | KEYWORD_TO        -> "to"
   | KEYWORD_BREAK     -> "break"
   | KEYWORD_CONTINUE  -> "continue"
   | KEYWORD_COMPONENT -> "component"
@@ -144,7 +146,6 @@ let is_keyword = function
 | KEYWORD_ELSE
 | KEYWORD_FOR
 | KEYWORD_IN
-| KEYWORD_TO
 | KEYWORD_BREAK
 | KEYWORD_CONTINUE
 | KEYWORD_COMPONENT
@@ -161,7 +162,6 @@ let keyword_of_string = function
 | "else" -> Some KEYWORD_ELSE
 | "for" -> Some KEYWORD_FOR
 | "in" -> Some KEYWORD_IN
-| "to" -> Some KEYWORD_TO
 | "reverse" -> Some KEYWORD_REVERSE
 | "break" -> Some KEYWORD_BREAK
 | "continue" -> Some KEYWORD_CONTINUE

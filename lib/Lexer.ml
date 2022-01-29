@@ -6,9 +6,9 @@ type char' = [ | `Chr of char | `EOF ]
 type t = {
   filename: string;
   src : string;
-  mutable prev : [ char' | `BOF];
+  src_length : int;
+  mutable prev : char';
   mutable current : char';
-  mutable next : char';
 
   mutable offset : int;
 
@@ -85,12 +85,9 @@ let next t = begin
   in
   t.column  <- next_offset - t.line_offset;
   t.offset  <- next_offset;
-  t.prev    <- (match t.current with  | `EOF -> `EOF | `Chr c -> `Chr c);
-  t.current <- if next_offset < String.length t.src
+  t.prev    <- t.current;
+  t.current <- if next_offset < t.src_length
     then `Chr (String.unsafe_get t.src next_offset)
-    else `EOF;
-  t.next <- if next_offset + 1 < String.length t.src
-    then `Chr (String.unsafe_get t.src (next_offset + 1))
     else `EOF;
 end
 
@@ -100,14 +97,18 @@ let next_n ~n t = begin
   done;
 end
 
-let peek t = t.next
+let peek ?(n=1) t =
+  if t.offset + n < t.src_length then
+    `Chr (String.unsafe_get t.src (t.offset + n))
+  else
+    `EOF
 
 let make ~filename src = {
   filename;
   src = src;
-  prev = `BOF;
+  src_length = String.length src;
+  prev = `EOF;
   current = if src = "" then `EOF else `Chr (String.unsafe_get src 0);
-  next = if String.length src < 2 then `EOF else `Chr (String.unsafe_get src 1);
 
   offset = 0;
   line_offset = 0;
@@ -307,13 +308,17 @@ let scan_number t = begin
     match t.current with
     | `Chr ('0'..'9' as c) -> Buffer.add_char result c; next t; scan_digits t
     | `Chr '_'             -> next t; scan_digits t
-    | _                   -> ()
+    | _                    -> ()
   in
 
   scan_digits t;
 
   let is_float = match t.current with
-  | `Chr '.' -> Buffer.add_char result '.'; next t; scan_digits t; true
+  | `Chr '.' -> (
+    match peek t with
+    | `Chr '.' -> false (* Two Dots in a row mean that this is a range expression *)
+    | _        -> Buffer.add_char result '.'; next t; scan_digits t; true
+  )
   | _        -> false
   in
 
@@ -404,7 +409,12 @@ let scan t = begin
     | `Chr '.' -> (
       match peek t with
       | `Chr '0'..'9' -> scan_number t
-      | _            -> next t; Token.DOT
+      | `Chr '.'      -> (
+        match peek ~n:2 t with
+        | `Chr '.' -> next_n ~n:3 t; Token.DOTDOTDOT
+        | _        -> next_n ~n:2 t; Token.DOTDOT
+      )
+      | _             -> next t; Token.DOT
     )
     | `Chr '#' -> (
       match peek t with

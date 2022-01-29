@@ -62,6 +62,7 @@ and expression =
   | ForInRangeExpression of {
     iterator: identifier;
     reverse: bool;
+    inclusive: bool;
     from: expression;
     upto: expression;
     body: statement list

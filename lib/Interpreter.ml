@@ -121,7 +121,7 @@ let rec literal_of_expr state expr = match expr with
     | BoolLiteral _ -> failwith "Cannot iterate over boolean value"
   end
 
-  | Ast.ForInRangeExpression { iterator=Id ident; reverse; from; upto; body } -> begin
+  | Ast.ForInRangeExpression { iterator=Id ident; reverse; from; upto; inclusive; body } -> begin
     let from = from |> literal_of_expr state in
     let upto = upto |> literal_of_expr state in
 
@@ -134,24 +134,25 @@ let rec literal_of_expr state expr = match expr with
 
     let state = state |> add_scope in
 
-    let rec loop ~dir acc from upto =
-      let (><) = match dir with | `Up -> (>) | `Down -> (<) in
-      let (-+) = match dir with | `Up -> (-) | `Down -> (+) in
-      if upto >< from then
-        let upto = (upto -+ 1) in
+    let rec loop acc reverse from upto =
+      if (reverse && upto < from) || ((not reverse) && upto > from) then
+        let upto = if reverse then upto + 1 else upto - 1 in
         let literal = Ast.IntLiteral upto in
         state |> add_literal_to_scope ~ident ~literal;
         let r = eval_block state body in
-        loop (r :: acc) from upto ~dir
+        loop (r :: acc) reverse from upto
       else
         acc
     in
 
-    let result = if reverse then
-      loop [] from upto ~dir:`Down
-    else
-      loop [] from upto ~dir:`Up
+    let upto = if inclusive then
+      if reverse then
+        upto - 1
+      else
+        upto + 1
+    else upto
     in
+    let result = loop [] reverse from upto in
 
     Ast.ArrayLiteral result
   end

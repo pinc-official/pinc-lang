@@ -191,11 +191,13 @@ module Rules = struct
       expect Token.KEYWORD_IN t;
       let reverse = optional Token.KEYWORD_REVERSE t in
       let* expr1 = parse_expression t in
-      if optional Token.KEYWORD_TO t then (
+      let exclusive_range = t |> optional Token.DOTDOT in
+      let inclusive_range = t |> optional Token.DOTDOTDOT in
+      if (exclusive_range || inclusive_range) then (
         let* expr2 = parse_expression t in
         expect Token.RIGHT_PAREN t;
         let body = Helpers.list ~fn:parse_statement t in
-        Some (Ast.ForInRangeExpression { iterator; reverse; from=expr1; upto=expr2; body; })
+        Some (Ast.ForInRangeExpression { iterator; reverse; from=expr1; upto=expr2; inclusive=inclusive_range; body; })
       ) else (
         expect Token.RIGHT_PAREN t;
         let body = Helpers.list ~fn:parse_statement t in

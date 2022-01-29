@@ -17,8 +17,6 @@
 
 - Operator precedence
 
-- range expression as `..` and `...`
-
 - Functions / Lambdas
 
 - Pipe operator
