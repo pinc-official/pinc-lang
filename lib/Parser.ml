@@ -135,7 +135,7 @@ module Rules = struct
       next t;
       let expression = match parse_expression t with
       | Some e -> Ast.ExpressionTemplateNode e
-      | None   -> assert false; (* TODO: Error Message *)
+      | None   -> ExpressionTemplateNode (Ast.LiteralExpression (Ast.NullLiteral)) (* TODO: Should this be an error? *)
       in
       t |> expect Token.RIGHT_BRACE;
       Some expression
