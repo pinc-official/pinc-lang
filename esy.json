@@ -16,16 +16,12 @@
   },
   "scripts": {
     "t": "esy x dune runtest",
-    "tu": "esy x dune promote",
-    "test": "esy x dune runtest",
-    "test:u": "esy x dune promote"
-  },
-  "dependencies": {
-    "@opam/ppx_deriving": "*"
+    "tu": "esy x dune promote"
   },
   "devDependencies": {
     "@opam/dune": "< 3.0.0",
     "@opam/ocaml-lsp-server": "1.9.1",
+    "@opam/ocamlformat": "0.20.1",
     "ocaml": "4.13.1000"
   }
 }

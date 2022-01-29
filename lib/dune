@@ -1,4 +1,3 @@
 (library
  (name fennek_lib)
- (preprocess
-  (pps ppx_deriving.show)))
+ (libraries Ast Position))
