@@ -93,7 +93,7 @@ let rec literal_of_expr state expr = match expr with
 
   | Ast.TagExpression _          -> NullLiteral (* TODO: *)
 
-  | Ast.ForInExpression { iterator=Id ident; iterable; body; } -> begin
+  | Ast.ForInExpression { iterator=Id ident; iterable; reverse; body; } -> begin
     let iterable = iterable |> literal_of_expr state in
     let state = state |> add_scope in
     match iterable with
@@ -102,7 +102,8 @@ let rec literal_of_expr state expr = match expr with
         state |> add_literal_to_scope ~ident ~literal;
         eval_block state body
       end in
-      Ast.ArrayLiteral (l |> List.map loop)
+      let map = if reverse then List.rev_map else List.map in
+      Ast.ArrayLiteral (l |> map loop)
 
     | Ast.StringLiteral s ->
       let explode s = List.init (String.length s) (String.unsafe_get s) in
@@ -111,7 +112,8 @@ let rec literal_of_expr state expr = match expr with
         state |> add_literal_to_scope ~ident ~literal;
         eval_block state body
       end in
-      Ast.ArrayLiteral (s |> explode |> List.map loop)
+      let map = if reverse then List.rev_map else List.map in
+      Ast.ArrayLiteral (s |> explode |> map loop)
 
     | NullLiteral -> ArrayLiteral []
     | IntLiteral _ -> failwith "Cannot iterate over int value"
@@ -119,7 +121,7 @@ let rec literal_of_expr state expr = match expr with
     | BoolLiteral _ -> failwith "Cannot iterate over boolean value"
   end
 
-  | Ast.ForInRangeExpression { iterator=Id ident; from; upto; body } -> begin
+  | Ast.ForInRangeExpression { iterator=Id ident; reverse; from; upto; body } -> begin
     let from = from |> literal_of_expr state in
     let upto = upto |> literal_of_expr state in
 
@@ -132,23 +134,23 @@ let rec literal_of_expr state expr = match expr with
 
     let state = state |> add_scope in
 
-    let rec loop ~dir acc curr target =
+    let rec loop ~dir acc from upto =
       let (><) = match dir with | `Up -> (>) | `Down -> (<) in
       let (-+) = match dir with | `Up -> (-) | `Down -> (+) in
-      if curr >< target then
-        let curr = (curr -+ 1) in
-        let literal = Ast.IntLiteral curr in
+      if upto >< from then
+        let upto = (upto -+ 1) in
+        let literal = Ast.IntLiteral upto in
         state |> add_literal_to_scope ~ident ~literal;
         let r = eval_block state body in
-        loop (r :: acc) curr target ~dir
+        loop (r :: acc) from upto ~dir
       else
         acc
     in
 
-    let result = if from <= upto then
-      loop [] upto from ~dir:`Up
+    let result = if reverse then
+      loop [] from upto ~dir:`Down
     else
-      loop [] upto from ~dir:`Down
+      loop [] from upto ~dir:`Up
     in
 
     Ast.ArrayLiteral result

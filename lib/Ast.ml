@@ -55,11 +55,13 @@ and expression =
 
   | ForInExpression of {
     iterator: identifier;
+    reverse: bool;
     iterable: expression;
     body: statement list
   }
   | ForInRangeExpression of {
     iterator: identifier;
+    reverse: bool;
     from: expression;
     upto: expression;
     body: statement list

@@ -27,13 +27,33 @@ component C {
 
       {"\n"}
 
+      10 to 0
+      {for (i in 10 to 0) { <div class="item">{i}</div> {"\n"} }}
+
+      {"\n"}
+
+      10 to 0 reverse
+      {for (i in reverse 10 to 0) { <div class="item">{i}</div> {"\n"} }}
+
+      {"\n"}
+
       array
       {for (i in array) { <div class="item">{i}</div> {"\n"} }}
 
       {"\n"}
 
+      array reverse
+      {for (i in reverse array) { <div class="item">{i}</div> {"\n"} }}
+
+      {"\n"}
+
       string
       {for (c in "String!") { <div class="item">{c}</div> {"\n"} }}
+
+      {"\n"}
+
+      string reverse
+      {for (c in reverse "String!") { <div class="item">{c}</div> {"\n"} }}
 
       {"\n"}
 

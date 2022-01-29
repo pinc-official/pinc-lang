@@ -47,6 +47,7 @@ type token_type =
   | KEYWORD_ELSE
   | KEYWORD_FOR
   | KEYWORD_IN
+  | KEYWORD_REVERSE
   | KEYWORD_TO
   | KEYWORD_BREAK
   | KEYWORD_CONTINUE
@@ -118,6 +119,7 @@ let to_string = function
   | KEYWORD_ELSE      -> "else"
   | KEYWORD_FOR       -> "for"
   | KEYWORD_IN        -> "in"
+  | KEYWORD_REVERSE   -> "reverse"
   | KEYWORD_TO        -> "to"
   | KEYWORD_BREAK     -> "break"
   | KEYWORD_CONTINUE  -> "continue"
@@ -160,6 +162,7 @@ let keyword_of_string = function
 | "for" -> Some KEYWORD_FOR
 | "in" -> Some KEYWORD_IN
 | "to" -> Some KEYWORD_TO
+| "reverse" -> Some KEYWORD_REVERSE
 | "break" -> Some KEYWORD_BREAK
 | "continue" -> Some KEYWORD_CONTINUE
 | "component" -> Some KEYWORD_COMPONENT

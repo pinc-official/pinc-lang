@@ -19,8 +19,6 @@
 
 - range expression as `..` and `...`
 
-- make reverse loop explicit
-
 - Functions / Lambdas
 
 - Pipe operator
