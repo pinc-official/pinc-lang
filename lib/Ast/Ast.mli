@@ -57,7 +57,7 @@ and expression =
     }
   | BinaryExpression of {
       left: expression;
-      operator: Operators.Binary.t;
+      operator: Operators.Binary.typ;
       right: expression;
     }
 

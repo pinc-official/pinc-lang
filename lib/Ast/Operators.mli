@@ -1,5 +1,11 @@
+type precedence = int
+
+type associativity =
+  | Left
+  | Right
+
 module Binary : sig
-  type t =
+  type typ =
     | EQUAL
     | NOT_EQUAL
     | GREATER
@@ -15,13 +21,17 @@ module Binary : sig
     | AND
     | OR
 
-  val get_prec_and_assoc : t -> int * [> `left | `right ]
+  type t = {
+    typ: typ;
+    precedence: precedence;
+    assoc: associativity;
+  }
+
+  val make : typ -> t
 end
 
 module Unary : sig
   type t =
     | NEGATIVE
     | NOT
-
-  val get_prec_and_assoc : t -> int * [> `right ]
 end

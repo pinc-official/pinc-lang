@@ -340,51 +340,42 @@ module Rules = struct
 
   and parse_binary_operator t =
     match t.token.typ with
-    | Token.LOGICAL_AND -> Some Ast.Operators.Binary.AND
-    | Token.LOGICAL_OR -> Some Ast.Operators.Binary.OR
-    | Token.EQUAL_EQUAL -> Some Ast.Operators.Binary.EQUAL
-    | Token.NOT_EQUAL -> Some Ast.Operators.Binary.NOT_EQUAL
-    | Token.GREATER -> Some Ast.Operators.Binary.GREATER
-    | Token.GREATER_EQUAL -> Some Ast.Operators.Binary.GREATER_EQUAL
-    | Token.LESS -> Some Ast.Operators.Binary.LESS
-    | Token.LESS_EQUAL -> Some Ast.Operators.Binary.LESS_EQUAL
-    | Token.PLUSPLUS -> Some Ast.Operators.Binary.CONCAT
-    | Token.PLUS -> Some Ast.Operators.Binary.PLUS
-    | Token.MINUS -> Some Ast.Operators.Binary.MINUS
-    | Token.STAR -> Some Ast.Operators.Binary.TIMES
-    | Token.SLASH -> Some Ast.Operators.Binary.DIV
-    | Token.STAR_STAR -> Some Ast.Operators.Binary.POW
+    | Token.LOGICAL_AND -> Some Ast.Operators.Binary.(make AND)
+    | Token.LOGICAL_OR -> Some Ast.Operators.Binary.(make OR)
+    | Token.EQUAL_EQUAL -> Some Ast.Operators.Binary.(make EQUAL)
+    | Token.NOT_EQUAL -> Some Ast.Operators.Binary.(make NOT_EQUAL)
+    | Token.GREATER -> Some Ast.Operators.Binary.(make GREATER)
+    | Token.GREATER_EQUAL -> Some Ast.Operators.Binary.(make GREATER_EQUAL)
+    | Token.LESS -> Some Ast.Operators.Binary.(make LESS)
+    | Token.LESS_EQUAL -> Some Ast.Operators.Binary.(make LESS_EQUAL)
+    | Token.PLUSPLUS -> Some Ast.Operators.Binary.(make CONCAT)
+    | Token.PLUS -> Some Ast.Operators.Binary.(make PLUS)
+    | Token.MINUS -> Some Ast.Operators.Binary.(make MINUS)
+    | Token.STAR -> Some Ast.Operators.Binary.(make TIMES)
+    | Token.SLASH -> Some Ast.Operators.Binary.(make DIV)
+    | Token.STAR_STAR -> Some Ast.Operators.Binary.(make POW)
     | _ -> None
 
-  and parse_expression ?(curr_prio = -999) t =
-    let* expr = parse_expression_part t in
-    let left = ref expr in
-    let break = ref false in
-    if Lexer.inNormalMode t.lexer
-    then
-      while not !break do
-        match parse_binary_operator t with
-        | None -> break := true
-        | Some operator ->
-          let precedence, associativity =
-            Ast.Operators.Binary.get_prec_and_assoc operator
-          in
-          if precedence >= curr_prio
-          then (
-            next t;
-            let right =
-              match associativity with
-              | `left -> t |> parse_expression ~curr_prio:(precedence + 1)
-              | `right -> t |> parse_expression ~curr_prio:precedence
-            in
-            match right with
-            | None -> failwith "Expected expression"
-            | Some right ->
-              left := Ast.BinaryExpression { left = !left; operator; right }
-          )
-          else break := true
-      done;
-    Some !left
+  and parse_expression ?(prio = -999) t =
+    let rec loop ~prio ~left t =
+      match parse_binary_operator t with
+      | None -> left
+      | Some { precedence; _ } when precedence < prio -> left
+      | Some { typ = operator; precedence; assoc } ->
+        next t;
+        let new_prio =
+          match assoc with
+          | Left -> precedence + 1
+          | Right -> precedence
+        in
+        ( match parse_expression ~prio:new_prio t with
+        | None -> failwith "Expected expression"
+        | Some right ->
+          loop ~left:(Ast.BinaryExpression { left; operator; right }) ~prio t
+        )
+    in
+    let* left = parse_expression_part t in
+    if Lexer.inNormalMode t.lexer then Some (loop ~prio ~left t) else Some left
 
   and parse_statement t =
     match t.token.typ with

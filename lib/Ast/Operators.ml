@@ -1,5 +1,11 @@
+type precedence = int
+
+type associativity =
+  | Left
+  | Right
+
 module Binary = struct
-  type t =
+  type typ =
     | EQUAL
     | NOT_EQUAL
     | GREATER
@@ -15,21 +21,27 @@ module Binary = struct
     | AND
     | OR
 
-  let get_prec_and_assoc = function
-    | POW -> 8, `right
-    | TIMES -> 7, `left
-    | DIV -> 7, `left
-    | PLUS -> 6, `left
-    | MINUS -> 6, `left
-    | CONCAT -> 5, `left
-    | EQUAL -> 4, `left
-    | NOT_EQUAL -> 4, `left
-    | GREATER -> 4, `left
-    | GREATER_EQUAL -> 4, `left
-    | LESS -> 4, `left
-    | LESS_EQUAL -> 4, `left
-    | AND -> 2, `left
-    | OR -> 1, `left
+  type t = {
+    typ: typ;
+    precedence: precedence;
+    assoc: associativity;
+  }
+
+  let make = function
+    | POW -> { typ = POW; precedence = 8; assoc = Right }
+    | TIMES -> { typ = TIMES; precedence = 7; assoc = Left }
+    | DIV -> { typ = DIV; precedence = 7; assoc = Left }
+    | PLUS -> { typ = PLUS; precedence = 6; assoc = Left }
+    | MINUS -> { typ = MINUS; precedence = 6; assoc = Left }
+    | CONCAT -> { typ = CONCAT; precedence = 5; assoc = Left }
+    | EQUAL -> { typ = EQUAL; precedence = 4; assoc = Left }
+    | NOT_EQUAL -> { typ = NOT_EQUAL; precedence = 4; assoc = Left }
+    | GREATER -> { typ = GREATER; precedence = 4; assoc = Left }
+    | GREATER_EQUAL -> { typ = GREATER_EQUAL; precedence = 4; assoc = Left }
+    | LESS -> { typ = LESS; precedence = 4; assoc = Left }
+    | LESS_EQUAL -> { typ = LESS_EQUAL; precedence = 4; assoc = Left }
+    | AND -> { typ = AND; precedence = 2; assoc = Left }
+    | OR -> { typ = OR; precedence = 1; assoc = Left }
   ;;
 end
 
@@ -37,9 +49,4 @@ module Unary = struct
   type t =
     | NEGATIVE
     | NOT
-
-  let get_prec_and_assoc = function
-    | NEGATIVE -> 300, `right
-    | NOT -> 300, `right
-  ;;
 end
