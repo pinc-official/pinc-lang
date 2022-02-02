@@ -10,7 +10,10 @@ let rec to_string = function
   | Null -> ""
   | String s -> s
   | Int i -> string_of_int i
-  | Float f -> string_of_float f
+  | Float f ->
+    if Float.is_integer f
+    then string_of_int (int_of_float f)
+    else string_of_float f
   | Bool b -> if b then "true" else "false"
   | Array l -> l |> List.map to_string |> String.concat ""
 ;;

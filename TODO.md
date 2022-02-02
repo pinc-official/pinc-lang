@@ -15,8 +15,6 @@
 
 - Keep whitespace in template mode (for compat with <pre> tag)
 
-- Operator precedence
-
 - Functions / Lambdas
 
 - Pipe operator

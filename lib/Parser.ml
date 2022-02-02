@@ -217,6 +217,12 @@ module Rules = struct
 
   and parse_expression_part t =
     match t.token.typ with
+    (* PARSING PARENTHESIZED EXPRESSION *)
+    | Token.LEFT_PAREN ->
+      next t;
+      let expr = parse_expression t in
+      t |> expect Token.RIGHT_PAREN;
+      expr
     (* PARSING BLOCK EXPRESSION *)
     | Token.LEFT_BRACE ->
       next t;
@@ -310,8 +316,8 @@ module Rules = struct
     | (Token.NOT | Token.UNARY_MINUS) as o ->
       let operator =
         match o with
-        | Token.NOT -> Ast.Operator.NOT
-        | Token.UNARY_MINUS -> Ast.Operator.NEGATIVE
+        | Token.NOT -> Ast.Operators.Unary.NOT
+        | Token.UNARY_MINUS -> Ast.Operators.Unary.NEGATIVE
         | _ -> assert false
       in
       next t;
@@ -334,68 +340,51 @@ module Rules = struct
 
   and parse_binary_operator t =
     match t.token.typ with
-    | Token.LOGICAL_AND ->
-      next t;
-      Some Ast.Operator.AND
-    | Token.LOGICAL_OR ->
-      next t;
-      Some Ast.Operator.OR
-    | Token.EQUAL_EQUAL ->
-      next t;
-      Some Ast.Operator.EQUAL
-    | Token.NOT_EQUAL ->
-      next t;
-      Some Ast.Operator.NOT_EQUAL
-    | Token.GREATER ->
-      next t;
-      Some Ast.Operator.GREATER
-    | Token.GREATER_EQUAL ->
-      next t;
-      Some Ast.Operator.GREATER_EQUAL
-    | Token.LESS ->
-      next t;
-      Some Ast.Operator.LESS
-    | Token.LESS_EQUAL ->
-      next t;
-      Some Ast.Operator.LESS_EQUAL
-    | Token.PLUSPLUS ->
-      next t;
-      Some Ast.Operator.CONCAT
-    | Token.PLUS ->
-      next t;
-      Some Ast.Operator.PLUS
-    | Token.MINUS ->
-      next t;
-      Some Ast.Operator.MINUS
-    | Token.STAR ->
-      next t;
-      Some Ast.Operator.TIMES
-    | Token.SLASH ->
-      next t;
-      Some Ast.Operator.DIV
-    | Token.STAR_STAR ->
-      next t;
-      Some Ast.Operator.POW
+    | Token.LOGICAL_AND -> Some Ast.Operators.Binary.AND
+    | Token.LOGICAL_OR -> Some Ast.Operators.Binary.OR
+    | Token.EQUAL_EQUAL -> Some Ast.Operators.Binary.EQUAL
+    | Token.NOT_EQUAL -> Some Ast.Operators.Binary.NOT_EQUAL
+    | Token.GREATER -> Some Ast.Operators.Binary.GREATER
+    | Token.GREATER_EQUAL -> Some Ast.Operators.Binary.GREATER_EQUAL
+    | Token.LESS -> Some Ast.Operators.Binary.LESS
+    | Token.LESS_EQUAL -> Some Ast.Operators.Binary.LESS_EQUAL
+    | Token.PLUSPLUS -> Some Ast.Operators.Binary.CONCAT
+    | Token.PLUS -> Some Ast.Operators.Binary.PLUS
+    | Token.MINUS -> Some Ast.Operators.Binary.MINUS
+    | Token.STAR -> Some Ast.Operators.Binary.TIMES
+    | Token.SLASH -> Some Ast.Operators.Binary.DIV
+    | Token.STAR_STAR -> Some Ast.Operators.Binary.POW
     | _ -> None
 
-  and parse_expression t =
-    let* left = parse_expression_part t in
-    (* TODO: Mhmm...is this the best way to do this? We are only looking for
-       binary operators when we are not in template mode. This is to ensure, we
-       are not parsing the end of a html tag <div> as a binary operator
-       (GREATER). Maybe we can also do this in the lexer... *)
+  and parse_expression ?(curr_prio = -999) t =
+    let* expr = parse_expression_part t in
+    let left = ref expr in
+    let break = ref false in
     if Lexer.inNormalMode t.lexer
-    then (
-      match parse_binary_operator t with
-      | Some operator ->
-        let right = parse_expression t in
-        ( match right with
-        | Some right -> Some (Ast.BinaryExpression { left; operator; right })
-        | None -> failwith "Expected expression"
-        )
-      | None -> Some left
-    )
-    else Some left
+    then
+      while not !break do
+        match parse_binary_operator t with
+        | None -> break := true
+        | Some operator ->
+          let precedence, associativity =
+            Ast.Operators.Binary.get_prec_and_assoc operator
+          in
+          if precedence >= curr_prio
+          then (
+            next t;
+            let right =
+              match associativity with
+              | `left -> t |> parse_expression ~curr_prio:(precedence + 1)
+              | `right -> t |> parse_expression ~curr_prio:precedence
+            in
+            match right with
+            | None -> failwith "Expected expression"
+            | Some right ->
+              left := Ast.BinaryExpression { left = !left; operator; right }
+          )
+          else break := true
+      done;
+    Some !left
 
   and parse_statement t =
     match t.token.typ with

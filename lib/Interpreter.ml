@@ -114,34 +114,37 @@ let rec literal_of_expr state expr =
   | Ast.UnaryExpression { operator; argument } ->
     let res = argument |> literal_of_expr state in
     ( match operator, res with
-    | Ast.Operator.NOT, literal -> Ast.Literal.Bool (Ast.Literal.negate literal)
-    | Ast.Operator.NEGATIVE, Ast.Literal.Int i -> Ast.Literal.Int (Int.neg i)
-    | Ast.Operator.NEGATIVE, Ast.Literal.Float f ->
+    | Ast.Operators.Unary.NOT, literal ->
+      Ast.Literal.Bool (Ast.Literal.negate literal)
+    | Ast.Operators.Unary.NEGATIVE, Ast.Literal.Int i ->
+      Ast.Literal.Int (Int.neg i)
+    | Ast.Operators.Unary.NEGATIVE, Ast.Literal.Float f ->
       Ast.Literal.Float (Float.neg f)
-    | Ast.Operator.NEGATIVE, _ -> failwith "Invalid usage of unary - operator"
+    | Ast.Operators.Unary.NEGATIVE, _ ->
+      failwith "Invalid usage of unary - operator"
     )
   | Ast.BinaryExpression { left; operator; right } ->
     let a = lazy (left |> literal_of_expr state) in
     let b = lazy (right |> literal_of_expr state) in
     ( match operator with
-    | Ast.Operator.NOT_EQUAL ->
+    | Ast.Operators.Binary.NOT_EQUAL ->
       Ast.Literal.Bool (not (Ast.Literal.equal (Lazy.force a, Lazy.force b)))
-    | Ast.Operator.EQUAL ->
+    | Ast.Operators.Binary.EQUAL ->
       Ast.Literal.Bool (Ast.Literal.equal (Lazy.force a, Lazy.force b))
-    | Ast.Operator.LESS ->
+    | Ast.Operators.Binary.LESS ->
       Ast.Literal.Bool (Ast.Literal.compare (Lazy.force a, Lazy.force b) < 0)
-    | Ast.Operator.LESS_EQUAL ->
+    | Ast.Operators.Binary.LESS_EQUAL ->
       Ast.Literal.Bool (Ast.Literal.compare (Lazy.force a, Lazy.force b) <= 0)
-    | Ast.Operator.GREATER ->
+    | Ast.Operators.Binary.GREATER ->
       Ast.Literal.Bool (Ast.Literal.compare (Lazy.force a, Lazy.force b) > 0)
-    | Ast.Operator.GREATER_EQUAL ->
+    | Ast.Operators.Binary.GREATER_EQUAL ->
       Ast.Literal.Bool (Ast.Literal.compare (Lazy.force a, Lazy.force b) >= 0)
-    | Ast.Operator.CONCAT ->
+    | Ast.Operators.Binary.CONCAT ->
       ( match Lazy.force a, Lazy.force b with
       | Ast.Literal.String a, Ast.Literal.String b -> Ast.Literal.String (a ^ b)
       | _ -> failwith "Trying to concat non string literals."
       )
-    | Ast.Operator.PLUS ->
+    | Ast.Operators.Binary.PLUS ->
       ( match Lazy.force a, Lazy.force b with
       | Ast.Literal.Int a, Ast.Literal.Int b -> Ast.Literal.Int (a + b)
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a +. b)
@@ -151,7 +154,7 @@ let rec literal_of_expr state expr =
         Ast.Literal.Float (float_of_int a +. b)
       | _ -> failwith "Trying to add non numeric literals."
       )
-    | Ast.Operator.MINUS ->
+    | Ast.Operators.Binary.MINUS ->
       ( match Lazy.force a, Lazy.force b with
       | Ast.Literal.Int a, Ast.Literal.Int b -> Ast.Literal.Int (a - b)
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a -. b)
@@ -161,7 +164,7 @@ let rec literal_of_expr state expr =
         Ast.Literal.Float (float_of_int a -. b)
       | _ -> failwith "Trying to subtract non numeric literals."
       )
-    | Ast.Operator.TIMES ->
+    | Ast.Operators.Binary.TIMES ->
       ( match Lazy.force a, Lazy.force b with
       | Ast.Literal.Int a, Ast.Literal.Int b -> Ast.Literal.Int (a * b)
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a *. b)
@@ -171,9 +174,11 @@ let rec literal_of_expr state expr =
         Ast.Literal.Float (float_of_int a *. b)
       | _ -> failwith "Trying to multiply non numeric literals."
       )
-    | Ast.Operator.DIV ->
+    | Ast.Operators.Binary.DIV ->
       ( match Lazy.force a, Lazy.force b with
-      | Ast.Literal.Int a, Ast.Literal.Int b -> Ast.Literal.Int (a / b)
+      | Ast.Literal.Int a, Ast.Literal.Int b ->
+        let result = float_of_int a /. float_of_int b in
+        Ast.Literal.Float result
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a /. b)
       | Ast.Literal.Float a, Ast.Literal.Int b ->
         Ast.Literal.Float (a /. float_of_int b)
@@ -181,36 +186,28 @@ let rec literal_of_expr state expr =
         Ast.Literal.Float (float_of_int a /. b)
       | _ -> failwith "Trying to divide non numeric literals."
       )
-    | Ast.Operator.POW ->
+    | Ast.Operators.Binary.POW ->
       ( match Lazy.force a, Lazy.force b with
       | Ast.Literal.Int a, Ast.Literal.Int b ->
         let r = float_of_int a ** float_of_int b in
-        if Float.is_integer r
-        then Ast.Literal.Int (int_of_float r)
-        else Ast.Literal.Float r
+        Ast.Literal.Float r
       | Ast.Literal.Float a, Ast.Literal.Float b ->
         let r = a ** b in
-        if Float.is_integer r
-        then Ast.Literal.Int (int_of_float r)
-        else Ast.Literal.Float r
+        Ast.Literal.Float r
       | Ast.Literal.Float a, Ast.Literal.Int b ->
         let r = a ** float_of_int b in
-        if Float.is_integer r
-        then Ast.Literal.Int (int_of_float r)
-        else Ast.Literal.Float r
+        Ast.Literal.Float r
       | Ast.Literal.Int a, Ast.Literal.Float b ->
         let r = float_of_int a ** b in
-        if Float.is_integer r
-        then Ast.Literal.Int (int_of_float r)
-        else Ast.Literal.Float r
+        Ast.Literal.Float r
       | _ -> failwith "Trying to raise non numeric literals."
       )
-    | Ast.Operator.AND ->
+    | Ast.Operators.Binary.AND ->
       Ast.Literal.Bool
         (Ast.Literal.is_true (Lazy.force a)
         && Ast.Literal.is_true (Lazy.force b)
         )
-    | Ast.Operator.OR ->
+    | Ast.Operators.Binary.OR ->
       Ast.Literal.Bool
         (Ast.Literal.is_true (Lazy.force a)
         || Ast.Literal.is_true (Lazy.force b)

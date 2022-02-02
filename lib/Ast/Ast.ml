@@ -1,4 +1,5 @@
 module Literal = Literal
+module Operators = Operators
 
 module SourceLocation = struct
   type t = {
@@ -6,28 +7,6 @@ module SourceLocation = struct
     pos_start: Position.t;
     pos_end: Position.t;
   }
-end
-
-module Operator = struct
-  type binary =
-    | EQUAL
-    | NOT_EQUAL
-    | GREATER
-    | GREATER_EQUAL
-    | LESS
-    | LESS_EQUAL
-    | PLUS
-    | MINUS
-    | TIMES
-    | DIV
-    | POW
-    | CONCAT
-    | AND
-    | OR
-
-  type unary =
-    | NEGATIVE
-    | NOT
 end
 
 type identifier = Id of string
@@ -73,12 +52,12 @@ and expression =
       alternate: expression option;
     }
   | UnaryExpression of {
-      operator: Operator.unary;
+      operator: Operators.Unary.t;
       argument: expression;
     }
   | BinaryExpression of {
       left: expression;
-      operator: Operator.binary;
+      operator: Operators.Binary.t;
       right: expression;
     }
 
