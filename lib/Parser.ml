@@ -85,8 +85,8 @@ module Helpers = struct
       let has_sep = optional sep t in
       match fn t with
       | Some r ->
-        if has_sep || acc = []
-        then loop (r :: acc)
+        if has_sep || Iter.is_empty acc
+        then loop (Iter.cons r acc)
         else (
           print_endline
             (Printf.sprintf
@@ -102,14 +102,14 @@ module Helpers = struct
                )
             )
         )
-      | None -> List.rev acc
+      | None -> Iter.rev acc
     in
-    loop []
+    loop Iter.empty
   ;;
 
   let non_empty_separated_list ~sep ~fn t =
     let res = separated_list ~sep ~fn t in
-    if res = []
+    if Iter.is_empty res
     then (
       print_endline
         (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
@@ -121,15 +121,15 @@ module Helpers = struct
   let list ~fn t =
     let rec loop acc =
       match fn t with
-      | Some r -> loop (r :: acc)
-      | None -> List.rev acc
+      | Some r -> loop (Iter.cons r acc)
+      | None -> Iter.rev acc
     in
-    loop []
+    loop Iter.empty
   ;;
 
   let non_empty_list ~fn t =
     let res = list ~fn t in
-    if res = []
+    if Iter.is_empty res
     then raise (Parser_Error (Printf.sprintf "Expected list to not be empty"));
     res
   ;;
@@ -187,7 +187,7 @@ module Rules = struct
       t |> expect Token.GREATER;
       let children =
         if self_closing
-        then []
+        then Iter.empty
         else (
           let children = t |> Helpers.list ~fn:parse_template_node in
           t |> expect (Token.HTML_CLOSE_TAG tag);
@@ -202,7 +202,7 @@ module Rules = struct
       t |> expect Token.GREATER;
       let children =
         if self_closing
-        then []
+        then Iter.empty
         else (
           let children = t |> Helpers.list ~fn:parse_template_node in
           t |> expect (Token.COMPONENT_CLOSE_TAG identifier);
@@ -316,8 +316,8 @@ module Rules = struct
     | (Token.NOT | Token.UNARY_MINUS) as o ->
       let operator =
         match o with
-        | Token.NOT -> Ast.Operators.Unary.NOT
-        | Token.UNARY_MINUS -> Ast.Operators.Unary.NEGATIVE
+        | Token.NOT -> Ast.Operators.Unary.make NOT
+        | Token.UNARY_MINUS -> Ast.Operators.Unary.make NEGATIVE
         | _ -> assert false
       in
       next t;
@@ -375,6 +375,11 @@ module Rules = struct
         )
     in
     let* left = parse_expression_part t in
+    let prio =
+      match left with
+      | Ast.UnaryExpression { operator = { precedence; _ }; _ } -> precedence
+      | _ -> prio
+    in
     if Lexer.inNormalMode t.lexer then Some (loop ~prio ~left t) else Some left
 
   and parse_statement t =

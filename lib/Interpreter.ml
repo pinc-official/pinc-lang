@@ -36,29 +36,27 @@ let rec literal_of_expr state expr =
     | Some v -> v
     )
   | Ast.ArrayExpression expressions ->
-    Ast.Literal.Array (expressions |> List.map (literal_of_expr state))
+    Ast.Literal.Array (expressions |> Iter.map (literal_of_expr state))
   | Ast.TagExpression _ -> Ast.Literal.Null (* TODO: *)
   | Ast.ForInExpression { iterator = Id ident; iterable; reverse; body } ->
     let iterable = iterable |> literal_of_expr state in
     let state = state |> add_scope in
+    let maybe_rev = if reverse then Iter.rev else fun i -> i in
     ( match iterable with
     | Ast.Literal.Array l ->
       let loop literal =
         state |> add_literal_to_scope ~ident ~literal;
         eval_block state body
       in
-      let map = if reverse then List.rev_map else List.map in
-      Ast.Literal.Array (l |> map loop)
+      Ast.Literal.Array (l |> maybe_rev |> Iter.map loop)
     | Ast.Literal.String s ->
-      let explode s = List.init (String.length s) (String.unsafe_get s) in
       let loop c =
         let literal = Ast.Literal.String (String.make 1 c) in
         state |> add_literal_to_scope ~ident ~literal;
         eval_block state body
       in
-      let map = if reverse then List.rev_map else List.map in
-      Ast.Literal.Array (s |> explode |> map loop)
-    | Ast.Literal.Null -> Ast.Literal.Array []
+      Ast.Literal.Array (s |> Iter.of_str |> maybe_rev |> Iter.map loop)
+    | Ast.Literal.Null -> Ast.Literal.Null
     | Ast.Literal.Int _ -> failwith "Cannot iterate over int value"
     | Ast.Literal.Float _ -> failwith "Cannot iterate over float value"
     | Ast.Literal.Bool _ -> failwith "Cannot iterate over boolean value"
@@ -84,25 +82,31 @@ let rec literal_of_expr state expr =
            are not of type int."
     in
     let state = state |> add_scope in
-    let rec loop acc reverse from upto =
-      if (reverse && upto < from) || ((not reverse) && upto > from)
-      then (
-        let upto = if reverse then upto + 1 else upto - 1 in
-        let literal = Ast.Literal.Int upto in
-        state |> add_literal_to_scope ~ident ~literal;
-        let r = eval_block state body in
-        loop (r :: acc) reverse from upto
-      )
-      else acc
+    let iter =
+      match reverse, from > upto with
+      | true, true ->
+        let start = from in
+        let stop = if not inclusive then upto + 1 else upto in
+        Iter.int_range_dec ~start ~stop
+      | true, false -> Iter.empty
+      | false, true -> Iter.empty
+      | false, false ->
+        let start = from in
+        let stop = if not inclusive then upto - 1 else upto in
+        Iter.int_range ~start ~stop
     in
-    let upto =
-      if inclusive then if reverse then upto - 1 else upto + 1 else upto
+    let result =
+      iter
+      |> Iter.map (fun i ->
+             let literal = Ast.Literal.Int i in
+             state |> add_literal_to_scope ~ident ~literal;
+             eval_block state body
+         )
     in
-    let result = loop [] reverse from upto in
     Ast.Literal.Array result
   | Ast.TemplateExpression template_nodes ->
     Ast.Literal.String
-      (template_nodes |> List.map (template_to_string state) |> String.concat "")
+      (template_nodes |> Iter.map (template_to_string state) |> Iter.concat_str)
   | Ast.ConditionalExpression { condition; consequent; alternate } ->
     if condition |> literal_of_expr state |> Ast.Literal.is_true
     then consequent |> literal_of_expr state
@@ -113,7 +117,7 @@ let rec literal_of_expr state expr =
     )
   | Ast.UnaryExpression { operator; argument } ->
     let res = argument |> literal_of_expr state in
-    ( match operator, res with
+    ( match operator.typ, res with
     | Ast.Operators.Unary.NOT, literal ->
       Ast.Literal.Bool (Ast.Literal.negate literal)
     | Ast.Operators.Unary.NEGATIVE, Ast.Literal.Int i ->
@@ -224,10 +228,13 @@ and template_to_string state template =
   | Ast.TextTemplateNode text -> text
   | Ast.HtmlTemplateNode { tag; attributes; children; _ } ->
     let attributes =
-      attributes |> List.map (html_attr_to_string state) |> String.concat " "
+      attributes
+      |> Iter.map (html_attr_to_string state)
+      |> Iter.intersperse " "
+      |> Iter.concat_str
     in
     let children =
-      children |> List.map (template_to_string state) |> String.concat ""
+      children |> Iter.map (template_to_string state) |> Iter.concat_str
     in
     Printf.sprintf
       "<%s%s>%s</%s>"
@@ -243,7 +250,7 @@ and template_to_string state template =
 and eval_block state =
   let state = state |> add_scope in
   let result =
-    List.fold_left (fun _acc curr -> eval_statement state curr) Ast.Literal.Null
+    Iter.fold (fun _acc curr -> eval_statement state curr) Ast.Literal.Null
   in
   result
 
@@ -270,7 +277,7 @@ let eval_declaration state declaration =
 ;;
 
 let eval ~state ast =
-  List.fold_left
+  Iter.fold
     (fun state curr -> output (eval_declaration state curr) state)
     state
     ast

@@ -14,13 +14,13 @@ type identifier = Id of string
 type template_node =
   | HtmlTemplateNode of {
       tag: string;
-      attributes: attribute list;
-      children: template_node list;
+      attributes: attribute Iter.t;
+      children: template_node Iter.t;
     }
   | ComponentTemplateNode of {
       identifier: identifier;
-      attributes: attribute list;
-      children: template_node list;
+      attributes: attribute Iter.t;
+      children: template_node Iter.t;
     }
   | ExpressionTemplateNode of expression
   | TextTemplateNode of string
@@ -28,13 +28,13 @@ type template_node =
 and expression =
   | IdentifierExpression of identifier
   | LiteralExpression of Literal.t
-  | ArrayExpression of expression list
+  | ArrayExpression of expression Iter.t
   | TagExpression of tag
   | ForInExpression of {
       iterator: identifier;
       reverse: bool;
       iterable: expression;
-      body: statement list;
+      body: statement Iter.t;
     }
   | ForInRangeExpression of {
       iterator: identifier;
@@ -42,10 +42,10 @@ and expression =
       inclusive: bool;
       from: expression;
       upto: expression;
-      body: statement list;
+      body: statement Iter.t;
     }
-  | TemplateExpression of template_node list
-  | BlockExpression of statement list
+  | TemplateExpression of template_node Iter.t
+  | BlockExpression of statement Iter.t
   | ConditionalExpression of {
       condition: expression;
       consequent: expression;
@@ -68,7 +68,7 @@ and attribute = {
 
 and tag = {
   name: string;
-  attributes: attribute list;
+  attributes: attribute Iter.t;
   body: statement option;
 }
 
@@ -86,26 +86,26 @@ and declaration =
   | SiteDeclaration of {
       location: Position.t;
       identifier: identifier;
-      attributes: attribute list option;
-      body: statement list;
+      attributes: attribute Iter.t option;
+      body: statement Iter.t;
     }
   | PageDeclaration of {
       location: Position.t;
       identifier: identifier;
-      attributes: attribute list option;
-      body: statement list;
+      attributes: attribute Iter.t option;
+      body: statement Iter.t;
     }
   | ComponentDeclaration of {
       location: Position.t;
       identifier: identifier;
-      attributes: attribute list option;
-      body: statement list;
+      attributes: attribute Iter.t option;
+      body: statement Iter.t;
     }
   | StoreDeclaration of {
       location: Position.t;
       identifier: identifier;
-      attributes: attribute list option;
-      body: statement list;
+      attributes: attribute Iter.t option;
+      body: statement Iter.t;
     }
 
-and t = declaration list
+and t = declaration Iter.t

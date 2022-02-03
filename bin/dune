@@ -2,6 +2,14 @@
  (name print)
  (public_name print)
  (modules print)
+ (modes native)
+ (ocamlopt_flags -O3)
+ (libraries fennek_lib unix))
+
+(executable
+ (name print_ast)
+ (public_name print_ast)
+ (modules print_ast)
  (libraries fennek_lib unix))
 
 (cram

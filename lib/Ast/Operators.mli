@@ -31,7 +31,14 @@ module Binary : sig
 end
 
 module Unary : sig
-  type t =
+  type typ =
     | NEGATIVE
     | NOT
+
+  type t = {
+    typ: typ;
+    precedence: precedence;
+  }
+
+  val make : typ -> t
 end

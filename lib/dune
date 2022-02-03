@@ -1,3 +1,4 @@
 (library
  (name fennek_lib)
- (libraries Ast Position))
+ (ocamlopt_flags -O3)
+ (libraries Ast Position iter))

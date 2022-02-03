@@ -46,7 +46,17 @@ module Binary = struct
 end
 
 module Unary = struct
-  type t =
+  type typ =
     | NEGATIVE
     | NOT
+
+  type t = {
+    typ: typ;
+    precedence: precedence;
+  }
+
+  let make = function
+    | NEGATIVE -> { typ = NEGATIVE; precedence = 3 }
+    | NOT -> { typ = NOT; precedence = 3 }
+  ;;
 end
