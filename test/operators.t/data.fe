@@ -1,4 +1,4 @@
-component Operators {
+component Component {
   #Template {
     <div>
       ![1] = {![1]}

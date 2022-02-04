@@ -1,4 +1,4 @@
-component Section(
+component Component(
   label: "Section",
   icon: "/images/icons/group.svg",
   group: "Structure",

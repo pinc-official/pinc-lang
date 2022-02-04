@@ -461,3 +461,12 @@ let scan t =
   let declarations = t |> Helpers.list ~fn:Rules.parse_declaration in
   declarations
 ;;
+
+let parse_file filename =
+  let file_contents chan = really_input_string chan (in_channel_length chan) in
+  let chan = open_in filename in
+  let src = chan |> file_contents in
+  close_in chan;
+  let parser = make ~filename src in
+  scan parser
+;;

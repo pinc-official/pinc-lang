@@ -1,3 +1,3 @@
-  $ esy x print ./data.fe
+  $ esy x print . Docs
   
 

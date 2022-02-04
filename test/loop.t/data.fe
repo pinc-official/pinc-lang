@@ -1,4 +1,4 @@
-component C {
+component Component {
 
   let max = 10;
 

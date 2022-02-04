@@ -1,6 +1,8 @@
-  $ esy x print ./data.fe Section
-  <div class="SubComponent" data-foo="bar">
-        Hello, SubComponent!
-      </div><section class="Section">
+  $ esy x print . Component
+  <section class="Section">
         <SubComponent />
       </section>
+
+  $ esy x print . Foo
+  Fatal error: exception Failure("Declaration with name `Foo` was not found.")
+  [2]

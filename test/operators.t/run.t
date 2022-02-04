@@ -1,4 +1,4 @@
-  $ esy x print ./data.fe Section
+  $ esy x print . Component
   <div>
         ![1] = false
         ![] = true

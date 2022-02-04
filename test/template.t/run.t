@@ -1,4 +1,4 @@
-  $ esy x print ./data.fe
+  $ esy x print . Component
   <section class="Section">
         <div></div>
         <div></div>

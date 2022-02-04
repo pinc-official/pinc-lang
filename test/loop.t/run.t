@@ -1,4 +1,4 @@
-  $ esy x print ./data.fe Section
+  $ esy x print . Component
   <section>
         <h1>EXCLUSIVE RANGES</h1>
   
