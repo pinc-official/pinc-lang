@@ -4,7 +4,7 @@
  (modules print)
  (modes native)
  (ocamlopt_flags -O3)
- (libraries fennek_lib unix))
+ (libraries fennek_lib))
 
 (executable
  (name print_debug)
