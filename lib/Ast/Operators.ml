@@ -21,11 +21,11 @@ module Binary = struct
     | AND
     | OR
 
-  type t = {
-    typ: typ;
-    precedence: precedence;
-    assoc: associativity;
-  }
+  type t =
+    { typ : typ
+    ; precedence : precedence
+    ; assoc : associativity
+    }
 
   let make = function
     | POW -> { typ = POW; precedence = 8; assoc = Right }
@@ -50,10 +50,10 @@ module Unary = struct
     | NEGATIVE
     | NOT
 
-  type t = {
-    typ: typ;
-    precedence: precedence;
-  }
+  type t =
+    { typ : typ
+    ; precedence : precedence
+    }
 
   let make = function
     | NEGATIVE -> { typ = NEGATIVE; precedence = 3 }

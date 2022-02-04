@@ -60,11 +60,11 @@ type token_type =
   | LESS_SLASH
   | END_OF_INPUT
 
-type t = {
-  typ: token_type;
-  start_pos: Position.t;
-  end_pos: Position.t;
-}
+type t =
+  { typ : token_type
+  ; start_pos : Position.t
+  ; end_pos : Position.t
+  }
 
 let make ~start_pos ~end_pos typ = { typ; start_pos; end_pos }
 
@@ -170,8 +170,7 @@ let lookup_keyword str =
   match keyword_of_string str with
   | Some t -> t
   | None ->
-    ( match str.[0] with
+    (match str.[0] with
     | 'A' .. 'Z' -> IDENT_UPPER str
-    | _ -> IDENT_LOWER str
-    )
+    | _ -> IDENT_LOWER str)
 ;;

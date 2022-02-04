@@ -17,9 +17,7 @@ let rec to_string = function
   | String s -> s
   | Int i -> string_of_int i
   | Float f ->
-    if Float.is_integer f
-    then string_of_int (int_of_float f)
-    else string_of_float f
+    if Float.is_integer f then string_of_int (int_of_float f) else string_of_float f
   | Bool b -> if b then "true" else "false"
   | Array l ->
     let b = Buffer.create 1024 in

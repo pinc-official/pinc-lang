@@ -21,11 +21,11 @@ module Binary : sig
     | AND
     | OR
 
-  type t = {
-    typ: typ;
-    precedence: precedence;
-    assoc: associativity;
-  }
+  type t =
+    { typ : typ
+    ; precedence : precedence
+    ; assoc : associativity
+    }
 
   val make : typ -> t
 end
@@ -35,10 +35,10 @@ module Unary : sig
     | NEGATIVE
     | NOT
 
-  type t = {
-    typ: typ;
-    precedence: precedence;
-  }
+  type t =
+    { typ : typ
+    ; precedence : precedence
+    }
 
   val make : typ -> t
 end

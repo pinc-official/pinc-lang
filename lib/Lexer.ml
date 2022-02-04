@@ -8,18 +8,18 @@ type char' =
   | `EOF
   ]
 
-type t = {
-  filename: string;
-  src: string;
-  src_length: int;
-  mutable prev: char';
-  mutable current: char';
-  mutable offset: int;
-  mutable line_offset: int;
-  mutable line: int;
-  mutable column: int;
-  mutable mode: mode list;
-}
+type t =
+  { filename : string
+  ; src : string
+  ; src_length : int
+  ; mutable prev : char'
+  ; mutable current : char'
+  ; mutable offset : int
+  ; mutable line_offset : int
+  ; mutable line : int
+  ; mutable column : int
+  ; mutable mode : mode list
+  }
 
 let make_position a =
   Position.make ~filename:a.filename ~line:a.line ~column:(a.column + 1)
@@ -86,10 +86,9 @@ let next t =
   t.offset <- next_offset;
   t.prev <- t.current;
   t.current
-    <- ( if next_offset < t.src_length
+    <- (if next_offset < t.src_length
        then `Chr (String.unsafe_get t.src next_offset)
-       else `EOF
-       )
+       else `EOF)
 ;;
 
 let next_n ~n t =
@@ -105,17 +104,16 @@ let peek ?(n = 1) t =
 ;;
 
 let make ~filename src =
-  {
-    filename;
-    src;
-    src_length = String.length src;
-    prev = `EOF;
-    current = (if src = "" then `EOF else `Chr (String.unsafe_get src 0));
-    offset = 0;
-    line_offset = 0;
-    column = 0;
-    line = 1;
-    mode = [Normal];
+  { filename
+  ; src
+  ; src_length = String.length src
+  ; prev = `EOF
+  ; current = (if src = "" then `EOF else `Chr (String.unsafe_get src 0))
+  ; offset = 0
+  ; line_offset = 0
+  ; column = 0
+  ; line = 1
+  ; mode = [ Normal ]
   }
 ;;
 
@@ -128,8 +126,7 @@ let rec skip_whitespace t =
   if is_whitespace t.current
   then (
     next t;
-    skip_whitespace t
-  )
+    skip_whitespace t)
 ;;
 
 let scan_ident t =
@@ -161,7 +158,7 @@ let scan_string t =
         ~end_pos:(make_position t)
         Diagnostics.NonTerminatedString
     | `Chr '\\' ->
-      ( match peek t with
+      (match peek t with
       | `Chr ' ' ->
         next_n ~n:2 t;
         Buffer.add_char buf '\\';
@@ -207,8 +204,7 @@ let scan_string t =
         Diagnostics.report
           ~start_pos
           ~end_pos:(make_position t)
-          Diagnostics.NonTerminatedString
-      )
+          Diagnostics.NonTerminatedString)
     | `Chr '"' ->
       next t;
       ()
@@ -245,7 +241,7 @@ let scan_tag_or_template t =
   match found with
   | "Template" -> Token.TEMPLATE
   | s ->
-    ( match s.[0] with
+    (match s.[0] with
     | 'A' .. 'Z' -> Token.TAG found
     | _ ->
       Diagnostics.report
@@ -253,12 +249,9 @@ let scan_tag_or_template t =
         ~end_pos:(make_position t)
         (Diagnostics.Message
            (Printf.sprintf
-              "Invalid Tag! Tags have to start with an uppercase character. \
-               Did you mean to write #%s?"
-              (String.capitalize_ascii found)
-           )
-        )
-    )
+              "Invalid Tag! Tags have to start with an uppercase character. Did you mean \
+               to write #%s?"
+              (String.capitalize_ascii found))))
 ;;
 
 let get_html_tag_ident t =
@@ -282,11 +275,9 @@ let get_html_tag_ident t =
       ~end_pos:(make_position t)
       (Diagnostics.Message
          (Printf.sprintf
-            "Invalid HTML tag! HTML tags have to start with a lowercase \
-             letter. Instead saw: %s"
-            ident
-         )
-      )
+            "Invalid HTML tag! HTML tags have to start with a lowercase letter. Instead \
+             saw: %s"
+            ident))
 ;;
 
 let get_uppercase_ident t =
@@ -319,11 +310,9 @@ let scan_open_tag t =
       ~end_pos:(make_position t)
       (Diagnostics.Message
          (Printf.sprintf
-            "Invalid Template tag! Template tags have to start with an \
-             uppercase or lowercase letter. Instead saw: %c"
-            c
-         )
-      )
+            "Invalid Template tag! Template tags have to start with an uppercase or \
+             lowercase letter. Instead saw: %c"
+            c))
   | `EOF ->
     Diagnostics.report
       ~start_pos
@@ -345,11 +334,9 @@ let scan_close_tag t =
         ~end_pos:(make_position t)
         (Diagnostics.Message
            (Printf.sprintf
-              "Invalid Template tag! Template tags have to start with an \
-               uppercase or lowercase letter. Instead saw: %c"
-              c
-           )
-        )
+              "Invalid Template tag! Template tags have to start with an uppercase or \
+               lowercase letter. Instead saw: %c"
+              c))
     | `EOF ->
       Diagnostics.report
         ~start_pos
@@ -361,10 +348,7 @@ let scan_close_tag t =
     next t;
     close_tag
   | _ ->
-    Diagnostics.report
-      ~start_pos
-      ~end_pos:(make_position t)
-      (ExpectedToken Token.GREATER)
+    Diagnostics.report ~start_pos ~end_pos:(make_position t) (ExpectedToken Token.GREATER)
 ;;
 
 let scan_template_text t =
@@ -378,14 +362,13 @@ let scan_template_text t =
         Diagnostics.NonTerminatedTemplate
     | `Chr '{' -> Buffer.contents buf
     | `Chr '<' ->
-      ( match peek t with
+      (match peek t with
       | `Chr '/' -> Buffer.contents buf
       | `Chr 'a' .. 'z' -> Buffer.contents buf
       | _ ->
         next t;
         Buffer.add_char buf '<';
-        loop buf t
-      )
+        loop buf t)
     | `Chr c ->
       next t;
       Buffer.add_char buf c;
@@ -431,15 +414,13 @@ let scan_number t =
   let is_float =
     match t.current with
     | `Chr '.' ->
-      ( match peek t with
-      | `Chr '.' ->
-        false (* Two Dots in a row mean that this is a range expression *)
+      (match peek t with
+      | `Chr '.' -> false (* Two Dots in a row mean that this is a range operator *)
       | _ ->
         Buffer.add_char result '.';
         next t;
         scan_digits t;
-        true
-      )
+        true)
     | _ -> false
   in
   (* exponent part *)
@@ -491,7 +472,7 @@ let rec scan_template_token ~start_pos t =
     next t;
     Token.RIGHT_BRACE
   | `Chr '<' ->
-    ( match peek t with
+    (match peek t with
     | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' ->
       setTemplateMode t;
       setTemplateAttributesMode t;
@@ -499,8 +480,7 @@ let rec scan_template_token ~start_pos t =
     | `Chr '/' ->
       popTemplateMode t;
       scan_close_tag t
-    | _ -> scan_template_text t
-    )
+    | _ -> scan_template_text t)
   | `Chr '/' ->
     next t;
     Token.SLASH
@@ -531,7 +511,7 @@ and scan_template_attributes_token ~start_pos t =
     next t;
     Token.RIGHT_BRACE
   | `Chr '/' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '>' ->
       popTemplateAttributesMode t;
       scan_template_token ~start_pos t
@@ -544,8 +524,7 @@ and scan_template_attributes_token ~start_pos t =
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedTemplate
-    )
+        Diagnostics.NonTerminatedTemplate)
   | `Chr '>' ->
     popTemplateAttributesMode t;
     scan_template_token ~start_pos t
@@ -574,10 +553,10 @@ and scan_normal_token ~start_pos t =
     next t;
     Token.RIGHT_BRACK
   | `Chr '{' ->
+    (* NOTE: Do we always want to go into normal mode when seeing { ? *)
     setNormalMode t;
     next t;
     Token.LEFT_BRACE
-    (* NOTE: Do we always want to go into normal mode when seeing { ? *)
   | `Chr '}' ->
     popNormalMode t;
     next t;
@@ -595,21 +574,18 @@ and scan_normal_token ~start_pos t =
     if is_whitespace (peek t)
     then (
       next t;
-      Token.MINUS
-    )
+      Token.MINUS)
     else (
       next t;
-      Token.UNARY_MINUS
-    )
+      Token.UNARY_MINUS)
   | `Chr '+' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '+' ->
       next_n ~n:2 t;
       Token.PLUSPLUS
     | _ ->
       next t;
-      Token.PLUS
-    )
+      Token.PLUS)
   | `Chr '%' ->
     next t;
     Token.PERCENT
@@ -617,41 +593,37 @@ and scan_normal_token ~start_pos t =
     next t;
     Token.QUESTIONMARK
   | `Chr '/' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '/' ->
       skip_comment t;
       Token.COMMENT
     | _ ->
       next t;
-      Token.SLASH
-    )
+      Token.SLASH)
   | `Chr '.' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '0' .. '9' -> scan_number t
     | `Chr '.' ->
-      ( match peek ~n:2 t with
+      (match peek ~n:2 t with
       | `Chr '.' ->
         next_n ~n:3 t;
         Token.DOTDOTDOT
       | _ ->
         next_n ~n:2 t;
-        Token.DOTDOT
-      )
+        Token.DOTDOT)
     | _ ->
       next t;
-      Token.DOT
-    )
+      Token.DOT)
   | `Chr '#' ->
-    ( match peek t with
+    (match peek t with
     | `Chr 'A' .. 'Z' | `Chr 'a' .. 'z' -> scan_tag_or_template t
     | _ ->
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter '@')
-    )
+        (Diagnostics.UnknownCharacter '@'))
   | `Chr '&' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '&' ->
       next_n ~n:2 t;
       Token.LOGICAL_AND
@@ -659,55 +631,49 @@ and scan_normal_token ~start_pos t =
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter '&')
-    )
+        (Diagnostics.UnknownCharacter '&'))
   | `Chr '|' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '|' ->
       next_n ~n:2 t;
       Token.LOGICAL_OR
     | _ ->
       next t;
-      Token.PIPE
-    )
+      Token.PIPE)
   | `Chr '!' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '=' ->
       next_n ~n:2 t;
       Token.NOT_EQUAL
     | _ ->
       next t;
-      Token.NOT
-    )
+      Token.NOT)
   | `Chr '=' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '=' ->
       next_n ~n:2 t;
       Token.EQUAL_EQUAL
     | _ ->
       next t;
-      Token.EQUAL
-    )
+      Token.EQUAL)
   | `Chr '>' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '=' ->
       next_n ~n:2 t;
       Token.GREATER_EQUAL
     | _ ->
       next t;
-      Token.GREATER
-    )
+      Token.GREATER)
   | `Chr '*' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '*' ->
       next_n ~n:2 t;
       Token.STAR_STAR
     | _ ->
       next t;
-      Token.STAR
-    )
+      Token.STAR)
   | `Chr '<' ->
-    ( match peek t with
+    (match peek t with
     | `Chr '=' ->
       next_n ~n:2 t;
       Token.LESS_EQUAL
@@ -725,8 +691,7 @@ and scan_normal_token ~start_pos t =
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter '<')
-    )
+        (Diagnostics.UnknownCharacter '<'))
   | `EOF -> Token.END_OF_INPUT
   | `Chr _ ->
     (* Diagnostics.report ~start_pos ~end_pos:(make_position t)

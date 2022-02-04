@@ -10,9 +10,9 @@ type typ =
   | Message of string
 
 type t =
-  { start_pos : Position.t;
-    end_pos : Position.t;
-    typ : typ
+  { start_pos : Position.t
+  ; end_pos : Position.t
+  ; typ : typ
   }
 
 let make ~start_pos ~end_pos typ = { start_pos; end_pos; typ }
@@ -23,8 +23,8 @@ module Messages = struct
   ;;
 
   let non_terminated_template =
-    "Your Template was not closed correctly. You probably mismatched or forgot \
-     a closing tag."
+    "Your Template was not closed correctly. You probably mismatched or forgot a closing \
+     tag."
   ;;
 
   let unknown_character =
@@ -32,24 +32,20 @@ module Messages = struct
   ;;
 
   let unexpected_token t =
-    Printf.sprintf
-      "The token %S is unexpected at this point."
-      (Token.to_string t)
+    Printf.sprintf "The token %S is unexpected at this point." (Token.to_string t)
   ;;
 
   let expected_ident = function
     | t when Token.is_keyword t ->
-      Printf.sprintf
-        "`%s` is a keyword. Please choose another name."
-        (Token.to_string t)
+      Printf.sprintf "`%s` is a keyword. Please choose another name." (Token.to_string t)
     | _ -> "Expected to see an identifier at this point."
   ;;
 
   let expected_uppercase_ident = function
     | Token.IDENT_LOWER i ->
       Printf.sprintf
-        "Expected to see an uppercase identifier at this point. Did you mean \
-         %s instead of %s?"
+        "Expected to see an uppercase identifier at this point. Did you mean %s instead \
+         of %s?"
         (String.capitalize_ascii i)
         i
     | _ -> "Expected to see an uppercase identifier at this point."
@@ -58,14 +54,12 @@ module Messages = struct
   let expected_lowercase_ident = function
     | Token.IDENT_UPPER i ->
       Printf.sprintf
-        "Expected to see a lowercase identifier at this point. Did you mean %s \
-         instead of %s?"
+        "Expected to see a lowercase identifier at this point. Did you mean %s instead \
+         of %s?"
         (String.lowercase_ascii i)
         i
     | t when Token.is_keyword t ->
-      Printf.sprintf
-        "`%s` is a keyword. Please choose another name."
-        (Token.to_string t)
+      Printf.sprintf "`%s` is a keyword. Please choose another name." (Token.to_string t)
     | t ->
       Printf.sprintf
         "Expected to see a lowercase identifier at this point. Instead saw %s"
@@ -95,8 +89,10 @@ module Reporter = struct
     let print_pos fmt positions =
       Position.(
         let dim_loc fmt (start_pos, end_pos) =
-          if start_pos.Position.line = end_pos.line then
-            if start_pos.column = end_pos.column then
+          if start_pos.Position.line = end_pos.line
+          then
+            if start_pos.column = end_pos.column
+            then
               Format.fprintf
                 fmt
                 "at @{<dim>line %i, column %i@}"
@@ -123,8 +119,7 @@ module Reporter = struct
           "@{<filename>%s@} %a"
           (fst positions).filename
           dim_loc
-          positions
-      )
+          positions)
     in
     Format.fprintf fmt "  @[%a@]@," print_pos position;
     Format.fprintf fmt "@[<v>@,  %s@,@]" message

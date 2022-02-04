@@ -1,10 +1,10 @@
 exception Parser_Error of string
 
-type t = {
-  mutable lexer: Lexer.t;
-  mutable token: Token.t;
-  mutable prev_token: Token.t option;
-}
+type t =
+  { mutable lexer : Lexer.t
+  ; mutable token : Token.t
+  ; mutable prev_token : Token.t option
+  }
 
 let ( let* ) = Option.bind
 
@@ -29,17 +29,13 @@ let expect token t =
   if test
   then next t
   else (
-    print_endline
-      (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
+    print_endline (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
     raise
       (Parser_Error
          (Printf.sprintf
             "Expected: %s, got %s"
             (Token.to_string token)
-            (Token.to_string t.token.typ)
-         )
-      )
-  )
+            (Token.to_string t.token.typ))))
 ;;
 
 let make ~filename src =
@@ -89,19 +85,12 @@ module Helpers = struct
         then loop (Iter.cons r acc)
         else (
           print_endline
-            (Printf.sprintf
-               "%i:%i"
-               t.token.start_pos.line
-               t.token.start_pos.column
-            );
+            (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
           raise
             (Parser_Error
                (Printf.sprintf
                   "Expected list to be separated by %s"
-                  (Token.to_string sep)
-               )
-            )
-        )
+                  (Token.to_string sep))))
       | None -> Iter.rev acc
     in
     loop Iter.empty
@@ -113,8 +102,7 @@ module Helpers = struct
     then (
       print_endline
         (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
-      raise (Parser_Error (Printf.sprintf "Expected list to not be empty"))
-    );
+      raise (Parser_Error (Printf.sprintf "Expected list to not be empty")));
     res
   ;;
 
@@ -191,8 +179,7 @@ module Rules = struct
         else (
           let children = t |> Helpers.list ~fn:parse_template_node in
           t |> expect (Token.HTML_CLOSE_TAG tag);
-          children
-        )
+          children)
       in
       Some (Ast.HtmlTemplateNode { tag; attributes; children })
     | Token.COMPONENT_OPEN_TAG identifier ->
@@ -206,13 +193,10 @@ module Rules = struct
         else (
           let children = t |> Helpers.list ~fn:parse_template_node in
           t |> expect (Token.COMPONENT_CLOSE_TAG identifier);
-          children
-        )
+          children)
       in
       Some
-        (Ast.ComponentTemplateNode
-           { identifier = Id identifier; attributes; children }
-        )
+        (Ast.ComponentTemplateNode { identifier = Id identifier; attributes; children })
     | _ -> None
 
   and parse_expression_part t =
@@ -247,21 +231,17 @@ module Rules = struct
         let body = Helpers.list ~fn:parse_statement t in
         Some
           (Ast.ForInRangeExpression
-             {
-               iterator;
-               reverse;
-               from = expr1;
-               upto = expr2;
-               inclusive = inclusive_range;
-               body;
-             }
-          )
-      )
+             { iterator
+             ; reverse
+             ; from = expr1
+             ; upto = expr2
+             ; inclusive = inclusive_range
+             ; body
+             }))
       else (
         expect Token.RIGHT_PAREN t;
         let body = Helpers.list ~fn:parse_statement t in
-        Some (Ast.ForInExpression { iterator; reverse; iterable = expr1; body })
-      )
+        Some (Ast.ForInExpression { iterator; reverse; iterable = expr1; body }))
     (* PARSING IF EXPRESSION *)
     | Token.KEYWORD_IF ->
       next t;
@@ -276,26 +256,21 @@ module Rules = struct
     (* PARSING ARRAY EXPRESSION *)
     | Token.LEFT_BRACK ->
       next t;
-      let expressions =
-        Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t
-      in
+      let expressions = Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t in
       expect Token.RIGHT_BRACK t;
       Some (Ast.ArrayExpression expressions)
     (* PARSING TAG EXPRESSION *)
     | Token.TAG name ->
       next t;
       t |> expect Token.LEFT_PAREN;
-      let attributes =
-        t |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
-      in
+      let attributes = t |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA in
       t |> expect Token.RIGHT_PAREN;
       let body =
         if t |> optional Token.LEFT_BRACE
         then (
           let body = parse_statement t in
           t |> expect Token.RIGHT_BRACE;
-          body
-        )
+          body)
         else None
       in
       Some (Ast.TagExpression { name; attributes; body })
@@ -320,8 +295,7 @@ module Rules = struct
       in
       next t;
       let argument = parse_expression t in
-      argument
-      |> Option.map (fun argument -> Ast.UnaryExpression { operator; argument })
+      argument |> Option.map (fun argument -> Ast.UnaryExpression { operator; argument })
     (* PARSING IDENTIFIER EXPRESSION *)
     | Token.IDENT_LOWER identifier | Token.IDENT_UPPER identifier ->
       next t;
@@ -366,11 +340,10 @@ module Rules = struct
           | Left -> precedence + 1
           | Right -> precedence
         in
-        ( match parse_expression ~prio:new_prio t with
+        (match parse_expression ~prio:new_prio t with
         | None -> failwith "Expected expression"
         | Some right ->
-          loop ~left:(Ast.BinaryExpression { left; operator; right }) ~prio t
-        )
+          loop ~left:(Ast.BinaryExpression { left; operator; right }) ~prio t)
     in
     let* left = parse_expression_part t in
     let prio =
@@ -395,17 +368,14 @@ module Rules = struct
       t |> expect Token.EQUAL;
       let expression = parse_expression t in
       expect Token.SEMICOLON t;
-      ( match expression with
-      | Some right ->
-        Some (Ast.DeclarationStmt { nullable; left = Id identifier; right })
-      | None -> assert false
-      )
+      (match expression with
+      | Some right -> Some (Ast.DeclarationStmt { nullable; left = Id identifier; right })
+      | None -> assert false)
       (* TODO: Exception *)
     | _ ->
-      ( match parse_expression t with
+      (match parse_expression t with
       | Some expr -> Some (Ast.ExpressionStmt expr)
-      | None -> None
-      )
+      | None -> None)
 
   and parse_declaration t =
     match t.token.typ with
@@ -424,34 +394,21 @@ module Rules = struct
             Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t
           in
           t |> expect Token.RIGHT_PAREN;
-          Some attributes
-        )
+          Some attributes)
         else None
       in
       let body = Helpers.non_empty_list ~fn:parse_statement t in
-      ( match typ with
+      (match typ with
       | Token.KEYWORD_SITE ->
-        Some
-          (Ast.SiteDeclaration
-             { location = start_pos; identifier; attributes; body }
-          )
+        Some (Ast.SiteDeclaration { location = start_pos; identifier; attributes; body })
       | Token.KEYWORD_PAGE ->
-        Some
-          (Ast.PageDeclaration
-             { location = start_pos; identifier; attributes; body }
-          )
+        Some (Ast.PageDeclaration { location = start_pos; identifier; attributes; body })
       | Token.KEYWORD_COMPONENT ->
         Some
-          (Ast.ComponentDeclaration
-             { location = start_pos; identifier; attributes; body }
-          )
+          (Ast.ComponentDeclaration { location = start_pos; identifier; attributes; body })
       | Token.KEYWORD_STORE ->
-        Some
-          (Ast.StoreDeclaration
-             { location = start_pos; identifier; attributes; body }
-          )
-      | _ -> assert false
-      )
+        Some (Ast.StoreDeclaration { location = start_pos; identifier; attributes; body })
+      | _ -> assert false)
     | Token.END_OF_INPUT -> None
     | _ -> assert false
   ;;
