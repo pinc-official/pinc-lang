@@ -13,8 +13,6 @@
 
 - Test wether all possible html attributes are parsing correctly. (`:`)
 
-- Keep whitespace in template mode (for compat with <pre> tag)
-
 - Functions / Lambdas
 
 - Pipe operator

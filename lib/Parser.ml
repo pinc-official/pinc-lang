@@ -306,10 +306,8 @@ module Rules = struct
     (* PARSING TEMPLATE EXPRESSION *)
     | Token.TEMPLATE ->
       next t;
-      t.lexer |> Lexer.setTemplateBlockMode;
       t |> expect Token.LEFT_BRACE;
       let template_nodes = t |> Helpers.list ~fn:parse_template_node in
-      t.lexer |> Lexer.popTemplateBlockMode;
       t |> expect Token.RIGHT_BRACE;
       Some (Ast.TemplateExpression template_nodes)
     (* PARSING UNARY EXPRESSION *)

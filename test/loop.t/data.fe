@@ -14,111 +14,111 @@ component C {
     <section>
       <h1>EXCLUSIVE RANGES</h1>
 
-      {"\n"}
-      {"\n"}
-
       0..10
-      {for (i in 0..10) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in 0..10) {
+        <div class="item">{i}</div>
+      }}
 
       0..0
-      {for (i in 0..0) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in 0..0) {
+        <div class="item">{i}</div>
+      }}
 
       0..1
-      {for (i in 0..1) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in 0..1) {
+        <div class="item">{i}</div>
+      }}
 
       0..-1
-      {for (i in 0..-1) { <div class="item">{i}</div> {"\n"} }}
+      {for (i in 0..-1) {
+        <div class="item">{i}</div>
+      }}
 
       -10..10
-      {for (i in -10..10) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in -10..10) {
+        <div class="item">{i}</div>
+      }}
 
       10..0
-      {for (i in 10..0) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in 10..0) {
+        <div class="item">{i}</div>
+      }}
 
       10..0 reverse
-      {for (i in reverse 10..0) { <div class="item">{i}</div> {"\n"} }}
+      {for (i in reverse 10..0) {
+        <div class="item">{i}</div>
+      }}
 
-      {"\n"}
-      {"\n"}
 
       <h1>INCLUSIVE RANGES</h1>
-      0...10
-      {for (i in 0...10) { <div class="item">{i}</div> {"\n"} }}
 
-      {"\n"}
+      0...10
+      {for (i in 0...10) {
+        <div class="item">{i}</div>
+      }}
 
       0...0
-      {for (i in 0...0) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in 0...0) {
+        <div class="item">{i}</div>
+      }}
 
       0...1
-      {for (i in 0...1) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in 0...1) {
+        <div class="item">{i}</div>
+      }}
 
       0...-1
-      {for (i in 0...-1) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in 0...-1) {
+        <div class="item">{i}</div>
+      }}
 
       -10...10
-      {for (i in -10...10) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in -10...10) {
+        <div class="item">{i}</div>
+      }}
 
       10...0
-      {for (i in 10...0) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in 10...0) {
+        <div class="item">{i}</div>
+      }}
 
       10...0 reverse
-      {for (i in reverse 10...0) { <div class="item">{i}</div> {"\n"} }}
+      {for (i in reverse 10...0) {
+        <div class="item">{i}</div>
+      }}
 
-      {"\n"}
 
       <h1>ITERABLES</h1>
 
-      {"\n"}
-      {"\n"}
-
       array
-      {for (i in array) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in array) {
+        <div class="item">{i}</div>
+      }}
 
       array reverse
-      {for (i in reverse array) { <div class="item">{i}</div> {"\n"} }}
-
-      {"\n"}
+      {for (i in reverse array) {
+        <div class="item">{i}</div>
+      }}
 
       string
-      {for (c in "String!") { <div class="item">{c}</div> {"\n"} }}
-
-      {"\n"}
+      {for (c in "String!") {
+        <div class="item">{c}</div>
+      }}
 
       string reverse
-      {for (c in reverse "String!") { <div class="item">{c}</div> {"\n"} }}
-
-      {"\n"}
+      {for (c in reverse "String!") {
+        <div class="item">{c}</div>
+      }}
 
       string array
-      {for (s in string_array) { <div class="item">{s}</div> {"\n"} }}
-
-      {"\n"}
+      {for (s in string_array) {
+        <div class="item">{s}</div>
+      }}
 
       null value
-      {for (s in null_value) { <div class="item">{s}</div> {"\n"} }}
+      {for (s in null_value) {
+        <div class="item">{s}</div>
+      }}
     </section>
   }
 }
