@@ -142,24 +142,27 @@ let rec skip_whitespace t =
 ;;
 
 let scan_ident t =
+  let buf = Buffer.create 32 in
   (* NOTE: List all vaid chars for identifiers here: *)
-  let rec loop acc t =
+  let rec loop t =
     match t.current with
     | `Chr ('A' .. 'Z' as c)
     | `Chr ('a' .. 'z' as c)
     | `Chr ('0' .. '9' as c)
     | `Chr ('_' as c) ->
       next t;
-      loop (acc ^ String.make 1 c) t
-    | _ -> acc
+      Buffer.add_char buf c;
+      loop t
+    | _ -> ()
   in
-  let found = loop "" t in
-  Token.lookup_keyword found
+  let () = loop t in
+  Token.lookup_keyword (Buffer.contents buf)
 ;;
 
 let scan_string t =
   let start_pos = make_position t in
-  let rec loop acc t =
+  let buf = Buffer.create 512 in
+  let rec loop t =
     match t.current with
     | `EOF ->
       Diagnostics.report
@@ -170,31 +173,40 @@ let scan_string t =
       ( match peek t with
       | `Chr ' ' ->
         next_n ~n:2 t;
-        loop (acc ^ String.make 1 '\\') t
+        Buffer.add_char buf '\\';
+        loop t
       | `Chr '"' ->
         next_n ~n:2 t;
-        loop (acc ^ String.make 1 '"') t
+        Buffer.add_char buf '"';
+        loop t
       | `Chr '\'' ->
         next_n ~n:2 t;
-        loop (acc ^ String.make 1 '\'') t
+        Buffer.add_char buf '\'';
+        loop t
       | `Chr 'b' ->
         next_n ~n:2 t;
-        loop (acc ^ String.make 1 '\b') t
+        Buffer.add_char buf '\b';
+        loop t
       | `Chr 'f' ->
         next_n ~n:2 t;
-        loop (acc ^ String.make 1 '\012') t
+        Buffer.add_char buf '\012';
+        loop t
       | `Chr 'n' ->
         next_n ~n:2 t;
-        loop (acc ^ String.make 1 '\n') t
+        Buffer.add_char buf '\n';
+        loop t
       | `Chr 'r' ->
         next_n ~n:2 t;
-        loop (acc ^ String.make 1 '\r') t
+        Buffer.add_char buf '\r';
+        loop t
       | `Chr 't' ->
         next_n ~n:2 t;
-        loop (acc ^ String.make 1 '\t') t
+        Buffer.add_char buf '\t';
+        loop t
       | `Chr '\\' ->
         next_n ~n:2 t;
-        loop (acc ^ String.make 1 '\\') t
+        Buffer.add_char buf '\\';
+        loop t
       | `Chr _ ->
         Diagnostics.report
           ~start_pos:(make_position t)
@@ -208,32 +220,37 @@ let scan_string t =
       )
     | `Chr '"' ->
       next t;
-      acc
+      ()
     | `Chr c ->
       next t;
-      loop (acc ^ String.make 1 c) t
+      Buffer.add_char buf c;
+      loop t
   in
   (* NEXT once to skip the beginning double quote *)
   next t;
-  let found = loop "" t in
-  Token.STRING found
+  let () = loop t in
+  Token.STRING (Buffer.contents buf)
 ;;
 
 let scan_tag_or_template t =
   let start_pos = make_position t in
-  let rec loop acc t =
+  let buf = Buffer.create 32 in
+  (* NOTE: List all vaid chars for identifiers here: *)
+  let rec loop t =
     match t.current with
     | `Chr ('A' .. 'Z' as c)
     | `Chr ('a' .. 'z' as c)
     | `Chr ('0' .. '9' as c)
     | `Chr ('_' as c) ->
       next t;
-      loop (acc ^ String.make 1 c) t
-    | _ -> acc
+      Buffer.add_char buf c;
+      loop t
+    | _ -> ()
   in
   (* NEXT once to skip the beginning # symbol *)
   next t;
-  let found = loop "" t in
+  let () = loop t in
+  let found = Buffer.contents buf in
   match found with
   | "Template" -> Token.TEMPLATE
   | s ->
@@ -255,14 +272,16 @@ let scan_tag_or_template t =
 
 let get_html_tag_ident t =
   let start_pos = make_position t in
-  let rec loop acc t =
+  let rec loop buf t =
     match t.current with
     | `Chr ('a' .. 'z' as c) | `Chr ('0' .. '9' as c) | `Chr ('-' as c) ->
       next t;
-      loop (acc ^ String.make 1 c) t
-    | _ -> acc
+      Buffer.add_char buf c;
+      loop buf t
+    | _ -> Buffer.contents buf
   in
-  let ident = loop "" t in
+  let buf = Buffer.create 32 in
+  let ident = loop buf t in
   skip_whitespace t;
   match ident.[0] with
   | 'a' .. 'z' -> ident
@@ -281,17 +300,19 @@ let get_html_tag_ident t =
 
 let get_uppercase_ident t =
   (* NOTE: List all vaid chars for identifiers here: *)
-  let rec loop acc t =
+  let rec loop buf t =
     match t.current with
     | `Chr ('A' .. 'Z' as c)
     | `Chr ('a' .. 'z' as c)
     | `Chr ('0' .. '9' as c)
     | `Chr ('_' as c) ->
       next t;
-      loop (acc ^ String.make 1 c) t
-    | _ -> acc
+      Buffer.add_char buf c;
+      loop buf t
+    | _ -> Buffer.contents buf
   in
-  loop "" t
+  let buf = Buffer.create 32 in
+  loop buf t
 ;;
 
 let scan_open_tag t =
@@ -357,43 +378,48 @@ let scan_close_tag t =
 
 let scan_template_text t =
   let start_pos = make_position t in
-  let rec loop acc t =
+  let rec loop buf t =
     match t.current with
     | `EOF ->
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
         Diagnostics.NonTerminatedTemplate
-    | `Chr '{' -> acc
+    | `Chr '{' -> Buffer.contents buf
     | `Chr '<' ->
       ( match peek t with
-      | `Chr '/' -> acc
-      | `Chr 'a' .. 'z' -> acc
+      | `Chr '/' -> Buffer.contents buf
+      | `Chr 'a' .. 'z' -> Buffer.contents buf
       | _ ->
         next t;
-        loop (acc ^ "<") t
+        Buffer.add_char buf '<';
+        loop buf t
       )
     | `Chr c ->
       next t;
-      loop (acc ^ String.make 1 c) t
+      Buffer.add_char buf c;
+      loop buf t
   in
-  let found = loop "" t in
+  let buf = Buffer.create 32 in
+  let found = loop buf t in
   Token.STRING found
 ;;
 
 let scan_html_attribute_ident t =
   (* NOTE: List all vaid chars for html identifiers here: *)
-  let rec loop acc t =
+  let rec loop buf t =
     match t.current with
     | `Chr ('A' .. 'Z' as c)
     | `Chr ('a' .. 'z' as c)
     | `Chr ('0' .. '9' as c)
     | `Chr ('-' as c) ->
       next t;
-      loop (acc ^ String.make 1 c) t
-    | _ -> acc
+      Buffer.add_char buf c;
+      loop buf t
+    | _ -> Buffer.contents buf
   in
-  let found = loop "" t in
+  let buf = Buffer.create 32 in
+  let found = loop buf t in
   Token.lookup_keyword found
 ;;
 

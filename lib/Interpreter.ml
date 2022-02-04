@@ -1,7 +1,7 @@
 type scope = { identifiers: (string, Ast.Literal.t) Hashtbl.t }
 
 type state = {
-  output: string;
+  output: Buffer.t;
   models: string -> Ast.Literal.t option;
   scope: scope list;
 }
@@ -13,7 +13,8 @@ let add_scope state =
 ;;
 
 let output x state =
-  { state with output = state.output ^ Ast.Literal.to_string x }
+  let literal = Ast.Literal.to_string x in
+  Buffer.add_string state.output literal
 ;;
 
 let add_literal_to_scope ~ident ~literal state =
@@ -128,28 +129,27 @@ let rec literal_of_expr state expr =
       failwith "Invalid usage of unary - operator"
     )
   | Ast.BinaryExpression { left; operator; right } ->
-    let a = lazy (left |> literal_of_expr state) in
-    let b = lazy (right |> literal_of_expr state) in
+    let a = left |> literal_of_expr state in
+    let b = right |> literal_of_expr state in
     ( match operator with
     | Ast.Operators.Binary.NOT_EQUAL ->
-      Ast.Literal.Bool (not (Ast.Literal.equal (Lazy.force a, Lazy.force b)))
-    | Ast.Operators.Binary.EQUAL ->
-      Ast.Literal.Bool (Ast.Literal.equal (Lazy.force a, Lazy.force b))
+      Ast.Literal.Bool (not (Ast.Literal.equal (a, b)))
+    | Ast.Operators.Binary.EQUAL -> Ast.Literal.Bool (Ast.Literal.equal (a, b))
     | Ast.Operators.Binary.LESS ->
-      Ast.Literal.Bool (Ast.Literal.compare (Lazy.force a, Lazy.force b) < 0)
+      Ast.Literal.Bool (Ast.Literal.compare (a, b) < 0)
     | Ast.Operators.Binary.LESS_EQUAL ->
-      Ast.Literal.Bool (Ast.Literal.compare (Lazy.force a, Lazy.force b) <= 0)
+      Ast.Literal.Bool (Ast.Literal.compare (a, b) <= 0)
     | Ast.Operators.Binary.GREATER ->
-      Ast.Literal.Bool (Ast.Literal.compare (Lazy.force a, Lazy.force b) > 0)
+      Ast.Literal.Bool (Ast.Literal.compare (a, b) > 0)
     | Ast.Operators.Binary.GREATER_EQUAL ->
-      Ast.Literal.Bool (Ast.Literal.compare (Lazy.force a, Lazy.force b) >= 0)
+      Ast.Literal.Bool (Ast.Literal.compare (a, b) >= 0)
     | Ast.Operators.Binary.CONCAT ->
-      ( match Lazy.force a, Lazy.force b with
+      ( match a, b with
       | Ast.Literal.String a, Ast.Literal.String b -> Ast.Literal.String (a ^ b)
       | _ -> failwith "Trying to concat non string literals."
       )
     | Ast.Operators.Binary.PLUS ->
-      ( match Lazy.force a, Lazy.force b with
+      ( match a, b with
       | Ast.Literal.Int a, Ast.Literal.Int b -> Ast.Literal.Int (a + b)
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a +. b)
       | Ast.Literal.Float a, Ast.Literal.Int b ->
@@ -159,7 +159,7 @@ let rec literal_of_expr state expr =
       | _ -> failwith "Trying to add non numeric literals."
       )
     | Ast.Operators.Binary.MINUS ->
-      ( match Lazy.force a, Lazy.force b with
+      ( match a, b with
       | Ast.Literal.Int a, Ast.Literal.Int b -> Ast.Literal.Int (a - b)
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a -. b)
       | Ast.Literal.Float a, Ast.Literal.Int b ->
@@ -169,7 +169,7 @@ let rec literal_of_expr state expr =
       | _ -> failwith "Trying to subtract non numeric literals."
       )
     | Ast.Operators.Binary.TIMES ->
-      ( match Lazy.force a, Lazy.force b with
+      ( match a, b with
       | Ast.Literal.Int a, Ast.Literal.Int b -> Ast.Literal.Int (a * b)
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a *. b)
       | Ast.Literal.Float a, Ast.Literal.Int b ->
@@ -179,7 +179,7 @@ let rec literal_of_expr state expr =
       | _ -> failwith "Trying to multiply non numeric literals."
       )
     | Ast.Operators.Binary.DIV ->
-      ( match Lazy.force a, Lazy.force b with
+      ( match a, b with
       | Ast.Literal.Int a, Ast.Literal.Int b ->
         let result = float_of_int a /. float_of_int b in
         Ast.Literal.Float result
@@ -191,7 +191,7 @@ let rec literal_of_expr state expr =
       | _ -> failwith "Trying to divide non numeric literals."
       )
     | Ast.Operators.Binary.POW ->
-      ( match Lazy.force a, Lazy.force b with
+      ( match a, b with
       | Ast.Literal.Int a, Ast.Literal.Int b ->
         let r = float_of_int a ** float_of_int b in
         Ast.Literal.Float r
@@ -207,41 +207,50 @@ let rec literal_of_expr state expr =
       | _ -> failwith "Trying to raise non numeric literals."
       )
     | Ast.Operators.Binary.AND ->
-      Ast.Literal.Bool
-        (Ast.Literal.is_true (Lazy.force a)
-        && Ast.Literal.is_true (Lazy.force b)
-        )
+      Ast.Literal.Bool (Ast.Literal.is_true a && Ast.Literal.is_true b)
     | Ast.Operators.Binary.OR ->
-      Ast.Literal.Bool
-        (Ast.Literal.is_true (Lazy.force a)
-        || Ast.Literal.is_true (Lazy.force b)
-        )
+      Ast.Literal.Bool (Ast.Literal.is_true a || Ast.Literal.is_true b)
     )
 
 and html_attr_to_string state (attr : Ast.attribute) =
+  let buf = Buffer.create 64 in
   let value = literal_of_expr state attr.value |> Ast.Literal.to_string in
   let key = attr.key in
-  Printf.sprintf "%s=\"%s\"" key value
+  Buffer.add_string buf key;
+  Buffer.add_char buf '=';
+  Buffer.add_char buf '"';
+  Buffer.add_string buf value;
+  Buffer.add_char buf '"';
+  Buffer.contents buf
 
 and template_to_string state template =
   match template with
   | Ast.TextTemplateNode text -> text
   | Ast.HtmlTemplateNode { tag; attributes; children; _ } ->
-    let attributes =
+    let buf = Buffer.create 128 in
+    Buffer.add_char buf '<';
+    Buffer.add_string buf tag;
+    if not (Iter.is_empty attributes)
+    then (
+      Buffer.add_char buf ' ';
       attributes
-      |> Iter.map (html_attr_to_string state)
-      |> Iter.intersperse " "
-      |> Iter.concat_str
-    in
-    let children =
-      children |> Iter.map (template_to_string state) |> Iter.concat_str
-    in
-    Printf.sprintf
-      "<%s%s>%s</%s>"
-      tag
-      (if attributes <> "" then " " ^ attributes else "")
-      children
-      tag
+      |> Iter.iteri (fun i attr ->
+             let res = html_attr_to_string state attr in
+             if i <> 0 then Buffer.add_char buf ' ';
+             Buffer.add_string buf res
+         )
+    );
+    Buffer.add_char buf '>';
+    children
+    |> Iter.iter (fun child ->
+           let res = template_to_string state child in
+           Buffer.add_string buf res
+       );
+    Buffer.add_char buf '<';
+    Buffer.add_char buf '/';
+    Buffer.add_string buf tag;
+    Buffer.add_char buf '>';
+    Buffer.contents buf
   | Ast.ExpressionTemplateNode expr ->
     Ast.Literal.to_string (literal_of_expr state expr)
   | Ast.ComponentTemplateNode
@@ -277,14 +286,11 @@ let eval_declaration state declaration =
 ;;
 
 let eval ~state ast =
-  Iter.fold
-    (fun state curr -> output (eval_declaration state curr) state)
-    state
-    ast
+  Iter.iter (fun curr -> output (eval_declaration state curr) state) ast
 ;;
 
 let init_state ?(models = fun _ -> None) () =
-  let state = { output = ""; scope = []; models } in
+  let state = { output = Buffer.create 4096; scope = []; models } in
   state
 ;;
 
@@ -295,6 +301,12 @@ let from_file ?(models = []) ~filename () =
   let src = open_in filename |> file_contents in
   let parser = Parser.make ~filename src in
   let ast = Parser.scan parser in
-  let resulting_state = eval ~state ast in
-  resulting_state.output
+  let () = eval ~state ast in
+  Buffer.contents state.output
+;;
+
+let from_ast ?(models = []) ast =
+  let state = init_state ~models:(fun key -> List.assoc key models) () in
+  let () = eval ~state ast in
+  Buffer.contents state.output
 ;;
