@@ -52,7 +52,7 @@ and expression =
       ; alternate : expression option
       }
   | UnaryExpression of
-      { operator : Operators.Unary.t
+      { operator : Operators.Unary.typ
       ; argument : expression
       }
   | BinaryExpression of

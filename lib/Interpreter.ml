@@ -111,11 +111,11 @@ let rec literal_of_expr state expr =
       | None -> Ast.Literal.Null)
   | Ast.UnaryExpression { operator; argument } ->
     let res = argument |> literal_of_expr state in
-    (match operator.typ, res with
+    (match operator, res with
     | Ast.Operators.Unary.NOT, literal -> Ast.Literal.Bool (Ast.Literal.negate literal)
-    | Ast.Operators.Unary.NEGATIVE, Ast.Literal.Int i -> Ast.Literal.Int (Int.neg i)
-    | Ast.Operators.Unary.NEGATIVE, Ast.Literal.Float f -> Ast.Literal.Float (Float.neg f)
-    | Ast.Operators.Unary.NEGATIVE, _ -> failwith "Invalid usage of unary - operator")
+    | Ast.Operators.Unary.MINUS, Ast.Literal.Int i -> Ast.Literal.Int (Int.neg i)
+    | Ast.Operators.Unary.MINUS, Ast.Literal.Float f -> Ast.Literal.Float (Float.neg f)
+    | Ast.Operators.Unary.MINUS, _ -> failwith "Invalid usage of unary - operator")
   | Ast.BinaryExpression { left; operator; right } ->
     let a = left |> literal_of_expr state in
     let b = right |> literal_of_expr state in

@@ -32,7 +32,7 @@ end
 
 module Unary : sig
   type typ =
-    | NEGATIVE
+    | MINUS
     | NOT
 
   type t =

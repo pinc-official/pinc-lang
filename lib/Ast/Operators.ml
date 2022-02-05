@@ -28,26 +28,26 @@ module Binary = struct
     }
 
   let make = function
-    | POW -> { typ = POW; precedence = 8; assoc = Right }
-    | TIMES -> { typ = TIMES; precedence = 7; assoc = Left }
-    | DIV -> { typ = DIV; precedence = 7; assoc = Left }
-    | PLUS -> { typ = PLUS; precedence = 6; assoc = Left }
-    | MINUS -> { typ = MINUS; precedence = 6; assoc = Left }
-    | CONCAT -> { typ = CONCAT; precedence = 5; assoc = Left }
-    | EQUAL -> { typ = EQUAL; precedence = 4; assoc = Left }
-    | NOT_EQUAL -> { typ = NOT_EQUAL; precedence = 4; assoc = Left }
-    | GREATER -> { typ = GREATER; precedence = 4; assoc = Left }
-    | GREATER_EQUAL -> { typ = GREATER_EQUAL; precedence = 4; assoc = Left }
-    | LESS -> { typ = LESS; precedence = 4; assoc = Left }
-    | LESS_EQUAL -> { typ = LESS_EQUAL; precedence = 4; assoc = Left }
-    | AND -> { typ = AND; precedence = 2; assoc = Left }
-    | OR -> { typ = OR; precedence = 1; assoc = Left }
+    | POW -> { typ = POW; precedence = 70; assoc = Right }
+    | TIMES -> { typ = TIMES; precedence = 60; assoc = Left }
+    | DIV -> { typ = DIV; precedence = 60; assoc = Left }
+    | PLUS -> { typ = PLUS; precedence = 50; assoc = Left }
+    | MINUS -> { typ = MINUS; precedence = 50; assoc = Left }
+    | CONCAT -> { typ = CONCAT; precedence = 40; assoc = Left }
+    | EQUAL -> { typ = EQUAL; precedence = 30; assoc = Left }
+    | NOT_EQUAL -> { typ = NOT_EQUAL; precedence = 30; assoc = Left }
+    | GREATER -> { typ = GREATER; precedence = 30; assoc = Left }
+    | GREATER_EQUAL -> { typ = GREATER_EQUAL; precedence = 30; assoc = Left }
+    | LESS -> { typ = LESS; precedence = 30; assoc = Left }
+    | LESS_EQUAL -> { typ = LESS_EQUAL; precedence = 30; assoc = Left }
+    | AND -> { typ = AND; precedence = 20; assoc = Left }
+    | OR -> { typ = OR; precedence = 10; assoc = Left }
   ;;
 end
 
 module Unary = struct
   type typ =
-    | NEGATIVE
+    | MINUS
     | NOT
 
   type t =
@@ -56,7 +56,7 @@ module Unary = struct
     }
 
   let make = function
-    | NEGATIVE -> { typ = NEGATIVE; precedence = 3 }
-    | NOT -> { typ = NOT; precedence = 3 }
+    | MINUS -> { typ = MINUS; precedence = 100 }
+    | NOT -> { typ = NOT; precedence = 100 }
   ;;
 end

@@ -285,17 +285,18 @@ module Rules = struct
       let template_nodes = t |> Helpers.list ~fn:parse_template_node in
       t |> expect Token.RIGHT_BRACE;
       Some (Ast.TemplateExpression template_nodes)
-    (* PARSING UNARY EXPRESSION *)
-    | (Token.NOT | Token.UNARY_MINUS) as o ->
-      let operator =
-        match o with
-        | Token.NOT -> Ast.Operators.Unary.make NOT
-        | Token.UNARY_MINUS -> Ast.Operators.Unary.make NEGATIVE
-        | _ -> assert false
-      in
+    (* PARSING UNARY NOT EXPRESSION *)
+    | Token.NOT ->
       next t;
-      let argument = parse_expression t in
-      argument |> Option.map (fun argument -> Ast.UnaryExpression { operator; argument })
+      let operator = Ast.Operators.Unary.make NOT in
+      let* argument = parse_expression ~prio:operator.precedence t in
+      Some (Ast.UnaryExpression { operator = Ast.Operators.Unary.NOT; argument })
+    (* PARSING UNARY MINUS EXPRESSION *)
+    | Token.UNARY_MINUS ->
+      next t;
+      let operator = Ast.Operators.Unary.make MINUS in
+      let* argument = parse_expression ~prio:operator.precedence t in
+      Some (Ast.UnaryExpression { operator = Ast.Operators.Unary.MINUS; argument })
     (* PARSING IDENTIFIER EXPRESSION *)
     | Token.IDENT_LOWER identifier | Token.IDENT_UPPER identifier ->
       next t;
@@ -328,6 +329,12 @@ module Rules = struct
     | Token.STAR_STAR -> Some Ast.Operators.Binary.(make POW)
     | _ -> None
 
+  and parse_unary_operator t =
+    match t.token.typ with
+    | Token.NOT -> Some Ast.Operators.Unary.(make NOT)
+    | Token.UNARY_MINUS -> Some Ast.Operators.Unary.(make MINUS)
+    | _ -> None
+
   and parse_expression ?(prio = -999) t =
     let rec loop ~prio ~left t =
       match parse_binary_operator t with
@@ -346,11 +353,6 @@ module Rules = struct
           loop ~left:(Ast.BinaryExpression { left; operator; right }) ~prio t)
     in
     let* left = parse_expression_part t in
-    let prio =
-      match left with
-      | Ast.UnaryExpression { operator = { precedence; _ }; _ } -> precedence
-      | _ -> prio
-    in
     if Lexer.inNormalMode t.lexer then Some (loop ~prio ~left t) else Some left
 
   and parse_statement t =
