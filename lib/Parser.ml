@@ -172,7 +172,7 @@ module Rules = struct
       next t;
       let attributes = Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL) t in
       let self_closing = t |> optional Token.SLASH in
-      t |> expect Token.GREATER;
+      t |> expect Token.HTML_OR_COMPONENT_TAG_END;
       let children =
         if self_closing
         then Iter.empty
@@ -186,7 +186,7 @@ module Rules = struct
       next t;
       let attributes = Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL) t in
       let self_closing = t |> optional Token.SLASH in
-      t |> expect Token.GREATER;
+      t |> expect Token.HTML_OR_COMPONENT_TAG_END;
       let children =
         if self_closing
         then Iter.empty
@@ -353,7 +353,7 @@ module Rules = struct
           loop ~left:(Ast.BinaryExpression { left; operator; right }) ~prio t)
     in
     let* left = parse_expression_part t in
-    if Lexer.inNormalMode t.lexer then Some (loop ~prio ~left t) else Some left
+    Some (loop ~prio ~left t)
 
   and parse_statement t =
     match t.token.typ with

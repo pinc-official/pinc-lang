@@ -487,7 +487,7 @@ let rec scan_template_token ~start_pos t =
   | `Chr '>' ->
     if t.prev = `Chr '/' then popTemplateMode t;
     next t;
-    Token.GREATER
+    Token.HTML_OR_COMPONENT_TAG_END
   | `EOF ->
     Diagnostics.report
       ~start_pos

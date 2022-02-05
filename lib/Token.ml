@@ -19,7 +19,7 @@ type token_type =
   | DOTDOT
   | DOTDOTDOT
   | QUESTIONMARK
-  | PIPE
+  | PIPE (* TODO *)
   | EQUAL
   | NOT
   | GREATER
@@ -30,7 +30,7 @@ type token_type =
   | STAR
   | STAR_STAR
   | SLASH
-  | PERCENT
+  | PERCENT (* TODO *)
   | LOGICAL_AND
   | LOGICAL_OR
   | NOT_EQUAL
@@ -57,7 +57,7 @@ type token_type =
   | HTML_CLOSE_TAG of string
   | COMPONENT_OPEN_TAG of string
   | COMPONENT_CLOSE_TAG of string
-  | LESS_SLASH
+  | HTML_OR_COMPONENT_TAG_END
   | END_OF_INPUT
 
 type t =
@@ -123,11 +123,11 @@ let to_string = function
   | KEYWORD_STORE -> "store"
   | COMMENT -> "// Comment"
   | TEMPLATE -> "@Template"
-  | HTML_OPEN_TAG s -> Printf.sprintf "<%s>" s
+  | HTML_OPEN_TAG s -> Printf.sprintf "<%s" s
   | HTML_CLOSE_TAG s -> Printf.sprintf "</%s>" s
-  | COMPONENT_OPEN_TAG s -> Printf.sprintf "<%s>" s
+  | COMPONENT_OPEN_TAG s -> Printf.sprintf "<%s" s
   | COMPONENT_CLOSE_TAG s -> Printf.sprintf "</%s>" s
-  | LESS_SLASH -> "</"
+  | HTML_OR_COMPONENT_TAG_END -> ">"
   | END_OF_INPUT -> "(EOF)"
 ;;
 
