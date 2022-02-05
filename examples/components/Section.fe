@@ -7,6 +7,17 @@ component Section(
 
   let show_intro =  #Boolean(label: "Show Intro above Section", value: true);
 
+  let array = #Array(
+    of: #String(label: "foobar") :: (v) -> { v ++ "a" }
+  );
+
+  let obj = #Struct(
+    of: {
+      foo: #String(label: "foo"),
+      bar: #Int(label: "bar") :: (v) -> { v + 2 },
+    }
+  );
+
   let intro_headline = if (show_intro) {
     #String(inline: true, placeholder: "Enter Headline here...")
   };
