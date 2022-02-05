@@ -187,6 +187,17 @@ let rec literal_of_expr state expr =
     | Ast.Operators.Binary.OR ->
       Ast.Literal.Bool (Ast.Literal.is_true a || Ast.Literal.is_true b))
 
+and literal_of_tag_expr state key = function
+  | Ast.TagExpression { typ = StringTag; attributes = _; body = _ } ->
+    state.models key |> Option.value ~default:Ast.Literal.Null
+  | Ast.TagExpression { typ = IntTag; attributes = _; body = _ } ->
+    state.models key |> Option.value ~default:Ast.Literal.Null
+  | Ast.TagExpression { typ = FloatTag; attributes = _; body = _ } ->
+    state.models key |> Option.value ~default:Ast.Literal.Null
+  | Ast.TagExpression { typ = BooleanTag; attributes = _; body = _ } ->
+    state.models key |> Option.value ~default:Ast.Literal.Null
+  | _ -> assert false
+
 and html_attr_to_string state (attr : Ast.attribute) =
   let buf = Buffer.create 64 in
   let value = literal_of_expr state attr.value |> Ast.Literal.to_string in
@@ -247,10 +258,16 @@ and eval_statement state stmt =
   | Ast.BreakStmt -> Ast.Literal.Null (* TODO: *)
   | Ast.ContinueStmt -> Ast.Literal.Null (* TODO: *)
   | Ast.DeclarationStmt { nullable; left = Id ident; right } ->
-    let literal = literal_of_expr state right in
-    (match literal with
-    | Ast.Literal.Null when not nullable -> failwith "Not Nullable!!"
-    | _ -> state |> add_literal_to_scope ~ident ~literal);
+    let literal =
+      match right with
+      | Ast.TagExpression _ -> literal_of_tag_expr state ident right
+      | _ -> literal_of_expr state right
+    in
+    let () =
+      match literal with
+      | Ast.Literal.Null when not nullable -> failwith "Not Nullable!!"
+      | _ -> state |> add_literal_to_scope ~ident ~literal
+    in
     Ast.Literal.Null
   | Ast.ExpressionStmt expr -> literal_of_expr state expr
 

@@ -273,7 +273,12 @@ module Rules = struct
           body)
         else None
       in
-      Some (Ast.TagExpression { name; attributes; body })
+      (match name with
+      | "String" -> Some (Ast.TagExpression { typ = StringTag; attributes; body })
+      | "Int" -> Some (Ast.TagExpression { typ = IntTag; attributes; body })
+      | "Float" -> Some (Ast.TagExpression { typ = FloatTag; attributes; body })
+      | "Boolean" -> Some (Ast.TagExpression { typ = BooleanTag; attributes; body })
+      | name -> failwith (Printf.sprintf "Unknown Tag: `%s`" name))
     (* PARSING TEMPLATE EXPRESSION *)
     | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
       let template_nodes = t |> Helpers.list ~fn:parse_template_node in
