@@ -364,7 +364,7 @@ let scan_template_text t =
     | `Chr '<' ->
       (match peek t with
       | `Chr '/' -> Buffer.contents buf
-      | `Chr 'a' .. 'z' -> Buffer.contents buf
+      | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' -> Buffer.contents buf
       | _ ->
         next t;
         Buffer.add_char buf '<';

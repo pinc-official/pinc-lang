@@ -1,13 +1,3 @@
-component SubComponent {
-  let content = "Hello, SubComponent!";
-
-  #Template {
-    <div class="SubComponent" data-foo="bar">
-      {content}
-    </div>
-  }
-}
-
 component Component(
   label: "Section",
   icon: "/images/icons/group.svg",

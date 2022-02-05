@@ -3,8 +3,14 @@ type scope = { identifiers : (string, Ast.Literal.t) Hashtbl.t }
 type state =
   { output : Buffer.t
   ; models : string -> Ast.Literal.t option
+  ; declarations : Ast.declaration Iter.t
   ; scope : scope list
   }
+
+let init_state ?(models = fun _ -> None) declarations =
+  let state = { output = Buffer.create 4096; scope = []; models; declarations } in
+  state
+;;
 
 let add_scope state =
   let identifiers = Hashtbl.create 10 in
@@ -218,8 +224,18 @@ and template_to_string state template =
     Buffer.add_char buf '>';
     Buffer.contents buf
   | Ast.ExpressionTemplateNode expr -> Ast.Literal.to_string (literal_of_expr state expr)
-  | Ast.ComponentTemplateNode { identifier = _; attributes = _; children = _; _ } ->
-    (* TODO: *) ""
+  | Ast.ComponentTemplateNode { identifier = Id identifier; attributes; children = _ } ->
+    let models =
+      attributes
+      |> Iter.map (fun (attr : Ast.attribute) ->
+             let value = literal_of_expr state attr.value in
+             let key = attr.key in
+             key, value)
+      |> Iter.to_hashtbl
+      |> Hashtbl.find_opt
+    in
+    let state = init_state ~models state.declarations in
+    eval ~state ~root:identifier
 
 and eval_block state =
   let state = state |> add_scope in
@@ -237,59 +253,48 @@ and eval_statement state stmt =
     | _ -> state |> add_literal_to_scope ~ident ~literal);
     Ast.Literal.Null
   | Ast.ExpressionStmt expr -> literal_of_expr state expr
-;;
 
-let eval_declaration state declaration =
+and eval_declaration state declaration =
   match declaration with
   | Ast.ComponentDeclaration { body; _ } -> eval_block state body
   | Ast.SiteDeclaration { body; _ } -> eval_block state body
   | Ast.PageDeclaration { body; _ } -> eval_block state body
   | Ast.StoreDeclaration { body; _ } -> eval_block state body
-;;
 
-let eval ~state ast root_name =
+and eval ~state ~root =
   let declaration =
-    ast
+    state.declarations
     |> Iter.find (function
            | ( Ast.ComponentDeclaration { identifier = Id name; _ }
              | Ast.SiteDeclaration { identifier = Id name; _ }
              | Ast.PageDeclaration { identifier = Id name; _ }
              | Ast.StoreDeclaration { identifier = Id name; _ } ) as declaration
-             when name = root_name -> Some declaration
+             when name = root -> Some declaration
            | _ -> None)
   in
   match declaration with
-  | Some declaration -> output (eval_declaration state declaration) state
-  | None ->
-    failwith (Printf.sprintf "Declaration with name `%s` was not found." root_name)
-;;
-
-let init_state ?(models = fun _ -> None) () =
-  let state = { output = Buffer.create 4096; scope = []; models } in
-  state
+  | Some declaration -> Ast.Literal.to_string (eval_declaration state declaration)
+  | None -> failwith (Printf.sprintf "Declaration with name `%s` was not found." root)
 ;;
 
 let file_contents chan = really_input_string chan (in_channel_length chan)
 
-let from_directory ?models ~directory root_name =
-  let state = init_state ?models () in
+let from_directory ?models ~directory root =
   let src_match = FileUtil.Has_extension "fe" in
   let src_files = FileUtil.find src_match directory Iter.snoc Iter.empty in
   (* TODO: This should happen asynchronously *)
   let declarations = src_files |> Iter.flat_map Parser.parse_file in
-  let () = eval ~state declarations root_name in
-  Buffer.contents state.output
+  let state = init_state ?models declarations in
+  eval ~state ~root
 ;;
 
-let from_file ?models ~filename root_name =
-  let state = init_state ?models () in
+let from_file ?models ~filename root =
   let declarations = Parser.parse_file filename in
-  let () = eval ~state declarations root_name in
-  Buffer.contents state.output
+  let state = init_state ?models declarations in
+  eval ~state ~root
 ;;
 
-let from_ast ?models declarations root_name =
-  let state = init_state ?models () in
-  let () = eval ~state declarations root_name in
-  Buffer.contents state.output
+let from_ast ?models declarations root =
+  let state = init_state ?models declarations in
+  eval ~state ~root
 ;;

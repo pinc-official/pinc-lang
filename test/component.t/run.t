@@ -1,6 +1,8 @@
   $ esy x print . Component
   <section class="Section">
-        <SubComponent />
+        <div class="SubComponent" data-foo="bar">
+        Hello, SubComponent!
+      </div>
       </section>
 
   $ esy x print . Foo
