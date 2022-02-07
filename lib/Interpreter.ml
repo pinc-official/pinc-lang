@@ -45,7 +45,7 @@ let rec literal_of_expr ?ident state expr =
   | Ast.TagExpression (tag, _body) ->
     (match ident with
     | None -> assert false
-    | Some ident -> tag |> literal_of_tag_expr ~ident state)
+    | Some ident -> tag |> literal_of_tag_expr ~value:(`Ident ident) state)
   | Ast.ForInExpression { iterator = Id ident; iterable; reverse; body } ->
     let iterable = iterable |> literal_of_expr state in
     let state = state |> add_scope in
@@ -190,8 +190,12 @@ let rec literal_of_expr ?ident state expr =
     | Ast.Operators.Binary.OR ->
       Ast.Literal.Bool (Ast.Literal.is_true a || Ast.Literal.is_true b))
 
-and literal_of_tag_expr ~ident state tag =
-  let literal = state.models ident |> Option.value ~default:Ast.Literal.Null in
+and literal_of_tag_expr ~value state tag =
+  let literal =
+    match value with
+    | `Ident ident -> state.models ident |> Option.value ~default:Ast.Literal.Null
+    | `Literal l -> l
+  in
   let apply_default_value ~default literal =
     match default, literal with
     | Some default, Ast.Literal.Null -> literal_of_expr state default
@@ -230,6 +234,21 @@ and literal_of_tag_expr ~ident state tag =
     | Ast.Literal.Float _ -> failwith "tried to assign float literal to a boolean tag."
     | Ast.Literal.Null -> Ast.Literal.Null
     | Ast.Literal.Bool b -> Ast.Literal.Bool b)
+  | Ast.TagArray { label = _; elements = elements, _transformer; default_value = default }
+    ->
+    (match apply_default_value ~default literal with
+    | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a array tag."
+    | Ast.Literal.String _ -> failwith "tried to assign string literal to a array tag."
+    | Ast.Literal.Int _ -> failwith "tried to assign int literal to a array tag."
+    | Ast.Literal.Float _ -> failwith "tried to assign float literal to a array tag."
+    | Ast.Literal.Null -> Ast.Literal.Null
+    | Ast.Literal.Array l ->
+      let l =
+        l
+        |> Iter.map (fun lit ->
+               elements |> literal_of_tag_expr ~value:(`Literal lit) state)
+      in
+      Ast.Literal.Array l)
 
 and html_attr_to_string state (attr : Ast.attribute) =
   let buf = Buffer.create 64 in

@@ -46,6 +46,11 @@ and tag =
       { label : expression option
       ; default_value : expression option
       }
+  | TagArray of
+      { label : expression option
+      ; default_value : expression option
+      ; elements : tag * statement option
+      }
 
 and expression =
   | IdentifierExpression of identifier

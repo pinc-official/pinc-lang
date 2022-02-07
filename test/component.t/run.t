@@ -2,6 +2,7 @@
   <section class="Section">
         <div class="SubComponent" data-foo="3">
         Hello, SubComponent!
+        0123456789
       </div>
       </section>
 

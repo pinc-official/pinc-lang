@@ -178,6 +178,20 @@ module Rules = struct
            { label = Iter.find (get_attr "label") attributes
            ; default_value = Iter.find (get_attr "defaultValue") attributes
            })
+    | "Array" ->
+      Some
+        (Ast.TagArray
+           { label = Iter.find (get_attr "label") attributes
+           ; default_value = Iter.find (get_attr "defaultValue") attributes
+           ; elements =
+               (match Iter.find (get_attr "of") attributes with
+               | Some (Ast.TagExpression (tag, body)) -> tag, body
+               | Some _ -> failwith "expected attribute `of` on array tag, to be a tag."
+               | None ->
+                 failwith
+                   "expected attribute `of` on array tag, to describe the type of the \
+                    elements inside the array.")
+           })
     | _ -> None
 
   and parse_attribute ?(sep = Token.COLON) t =
