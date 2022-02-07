@@ -143,6 +143,43 @@ module Rules = struct
       Some (Ast.Literal.Bool false)
     | _ -> None
 
+  and parse_tag name t =
+    next t;
+    t |> expect Token.LEFT_PAREN;
+    let attributes = t |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA in
+    t |> expect Token.RIGHT_PAREN;
+    let get_attr key attr = if attr.Ast.key = key then Some attr.value else None in
+    match name with
+    | "String" ->
+      Some
+        (Ast.TagString
+           { label = Iter.find (get_attr "label") attributes
+           ; placeholder = Iter.find (get_attr "placeholder") attributes
+           ; inline = Iter.find (get_attr "inline") attributes
+           ; default_value = Iter.find (get_attr "defaultValue") attributes
+           })
+    | "Int" ->
+      Some
+        (Ast.TagInt
+           { label = Iter.find (get_attr "label") attributes
+           ; placeholder = Iter.find (get_attr "placeholder") attributes
+           ; default_value = Iter.find (get_attr "defaultValue") attributes
+           })
+    | "Float" ->
+      Some
+        (Ast.TagFloat
+           { label = Iter.find (get_attr "label") attributes
+           ; placeholder = Iter.find (get_attr "placeholder") attributes
+           ; default_value = Iter.find (get_attr "defaultValue") attributes
+           })
+    | "Boolean" ->
+      Some
+        (Ast.TagBoolean
+           { label = Iter.find (get_attr "label") attributes
+           ; default_value = Iter.find (get_attr "defaultValue") attributes
+           })
+    | _ -> None
+
   and parse_attribute ?(sep = Token.COLON) t =
     match t.token.typ with
     | Token.IDENT_LOWER key ->
@@ -261,10 +298,7 @@ module Rules = struct
       Some (Ast.ArrayExpression expressions)
     (* PARSING TAG EXPRESSION *)
     | Token.TAG name ->
-      next t;
-      t |> expect Token.LEFT_PAREN;
-      let attributes = t |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA in
-      t |> expect Token.RIGHT_PAREN;
+      let* tag = parse_tag name t in
       let body =
         if t |> optional Token.LEFT_BRACE
         then (
@@ -273,12 +307,7 @@ module Rules = struct
           body)
         else None
       in
-      (match name with
-      | "String" -> Some (Ast.TagExpression { typ = StringTag; attributes; body })
-      | "Int" -> Some (Ast.TagExpression { typ = IntTag; attributes; body })
-      | "Float" -> Some (Ast.TagExpression { typ = FloatTag; attributes; body })
-      | "Boolean" -> Some (Ast.TagExpression { typ = BooleanTag; attributes; body })
-      | name -> failwith (Printf.sprintf "Unknown Tag: `%s`" name))
+      Some (Ast.TagExpression (tag, body))
     (* PARSING TEMPLATE EXPRESSION *)
     | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
       let template_nodes = t |> Helpers.list ~fn:parse_template_node in

@@ -5,7 +5,7 @@ component Component(
 ) {
   #Template {
     <section class="Section">
-      <SubComponent content="Hello, SubComponent!" num="bar"></SubComponent>
+      <SubComponent content="Hello, SubComponent!" num={3}></SubComponent>
     </section>
   }
 }

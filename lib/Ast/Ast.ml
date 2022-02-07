@@ -11,12 +11,6 @@ end
 
 type identifier = Id of string
 
-type tag =
-  | StringTag
-  | IntTag
-  | FloatTag
-  | BooleanTag
-
 type template_node =
   | HtmlTemplateNode of
       { tag : string
@@ -31,15 +25,33 @@ type template_node =
   | ExpressionTemplateNode of expression
   | TextTemplateNode of string
 
+and tag =
+  | TagString of
+      { label : expression option
+      ; placeholder : expression option
+      ; inline : expression option
+      ; default_value : expression option
+      }
+  | TagInt of
+      { label : expression option
+      ; placeholder : expression option
+      ; default_value : expression option
+      }
+  | TagFloat of
+      { label : expression option
+      ; placeholder : expression option
+      ; default_value : expression option
+      }
+  | TagBoolean of
+      { label : expression option
+      ; default_value : expression option
+      }
+
 and expression =
   | IdentifierExpression of identifier
   | LiteralExpression of Literal.t
   | ArrayExpression of expression Iter.t
-  | TagExpression of
-      { typ : tag
-      ; attributes : attribute Iter.t
-      ; body : statement option
-      }
+  | TagExpression of tag * statement option
   | ForInExpression of
       { iterator : identifier
       ; reverse : bool

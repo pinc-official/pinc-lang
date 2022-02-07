@@ -29,7 +29,7 @@ let add_literal_to_scope ~ident ~literal state =
   | scope :: _ -> Hashtbl.replace scope.identifiers ident literal
 ;;
 
-let rec literal_of_expr state expr =
+let rec literal_of_expr ?ident state expr =
   match expr with
   | Ast.LiteralExpression l -> l
   | Ast.BlockExpression statements -> eval_block state statements
@@ -42,7 +42,10 @@ let rec literal_of_expr state expr =
     | Some v -> v)
   | Ast.ArrayExpression expressions ->
     Ast.Literal.Array (expressions |> Iter.map (literal_of_expr state))
-  | Ast.TagExpression _ -> Ast.Literal.Null (* TODO: *)
+  | Ast.TagExpression (tag, _body) ->
+    (match ident with
+    | None -> assert false
+    | Some ident -> tag |> literal_of_tag_expr ~ident state)
   | Ast.ForInExpression { iterator = Id ident; iterable; reverse; body } ->
     let iterable = iterable |> literal_of_expr state in
     let state = state |> add_scope in
@@ -187,16 +190,46 @@ let rec literal_of_expr state expr =
     | Ast.Operators.Binary.OR ->
       Ast.Literal.Bool (Ast.Literal.is_true a || Ast.Literal.is_true b))
 
-and literal_of_tag_expr state key = function
-  | Ast.TagExpression { typ = StringTag; attributes = _; body = _ } ->
-    state.models key |> Option.value ~default:Ast.Literal.Null
-  | Ast.TagExpression { typ = IntTag; attributes = _; body = _ } ->
-    state.models key |> Option.value ~default:Ast.Literal.Null
-  | Ast.TagExpression { typ = FloatTag; attributes = _; body = _ } ->
-    state.models key |> Option.value ~default:Ast.Literal.Null
-  | Ast.TagExpression { typ = BooleanTag; attributes = _; body = _ } ->
-    state.models key |> Option.value ~default:Ast.Literal.Null
-  | _ -> assert false
+and literal_of_tag_expr ~ident state tag =
+  let literal = state.models ident |> Option.value ~default:Ast.Literal.Null in
+  let apply_default_value ~default literal =
+    match default, literal with
+    | Some default, Ast.Literal.Null -> literal_of_expr state default
+    | _, literal -> literal
+  in
+  match tag with
+  | Ast.TagString { label = _; placeholder = _; inline = _; default_value = default } ->
+    (match apply_default_value ~default literal with
+    | Ast.Literal.Int _ -> failwith "tried to assign integer literal to a string tag."
+    | Ast.Literal.Float _ -> failwith "tried to assign float literal to a string tag."
+    | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a string tag."
+    | Ast.Literal.Array _ -> failwith "tried to assign array literal to a string tag."
+    | Ast.Literal.Null -> Ast.Literal.Null
+    | Ast.Literal.String s -> Ast.Literal.String s)
+  | Ast.TagInt { label = _; placeholder = _; default_value = default } ->
+    (match apply_default_value ~default literal with
+    | Ast.Literal.Float _ -> failwith "tried to assign float literal to a int tag."
+    | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a int tag."
+    | Ast.Literal.Array _ -> failwith "tried to assign array literal to a int tag."
+    | Ast.Literal.String _ -> failwith "tried to assign string literal to a int tag."
+    | Ast.Literal.Null -> Ast.Literal.Null
+    | Ast.Literal.Int i -> Ast.Literal.Int i)
+  | Ast.TagFloat { label = _; placeholder = _; default_value = default } ->
+    (match apply_default_value ~default literal with
+    | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a float tag."
+    | Ast.Literal.Array _ -> failwith "tried to assign array literal to a float tag."
+    | Ast.Literal.String _ -> failwith "tried to assign string literal to a float tag."
+    | Ast.Literal.Int _ -> failwith "tried to assign int literal to a float tag."
+    | Ast.Literal.Null -> Ast.Literal.Null
+    | Ast.Literal.Float f -> Ast.Literal.Float f)
+  | Ast.TagBoolean { label = _; default_value = default } ->
+    (match apply_default_value ~default literal with
+    | Ast.Literal.Array _ -> failwith "tried to assign array literal to a boolean tag."
+    | Ast.Literal.String _ -> failwith "tried to assign string literal to a boolean tag."
+    | Ast.Literal.Int _ -> failwith "tried to assign int literal to a boolean tag."
+    | Ast.Literal.Float _ -> failwith "tried to assign float literal to a boolean tag."
+    | Ast.Literal.Null -> Ast.Literal.Null
+    | Ast.Literal.Bool b -> Ast.Literal.Bool b)
 
 and html_attr_to_string state (attr : Ast.attribute) =
   let buf = Buffer.create 64 in
@@ -258,11 +291,7 @@ and eval_statement state stmt =
   | Ast.BreakStmt -> Ast.Literal.Null (* TODO: *)
   | Ast.ContinueStmt -> Ast.Literal.Null (* TODO: *)
   | Ast.DeclarationStmt { nullable; left = Id ident; right } ->
-    let literal =
-      match right with
-      | Ast.TagExpression _ -> literal_of_tag_expr state ident right
-      | _ -> literal_of_expr state right
-    in
+    let literal = literal_of_expr ~ident state right in
     let () =
       match literal with
       | Ast.Literal.Null when not nullable -> failwith "Not Nullable!!"

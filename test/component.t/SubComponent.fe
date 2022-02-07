@@ -1,6 +1,6 @@
 component SubComponent {
   let content = #String();
-  let num = #Int(); // This is currently intentionally wrong!
+  let num = #Int();
 
   #Template {
     <div class="SubComponent" data-foo={num}>
