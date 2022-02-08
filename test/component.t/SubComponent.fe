@@ -1,7 +1,7 @@
 component SubComponent {
-  let content = #String();
-  let num = #Int();
-  let array = #Array(of: #Int());
+  let content = #String;
+  let num = #Int;
+  let array = #Array(of: #Int);
 
   #Template {
     <div class="SubComponent" data-foo={num}>

@@ -157,9 +157,14 @@ module Rules = struct
 
   and parse_tag name t =
     next t;
-    t |> expect Token.LEFT_PAREN;
-    let attributes = t |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA in
-    t |> expect Token.RIGHT_PAREN;
+    let attributes =
+      if t |> optional Token.LEFT_PAREN
+      then (
+        let res = t |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA in
+        t |> expect Token.RIGHT_PAREN;
+        res)
+      else Iter.empty
+    in
     let get_attr key attr = if attr.Ast.key = key then Some attr.value else None in
     match name with
     | "String" ->
