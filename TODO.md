@@ -13,22 +13,31 @@
   ```
     module Std {
       let concat = fun (a, b) -> { a ++ b };
+
       let map = fun (t, fn) -> {
         for (item in t) {
           fn(item)
+        }
+      };
+
+      let default = fun (t, default) -> {
+        if (!t) {
+          default
+        } else {
+          t
         }
       };
     }
 
     ...
 
-    let result = arr|Std.map(fun (item) -> item + 2);
+    let result = arr |> Std.default([1, 2, 3]) |> Std.map(fun (item) -> item + 2);
 
     ...
 
     (maybe even)
-    open Std;
-    let result = arr|map(fun (item) -> item + 2);
+    use Std;
+    let result = arr |> default([1, 2, 3]) |> map(fun (item) -> item + 2);
   ```
 
 ## Things
@@ -37,6 +46,6 @@
 
 - Functions / Lambdas
 
-- Pipe operator
+- Pipe operator (`|` or `|>`)
 
 - String Templates (`"Section--${alignment}"`)
