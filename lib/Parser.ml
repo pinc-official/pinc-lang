@@ -3,19 +3,31 @@ exception Parser_Error of string
 type t =
   { mutable lexer : Lexer.t
   ; mutable token : Token.t
-  ; mutable prev_token : Token.t option
+  ; next : Token.t Queue.t
   }
 
 let ( let* ) = Option.bind
 
-let rec next ?prev_token t =
-  let prev_token = prev_token |> Option.value ~default:t.token in
-  let token = Lexer.scan t.lexer in
+let get_next_token t =
+  match Queue.take_opt t.next with
+  | None -> Lexer.scan t.lexer
+  | Some token -> token
+;;
+
+let rec next t =
+  let token = get_next_token t in
   match token.typ with
   | Token.COMMENT -> next t
-  | _ ->
-    t.token <- token;
-    t.prev_token <- Some prev_token
+  | _ -> t.token <- token
+;;
+
+let rec peek t =
+  let token = get_next_token t in
+  match token.typ with
+  | Token.COMMENT -> peek t
+  | typ ->
+    Queue.add token t.next;
+    typ
 ;;
 
 let optional token t =
@@ -44,7 +56,7 @@ let make ~filename src =
   let initial_token =
     Token.make ~start_pos:initial_pos ~end_pos:initial_pos Token.END_OF_INPUT
   in
-  let t = { lexer; token = initial_token; prev_token = None } in
+  let t = { lexer; token = initial_token; next = Queue.create () } in
   next t;
   t
 ;;
@@ -258,12 +270,23 @@ module Rules = struct
       let expr = parse_expression t in
       t |> expect Token.RIGHT_PAREN;
       expr
-    (* PARSING BLOCK EXPRESSION *)
+    (* PARSING RECORD or BLOCK EXPRESSION *)
     | Token.LEFT_BRACE ->
       next t;
-      let statements = Helpers.list ~fn:parse_statement t in
-      t |> expect Token.RIGHT_BRACE;
-      Some (Ast.BlockExpression statements)
+      let is_record =
+        match t.token.typ with
+        | Token.IDENT_LOWER _ -> peek t = Token.COLON
+        | _ -> false
+      in
+      if is_record
+      then (
+        let attrs = Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t in
+        t |> expect Token.RIGHT_BRACE;
+        Some (Ast.RecordExpression attrs))
+      else (
+        let statements = Helpers.list ~fn:parse_statement t in
+        t |> expect Token.RIGHT_BRACE;
+        Some (Ast.BlockExpression statements))
     (* PARSING FOR IN EXPRESSION *)
     | Token.KEYWORD_FOR ->
       next t;
@@ -375,6 +398,7 @@ module Rules = struct
     | Token.STAR -> Some Ast.Operators.Binary.(make TIMES)
     | Token.SLASH -> Some Ast.Operators.Binary.(make DIV)
     | Token.STAR_STAR -> Some Ast.Operators.Binary.(make POW)
+    | Token.DOT -> Some Ast.Operators.Binary.(make RECORD_ACCESS)
     | _ -> None
 
   and parse_unary_operator t =

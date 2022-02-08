@@ -20,6 +20,7 @@ module Binary : sig
     | CONCAT
     | AND
     | OR
+    | RECORD_ACCESS
 
   type t =
     { typ : typ

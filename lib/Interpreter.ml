@@ -40,6 +40,15 @@ let rec literal_of_expr ?ident state expr =
     (match value with
     | None -> failwith "Unbound identifier" (* Unbound identifier *)
     | Some v -> v)
+  | Ast.RecordExpression expressions ->
+    let attrs =
+      expressions
+      |> Iter.fold
+           (fun acc Ast.{ key; value } ->
+             acc |> Ast.Literal.StringMap.add key (literal_of_expr state value))
+           Ast.Literal.StringMap.empty
+    in
+    Ast.Literal.Record attrs
   | Ast.ArrayExpression expressions ->
     Ast.Literal.Array (expressions |> Iter.map (literal_of_expr state))
   | Ast.TagExpression (tag, _body) ->
@@ -65,6 +74,7 @@ let rec literal_of_expr ?ident state expr =
       in
       Ast.Literal.Array (s |> Iter.of_str |> maybe_rev |> Iter.map loop)
     | Ast.Literal.Null -> Ast.Literal.Null
+    | Ast.Literal.Record _ -> failwith "Cannot iterate over record value"
     | Ast.Literal.Int _ -> failwith "Cannot iterate over int value"
     | Ast.Literal.Float _ -> failwith "Cannot iterate over float value"
     | Ast.Literal.Bool _ -> failwith "Cannot iterate over boolean value")
@@ -126,21 +136,47 @@ let rec literal_of_expr ?ident state expr =
     | Ast.Operators.Unary.MINUS, Ast.Literal.Float f -> Ast.Literal.Float (Float.neg f)
     | Ast.Operators.Unary.MINUS, _ -> failwith "Invalid usage of unary - operator")
   | Ast.BinaryExpression { left; operator; right } ->
-    let a = left |> literal_of_expr state in
-    let b = right |> literal_of_expr state in
     (match operator with
-    | Ast.Operators.Binary.NOT_EQUAL -> Ast.Literal.Bool (not (Ast.Literal.equal (a, b)))
-    | Ast.Operators.Binary.EQUAL -> Ast.Literal.Bool (Ast.Literal.equal (a, b))
-    | Ast.Operators.Binary.LESS -> Ast.Literal.Bool (Ast.Literal.compare (a, b) < 0)
-    | Ast.Operators.Binary.LESS_EQUAL -> Ast.Literal.Bool (Ast.Literal.compare (a, b) <= 0)
-    | Ast.Operators.Binary.GREATER -> Ast.Literal.Bool (Ast.Literal.compare (a, b) > 0)
+    | Ast.Operators.Binary.NOT_EQUAL ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
+      Ast.Literal.Bool (not (Ast.Literal.equal a b))
+    | Ast.Operators.Binary.EQUAL ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
+      Ast.Literal.Bool (Ast.Literal.equal a b)
+    | Ast.Operators.Binary.LESS ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
+      Ast.Literal.Bool (Ast.Literal.compare a b < 0)
+    | Ast.Operators.Binary.LESS_EQUAL ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
+      Ast.Literal.Bool (Ast.Literal.compare a b <= 0)
+    | Ast.Operators.Binary.GREATER ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
+      Ast.Literal.Bool (Ast.Literal.compare a b > 0)
     | Ast.Operators.Binary.GREATER_EQUAL ->
-      Ast.Literal.Bool (Ast.Literal.compare (a, b) >= 0)
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
+      Ast.Literal.Bool (Ast.Literal.compare a b >= 0)
     | Ast.Operators.Binary.CONCAT ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
       (match a, b with
       | Ast.Literal.String a, Ast.Literal.String b -> Ast.Literal.String (a ^ b)
       | _ -> failwith "Trying to concat non string literals.")
+    | Ast.Operators.Binary.RECORD_ACCESS ->
+      let left = left |> literal_of_expr state in
+      (match left, right with
+      | Ast.Literal.Record left, Ast.IdentifierExpression (Id b) ->
+        left |> Ast.Literal.StringMap.find_opt b |> Option.value ~default:Ast.Literal.Null
+      | Ast.Literal.Null, _ -> Ast.Literal.Null
+      | _ -> failwith "Trying to access a property on a non record literal.")
     | Ast.Operators.Binary.PLUS ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
       (match a, b with
       | Ast.Literal.Int a, Ast.Literal.Int b -> Ast.Literal.Int (a + b)
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a +. b)
@@ -148,6 +184,8 @@ let rec literal_of_expr ?ident state expr =
       | Ast.Literal.Int a, Ast.Literal.Float b -> Ast.Literal.Float (float_of_int a +. b)
       | _ -> failwith "Trying to add non numeric literals.")
     | Ast.Operators.Binary.MINUS ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
       (match a, b with
       | Ast.Literal.Int a, Ast.Literal.Int b -> Ast.Literal.Int (a - b)
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a -. b)
@@ -155,6 +193,8 @@ let rec literal_of_expr ?ident state expr =
       | Ast.Literal.Int a, Ast.Literal.Float b -> Ast.Literal.Float (float_of_int a -. b)
       | _ -> failwith "Trying to subtract non numeric literals.")
     | Ast.Operators.Binary.TIMES ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
       (match a, b with
       | Ast.Literal.Int a, Ast.Literal.Int b -> Ast.Literal.Int (a * b)
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a *. b)
@@ -162,6 +202,8 @@ let rec literal_of_expr ?ident state expr =
       | Ast.Literal.Int a, Ast.Literal.Float b -> Ast.Literal.Float (float_of_int a *. b)
       | _ -> failwith "Trying to multiply non numeric literals.")
     | Ast.Operators.Binary.DIV ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
       (match a, b with
       | Ast.Literal.Int a, Ast.Literal.Int b ->
         let result = float_of_int a /. float_of_int b in
@@ -171,6 +213,8 @@ let rec literal_of_expr ?ident state expr =
       | Ast.Literal.Int a, Ast.Literal.Float b -> Ast.Literal.Float (float_of_int a /. b)
       | _ -> failwith "Trying to divide non numeric literals.")
     | Ast.Operators.Binary.POW ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
       (match a, b with
       | Ast.Literal.Int a, Ast.Literal.Int b ->
         let r = float_of_int a ** float_of_int b in
@@ -186,8 +230,12 @@ let rec literal_of_expr ?ident state expr =
         Ast.Literal.Float r
       | _ -> failwith "Trying to raise non numeric literals.")
     | Ast.Operators.Binary.AND ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
       Ast.Literal.Bool (Ast.Literal.is_true a && Ast.Literal.is_true b)
     | Ast.Operators.Binary.OR ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
       Ast.Literal.Bool (Ast.Literal.is_true a || Ast.Literal.is_true b))
 
 and literal_of_tag_expr ~value state tag =
@@ -208,6 +256,7 @@ and literal_of_tag_expr ~value state tag =
     | Ast.Literal.Float _ -> failwith "tried to assign float literal to a string tag."
     | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a string tag."
     | Ast.Literal.Array _ -> failwith "tried to assign array literal to a string tag."
+    | Ast.Literal.Record _ -> failwith "tried to assign record literal to a string tag."
     | Ast.Literal.Null -> Ast.Literal.Null
     | Ast.Literal.String s -> Ast.Literal.String s)
   | Ast.TagInt { label = _; placeholder = _; default_value = default } ->
@@ -216,6 +265,7 @@ and literal_of_tag_expr ~value state tag =
     | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a int tag."
     | Ast.Literal.Array _ -> failwith "tried to assign array literal to a int tag."
     | Ast.Literal.String _ -> failwith "tried to assign string literal to a int tag."
+    | Ast.Literal.Record _ -> failwith "tried to assign record literal to a int tag."
     | Ast.Literal.Null -> Ast.Literal.Null
     | Ast.Literal.Int i -> Ast.Literal.Int i)
   | Ast.TagFloat { label = _; placeholder = _; default_value = default } ->
@@ -224,6 +274,7 @@ and literal_of_tag_expr ~value state tag =
     | Ast.Literal.Array _ -> failwith "tried to assign array literal to a float tag."
     | Ast.Literal.String _ -> failwith "tried to assign string literal to a float tag."
     | Ast.Literal.Int _ -> failwith "tried to assign int literal to a float tag."
+    | Ast.Literal.Record _ -> failwith "tried to assign record literal to a float tag."
     | Ast.Literal.Null -> Ast.Literal.Null
     | Ast.Literal.Float f -> Ast.Literal.Float f)
   | Ast.TagBoolean { label = _; default_value = default } ->
@@ -232,6 +283,7 @@ and literal_of_tag_expr ~value state tag =
     | Ast.Literal.String _ -> failwith "tried to assign string literal to a boolean tag."
     | Ast.Literal.Int _ -> failwith "tried to assign int literal to a boolean tag."
     | Ast.Literal.Float _ -> failwith "tried to assign float literal to a boolean tag."
+    | Ast.Literal.Record _ -> failwith "tried to assign record literal to a boolean tag."
     | Ast.Literal.Null -> Ast.Literal.Null
     | Ast.Literal.Bool b -> Ast.Literal.Bool b)
   | Ast.TagArray { label = _; elements = elements, _transformer; default_value = default }
@@ -241,6 +293,7 @@ and literal_of_tag_expr ~value state tag =
     | Ast.Literal.String _ -> failwith "tried to assign string literal to a array tag."
     | Ast.Literal.Int _ -> failwith "tried to assign int literal to a array tag."
     | Ast.Literal.Float _ -> failwith "tried to assign float literal to a array tag."
+    | Ast.Literal.Record _ -> failwith "tried to assign record literal to a array tag."
     | Ast.Literal.Null -> Ast.Literal.Null
     | Ast.Literal.Array l ->
       let l =

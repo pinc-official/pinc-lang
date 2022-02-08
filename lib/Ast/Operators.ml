@@ -20,6 +20,7 @@ module Binary = struct
     | CONCAT
     | AND
     | OR
+    | RECORD_ACCESS
 
   type t =
     { typ : typ
@@ -28,6 +29,7 @@ module Binary = struct
     }
 
   let make = function
+    | RECORD_ACCESS -> { typ = RECORD_ACCESS; precedence = 110; assoc = Left }
     | POW -> { typ = POW; precedence = 70; assoc = Right }
     | TIMES -> { typ = TIMES; precedence = 60; assoc = Left }
     | DIV -> { typ = DIV; precedence = 60; assoc = Left }

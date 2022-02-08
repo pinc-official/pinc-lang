@@ -55,6 +55,7 @@ and tag =
 and expression =
   | IdentifierExpression of identifier
   | LiteralExpression of Literal.t
+  | RecordExpression of attribute Iter.t
   | ArrayExpression of expression Iter.t
   | TagExpression of tag * statement option
   | ForInExpression of

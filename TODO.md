@@ -39,8 +39,4 @@
 
 - Pipe operator
 
-- Implement Objects (`{ foo: "bar" }`)
-
-- `.` operator for object access
-
 - String Templates (`"Section--${alignment}"`)
