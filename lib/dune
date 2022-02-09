@@ -1,4 +1,4 @@
 (library
- (name fennek_lib)
+ (name pinc_lib)
  (ocamlopt_flags -O3)
  (libraries Ast Position iter fileutils))

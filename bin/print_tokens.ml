@@ -1,4 +1,4 @@
-open Fennek_lib
+open Pinc_lib
 
 let file_contents chan = really_input_string chan (in_channel_length chan)
 

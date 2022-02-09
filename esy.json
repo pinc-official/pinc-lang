@@ -1,14 +1,14 @@
 {
-  "name": "fennek",
+  "name": "pinc-lang",
   "version": "0.0.1",
   "description": "A CMS with its own language built in",
   "license": "NONE",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ewert-online/fennek"
+    "url": "https://github.com/pinc-lang/pinc-lang"
   },
   "author": { "name": "Torben Ewert", "email": "torben@ewert-online.com" },
-  "bugs": { "url": "https://github.com/ewert-online/fennek/issues" },
+  "bugs": { "url": "https://github.com/pinc-lang/pinc-lang/issues" },
   "keywords": [],
   "esy": {
     "build": "dune build -p #{self.name}",

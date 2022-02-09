@@ -1,4 +1,4 @@
-open Fennek_lib
+open Pinc_lib
 
 let main =
   let filename = Sys.argv.(1) in

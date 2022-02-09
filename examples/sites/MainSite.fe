@@ -1,8 +1,8 @@
 site Main(
   label: "Main Site",
   icon: "/images/icons/site-main.svg",
-  domain: "www.fennek-cms.com",
-  additionalDomains: ["fennek-cms.com"]
+  domain: "www.pinc-cms.com",
+  additionalDomains: ["pinc-cms.com"]
 ) {
   let languages =
     #NodeContext(
