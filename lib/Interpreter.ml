@@ -444,7 +444,7 @@ and eval ~state ~root =
 let file_contents chan = really_input_string chan (in_channel_length chan)
 
 let from_directory ?models ~directory root =
-  let src_match = FileUtil.Has_extension "fe" in
+  let src_match = FileUtil.Has_extension "pi" in
   let src_files = FileUtil.find src_match directory Iter.snoc Iter.empty in
   (* TODO: This should happen asynchronously *)
   let declarations = src_files |> Iter.flat_map Parser.parse_file in
