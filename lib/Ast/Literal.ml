@@ -68,6 +68,8 @@ let rec equal a b =
   | String a, String b -> String.equal a b
   | Int a, Int b -> a = b
   | Float a, Float b -> a = b
+  | Float a, Int b -> a = float_of_int b
+  | Int a, Float b -> float_of_int a = b
   | Bool a, Bool b -> a = b
   | Array a, Array b -> Iter.to_rev_list a = Iter.to_rev_list b
   | Record a, Record b -> StringMap.equal equal a b
@@ -75,8 +77,8 @@ let rec equal a b =
   | Null, (String _ | Int _ | Float _ | Bool _ | Array _ | Record _)
   | Array _, (Null | String _ | Int _ | Float _ | Bool _ | Record _)
   | Bool _, (Null | String _ | Int _ | Float _ | Array _ | Record _)
-  | Float _, (Null | String _ | Int _ | Bool _ | Array _ | Record _)
-  | Int _, (Null | String _ | Float _ | Bool _ | Array _ | Record _)
+  | Float _, (Null | String _ | Bool _ | Array _ | Record _)
+  | Int _, (Null | String _ | Bool _ | Array _ | Record _)
   | String _, (Null | Int _ | Float _ | Bool _ | Array _ | Record _)
   | Record _, (Null | Int _ | Float _ | Bool _ | Array _ | String _) -> false
 ;;
@@ -86,6 +88,8 @@ let rec compare a b =
   | String a, String b -> String.compare a b
   | Int a, Int b -> Int.compare a b
   | Float a, Float b -> Float.compare a b
+  | Float a, Int b -> Float.compare a (float_of_int b)
+  | Int a, Float b -> Float.compare (float_of_int a) b
   | Bool a, Bool b -> Bool.compare a b
   | Array a, Array b -> Int.compare (Iter.length a) (Iter.length b)
   | Record a, Record b -> StringMap.compare compare a b
@@ -93,8 +97,8 @@ let rec compare a b =
   | Null, (String _ | Int _ | Float _ | Bool _ | Array _ | Record _) -> assert false
   | Array _, (Null | String _ | Int _ | Float _ | Bool _ | Record _) -> assert false
   | Bool _, (Null | String _ | Int _ | Float _ | Array _ | Record _) -> assert false
-  | Float _, (Null | String _ | Int _ | Bool _ | Array _ | Record _) -> assert false
-  | Int _, (Null | String _ | Float _ | Bool _ | Array _ | Record _) -> assert false
+  | Float _, (Null | String _ | Bool _ | Array _ | Record _) -> assert false
+  | Int _, (Null | String _ | Bool _ | Array _ | Record _) -> assert false
   | String _, (Null | Int _ | Float _ | Bool _ | Array _ | Record _) -> assert false
   | Record _, (Null | String _ | Int _ | Float _ | Bool _ | Array _) -> assert false
 ;;
