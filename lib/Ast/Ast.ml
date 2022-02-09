@@ -93,10 +93,7 @@ and expression =
       ; right : expression
       }
 
-and attribute =
-  { key : string
-  ; value : expression
-  }
+and attribute = string * expression
 
 and statement =
   | BreakStmt

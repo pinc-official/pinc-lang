@@ -165,7 +165,9 @@ module Rules = struct
         res)
       else Iter.empty
     in
-    let get_attr key attr = if attr.Ast.key = key then Some attr.value else None in
+    let get_attr key (attr_key, attr_value) =
+      if attr_key = key then Some attr_value else None
+    in
     match name with
     | "String" ->
       Some
@@ -217,7 +219,7 @@ module Rules = struct
                (match Iter.find (get_attr "of") attributes with
                | Some (Ast.RecordExpression attributes) ->
                  attributes
-                 |> Iter.map (fun Ast.{ key; value } ->
+                 |> Iter.map (fun (key, value) ->
                         match value with
                         | Ast.TagExpression (tag, body) -> key, tag, body
                         | _ ->
@@ -238,7 +240,7 @@ module Rules = struct
       next t;
       expect sep t;
       let value = parse_expression t in
-      value |> Option.map (fun value -> Ast.{ key; value })
+      value |> Option.map (fun value -> key, value)
     | _ -> None
 
   and parse_template_node t =

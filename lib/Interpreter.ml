@@ -44,7 +44,7 @@ let rec literal_of_expr ?ident state expr =
     let attrs =
       expressions
       |> Iter.fold
-           (fun acc Ast.{ key; value } ->
+           (fun acc (key, value) ->
              acc |> Ast.Literal.StringMap.add key (literal_of_expr state value))
            Ast.Literal.StringMap.empty
     in
@@ -325,10 +325,9 @@ and literal_of_tag_expr ~value state tag =
       in
       Ast.Literal.Record r)
 
-and html_attr_to_string state (attr : Ast.attribute) =
+and html_attr_to_string state (key, value) =
   let buf = Buffer.create 64 in
-  let value = literal_of_expr state attr.value |> Ast.Literal.to_string in
-  let key = attr.key in
+  let value = value |> literal_of_expr state |> Ast.Literal.to_string in
   Buffer.add_string buf key;
   Buffer.add_char buf '=';
   Buffer.add_char buf '"';
@@ -365,9 +364,8 @@ and template_to_string state template =
   | Ast.ComponentTemplateNode { identifier = Id identifier; attributes; children = _ } ->
     let models =
       attributes
-      |> Iter.map (fun (attr : Ast.attribute) ->
-             let value = literal_of_expr state attr.value in
-             let key = attr.key in
+      |> Iter.map (fun (key, value) ->
+             let value = value |> literal_of_expr state in
              key, value)
       |> Iter.to_hashtbl
       |> Hashtbl.find_opt
