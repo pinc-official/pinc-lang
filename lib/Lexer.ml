@@ -562,8 +562,13 @@ and scan_normal_token ~start_pos t =
     next t;
     Token.RIGHT_BRACE
   | `Chr ':' ->
-    next t;
-    Token.COLON
+    (match peek t with
+    | `Chr ':' ->
+      next_n ~n:2 t;
+      Token.DOUBLE_COLON
+    | _ ->
+      next t;
+      Token.COLON)
   | `Chr ',' ->
     next t;
     Token.COMMA
@@ -576,8 +581,13 @@ and scan_normal_token ~start_pos t =
       next t;
       Token.MINUS)
     else (
-      next t;
-      Token.UNARY_MINUS)
+      match peek t with
+      | `Chr '>' ->
+        next_n ~n:2 t;
+        Token.ARROW
+      | _ ->
+        next t;
+        Token.UNARY_MINUS)
   | `Chr '+' ->
     (match peek t with
     | `Chr '+' ->

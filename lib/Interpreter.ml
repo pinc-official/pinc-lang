@@ -51,10 +51,10 @@ let rec literal_of_expr ?ident state expr =
     Ast.Literal.Record attrs
   | Ast.ArrayExpression expressions ->
     Ast.Literal.Array (expressions |> Iter.map (literal_of_expr state))
-  | Ast.TagExpression (tag, _body) ->
+  | Ast.TagExpression (tag, transformer) ->
     (match ident with
     | None -> assert false
-    | Some ident -> tag |> literal_of_tag_expr ~value:(`Ident ident) state)
+    | Some ident -> tag |> literal_of_tag_expr ~value:(`Ident ident) ~transformer state)
   | Ast.ForInExpression { iterator = Id ident; iterable; reverse; body } ->
     let iterable = iterable |> literal_of_expr state in
     let state = state |> add_scope in
@@ -238,92 +238,98 @@ let rec literal_of_expr ?ident state expr =
       let b = right |> literal_of_expr state in
       Ast.Literal.Bool (Ast.Literal.is_true a || Ast.Literal.is_true b))
 
-and literal_of_tag_expr ~value state tag =
-  let literal =
-    match value with
-    | `Ident ident -> state.models ident |> Option.value ~default:Ast.Literal.Null
-    | `Literal l -> l
-  in
+and literal_of_tag_expr ~value ~transformer state tag =
   let apply_default_value ~default literal =
     match default, literal with
     | Some default, Ast.Literal.Null -> literal_of_expr state default
     | _, literal -> literal
   in
-  match tag with
-  | Ast.TagString { label = _; placeholder = _; inline = _; default_value = default } ->
-    (match apply_default_value ~default literal with
-    | Ast.Literal.Int _ -> failwith "tried to assign integer literal to a string tag."
-    | Ast.Literal.Float _ -> failwith "tried to assign float literal to a string tag."
-    | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a string tag."
-    | Ast.Literal.Array _ -> failwith "tried to assign array literal to a string tag."
-    | Ast.Literal.Record _ -> failwith "tried to assign record literal to a string tag."
-    | Ast.Literal.Null -> Ast.Literal.Null
-    | Ast.Literal.String s -> Ast.Literal.String s)
-  | Ast.TagInt { label = _; placeholder = _; default_value = default } ->
-    (match apply_default_value ~default literal with
-    | Ast.Literal.Float _ -> failwith "tried to assign float literal to a int tag."
-    | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a int tag."
-    | Ast.Literal.Array _ -> failwith "tried to assign array literal to a int tag."
-    | Ast.Literal.String _ -> failwith "tried to assign string literal to a int tag."
-    | Ast.Literal.Record _ -> failwith "tried to assign record literal to a int tag."
-    | Ast.Literal.Null -> Ast.Literal.Null
-    | Ast.Literal.Int i -> Ast.Literal.Int i)
-  | Ast.TagFloat { label = _; placeholder = _; default_value = default } ->
-    (match apply_default_value ~default literal with
-    | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a float tag."
-    | Ast.Literal.Array _ -> failwith "tried to assign array literal to a float tag."
-    | Ast.Literal.String _ -> failwith "tried to assign string literal to a float tag."
-    | Ast.Literal.Int _ -> failwith "tried to assign int literal to a float tag."
-    | Ast.Literal.Record _ -> failwith "tried to assign record literal to a float tag."
-    | Ast.Literal.Null -> Ast.Literal.Null
-    | Ast.Literal.Float f -> Ast.Literal.Float f)
-  | Ast.TagBoolean { label = _; default_value = default } ->
-    (match apply_default_value ~default literal with
-    | Ast.Literal.Array _ -> failwith "tried to assign array literal to a boolean tag."
-    | Ast.Literal.String _ -> failwith "tried to assign string literal to a boolean tag."
-    | Ast.Literal.Int _ -> failwith "tried to assign int literal to a boolean tag."
-    | Ast.Literal.Float _ -> failwith "tried to assign float literal to a boolean tag."
-    | Ast.Literal.Record _ -> failwith "tried to assign record literal to a boolean tag."
-    | Ast.Literal.Null -> Ast.Literal.Null
-    | Ast.Literal.Bool b -> Ast.Literal.Bool b)
-  | Ast.TagArray { label = _; elements = elements, _transformer; default_value = default }
-    ->
-    (match apply_default_value ~default literal with
-    | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a array tag."
-    | Ast.Literal.String _ -> failwith "tried to assign string literal to a array tag."
-    | Ast.Literal.Int _ -> failwith "tried to assign int literal to a array tag."
-    | Ast.Literal.Float _ -> failwith "tried to assign float literal to a array tag."
-    | Ast.Literal.Record _ -> failwith "tried to assign record literal to a array tag."
-    | Ast.Literal.Null -> Ast.Literal.Null
-    | Ast.Literal.Array l ->
-      let l =
-        l
-        |> Iter.map (fun lit ->
-               elements |> literal_of_tag_expr ~value:(`Literal lit) state)
-      in
-      Ast.Literal.Array l)
-  | Ast.TagRecord { label = _; properties } ->
-    (match literal with
-    | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a record tag."
-    | Ast.Literal.String _ -> failwith "tried to assign string literal to a record tag."
-    | Ast.Literal.Int _ -> failwith "tried to assign int literal to a record tag."
-    | Ast.Literal.Float _ -> failwith "tried to assign float literal to a record tag."
-    | Ast.Literal.Array _ -> failwith "tried to assign array literal to a record tag."
-    | Ast.Literal.Null -> Ast.Literal.Null
-    | Ast.Literal.Record r ->
-      let models key = Ast.Literal.StringMap.find_opt key r in
-      let state = init_state ~models state.declarations in
-      let r =
-        properties
-        |> Iter.fold
-             (fun acc (key, tag, _transformer) ->
-               acc
-               |> Ast.Literal.StringMap.add
-                    key
-                    (tag |> literal_of_tag_expr ~value:(`Ident key) state))
-             Ast.Literal.StringMap.empty
-      in
-      Ast.Literal.Record r)
+  let eval_tag literal = function
+    | Ast.TagString { label = _; placeholder = _; inline = _; default_value = default } ->
+      (match apply_default_value ~default literal with
+      | Ast.Literal.Int _ -> failwith "tried to assign integer literal to a string tag."
+      | Ast.Literal.Float _ -> failwith "tried to assign float literal to a string tag."
+      | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a string tag."
+      | Ast.Literal.Array _ -> failwith "tried to assign array literal to a string tag."
+      | Ast.Literal.Record _ -> failwith "tried to assign record literal to a string tag."
+      | Ast.Literal.Null -> Ast.Literal.Null
+      | Ast.Literal.String s -> Ast.Literal.String s)
+    | Ast.TagInt { label = _; placeholder = _; default_value = default } ->
+      (match apply_default_value ~default literal with
+      | Ast.Literal.Float _ -> failwith "tried to assign float literal to a int tag."
+      | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a int tag."
+      | Ast.Literal.Array _ -> failwith "tried to assign array literal to a int tag."
+      | Ast.Literal.String _ -> failwith "tried to assign string literal to a int tag."
+      | Ast.Literal.Record _ -> failwith "tried to assign record literal to a int tag."
+      | Ast.Literal.Null -> Ast.Literal.Null
+      | Ast.Literal.Int i -> Ast.Literal.Int i)
+    | Ast.TagFloat { label = _; placeholder = _; default_value = default } ->
+      (match apply_default_value ~default literal with
+      | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a float tag."
+      | Ast.Literal.Array _ -> failwith "tried to assign array literal to a float tag."
+      | Ast.Literal.String _ -> failwith "tried to assign string literal to a float tag."
+      | Ast.Literal.Int _ -> failwith "tried to assign int literal to a float tag."
+      | Ast.Literal.Record _ -> failwith "tried to assign record literal to a float tag."
+      | Ast.Literal.Null -> Ast.Literal.Null
+      | Ast.Literal.Float f -> Ast.Literal.Float f)
+    | Ast.TagBoolean { label = _; default_value = default } ->
+      (match apply_default_value ~default literal with
+      | Ast.Literal.Array _ -> failwith "tried to assign array literal to a boolean tag."
+      | Ast.Literal.String _ ->
+        failwith "tried to assign string literal to a boolean tag."
+      | Ast.Literal.Int _ -> failwith "tried to assign int literal to a boolean tag."
+      | Ast.Literal.Float _ -> failwith "tried to assign float literal to a boolean tag."
+      | Ast.Literal.Record _ ->
+        failwith "tried to assign record literal to a boolean tag."
+      | Ast.Literal.Null -> Ast.Literal.Null
+      | Ast.Literal.Bool b -> Ast.Literal.Bool b)
+    | Ast.TagArray { label = _; elements = tag, transformer; default_value = default } ->
+      (match apply_default_value ~default literal with
+      | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a array tag."
+      | Ast.Literal.String _ -> failwith "tried to assign string literal to a array tag."
+      | Ast.Literal.Int _ -> failwith "tried to assign int literal to a array tag."
+      | Ast.Literal.Float _ -> failwith "tried to assign float literal to a array tag."
+      | Ast.Literal.Record _ -> failwith "tried to assign record literal to a array tag."
+      | Ast.Literal.Null -> Ast.Literal.Null
+      | Ast.Literal.Array l ->
+        let eval_item item =
+          tag |> literal_of_tag_expr ~value:(`Literal item) ~transformer state
+        in
+        Ast.Literal.Array (Iter.map eval_item l))
+    | Ast.TagRecord { label = _; properties } ->
+      (match literal with
+      | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a record tag."
+      | Ast.Literal.String _ -> failwith "tried to assign string literal to a record tag."
+      | Ast.Literal.Int _ -> failwith "tried to assign int literal to a record tag."
+      | Ast.Literal.Float _ -> failwith "tried to assign float literal to a record tag."
+      | Ast.Literal.Array _ -> failwith "tried to assign array literal to a record tag."
+      | Ast.Literal.Null -> Ast.Literal.Null
+      | Ast.Literal.Record r ->
+        let models key = Ast.Literal.StringMap.find_opt key r in
+        let state = init_state ~models state.declarations in
+        let eval_property acc (key, tag, transformer) =
+          Ast.Literal.StringMap.add
+            key
+            (tag |> literal_of_tag_expr ~value:(`Ident key) ~transformer state)
+            acc
+        in
+        let r = properties |> Iter.fold eval_property Ast.Literal.StringMap.empty in
+        Ast.Literal.Record r)
+  in
+  let apply_transformer literal =
+    match transformer with
+    | Some (Id ident, expr) ->
+      let state = state |> add_scope in
+      state |> add_literal_to_scope ~ident ~literal;
+      literal_of_expr state expr
+    | _ -> literal
+  in
+  let literal =
+    match value with
+    | `Ident ident -> state.models ident |> Option.value ~default:Ast.Literal.Null
+    | `Literal l -> l
+  in
+  tag |> eval_tag literal |> apply_transformer
 
 and html_attr_to_string state (key, value) =
   let buf = Buffer.create 64 in

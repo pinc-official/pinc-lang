@@ -1,9 +1,14 @@
 component SubComponent {
   let content = #String;
-  let num = #Int;
+
+  let shouter = #String(defaultValue: "NOTHING!") :: val -> val ++ "!!";
+  
+  let num = #Int :: val -> val ** 2;
+  
   let array = #Array(of: #Int);
+  
   let record = #Record(of: {
-    a: #Int,
+    a: #Int(defaultValue: 12) :: val -> if (val == 12) "NEEEEIN" else "JAP",
     b: #Boolean,
     c: #String,
   });
@@ -11,10 +16,14 @@ component SubComponent {
   #Template {
     <div class="SubComponent" data-foo={num}>
       {content}
+
       {array}
+
       {record.a}
       {record.b}
       {record.c}
+      
+      {shouter}
     </div>
   }
 }

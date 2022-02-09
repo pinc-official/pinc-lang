@@ -13,11 +13,13 @@ type token_type =
   | LEFT_BRACE
   | RIGHT_BRACE
   | COLON
+  | DOUBLE_COLON
   | COMMA
   | SEMICOLON
   | DOT
   | DOTDOT
   | DOTDOTDOT
+  | ARROW
   | QUESTIONMARK
   | PIPE (* TODO *)
   | EQUAL
@@ -84,12 +86,14 @@ let to_string = function
   | LEFT_BRACK -> "["
   | RIGHT_BRACK -> "]"
   | SEMICOLON -> ";"
+  | DOUBLE_COLON -> "::"
   | COLON -> ":"
   | COMMA -> ","
   | DOT -> "."
   | DOTDOT -> ".."
   | DOTDOTDOT -> "..."
   | QUESTIONMARK -> "?"
+  | ARROW -> "->"
   | PIPE -> "|"
   | EQUAL -> "="
   | NOT_EQUAL -> "!="

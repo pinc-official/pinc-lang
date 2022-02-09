@@ -49,11 +49,11 @@ and tag =
   | TagArray of
       { label : expression option
       ; default_value : expression option
-      ; elements : tag * statement option
+      ; elements : tag * (identifier * expression) option
       }
   | TagRecord of
       { label : expression option
-      ; properties : (string * tag * statement option) Iter.t
+      ; properties : (string * tag * (identifier * expression) option) Iter.t
       }
 
 and expression =
@@ -61,7 +61,7 @@ and expression =
   | LiteralExpression of Literal.t
   | RecordExpression of attribute Iter.t
   | ArrayExpression of expression Iter.t
-  | TagExpression of tag * statement option
+  | TagExpression of tag * (identifier * expression) option
   | ForInExpression of
       { iterator : identifier
       ; reverse : bool

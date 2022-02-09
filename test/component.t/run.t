@@ -1,7 +1,8 @@
   $ esy x print . Component
   <section class="Section">
-        <div class="SubComponent" data-foo="3">
+        <div class="SubComponent" data-foo="9">
         Hello, SubComponent!
+  
         0
   1
   2
@@ -13,9 +14,12 @@
   8
   9
   
-        10
+  
+        JAP
         false
         Something
+        
+        NOTHING!!!
       </div>
       </section>
 

@@ -364,15 +364,20 @@ module Rules = struct
     (* PARSING TAG EXPRESSION *)
     | Token.TAG name ->
       let* tag = parse_tag name t in
-      let body =
-        if t |> optional Token.LEFT_BRACE
+      let transformer =
+        if t |> optional Token.DOUBLE_COLON
         then (
-          let body = parse_statement t in
-          t |> expect Token.RIGHT_BRACE;
-          body)
+          let bind = t |> Helpers.expect_identifier ~typ:`Lower in
+          t |> expect Token.ARROW;
+          let body =
+            match parse_expression t with
+            | None -> failwith "Expected expression as transformer."
+            | Some expr -> expr
+          in
+          Some (Ast.Id bind, body))
         else None
       in
-      Some (Ast.TagExpression (tag, body))
+      Some (Ast.TagExpression (tag, transformer))
     (* PARSING TEMPLATE EXPRESSION *)
     | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
       let template_nodes = t |> Helpers.list ~fn:parse_template_node in
