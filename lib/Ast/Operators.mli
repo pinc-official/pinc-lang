@@ -17,6 +17,7 @@ module Binary : sig
     | TIMES
     | DIV
     | POW
+    | MODULO
     | CONCAT
     | AND
     | OR

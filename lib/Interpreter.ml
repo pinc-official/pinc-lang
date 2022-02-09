@@ -205,9 +205,12 @@ let rec literal_of_expr ?ident state expr =
       let a = left |> literal_of_expr state in
       let b = right |> literal_of_expr state in
       (match a, b with
+      | Ast.Literal.Int _, Ast.Literal.Int 0 -> failwith "Trying to divide by 0"
+      | Ast.Literal.Float _, Ast.Literal.Float 0. -> failwith "Trying to divide by 0"
+      | Ast.Literal.Float _, Ast.Literal.Int 0 -> failwith "Trying to divide by 0"
+      | Ast.Literal.Int _, Ast.Literal.Float 0. -> failwith "Trying to divide by 0"
       | Ast.Literal.Int a, Ast.Literal.Int b ->
-        let result = float_of_int a /. float_of_int b in
-        Ast.Literal.Float result
+        Ast.Literal.Float (float_of_int a /. float_of_int b)
       | Ast.Literal.Float a, Ast.Literal.Float b -> Ast.Literal.Float (a /. b)
       | Ast.Literal.Float a, Ast.Literal.Int b -> Ast.Literal.Float (a /. float_of_int b)
       | Ast.Literal.Int a, Ast.Literal.Float b -> Ast.Literal.Float (float_of_int a /. b)
@@ -224,6 +227,28 @@ let rec literal_of_expr ?ident state expr =
         | _ -> failwith "Trying to raise non numeric literals."
       in
       Ast.Literal.Float r
+    | Ast.Operators.Binary.MODULO ->
+      let a = left |> literal_of_expr state in
+      let b = right |> literal_of_expr state in
+      let ( %. ) = mod_float in
+      let ( % ) = ( mod ) in
+      let r =
+        match a, b with
+        | Ast.Literal.Int _, Ast.Literal.Int 0 ->
+          failwith "Trying to modulo with 0 on right hand side."
+        | Ast.Literal.Int _, Ast.Literal.Float 0. ->
+          failwith "Trying to modulo with 0 on right hand side."
+        | Ast.Literal.Float _, Ast.Literal.Float 0. ->
+          failwith "Trying to modulo with 0 on right hand side."
+        | Ast.Literal.Float _, Ast.Literal.Int 0 ->
+          failwith "Trying to modulo with 0 on right hand side."
+        | Ast.Literal.Int a, Ast.Literal.Int b -> a % b
+        | Ast.Literal.Float a, Ast.Literal.Float b -> int_of_float (a %. b)
+        | Ast.Literal.Float a, Ast.Literal.Int b -> int_of_float a % b
+        | Ast.Literal.Int a, Ast.Literal.Float b -> a % int_of_float b
+        | _ -> failwith "Trying to modulo non numeric literals."
+      in
+      Ast.Literal.Int r
     | Ast.Operators.Binary.AND ->
       let a = left |> literal_of_expr state in
       let b = right |> literal_of_expr state in

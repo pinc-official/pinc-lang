@@ -431,6 +431,7 @@ module Rules = struct
     | Token.STAR -> Some Ast.Operators.Binary.(make TIMES)
     | Token.SLASH -> Some Ast.Operators.Binary.(make DIV)
     | Token.STAR_STAR -> Some Ast.Operators.Binary.(make POW)
+    | Token.PERCENT -> Some Ast.Operators.Binary.(make MODULO)
     | Token.DOT -> Some Ast.Operators.Binary.(make RECORD_ACCESS)
     | _ -> None
 

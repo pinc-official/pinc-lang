@@ -17,6 +17,7 @@ module Binary = struct
     | TIMES
     | DIV
     | POW
+    | MODULO
     | CONCAT
     | AND
     | OR
@@ -31,6 +32,7 @@ module Binary = struct
   let make = function
     | RECORD_ACCESS -> { typ = RECORD_ACCESS; precedence = 110; assoc = Left }
     | POW -> { typ = POW; precedence = 70; assoc = Right }
+    | MODULO -> { typ = MODULO; precedence = 60; assoc = Left }
     | TIMES -> { typ = TIMES; precedence = 60; assoc = Left }
     | DIV -> { typ = DIV; precedence = 60; assoc = Left }
     | PLUS -> { typ = PLUS; precedence = 50; assoc = Left }

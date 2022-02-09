@@ -32,7 +32,7 @@ type token_type =
   | STAR
   | STAR_STAR
   | SLASH
-  | PERCENT (* TODO *)
+  | PERCENT
   | LOGICAL_AND
   | LOGICAL_OR
   | NOT_EQUAL
