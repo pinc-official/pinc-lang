@@ -215,20 +215,15 @@ let rec literal_of_expr ?ident state expr =
     | Ast.Operators.Binary.POW ->
       let a = left |> literal_of_expr state in
       let b = right |> literal_of_expr state in
-      (match a, b with
-      | Ast.Literal.Int a, Ast.Literal.Int b ->
-        let r = float_of_int a ** float_of_int b in
-        Ast.Literal.Float r
-      | Ast.Literal.Float a, Ast.Literal.Float b ->
-        let r = a ** b in
-        Ast.Literal.Float r
-      | Ast.Literal.Float a, Ast.Literal.Int b ->
-        let r = a ** float_of_int b in
-        Ast.Literal.Float r
-      | Ast.Literal.Int a, Ast.Literal.Float b ->
-        let r = float_of_int a ** b in
-        Ast.Literal.Float r
-      | _ -> failwith "Trying to raise non numeric literals.")
+      let r =
+        match a, b with
+        | Ast.Literal.Int a, Ast.Literal.Int b -> float_of_int a ** float_of_int b
+        | Ast.Literal.Float a, Ast.Literal.Float b -> a ** b
+        | Ast.Literal.Float a, Ast.Literal.Int b -> a ** float_of_int b
+        | Ast.Literal.Int a, Ast.Literal.Float b -> float_of_int a ** b
+        | _ -> failwith "Trying to raise non numeric literals."
+      in
+      Ast.Literal.Float r
     | Ast.Operators.Binary.AND ->
       let a = left |> literal_of_expr state in
       let b = right |> literal_of_expr state in
