@@ -51,6 +51,10 @@ and tag =
       ; default_value : expression option
       ; elements : tag * statement option
       }
+  | TagRecord of
+      { label : expression option
+      ; properties : (string * tag * statement option) Iter.t
+      }
 
 and expression =
   | IdentifierExpression of identifier

@@ -2,11 +2,19 @@ component SubComponent {
   let content = #String;
   let num = #Int;
   let array = #Array(of: #Int);
+  let record = #Record(of: {
+    a: #Int,
+    b: #Boolean,
+    c: #String,
+  });
 
   #Template {
     <div class="SubComponent" data-foo={num}>
       {content}
       {array}
+      {record.a}
+      {record.b}
+      {record.c}
     </div>
   }
 }

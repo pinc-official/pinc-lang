@@ -302,6 +302,28 @@ and literal_of_tag_expr ~value state tag =
                elements |> literal_of_tag_expr ~value:(`Literal lit) state)
       in
       Ast.Literal.Array l)
+  | Ast.TagRecord { label = _; properties } ->
+    (match literal with
+    | Ast.Literal.Bool _ -> failwith "tried to assign boolean literal to a record tag."
+    | Ast.Literal.String _ -> failwith "tried to assign string literal to a record tag."
+    | Ast.Literal.Int _ -> failwith "tried to assign int literal to a record tag."
+    | Ast.Literal.Float _ -> failwith "tried to assign float literal to a record tag."
+    | Ast.Literal.Array _ -> failwith "tried to assign array literal to a record tag."
+    | Ast.Literal.Null -> Ast.Literal.Null
+    | Ast.Literal.Record r ->
+      let models key = Ast.Literal.StringMap.find_opt key r in
+      let state = init_state ~models state.declarations in
+      let r =
+        properties
+        |> Iter.fold
+             (fun acc (key, tag, _transformer) ->
+               acc
+               |> Ast.Literal.StringMap.add
+                    key
+                    (tag |> literal_of_tag_expr ~value:(`Ident key) state))
+             Ast.Literal.StringMap.empty
+      in
+      Ast.Literal.Record r)
 
 and html_attr_to_string state (attr : Ast.attribute) =
   let buf = Buffer.create 64 in

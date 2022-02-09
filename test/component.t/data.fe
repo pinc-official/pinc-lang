@@ -4,10 +4,16 @@ component Component(
   group: "Structure",
 ) {
   let array = for (i in 0..10) { i };
+  let record = { a: 10, b: false, c: "Something" };
 
   #Template {
     <section class="Section">
-      <SubComponent content="Hello, SubComponent!" num={3} array={array}></SubComponent>
+      <SubComponent
+        content="Hello, SubComponent!"
+        num={3}
+        array={array}
+        record={record}
+      ></SubComponent>
     </section>
   }
 }

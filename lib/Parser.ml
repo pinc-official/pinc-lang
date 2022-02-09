@@ -209,7 +209,28 @@ module Rules = struct
                    "expected attribute `of` on array tag, to describe the type of the \
                     elements inside the array.")
            })
-    | _ -> None
+    | "Record" ->
+      Some
+        (Ast.TagRecord
+           { label = Iter.find (get_attr "label") attributes
+           ; properties =
+               (match Iter.find (get_attr "of") attributes with
+               | Some (Ast.RecordExpression attributes) ->
+                 attributes
+                 |> Iter.map (fun Ast.{ key; value } ->
+                        match value with
+                        | Ast.TagExpression (tag, body) -> key, tag, body
+                        | _ ->
+                          failwith
+                            ("expected property `" ^ key ^ "` on record tag, to be a tag."))
+               | Some _ ->
+                 failwith "expected attribute `of` on record tag, to be a record of tags."
+               | None ->
+                 failwith
+                   "expected attribute `of` on record tag, to describe the type of the \
+                    properties inside the record.")
+           })
+    | s -> failwith ("Unknown tag with name `" ^ s ^ "`.")
 
   and parse_attribute ?(sep = Token.COLON) t =
     match t.token.typ with
