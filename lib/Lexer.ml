@@ -649,8 +649,10 @@ and scan_normal_token ~start_pos t =
       next_n ~n:2 t;
       Token.LOGICAL_OR
     | _ ->
-      next t;
-      Token.PIPE)
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        (Diagnostics.UnknownCharacter '|'))
   | `Chr '!' ->
     (match peek t with
     | `Chr '=' ->

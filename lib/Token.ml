@@ -21,7 +21,6 @@ type token_type =
   | DOTDOTDOT
   | ARROW
   | QUESTIONMARK
-  | PIPE (* TODO *)
   | EQUAL
   | NOT
   | GREATER
@@ -94,7 +93,6 @@ let to_string = function
   | DOTDOTDOT -> "..."
   | QUESTIONMARK -> "?"
   | ARROW -> "->"
-  | PIPE -> "|"
   | EQUAL -> "="
   | NOT_EQUAL -> "!="
   | EQUAL_EQUAL -> "=="
