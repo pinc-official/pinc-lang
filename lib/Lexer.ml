@@ -386,6 +386,7 @@ let scan_html_attribute_ident t =
     | `Chr ('A' .. 'Z' as c)
     | `Chr ('a' .. 'z' as c)
     | `Chr ('0' .. '9' as c)
+    | `Chr (':' as c)
     | `Chr ('-' as c) ->
       next t;
       Buffer.add_char buf c;

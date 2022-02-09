@@ -42,8 +42,6 @@
 
 ## Things
 
-- Test wether all possible html attributes are parsing correctly. (`:`)
-
 - Functions / Lambdas
 
 - Pipe operator (`|` or `|>`)
