@@ -1,7 +1,7 @@
 component LanguageSwitcher {
   let languageContext = #GetNodeContext(id: Language);
 
-  @Template {
+  #Template {
     <ul class="LanguageSwitcher">
         {for (lang in languageContext.options) {
             <li class="LanguageSwitcher-language">

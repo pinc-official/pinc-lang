@@ -5,7 +5,7 @@ component Reference(
 ) {
   let ref = #ContentSelect(label: "Content Item", instanceOf: [!Section]);
 
-  @Template {
+  #Template {
     {ref.@render}
   }
 }

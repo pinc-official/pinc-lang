@@ -66,8 +66,8 @@ component Teaser(
         {for (item in items) {
           <Teaser url={item.url} />
         }}
-        {for (page in blogPages) {
-          {for (category in page.categories) {
+        {for (p in blogPages) {
+          {for (category in p.categories) {
             <span>{category.name}</span>
           }}
         }}

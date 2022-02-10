@@ -11,7 +11,7 @@ component Section(
     of: #String(label: "foobar") :: (v) -> { v ++ "a" }
   );
 
-  let obj = #Struct(
+  let obj = #Record(
     of: {
       foo: #String(label: "foo"),
       bar: #Int(label: "bar") :: (v) -> { v + 2 },

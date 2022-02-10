@@ -5,7 +5,7 @@ component Header {
     <header class="Header">
       <div class="Header-container">
           <div class="Header-logo">
-            <a class="Header-logoLink" href={site.url}>{logoTemplate}</a>
+            <a class="Header-logoLink" href="{site.url}">{logoTemplate}</a>
           </div>
           <div class="Header-content">
             <nav class="Header-nav">
