@@ -433,6 +433,8 @@ module Rules = struct
     | Token.STAR_STAR -> Some Ast.Operators.Binary.(make POW)
     | Token.PERCENT -> Some Ast.Operators.Binary.(make MODULO)
     | Token.DOT -> Some Ast.Operators.Binary.(make RECORD_ACCESS)
+    | Token.ARROW_LEFT -> Some Ast.Operators.Binary.(make ARRAY_ADD)
+    | Token.ATAT -> Some Ast.Operators.Binary.(make MERGE)
     | _ -> None
 
   and parse_unary_operator t =

@@ -20,6 +20,8 @@ type token_type =
   | DOTDOT
   | DOTDOTDOT
   | ARROW
+  | ARROW_LEFT
+  | ATAT
   | QUESTIONMARK
   | EQUAL
   | NOT
@@ -93,6 +95,8 @@ let to_string = function
   | DOTDOTDOT -> "..."
   | QUESTIONMARK -> "?"
   | ARROW -> "->"
+  | ARROW_LEFT -> "<-"
+  | ATAT -> "@@"
   | EQUAL -> "="
   | NOT_EQUAL -> "!="
   | EQUAL_EQUAL -> "=="

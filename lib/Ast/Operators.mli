@@ -22,6 +22,8 @@ module Binary : sig
     | AND
     | OR
     | RECORD_ACCESS
+    | ARRAY_ADD
+    | MERGE
 
   type t =
     { typ : typ

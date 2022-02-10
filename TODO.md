@@ -49,15 +49,3 @@
 - String Templates (`"Section--${alignment}"`)
 
 - Array access (`array[0]`)
-
-- Add item to array `<-` (returns new array with item added. Does not modify the original array)
-  ```
-  let some_array = ["1", "2", "3"];
-  let some_array = some_array <- "4";
-  ```
-
-- Merge arrays `@@` (returns new array with the second array added. Does not modify the original array)
-  ```
-  let some_array = ["1", "2", "3"];
-  let some_array = some_array @@ ["4", "5", "6"];
-  ```

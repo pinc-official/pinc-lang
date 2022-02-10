@@ -22,6 +22,8 @@ module Binary = struct
     | AND
     | OR
     | RECORD_ACCESS
+    | ARRAY_ADD
+    | MERGE
 
   type t =
     { typ : typ
@@ -46,6 +48,8 @@ module Binary = struct
     | LESS_EQUAL -> { typ = LESS_EQUAL; precedence = 30; assoc = Left }
     | AND -> { typ = AND; precedence = 20; assoc = Left }
     | OR -> { typ = OR; precedence = 10; assoc = Left }
+    | ARRAY_ADD -> { typ = ARRAY_ADD; precedence = 0; assoc = Left }
+    | MERGE -> { typ = MERGE; precedence = 0; assoc = Left }
   ;;
 end
 

@@ -625,6 +625,16 @@ and scan_normal_token ~start_pos t =
     | _ ->
       next t;
       Token.DOT)
+  | `Chr '@' ->
+    (match peek t with
+    | `Chr '@' ->
+      next_n ~n:2 t;
+      Token.ATAT
+    | _ ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        (Diagnostics.UnknownCharacter '@'))
   | `Chr '#' ->
     (match peek t with
     | `Chr 'A' .. 'Z' | `Chr 'a' .. 'z' -> scan_tag_or_template t
@@ -632,7 +642,7 @@ and scan_normal_token ~start_pos t =
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter '@'))
+        (Diagnostics.UnknownCharacter '#'))
   | `Chr '&' ->
     (match peek t with
     | `Chr '&' ->
@@ -687,6 +697,9 @@ and scan_normal_token ~start_pos t =
       Token.STAR)
   | `Chr '<' ->
     (match peek t with
+    | `Chr '-' ->
+      next_n ~n:2 t;
+      Token.ARROW_LEFT
     | `Chr '=' ->
       next_n ~n:2 t;
       Token.LESS_EQUAL

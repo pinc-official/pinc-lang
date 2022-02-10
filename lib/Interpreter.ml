@@ -174,6 +174,34 @@ let rec literal_of_expr ?ident state expr =
         left |> Ast.Literal.StringMap.find_opt b |> Option.value ~default:Ast.Literal.Null
       | Ast.Literal.Null, _ -> Ast.Literal.Null
       | _ -> failwith "Trying to access a property on a non record literal.")
+    | Ast.Operators.Binary.ARRAY_ADD ->
+      let left = left |> literal_of_expr state in
+      let right = right |> literal_of_expr state in
+      (match left, right with
+      | Ast.Literal.Array left, literal ->
+        Ast.Literal.Array (Iter.append left (Iter.singleton literal))
+      | _ -> failwith "Trying to add an element on a non array literal.")
+    | Ast.Operators.Binary.MERGE ->
+      let left = left |> literal_of_expr state in
+      let right = right |> literal_of_expr state in
+      (match left, right with
+      | Ast.Literal.Array left, Ast.Literal.Array right ->
+        Ast.Literal.Array (Iter.append left right)
+      | Ast.Literal.Record left, Ast.Literal.Record right ->
+        Ast.Literal.Record
+          (Ast.Literal.StringMap.merge
+             (fun _ x y ->
+               match x, y with
+               | (Some _ | None), Some y -> Some y
+               | Some x, None -> Some x
+               | None, None -> None)
+             left
+             right)
+      | Ast.Literal.Array _, _ ->
+        failwith "Trying to merge a non array literal (right side) onto an array."
+      | _, Ast.Literal.Array _ ->
+        failwith "Trying to merge an array literal onto a non array."
+      | _ -> failwith "Trying to merge two non array literals.")
     | Ast.Operators.Binary.PLUS ->
       let a = left |> literal_of_expr state in
       let b = right |> literal_of_expr state in
