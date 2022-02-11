@@ -48,4 +48,4 @@
 
 - String Templates (`"Section--${alignment}"`)
 
-- Array access (`array[0]`)
+- Cleanup array access (New Surrounding Operator?)

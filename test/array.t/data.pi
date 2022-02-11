@@ -9,6 +9,9 @@ component C {
   let merged_record = { a: 1, b: 2 } @@ { c: 3 };
   let merged_record_2 = { a: 1, b: 2 } @@ { b: 3 }  @@ { y: 8 };
 
+  let nested_array = new_array <- (merged_array <- merged_record_2);
+  let index = 8;
+
   #Template {
     <section>
       {array}
@@ -23,6 +26,9 @@ component C {
 
       {merged_record}
       {merged_record_2}
+
+      {nested_array[2 + 3 * 1][index]["y"]}
+      {nested_array[2 + 3 * 1][index].y}
     </section>
   }
 }

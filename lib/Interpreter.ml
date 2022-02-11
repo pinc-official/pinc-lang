@@ -174,6 +174,24 @@ let rec literal_of_expr ?ident state expr =
         left |> Ast.Literal.StringMap.find_opt b |> Option.value ~default:Ast.Literal.Null
       | Ast.Literal.Null, _ -> Ast.Literal.Null
       | _ -> failwith "Trying to access a property on a non record literal.")
+    | Ast.Operators.Binary.ACCESS_WITH_EXPR ->
+      let left = left |> literal_of_expr state in
+      let right = right |> literal_of_expr state in
+      (match left, right with
+      | Ast.Literal.Array left, Ast.Literal.Int right ->
+        left
+        |> Iter.findi (fun index el -> if index = right then Some el else None)
+        |> Option.value ~default:Ast.Literal.Null
+      | Ast.Literal.Record left, Ast.Literal.String right ->
+        left
+        |> Ast.Literal.StringMap.find_opt right
+        |> Option.value ~default:Ast.Literal.Null
+      | Ast.Literal.Null, _ -> Ast.Literal.Null
+      | Ast.Literal.Array _, _ ->
+        failwith "Cannot access array with a non integer literal."
+      | Ast.Literal.Record _, _ ->
+        failwith "Cannot access record with a non string literal."
+      | _ -> failwith "Trying to access a property on a non record or array literal.")
     | Ast.Operators.Binary.ARRAY_ADD ->
       let left = left |> literal_of_expr state in
       let right = right |> literal_of_expr state in

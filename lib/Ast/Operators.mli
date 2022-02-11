@@ -24,6 +24,7 @@ module Binary : sig
     | RECORD_ACCESS
     | ARRAY_ADD
     | MERGE
+    | ACCESS_WITH_EXPR
 
   type t =
     { typ : typ

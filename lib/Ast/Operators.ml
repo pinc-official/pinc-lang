@@ -24,6 +24,7 @@ module Binary = struct
     | RECORD_ACCESS
     | ARRAY_ADD
     | MERGE
+    | ACCESS_WITH_EXPR
 
   type t =
     { typ : typ
@@ -50,6 +51,7 @@ module Binary = struct
     | OR -> { typ = OR; precedence = 10; assoc = Left }
     | ARRAY_ADD -> { typ = ARRAY_ADD; precedence = 0; assoc = Left }
     | MERGE -> { typ = MERGE; precedence = 0; assoc = Left }
+    | ACCESS_WITH_EXPR -> { typ = ACCESS_WITH_EXPR; precedence = 0; assoc = Left }
   ;;
 end
 

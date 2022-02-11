@@ -443,6 +443,21 @@ module Rules = struct
     | Token.UNARY_MINUS -> Some Ast.Operators.Unary.(make MINUS)
     | _ -> None
 
+  and parse_surrounding_expression ~left t =
+    match t.token.typ with
+    | Token.LEFT_BRACK ->
+      next t;
+      (match parse_expression t with
+      | Some right ->
+        t |> expect Token.RIGHT_BRACK;
+        let left =
+          Ast.BinaryExpression
+            { left; operator = Ast.Operators.Binary.ACCESS_WITH_EXPR; right }
+        in
+        parse_surrounding_expression ~left t
+      | None -> failwith "expected an expression as an access pattern")
+    | _ -> left
+
   and parse_expression ?(prio = -999) t =
     let rec loop ~prio ~left t =
       match parse_binary_operator t with
@@ -461,6 +476,7 @@ module Rules = struct
           loop ~left:(Ast.BinaryExpression { left; operator; right }) ~prio t)
     in
     let* left = parse_expression_part t in
+    let left = parse_surrounding_expression ~left t in
     Some (loop ~prio ~left t)
 
   and parse_statement t =
