@@ -47,5 +47,3 @@
 - Pipe operator (`|` or `|>`)
 
 - String Templates (`"Section--${alignment}"`)
-
-- Cleanup array access (New Surrounding Operator?)

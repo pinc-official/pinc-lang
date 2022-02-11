@@ -432,9 +432,10 @@ module Rules = struct
     | Token.SLASH -> Some Ast.Operators.Binary.(make DIV)
     | Token.STAR_STAR -> Some Ast.Operators.Binary.(make POW)
     | Token.PERCENT -> Some Ast.Operators.Binary.(make MODULO)
-    | Token.DOT -> Some Ast.Operators.Binary.(make RECORD_ACCESS)
+    | Token.DOT -> Some Ast.Operators.Binary.(make DOT_ACCESS)
     | Token.ARROW_LEFT -> Some Ast.Operators.Binary.(make ARRAY_ADD)
     | Token.ATAT -> Some Ast.Operators.Binary.(make MERGE)
+    | Token.LEFT_BRACK -> Some Ast.Operators.Binary.(make BRACKET_ACCESS)
     | _ -> None
 
   and parse_unary_operator t =
@@ -443,27 +444,12 @@ module Rules = struct
     | Token.UNARY_MINUS -> Some Ast.Operators.Unary.(make MINUS)
     | _ -> None
 
-  and parse_surrounding_expression ~left t =
-    match t.token.typ with
-    | Token.LEFT_BRACK ->
-      next t;
-      (match parse_expression t with
-      | Some right ->
-        t |> expect Token.RIGHT_BRACK;
-        let left =
-          Ast.BinaryExpression
-            { left; operator = Ast.Operators.Binary.ACCESS_WITH_EXPR; right }
-        in
-        parse_surrounding_expression ~left t
-      | None -> failwith "expected an expression as an access pattern")
-    | _ -> left
-
   and parse_expression ?(prio = -999) t =
     let rec loop ~prio ~left t =
       match parse_binary_operator t with
       | None -> left
       | Some { precedence; _ } when precedence < prio -> left
-      | Some { typ = operator; precedence; assoc } ->
+      | Some { typ = operator; precedence; assoc; closing_token } ->
         next t;
         let new_prio =
           match assoc with
@@ -473,10 +459,12 @@ module Rules = struct
         (match parse_expression ~prio:new_prio t with
         | None -> failwith "Expected expression"
         | Some right ->
-          loop ~left:(Ast.BinaryExpression { left; operator; right }) ~prio t)
+          let left = Ast.BinaryExpression { left; operator; right } in
+          let expect_close token = expect token t in
+          let () = Option.iter expect_close closing_token in
+          loop ~left ~prio t)
     in
     let* left = parse_expression_part t in
-    let left = parse_surrounding_expression ~left t in
     Some (loop ~prio ~left t)
 
   and parse_statement t =

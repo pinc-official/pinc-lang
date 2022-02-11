@@ -1,6 +1,6 @@
 (library
- (name Ast)
+ (name Token)
+ (ocamlopt_flags -O3)
  (flags
   (:standard -w +A-42-48-66-40 -warn-error +A-3-44-66-40))
- (ocamlopt_flags -O3)
- (libraries Position Token iter))
+ (libraries Position))

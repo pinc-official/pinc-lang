@@ -21,37 +21,47 @@ module Binary = struct
     | CONCAT
     | AND
     | OR
-    | RECORD_ACCESS
+    | DOT_ACCESS
+    | BRACKET_ACCESS
     | ARRAY_ADD
     | MERGE
-    | ACCESS_WITH_EXPR
 
   type t =
     { typ : typ
+    ; closing_token : Token.token_type option
     ; precedence : precedence
     ; assoc : associativity
     }
 
   let make = function
-    | RECORD_ACCESS -> { typ = RECORD_ACCESS; precedence = 110; assoc = Left }
-    | POW -> { typ = POW; precedence = 70; assoc = Right }
-    | MODULO -> { typ = MODULO; precedence = 60; assoc = Left }
-    | TIMES -> { typ = TIMES; precedence = 60; assoc = Left }
-    | DIV -> { typ = DIV; precedence = 60; assoc = Left }
-    | PLUS -> { typ = PLUS; precedence = 50; assoc = Left }
-    | MINUS -> { typ = MINUS; precedence = 50; assoc = Left }
-    | CONCAT -> { typ = CONCAT; precedence = 40; assoc = Left }
-    | EQUAL -> { typ = EQUAL; precedence = 30; assoc = Left }
-    | NOT_EQUAL -> { typ = NOT_EQUAL; precedence = 30; assoc = Left }
-    | GREATER -> { typ = GREATER; precedence = 30; assoc = Left }
-    | GREATER_EQUAL -> { typ = GREATER_EQUAL; precedence = 30; assoc = Left }
-    | LESS -> { typ = LESS; precedence = 30; assoc = Left }
-    | LESS_EQUAL -> { typ = LESS_EQUAL; precedence = 30; assoc = Left }
-    | AND -> { typ = AND; precedence = 20; assoc = Left }
-    | OR -> { typ = OR; precedence = 10; assoc = Left }
-    | ARRAY_ADD -> { typ = ARRAY_ADD; precedence = 0; assoc = Left }
-    | MERGE -> { typ = MERGE; precedence = 0; assoc = Left }
-    | ACCESS_WITH_EXPR -> { typ = ACCESS_WITH_EXPR; precedence = 0; assoc = Left }
+    | DOT_ACCESS ->
+      { typ = DOT_ACCESS; precedence = 110; assoc = Left; closing_token = None }
+    | POW -> { typ = POW; precedence = 70; assoc = Right; closing_token = None }
+    | MODULO -> { typ = MODULO; precedence = 60; assoc = Left; closing_token = None }
+    | TIMES -> { typ = TIMES; precedence = 60; assoc = Left; closing_token = None }
+    | DIV -> { typ = DIV; precedence = 60; assoc = Left; closing_token = None }
+    | PLUS -> { typ = PLUS; precedence = 50; assoc = Left; closing_token = None }
+    | MINUS -> { typ = MINUS; precedence = 50; assoc = Left; closing_token = None }
+    | CONCAT -> { typ = CONCAT; precedence = 40; assoc = Left; closing_token = None }
+    | EQUAL -> { typ = EQUAL; precedence = 30; assoc = Left; closing_token = None }
+    | NOT_EQUAL ->
+      { typ = NOT_EQUAL; precedence = 30; assoc = Left; closing_token = None }
+    | GREATER -> { typ = GREATER; precedence = 30; assoc = Left; closing_token = None }
+    | GREATER_EQUAL ->
+      { typ = GREATER_EQUAL; precedence = 30; assoc = Left; closing_token = None }
+    | LESS -> { typ = LESS; precedence = 30; assoc = Left; closing_token = None }
+    | LESS_EQUAL ->
+      { typ = LESS_EQUAL; precedence = 30; assoc = Left; closing_token = None }
+    | AND -> { typ = AND; precedence = 20; assoc = Left; closing_token = None }
+    | OR -> { typ = OR; precedence = 10; assoc = Left; closing_token = None }
+    | ARRAY_ADD -> { typ = ARRAY_ADD; precedence = 0; assoc = Left; closing_token = None }
+    | MERGE -> { typ = MERGE; precedence = 0; assoc = Left; closing_token = None }
+    | BRACKET_ACCESS ->
+      { typ = BRACKET_ACCESS
+      ; precedence = 0
+      ; assoc = Left
+      ; closing_token = Some Token.RIGHT_BRACK
+      }
   ;;
 end
 

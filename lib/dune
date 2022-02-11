@@ -1,4 +1,4 @@
 (library
  (name pinc_lib)
  (ocamlopt_flags -O3)
- (libraries Ast Position iter fileutils))
+ (libraries Token Ast Position iter fileutils))

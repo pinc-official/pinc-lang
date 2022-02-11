@@ -151,7 +151,56 @@ let is_keyword = function
   | KEYWORD_SITE
   | KEYWORD_PAGE
   | KEYWORD_STORE -> true
-  | _ -> false
+  | COMMENT
+  | LEFT_PAREN
+  | RIGHT_PAREN
+  | LEFT_BRACK
+  | RIGHT_BRACK
+  | LEFT_BRACE
+  | RIGHT_BRACE
+  | COLON
+  | DOUBLE_COLON
+  | COMMA
+  | SEMICOLON
+  | DOT
+  | DOTDOT
+  | DOTDOTDOT
+  | ARROW
+  | ARROW_LEFT
+  | ATAT
+  | QUESTIONMARK
+  | EQUAL
+  | NOT
+  | GREATER
+  | LESS
+  | PLUS
+  | UNARY_MINUS
+  | MINUS
+  | STAR
+  | STAR_STAR
+  | SLASH
+  | PERCENT
+  | LOGICAL_AND
+  | LOGICAL_OR
+  | NOT_EQUAL
+  | EQUAL_EQUAL
+  | GREATER_EQUAL
+  | LESS_EQUAL
+  | PLUSPLUS
+  | KEYWORD_REVERSE
+  | TEMPLATE
+  | HTML_OR_COMPONENT_TAG_END
+  | END_OF_INPUT
+  | IDENT_LOWER _
+  | IDENT_UPPER _
+  | INT _
+  | FLOAT _
+  | STRING _
+  | TAG _
+  | HTML_OPEN_TAG _
+  | HTML_CLOSE_TAG _
+  | COMPONENT_OPEN_TAG _
+  | COMPONENT_CLOSE_TAG _ -> false
 ;;
 
 let keyword_of_string = function

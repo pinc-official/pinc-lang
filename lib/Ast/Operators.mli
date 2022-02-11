@@ -21,13 +21,14 @@ module Binary : sig
     | CONCAT
     | AND
     | OR
-    | RECORD_ACCESS
+    | DOT_ACCESS
+    | BRACKET_ACCESS
     | ARRAY_ADD
     | MERGE
-    | ACCESS_WITH_EXPR
 
   type t =
     { typ : typ
+    ; closing_token : Token.token_type option
     ; precedence : precedence
     ; assoc : associativity
     }

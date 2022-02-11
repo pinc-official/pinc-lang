@@ -167,14 +167,14 @@ let rec literal_of_expr ?ident state expr =
       (match a, b with
       | Ast.Literal.String a, Ast.Literal.String b -> Ast.Literal.String (a ^ b)
       | _ -> failwith "Trying to concat non string literals.")
-    | Ast.Operators.Binary.RECORD_ACCESS ->
+    | Ast.Operators.Binary.DOT_ACCESS ->
       let left = left |> literal_of_expr state in
       (match left, right with
       | Ast.Literal.Record left, Ast.IdentifierExpression (Id b) ->
         left |> Ast.Literal.StringMap.find_opt b |> Option.value ~default:Ast.Literal.Null
       | Ast.Literal.Null, _ -> Ast.Literal.Null
       | _ -> failwith "Trying to access a property on a non record literal.")
-    | Ast.Operators.Binary.ACCESS_WITH_EXPR ->
+    | Ast.Operators.Binary.BRACKET_ACCESS ->
       let left = left |> literal_of_expr state in
       let right = right |> literal_of_expr state in
       (match left, right with
