@@ -399,13 +399,22 @@ and literal_of_tag_expr ~value ~transformer state tag =
 
 and html_attr_to_string state (key, value) =
   let buf = Buffer.create 64 in
-  let value = value |> literal_of_expr state |> Ast.Literal.to_string in
-  Buffer.add_string buf key;
-  Buffer.add_char buf '=';
-  Buffer.add_char buf '"';
-  Buffer.add_string buf value;
-  Buffer.add_char buf '"';
-  Buffer.contents buf
+  let literal = value |> literal_of_expr state in
+  match literal with
+  | Ast.Literal.Null -> ""
+  | Ast.Literal.String _
+  | Ast.Literal.Int _
+  | Ast.Literal.Float _
+  | Ast.Literal.Bool _
+  | Ast.Literal.Array _
+  | Ast.Literal.Record _ ->
+    let value = literal |> Ast.Literal.to_string in
+    Buffer.add_string buf key;
+    Buffer.add_char buf '=';
+    Buffer.add_char buf '"';
+    Buffer.add_string buf value;
+    Buffer.add_char buf '"';
+    Buffer.contents buf
 
 and template_to_string state template =
   match template with
