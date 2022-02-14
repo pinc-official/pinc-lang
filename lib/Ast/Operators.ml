@@ -63,6 +63,28 @@ module Binary = struct
       ; closing_token = Some Token.RIGHT_BRACK
       }
   ;;
+
+  let to_string = function
+    | DOT_ACCESS -> "."
+    | POW -> "**"
+    | MODULO -> "%"
+    | TIMES -> "*"
+    | DIV -> "/"
+    | PLUS -> "+"
+    | MINUS -> "-"
+    | CONCAT -> "++"
+    | EQUAL -> "=="
+    | NOT_EQUAL -> "!="
+    | GREATER -> ">"
+    | GREATER_EQUAL -> ">="
+    | LESS -> "<"
+    | LESS_EQUAL -> "<="
+    | AND -> "&&"
+    | OR -> "||"
+    | ARRAY_ADD -> "<-"
+    | MERGE -> "@@"
+    | BRACKET_ACCESS -> "["
+  ;;
 end
 
 module Unary = struct
@@ -78,5 +100,10 @@ module Unary = struct
   let make = function
     | MINUS -> { typ = MINUS; precedence = 100 }
     | NOT -> { typ = NOT; precedence = 100 }
+  ;;
+
+  let to_string = function
+    | MINUS -> "-..."
+    | NOT -> "!..."
   ;;
 end

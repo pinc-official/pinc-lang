@@ -34,6 +34,7 @@ module Binary : sig
     }
 
   val make : typ -> t
+  val to_string : typ -> string
 end
 
 module Unary : sig
@@ -47,4 +48,5 @@ module Unary : sig
     }
 
   val make : typ -> t
+  val to_string : typ -> string
 end

@@ -457,7 +457,10 @@ module Rules = struct
           | Right -> precedence
         in
         (match parse_expression ~prio:new_prio t with
-        | None -> failwith "Expected expression"
+        | None ->
+          failwith
+            ("Expected expression on right hand side of "
+            ^ (operator |> Ast.Operators.Binary.to_string))
         | Some right ->
           let left = Ast.BinaryExpression { left; operator; right } in
           let expect_close token = expect token t in
