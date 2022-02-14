@@ -60,6 +60,7 @@ type token_type =
   | HTML_CLOSE_TAG of string
   | COMPONENT_OPEN_TAG of string
   | COMPONENT_CLOSE_TAG of string
+  | HTML_OR_COMPONENT_TAG_SELF_CLOSING
   | HTML_OR_COMPONENT_TAG_END
   | END_OF_INPUT
 
@@ -128,11 +129,12 @@ let to_string = function
   | KEYWORD_PAGE -> "page"
   | KEYWORD_STORE -> "store"
   | COMMENT -> "// Comment"
-  | TEMPLATE -> "@Template"
+  | TEMPLATE -> "#Template"
   | HTML_OPEN_TAG s -> Printf.sprintf "<%s" s
   | HTML_CLOSE_TAG s -> Printf.sprintf "</%s>" s
   | COMPONENT_OPEN_TAG s -> Printf.sprintf "<%s" s
   | COMPONENT_CLOSE_TAG s -> Printf.sprintf "</%s>" s
+  | HTML_OR_COMPONENT_TAG_SELF_CLOSING -> "/>"
   | HTML_OR_COMPONENT_TAG_END -> ">"
   | END_OF_INPUT -> "(EOF)"
 ;;
@@ -190,6 +192,7 @@ let is_keyword = function
   | KEYWORD_REVERSE
   | TEMPLATE
   | HTML_OR_COMPONENT_TAG_END
+  | HTML_OR_COMPONENT_TAG_SELF_CLOSING
   | END_OF_INPUT
   | IDENT_LOWER _
   | IDENT_UPPER _

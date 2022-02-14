@@ -483,10 +483,22 @@ let rec scan_template_token ~start_pos t =
       scan_close_tag t
     | _ -> scan_template_text t)
   | `Chr '/' ->
-    next t;
-    Token.SLASH
+    (match peek t with
+    | `Chr '>' ->
+      popTemplateMode t;
+      next_n ~n:2 t;
+      Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING
+    | `Chr c ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        (Diagnostics.UnknownCharacter c)
+    | `EOF ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        Diagnostics.NonTerminatedTemplate)
   | `Chr '>' ->
-    if t.prev = `Chr '/' then popTemplateMode t;
     next t;
     Token.HTML_OR_COMPONENT_TAG_END
   | `EOF ->
@@ -727,8 +739,7 @@ and scan_normal_token ~start_pos t =
     scan_token ~start_pos t
 
 and scan_token ~start_pos t =
-  (* Printf.printf "\nMODE(s): %s\n" (String.concat " " (List.map show_mode
-     t.mode)); *)
+  (* Printf.printf "\nMODE(s): %s\n" (String.concat " " (List.rev_map show_mode t.mode)); *)
   match t.mode with
   | Template :: _ -> scan_template_token ~start_pos t
   | TemplateAttributes :: _ -> scan_template_attributes_token ~start_pos t

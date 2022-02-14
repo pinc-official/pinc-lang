@@ -262,26 +262,26 @@ module Rules = struct
     | Token.HTML_OPEN_TAG tag ->
       next t;
       let attributes = Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL) t in
-      let self_closing = t |> optional Token.SLASH in
-      t |> expect Token.HTML_OR_COMPONENT_TAG_END;
+      let self_closing = t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING in
       let children =
         if self_closing
         then Iter.empty
         else (
+          t |> expect Token.HTML_OR_COMPONENT_TAG_END;
           let children = t |> Helpers.list ~fn:parse_template_node in
           t |> expect (Token.HTML_CLOSE_TAG tag);
           children)
       in
-      Some (Ast.HtmlTemplateNode { tag; attributes; children })
+      Some (Ast.HtmlTemplateNode { tag; attributes; children; self_closing })
     | Token.COMPONENT_OPEN_TAG identifier ->
       next t;
       let attributes = Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL) t in
-      let self_closing = t |> optional Token.SLASH in
-      t |> expect Token.HTML_OR_COMPONENT_TAG_END;
+      let self_closing = t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING in
       let children =
         if self_closing
         then Iter.empty
         else (
+          t |> expect Token.HTML_OR_COMPONENT_TAG_END;
           let children = t |> Helpers.list ~fn:parse_template_node in
           t |> expect (Token.COMPONENT_CLOSE_TAG identifier);
           children)

@@ -410,7 +410,7 @@ and html_attr_to_string state (key, value) =
 and template_to_string state template =
   match template with
   | Ast.TextTemplateNode text -> text
-  | Ast.HtmlTemplateNode { tag; attributes; children; _ } ->
+  | Ast.HtmlTemplateNode { tag; attributes; children; self_closing } ->
     let buf = Buffer.create 128 in
     Buffer.add_char buf '<';
     Buffer.add_string buf tag;
@@ -422,15 +422,18 @@ and template_to_string state template =
              let res = html_attr_to_string state attr in
              if i <> 0 then Buffer.add_char buf ' ';
              Buffer.add_string buf res));
-    Buffer.add_char buf '>';
-    children
-    |> Iter.iter (fun child ->
-           let res = template_to_string state child in
-           Buffer.add_string buf res);
-    Buffer.add_char buf '<';
-    Buffer.add_char buf '/';
-    Buffer.add_string buf tag;
-    Buffer.add_char buf '>';
+    if self_closing && HTML.is_void_el tag
+    then Buffer.add_string buf " />"
+    else (
+      Buffer.add_char buf '>';
+      children
+      |> Iter.iter (fun child ->
+             let res = template_to_string state child in
+             Buffer.add_string buf res);
+      Buffer.add_char buf '<';
+      Buffer.add_char buf '/';
+      Buffer.add_string buf tag;
+      Buffer.add_char buf '>');
     Buffer.contents buf
   | Ast.ExpressionTemplateNode expr -> Ast.Literal.to_string (literal_of_expr state expr)
   | Ast.ComponentTemplateNode { identifier = Id identifier; attributes; children = _ } ->

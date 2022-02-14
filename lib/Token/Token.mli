@@ -60,6 +60,7 @@ type token_type =
   | HTML_CLOSE_TAG of string
   | COMPONENT_OPEN_TAG of string
   | COMPONENT_CLOSE_TAG of string
+  | HTML_OR_COMPONENT_TAG_SELF_CLOSING
   | HTML_OR_COMPONENT_TAG_END
   | END_OF_INPUT
 

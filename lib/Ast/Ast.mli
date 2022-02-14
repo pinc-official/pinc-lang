@@ -16,6 +16,7 @@ type template_node =
       { tag : string
       ; attributes : attribute Iter.t
       ; children : template_node Iter.t
+      ; self_closing : bool
       }
   | ComponentTemplateNode of
       { identifier : identifier
