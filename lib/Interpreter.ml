@@ -38,7 +38,8 @@ let rec literal_of_expr ?ident state expr =
       state.scope |> List.find_map (fun scope -> Hashtbl.find_opt scope.identifiers id)
     in
     (match value with
-    | None -> failwith "Unbound identifier" (* Unbound identifier *)
+    | None ->
+      failwith (Printf.sprintf "Unbound identifier `%s`" id) (* Unbound identifier *)
     | Some v -> v)
   | Ast.RecordExpression expressions ->
     let attrs =
