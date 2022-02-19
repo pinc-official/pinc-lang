@@ -45,8 +45,16 @@ let rec literal_of_expr ?ident state expr =
     let attrs =
       expressions
       |> Iter.fold
-           (fun acc (key, value) ->
-             acc |> Ast.Literal.StringMap.add key (literal_of_expr state value))
+           (fun acc (nullable, key, value) ->
+             let literal = literal_of_expr state value in
+             match literal with
+             | Ast.Literal.Null when not nullable ->
+               failwith
+                 (Printf.sprintf
+                    "property `%s` on record is not marked as nullable, but was given a \
+                     null value."
+                    key)
+             | literal -> acc |> Ast.Literal.StringMap.add key literal)
            Ast.Literal.StringMap.empty
     in
     Ast.Literal.Record attrs
@@ -374,11 +382,18 @@ and literal_of_tag_expr ~value ~transformer state tag =
       | Ast.Literal.Record r ->
         let models key = Ast.Literal.StringMap.find_opt key r in
         let state = init_state ~models state.declarations in
-        let eval_property acc (key, tag, transformer) =
-          Ast.Literal.StringMap.add
-            key
-            (tag |> literal_of_tag_expr ~value:(`Ident key) ~transformer state)
-            acc
+        let eval_property acc (nullable, key, tag, transformer) =
+          let literal =
+            tag |> literal_of_tag_expr ~value:(`Ident key) ~transformer state
+          in
+          match literal with
+          | Ast.Literal.Null when not nullable ->
+            failwith
+              (Printf.sprintf
+                 "property `%s` on record tag is not marked as nullable, but was given a \
+                  null value."
+                 key)
+          | literal -> acc |> Ast.Literal.StringMap.add key literal
         in
         let r = properties |> Iter.fold eval_property Ast.Literal.StringMap.empty in
         Ast.Literal.Record r)
@@ -471,7 +486,11 @@ and eval_statement state stmt =
     let literal = literal_of_expr ~ident state right in
     let () =
       match literal with
-      | Ast.Literal.Null when not nullable -> failwith "Not Nullable!!"
+      | Ast.Literal.Null when not nullable ->
+        failwith
+          (Printf.sprintf
+             "identifier %s is not marked as nullable, but was given a null value."
+             ident)
       | _ -> state |> add_literal_to_scope ~ident ~literal
     in
     Ast.Literal.Null

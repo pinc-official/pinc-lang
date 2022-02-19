@@ -219,9 +219,9 @@ module Rules = struct
                (match Iter.find (get_attr "of") attributes with
                | Some (Ast.RecordExpression attributes) ->
                  attributes
-                 |> Iter.map (fun (key, value) ->
+                 |> Iter.map (fun (nullable, key, value) ->
                         match value with
-                        | Ast.TagExpression (tag, body) -> key, tag, body
+                        | Ast.TagExpression (tag, body) -> nullable, key, tag, body
                         | _ ->
                           failwith
                             ("expected property `" ^ key ^ "` on record tag, to be a tag."))
@@ -241,6 +241,16 @@ module Rules = struct
       expect sep t;
       let value = parse_expression t in
       value |> Option.map (fun value -> key, value)
+    | _ -> None
+
+  and parse_record_field t =
+    match t.token.typ with
+    | Token.IDENT_LOWER key ->
+      next t;
+      let nullable = optional Token.QUESTIONMARK t in
+      expect Token.COLON t;
+      let value = parse_expression t in
+      value |> Option.map (fun value -> nullable, key, value)
     | _ -> None
 
   and parse_template_node t =
@@ -303,12 +313,14 @@ module Rules = struct
       next t;
       let is_record =
         match t.token.typ with
-        | Token.IDENT_LOWER _ -> peek t = Token.COLON
+        | Token.IDENT_LOWER _ ->
+          let token = peek t in
+          token = Token.COLON || token = Token.QUESTIONMARK
         | _ -> false
       in
       if is_record
       then (
-        let attrs = Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t in
+        let attrs = Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field t in
         t |> expect Token.RIGHT_BRACE;
         Some (Ast.RecordExpression attrs))
       else (

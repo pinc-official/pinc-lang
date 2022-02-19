@@ -26,6 +26,8 @@ type template_node =
   | ExpressionTemplateNode of expression
   | TextTemplateNode of string
 
+and tag_body = (identifier * expression) option
+
 and tag =
   | TagString of
       { label : expression option
@@ -50,19 +52,19 @@ and tag =
   | TagArray of
       { label : expression option
       ; default_value : expression option
-      ; elements : tag * (identifier * expression) option
+      ; elements : tag * tag_body
       }
   | TagRecord of
       { label : expression option
-      ; properties : (string * tag * (identifier * expression) option) Iter.t
+      ; properties : (bool * string * tag * tag_body) Iter.t
       }
 
 and expression =
   | IdentifierExpression of identifier
   | LiteralExpression of Literal.t
-  | RecordExpression of attribute Iter.t
+  | RecordExpression of (bool * string * expression) Iter.t
   | ArrayExpression of expression Iter.t
-  | TagExpression of tag * (identifier * expression) option
+  | TagExpression of tag * tag_body
   | ForInExpression of
       { iterator : identifier
       ; reverse : bool

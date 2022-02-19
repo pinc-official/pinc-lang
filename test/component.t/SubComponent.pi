@@ -9,7 +9,7 @@ component SubComponent {
   
   let record = #Record(of: {
     a: #Int(defaultValue: 12) :: val -> if (val == 12) "NEEEEIN" else "JAP",
-    b: #Boolean,
+    b?: #Boolean,
     c: #String,
   });
 
