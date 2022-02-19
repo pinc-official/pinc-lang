@@ -5,7 +5,7 @@ component SubComponent {
   
   let num = #Int :: val -> val ** 2;
   
-  let array = #Array(of: #Int);
+  let array_things = #Array(of: #Int);
   
   let record = #Record(of: {
     a: #Int(defaultValue: 12) :: val -> if (val == 12) "NEEEEIN" else "JAP",
@@ -17,7 +17,7 @@ component SubComponent {
     <div class="SubComponent" data-foo={num}>
       {content}
 
-      {array}
+      {array_things}
 
       {record.a}
       {record.b}

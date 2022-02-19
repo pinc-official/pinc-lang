@@ -11,7 +11,7 @@ component Component(
       <SubComponent
         content="Hello, SubComponent!"
         num={3}
-        array={array}
+        array_things={array}
         record={record}
       ></SubComponent>
     </section>

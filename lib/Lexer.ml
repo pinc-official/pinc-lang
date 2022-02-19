@@ -1,6 +1,7 @@
 type mode =
   | Normal
   | TemplateAttributes
+  | ComponentAttributes
   | Template
 
 type char' =
@@ -28,6 +29,7 @@ let make_position a =
 let show_mode = function
   | Normal -> "NORMAL"
   | TemplateAttributes -> "TemplateAttributes"
+  | ComponentAttributes -> "ComponentAttributes"
   | Template -> "Template"
 ;;
 
@@ -70,6 +72,20 @@ let setTemplateAttributesMode t = t.mode <- TemplateAttributes :: t.mode
 let popTemplateAttributesMode t =
   match t.mode with
   | TemplateAttributes :: tl -> t.mode <- tl
+  | _ -> ()
+;;
+
+let inComponentAttributesMode t =
+  match t.mode with
+  | ComponentAttributes :: _ -> true
+  | _ -> false
+;;
+
+let setComponentAttributesMode t = t.mode <- ComponentAttributes :: t.mode
+
+let popComponentAttributesMode t =
+  match t.mode with
+  | ComponentAttributes :: tl -> t.mode <- tl
   | _ -> ()
 ;;
 
@@ -474,9 +490,13 @@ let rec scan_template_token ~start_pos t =
     Token.RIGHT_BRACE
   | `Chr '<' ->
     (match peek t with
-    | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' ->
+    | `Chr 'a' .. 'z' ->
       setTemplateMode t;
       setTemplateAttributesMode t;
+      scan_open_tag t
+    | `Chr 'A' .. 'Z' ->
+      setTemplateMode t;
+      setComponentAttributesMode t;
       scan_open_tag t
     | `Chr '/' ->
       popTemplateMode t;
@@ -501,6 +521,46 @@ let rec scan_template_token ~start_pos t =
   | `Chr '>' ->
     next t;
     Token.HTML_OR_COMPONENT_TAG_END
+  | `EOF ->
+    Diagnostics.report
+      ~start_pos
+      ~end_pos:(make_position t)
+      Diagnostics.NonTerminatedTemplate
+  | _ -> scan_template_text t
+
+and scan_component_attributes_token ~start_pos t =
+  match t.current with
+  | `Chr '_' | `Chr 'a' .. 'z' -> scan_ident t
+  | `Chr '"' -> scan_string t
+  | `Chr '=' ->
+    next t;
+    Token.EQUAL
+  | `Chr '{' ->
+    setNormalMode t;
+    next t;
+    Token.LEFT_BRACE
+  | `Chr '}' ->
+    popNormalMode t;
+    next t;
+    Token.RIGHT_BRACE
+  | `Chr '/' ->
+    (match peek t with
+    | `Chr '>' ->
+      popComponentAttributesMode t;
+      scan_template_token ~start_pos t
+    | `Chr c ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        (Diagnostics.UnknownCharacter c)
+    | `EOF ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        Diagnostics.NonTerminatedTemplate)
+  | `Chr '>' ->
+    popComponentAttributesMode t;
+    scan_template_token ~start_pos t
   | `EOF ->
     Diagnostics.report
       ~start_pos
@@ -718,9 +778,13 @@ and scan_normal_token ~start_pos t =
     | `Chr '/' ->
       popTemplateMode t;
       scan_close_tag t
-    | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' ->
+    | `Chr 'a' .. 'z' ->
       setTemplateMode t;
       setTemplateAttributesMode t;
+      scan_open_tag t
+    | `Chr 'A' .. 'Z' ->
+      setTemplateMode t;
+      setComponentAttributesMode t;
       scan_open_tag t
     | c when is_whitespace t.prev && is_whitespace c ->
       next t;
@@ -743,6 +807,7 @@ and scan_token ~start_pos t =
   match t.mode with
   | Template :: _ -> scan_template_token ~start_pos t
   | TemplateAttributes :: _ -> scan_template_attributes_token ~start_pos t
+  | ComponentAttributes :: _ -> scan_component_attributes_token ~start_pos t
   | [] | Normal :: _ -> scan_normal_token ~start_pos t
 ;;
 
