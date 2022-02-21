@@ -6,6 +6,8 @@ type token_type =
   | FLOAT of float
   | STRING of string
   | TAG of string
+  | STRING_TEMPLATE_START
+  | STRING_TEMPLATE_END
   | LEFT_PAREN
   | RIGHT_PAREN
   | LEFT_BRACK
@@ -79,6 +81,8 @@ let to_string = function
   | TAG s -> Printf.sprintf "#%s" (String.capitalize_ascii s)
   | IDENT_LOWER s -> Printf.sprintf "%s" (String.lowercase_ascii s)
   | IDENT_UPPER s -> Printf.sprintf "%s" (String.capitalize_ascii s)
+  | STRING_TEMPLATE_START -> "${"
+  | STRING_TEMPLATE_END -> "}"
   | KEYWORD_TRUE -> "true"
   | KEYWORD_FALSE -> "false"
   | LEFT_PAREN -> "("
@@ -203,7 +207,9 @@ let is_keyword = function
   | HTML_OPEN_TAG _
   | HTML_CLOSE_TAG _
   | COMPONENT_OPEN_TAG _
-  | COMPONENT_CLOSE_TAG _ -> false
+  | COMPONENT_CLOSE_TAG _
+  | STRING_TEMPLATE_START
+  | STRING_TEMPLATE_END -> false
 ;;
 
 let keyword_of_string = function

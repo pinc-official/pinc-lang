@@ -1,5 +1,7 @@
 type mode =
   | Normal
+  | String
+  | StringTemplate
   | TemplateAttributes
   | ComponentAttributes
   | Template
@@ -28,6 +30,8 @@ let make_position a =
 
 let show_mode = function
   | Normal -> "NORMAL"
+  | String -> "String"
+  | StringTemplate -> "StringTemplate"
   | TemplateAttributes -> "TemplateAttributes"
   | ComponentAttributes -> "ComponentAttributes"
   | Template -> "Template"
@@ -35,6 +39,7 @@ let show_mode = function
 
 let inNormalMode t =
   match t.mode with
+  | [] -> true
   | Normal :: _ -> true
   | _ -> false
 ;;
@@ -44,6 +49,34 @@ let setNormalMode t = t.mode <- Normal :: t.mode
 let popNormalMode t =
   match t.mode with
   | Normal :: tl -> t.mode <- tl
+  | _ -> ()
+;;
+
+let inStringMode t =
+  match t.mode with
+  | String :: _ -> true
+  | _ -> false
+;;
+
+let setStringMode t = t.mode <- String :: t.mode
+
+let popStringMode t =
+  match t.mode with
+  | String :: tl -> t.mode <- tl
+  | _ -> ()
+;;
+
+let inStringTemplateMode t =
+  match t.mode with
+  | StringTemplate :: _ -> true
+  | _ -> false
+;;
+
+let setStringTemplateMode t = t.mode <- StringTemplate :: t.mode
+
+let popStringTemplateMode t =
+  match t.mode with
+  | StringTemplate :: tl -> t.mode <- tl
   | _ -> ()
 ;;
 
@@ -163,8 +196,7 @@ let scan_ident t =
   Token.lookup_keyword (Buffer.contents buf)
 ;;
 
-let scan_string t =
-  let start_pos = make_position t in
+let scan_string ~start_pos t =
   let buf = Buffer.create 512 in
   let rec loop t =
     match t.current with
@@ -221,7 +253,15 @@ let scan_string t =
           ~start_pos
           ~end_pos:(make_position t)
           Diagnostics.NonTerminatedString)
+    | `Chr '$' ->
+      (match peek t with
+      | `Chr '{' -> setStringTemplateMode t
+      | _ ->
+        next t;
+        Buffer.add_char buf '$';
+        loop t)
     | `Chr '"' ->
+      popStringMode t;
       next t;
       ()
     | `Chr c ->
@@ -229,8 +269,6 @@ let scan_string t =
       Buffer.add_char buf c;
       loop t
   in
-  (* NEXT once to skip the beginning double quote *)
-  next t;
   let () = loop t in
   Token.STRING (Buffer.contents buf)
 ;;
@@ -528,10 +566,37 @@ let rec scan_template_token ~start_pos t =
       Diagnostics.NonTerminatedTemplate
   | _ -> scan_template_text t
 
+and scan_string_template_token ~start_pos t =
+  match t.current with
+  | `Chr '$' ->
+    (match peek t with
+    | `Chr '{' ->
+      setNormalMode t;
+      next_n ~n:2 t;
+      Token.STRING_TEMPLATE_START
+    | _ ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        (Diagnostics.UnknownCharacter '$'))
+  | `Chr '}' ->
+    popNormalMode t;
+    popStringTemplateMode t;
+    next t;
+    Token.STRING_TEMPLATE_END
+  | _ ->
+    Diagnostics.report
+      ~start_pos
+      ~end_pos:(make_position t)
+      Diagnostics.NonTerminatedString
+
 and scan_component_attributes_token ~start_pos t =
   match t.current with
   | `Chr '_' | `Chr 'a' .. 'z' -> scan_ident t
-  | `Chr '"' -> scan_string t
+  | `Chr '"' ->
+    next t;
+    setStringMode t;
+    scan_token ~start_pos:(make_position t) t
   | `Chr '=' ->
     next t;
     Token.EQUAL
@@ -571,7 +636,10 @@ and scan_component_attributes_token ~start_pos t =
 and scan_template_attributes_token ~start_pos t =
   match t.current with
   | `Chr 'A' .. 'Z' | `Chr 'a' .. 'z' -> scan_html_attribute_ident t
-  | `Chr '"' -> scan_string t
+  | `Chr '"' ->
+    next t;
+    setStringMode t;
+    scan_token ~start_pos:(make_position t) t
   | `Chr '=' ->
     next t;
     Token.EQUAL
@@ -612,7 +680,10 @@ and scan_normal_token ~start_pos t =
   match t.current with
   | `Chr 'A' .. 'Z' | `Chr 'a' .. 'z' | `Chr '_' -> scan_ident t
   | `Chr '0' .. '9' -> scan_number t
-  | `Chr '"' -> scan_string t
+  | `Chr '"' ->
+    next t;
+    setStringMode t;
+    scan_token ~start_pos:(make_position t) t
   | `Chr '(' ->
     next t;
     Token.LEFT_PAREN
@@ -632,8 +703,11 @@ and scan_normal_token ~start_pos t =
     Token.LEFT_BRACE
   | `Chr '}' ->
     popNormalMode t;
-    next t;
-    Token.RIGHT_BRACE
+    if inNormalMode t
+    then (
+      next t;
+      Token.RIGHT_BRACE)
+    else scan_token ~start_pos t
   | `Chr ':' ->
     (match peek t with
     | `Chr ':' ->
@@ -795,12 +869,14 @@ and scan_normal_token ~start_pos t =
         ~end_pos:(make_position t)
         (Diagnostics.UnknownCharacter '<'))
   | `EOF -> Token.END_OF_INPUT
-  | `Chr _ ->
-    (* Diagnostics.report ~start_pos ~end_pos:(make_position t)
-       (Diagnostics.UnknownCharacter c) *)
-    (* NOTE: Maybe we can ignore this and continue scanning... *)
-    next t;
-    scan_token ~start_pos t
+  | `Chr c ->
+    Diagnostics.report
+      ~start_pos
+      ~end_pos:(make_position t)
+      (Diagnostics.UnknownCharacter c)
+(* NOTE: Maybe we can ignore this and continue scanning... *)
+(* next t;
+    scan_token ~start_pos t *)
 
 and scan_token ~start_pos t =
   (* Printf.printf "\nMODE(s): %s\n" (String.concat " " (List.rev_map show_mode t.mode)); *)
@@ -808,6 +884,8 @@ and scan_token ~start_pos t =
   | Template :: _ -> scan_template_token ~start_pos t
   | TemplateAttributes :: _ -> scan_template_attributes_token ~start_pos t
   | ComponentAttributes :: _ -> scan_component_attributes_token ~start_pos t
+  | StringTemplate :: _ -> scan_string_template_token ~start_pos t
+  | String :: _ -> scan_string ~start_pos t
   | [] | Normal :: _ -> scan_normal_token ~start_pos t
 ;;
 

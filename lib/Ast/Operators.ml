@@ -25,6 +25,7 @@ module Binary = struct
     | BRACKET_ACCESS
     | ARRAY_ADD
     | MERGE
+    | STRING_TEMPLATE
 
   type t =
     { typ : typ
@@ -62,6 +63,8 @@ module Binary = struct
       ; assoc = Left
       ; closing_token = Some Token.RIGHT_BRACK
       }
+    | STRING_TEMPLATE ->
+      { typ = STRING_TEMPLATE; precedence = 0; assoc = Left; closing_token = None }
   ;;
 
   let to_string = function
@@ -84,6 +87,7 @@ module Binary = struct
     | ARRAY_ADD -> "<-"
     | MERGE -> "@@"
     | BRACKET_ACCESS -> "["
+    | STRING_TEMPLATE -> "${"
   ;;
 end
 

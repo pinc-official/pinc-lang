@@ -170,7 +170,7 @@ let rec literal_of_expr ?ident state expr =
       let a = left |> literal_of_expr state in
       let b = right |> literal_of_expr state in
       Ast.Literal.Bool (Ast.Literal.compare a b >= 0)
-    | Ast.Operators.Binary.CONCAT ->
+    | Ast.Operators.Binary.CONCAT | Ast.Operators.Binary.STRING_TEMPLATE ->
       let a = left |> literal_of_expr state in
       let b = right |> literal_of_expr state in
       (match a, b with

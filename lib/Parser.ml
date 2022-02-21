@@ -438,6 +438,8 @@ module Rules = struct
     | Token.LESS -> Some Ast.Operators.Binary.(make LESS)
     | Token.LESS_EQUAL -> Some Ast.Operators.Binary.(make LESS_EQUAL)
     | Token.PLUSPLUS -> Some Ast.Operators.Binary.(make CONCAT)
+    | Token.STRING_TEMPLATE_START -> Some Ast.Operators.Binary.(make STRING_TEMPLATE)
+    | Token.STRING_TEMPLATE_END -> Some Ast.Operators.Binary.(make STRING_TEMPLATE)
     | Token.PLUS -> Some Ast.Operators.Binary.(make PLUS)
     | Token.MINUS -> Some Ast.Operators.Binary.(make MINUS)
     | Token.STAR -> Some Ast.Operators.Binary.(make TIMES)

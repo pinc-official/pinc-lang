@@ -4,7 +4,8 @@ component Component(
   group: "Structure",
 ) {
 
-  let content = "Hello, World!";
+  let name = "String Template";
+  let content = "Hello, ${name}!";
   let intro = true;
 
   #Template {

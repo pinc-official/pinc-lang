@@ -25,6 +25,7 @@ module Binary : sig
     | BRACKET_ACCESS
     | ARRAY_ADD
     | MERGE
+    | STRING_TEMPLATE
 
   type t =
     { typ : typ

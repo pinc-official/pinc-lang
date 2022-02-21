@@ -3,7 +3,7 @@
         <div></div>
         <div></div>
         <div class="Section-content">
-          Hello, World!
+          Hello, String Template!
         </div>
         <div class="Section-footer">
           Lorem Ipsum dolor sit amet!!

@@ -32,4 +32,4 @@
 
 - Pipe operator (`|` or `|>`)
 
-- String Templates (`"Section--${alignment}"`)
+- Cleanup String Templates!!
