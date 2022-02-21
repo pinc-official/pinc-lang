@@ -890,7 +890,7 @@ and scan_token ~start_pos t =
 ;;
 
 let scan t =
-  if not (inTemplateMode t) then skip_whitespace t;
+  if not (inTemplateMode t || inStringMode t) then skip_whitespace t;
   let start_pos = make_position t in
   let token = scan_token ~start_pos t in
   (* print_endline (Token.to_string token); *)
