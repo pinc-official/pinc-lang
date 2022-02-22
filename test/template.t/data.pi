@@ -5,8 +5,8 @@ component Component(
 ) {
 
   let name = "String Template";
-  let content = "Hello, ${name}!";
   let intro = true;
+  let content = "Hello, {| if (intro) name else "World" |}!";
 
   #Template {
     <section class="Section">

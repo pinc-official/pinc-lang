@@ -155,6 +155,18 @@ module Rules = struct
       Some (Ast.Literal.Bool false)
     | _ -> None
 
+  and parse_string_template t =
+    match t.token.typ with
+    | Token.STRING s ->
+      next t;
+      Some (Ast.StringText s)
+    | Token.LEFT_PIPE_BRACE ->
+      next t;
+      let* expression = parse_expression t in
+      t |> expect Token.RIGHT_PIPE_BRACE;
+      Some (Ast.StringInterpolation expression)
+    | _ -> None
+
   and parse_tag name t =
     next t;
     let attributes =
@@ -417,12 +429,14 @@ module Rules = struct
     | Token.IDENT_LOWER identifier | Token.IDENT_UPPER identifier ->
       next t;
       Some (Ast.IdentifierExpression (Id identifier))
-    (* PARSING LITERAL EXPRESSION *)
-    | Token.STRING _
-    | Token.INT _
-    | Token.FLOAT _
-    | Token.KEYWORD_TRUE
-    | Token.KEYWORD_FALSE ->
+    (* PARSING STRING EXPRESSION *)
+    | Token.DOUBLE_QUOTE ->
+      next t;
+      let s = t |> Helpers.list ~fn:parse_string_template in
+      t |> expect Token.DOUBLE_QUOTE;
+      Some (Ast.StringExpression s)
+      (* PARSING LITERAL EXPRESSION *)
+    | Token.INT _ | Token.FLOAT _ | Token.KEYWORD_TRUE | Token.KEYWORD_FALSE ->
       let literal = parse_literal t in
       literal |> Option.map (fun o -> Ast.LiteralExpression o)
     | _ -> None
@@ -438,8 +452,6 @@ module Rules = struct
     | Token.LESS -> Some Ast.Operators.Binary.(make LESS)
     | Token.LESS_EQUAL -> Some Ast.Operators.Binary.(make LESS_EQUAL)
     | Token.PLUSPLUS -> Some Ast.Operators.Binary.(make CONCAT)
-    | Token.STRING_TEMPLATE_START -> Some Ast.Operators.Binary.(make STRING_TEMPLATE)
-    | Token.STRING_TEMPLATE_END -> Some Ast.Operators.Binary.(make STRING_TEMPLATE)
     | Token.PLUS -> Some Ast.Operators.Binary.(make PLUS)
     | Token.MINUS -> Some Ast.Operators.Binary.(make MINUS)
     | Token.STAR -> Some Ast.Operators.Binary.(make TIMES)

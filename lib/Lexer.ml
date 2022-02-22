@@ -1,7 +1,6 @@
 type mode =
   | Normal
   | String
-  | StringTemplate
   | TemplateAttributes
   | ComponentAttributes
   | Template
@@ -31,17 +30,29 @@ let make_position a =
 let show_mode = function
   | Normal -> "NORMAL"
   | String -> "String"
-  | StringTemplate -> "StringTemplate"
   | TemplateAttributes -> "TemplateAttributes"
   | ComponentAttributes -> "ComponentAttributes"
   | Template -> "Template"
 ;;
 
-let inNormalMode t =
+let current_mode t =
   match t.mode with
-  | [] -> true
-  | Normal :: _ -> true
-  | _ -> false
+  | [] -> Normal
+  | Normal :: _ -> Normal
+  | String :: _ -> String
+  | Template :: _ -> Template
+  | TemplateAttributes :: _ -> TemplateAttributes
+  | ComponentAttributes :: _ -> ComponentAttributes
+;;
+
+let previous_mode t =
+  match t.mode with
+  | [] | [ _ ] -> Normal
+  | _ :: Normal :: _ -> Normal
+  | _ :: String :: _ -> String
+  | _ :: Template :: _ -> Template
+  | _ :: TemplateAttributes :: _ -> TemplateAttributes
+  | _ :: ComponentAttributes :: _ -> ComponentAttributes
 ;;
 
 let setNormalMode t = t.mode <- Normal :: t.mode
@@ -52,38 +63,12 @@ let popNormalMode t =
   | _ -> ()
 ;;
 
-let inStringMode t =
-  match t.mode with
-  | String :: _ -> true
-  | _ -> false
-;;
-
 let setStringMode t = t.mode <- String :: t.mode
 
 let popStringMode t =
   match t.mode with
   | String :: tl -> t.mode <- tl
   | _ -> ()
-;;
-
-let inStringTemplateMode t =
-  match t.mode with
-  | StringTemplate :: _ -> true
-  | _ -> false
-;;
-
-let setStringTemplateMode t = t.mode <- StringTemplate :: t.mode
-
-let popStringTemplateMode t =
-  match t.mode with
-  | StringTemplate :: tl -> t.mode <- tl
-  | _ -> ()
-;;
-
-let inTemplateMode t =
-  match t.mode with
-  | Template :: _ -> true
-  | _ -> false
 ;;
 
 let setTemplateMode t = t.mode <- Template :: t.mode
@@ -94,24 +79,12 @@ let popTemplateMode t =
   | _ -> ()
 ;;
 
-let inTemplateAttributesMode t =
-  match t.mode with
-  | TemplateAttributes :: _ -> true
-  | _ -> false
-;;
-
 let setTemplateAttributesMode t = t.mode <- TemplateAttributes :: t.mode
 
 let popTemplateAttributesMode t =
   match t.mode with
   | TemplateAttributes :: tl -> t.mode <- tl
   | _ -> ()
-;;
-
-let inComponentAttributesMode t =
-  match t.mode with
-  | ComponentAttributes :: _ -> true
-  | _ -> false
 ;;
 
 let setComponentAttributesMode t = t.mode <- ComponentAttributes :: t.mode
@@ -253,17 +226,8 @@ let scan_string ~start_pos t =
           ~start_pos
           ~end_pos:(make_position t)
           Diagnostics.NonTerminatedString)
-    | `Chr '$' ->
-      (match peek t with
-      | `Chr '{' -> setStringTemplateMode t
-      | _ ->
-        next t;
-        Buffer.add_char buf '$';
-        loop t)
-    | `Chr '"' ->
-      popStringMode t;
-      next t;
-      ()
+    | `Chr '{' when peek t = `Chr '|' -> ()
+    | `Chr '"' -> ()
     | `Chr c ->
       next t;
       Buffer.add_char buf c;
@@ -566,29 +530,21 @@ let rec scan_template_token ~start_pos t =
       Diagnostics.NonTerminatedTemplate
   | _ -> scan_template_text t
 
-and scan_string_template_token ~start_pos t =
+and scan_string_token ~start_pos t =
   match t.current with
-  | `Chr '$' ->
-    (match peek t with
-    | `Chr '{' ->
-      setNormalMode t;
-      next_n ~n:2 t;
-      Token.STRING_TEMPLATE_START
-    | _ ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter '$'))
-  | `Chr '}' ->
-    popNormalMode t;
-    popStringTemplateMode t;
+  | `Chr '"' ->
+    popStringMode t;
     next t;
-    Token.STRING_TEMPLATE_END
-  | _ ->
-    Diagnostics.report
-      ~start_pos
-      ~end_pos:(make_position t)
-      Diagnostics.NonTerminatedString
+    Token.DOUBLE_QUOTE
+  | `Chr '{' when peek t = `Chr '|' ->
+    setNormalMode t;
+    next_n ~n:2 t;
+    Token.LEFT_PIPE_BRACE
+  | `Chr '|' when peek t = `Chr '}' ->
+    popNormalMode t;
+    next_n ~n:2 t;
+    Token.RIGHT_PIPE_BRACE
+  | _ -> scan_string ~start_pos t
 
 and scan_component_attributes_token ~start_pos t =
   match t.current with
@@ -596,7 +552,7 @@ and scan_component_attributes_token ~start_pos t =
   | `Chr '"' ->
     next t;
     setStringMode t;
-    scan_token ~start_pos:(make_position t) t
+    Token.DOUBLE_QUOTE
   | `Chr '=' ->
     next t;
     Token.EQUAL
@@ -639,7 +595,7 @@ and scan_template_attributes_token ~start_pos t =
   | `Chr '"' ->
     next t;
     setStringMode t;
-    scan_token ~start_pos:(make_position t) t
+    Token.DOUBLE_QUOTE
   | `Chr '=' ->
     next t;
     Token.EQUAL
@@ -683,7 +639,7 @@ and scan_normal_token ~start_pos t =
   | `Chr '"' ->
     next t;
     setStringMode t;
-    scan_token ~start_pos:(make_position t) t
+    Token.DOUBLE_QUOTE
   | `Chr '(' ->
     next t;
     Token.LEFT_PAREN
@@ -697,17 +653,19 @@ and scan_normal_token ~start_pos t =
     next t;
     Token.RIGHT_BRACK
   | `Chr '{' ->
-    (* NOTE: Do we always want to go into normal mode when seeing { ? *)
-    setNormalMode t;
-    next t;
-    Token.LEFT_BRACE
+    (match peek t with
+    | `Chr '|' ->
+      next_n ~n:2 t;
+      Token.LEFT_PIPE_BRACE
+    | _ ->
+      (* NOTE: Do we always want to go into normal mode when seeing { ? *)
+      setNormalMode t;
+      next t;
+      Token.LEFT_BRACE)
   | `Chr '}' ->
     popNormalMode t;
-    if inNormalMode t
-    then (
-      next t;
-      Token.RIGHT_BRACE)
-    else scan_token ~start_pos t
+    next t;
+    Token.RIGHT_BRACE
   | `Chr ':' ->
     (match peek t with
     | `Chr ':' ->
@@ -804,6 +762,10 @@ and scan_normal_token ~start_pos t =
     | `Chr '|' ->
       next_n ~n:2 t;
       Token.LOGICAL_OR
+    | `Chr '}' ->
+      popNormalMode t;
+      next_n ~n:2 t;
+      Token.RIGHT_PIPE_BRACE
     | _ ->
       Diagnostics.report
         ~start_pos
@@ -880,17 +842,16 @@ and scan_normal_token ~start_pos t =
 
 and scan_token ~start_pos t =
   (* Printf.printf "\nMODE(s): %s\n" (String.concat " " (List.rev_map show_mode t.mode)); *)
-  match t.mode with
-  | Template :: _ -> scan_template_token ~start_pos t
-  | TemplateAttributes :: _ -> scan_template_attributes_token ~start_pos t
-  | ComponentAttributes :: _ -> scan_component_attributes_token ~start_pos t
-  | StringTemplate :: _ -> scan_string_template_token ~start_pos t
-  | String :: _ -> scan_string ~start_pos t
-  | [] | Normal :: _ -> scan_normal_token ~start_pos t
+  match current_mode t with
+  | Template -> scan_template_token ~start_pos t
+  | TemplateAttributes -> scan_template_attributes_token ~start_pos t
+  | ComponentAttributes -> scan_component_attributes_token ~start_pos t
+  | String -> scan_string_token ~start_pos t
+  | Normal -> scan_normal_token ~start_pos t
 ;;
 
 let scan t =
-  if not (inTemplateMode t || inStringMode t) then skip_whitespace t;
+  if not (current_mode t = Template || current_mode t = String) then skip_whitespace t;
   let start_pos = make_position t in
   let token = scan_token ~start_pos t in
   (* print_endline (Token.to_string token); *)

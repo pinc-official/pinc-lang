@@ -41,6 +41,15 @@ let rec literal_of_expr ?ident state expr =
     | None ->
       failwith (Printf.sprintf "Unbound identifier `%s`" id) (* Unbound identifier *)
     | Some v -> v)
+  | Ast.StringExpression expressions ->
+    let buf = Buffer.create 256 in
+    expressions
+    |> Iter.iter (function
+           | Ast.StringText s -> Buffer.add_string buf s
+           | Ast.StringInterpolation expr ->
+             let s = literal_of_expr state expr |> Ast.Literal.to_string in
+             Buffer.add_string buf s);
+    Ast.Literal.String (Buffer.contents buf)
   | Ast.RecordExpression expressions ->
     let attrs =
       expressions
@@ -170,7 +179,7 @@ let rec literal_of_expr ?ident state expr =
       let a = left |> literal_of_expr state in
       let b = right |> literal_of_expr state in
       Ast.Literal.Bool (Ast.Literal.compare a b >= 0)
-    | Ast.Operators.Binary.CONCAT | Ast.Operators.Binary.STRING_TEMPLATE ->
+    | Ast.Operators.Binary.CONCAT ->
       let a = left |> literal_of_expr state in
       let b = right |> literal_of_expr state in
       (match a, b with

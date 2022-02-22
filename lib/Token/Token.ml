@@ -6,14 +6,15 @@ type token_type =
   | FLOAT of float
   | STRING of string
   | TAG of string
-  | STRING_TEMPLATE_START
-  | STRING_TEMPLATE_END
   | LEFT_PAREN
   | RIGHT_PAREN
   | LEFT_BRACK
   | RIGHT_BRACK
   | LEFT_BRACE
   | RIGHT_BRACE
+  | LEFT_PIPE_BRACE
+  | RIGHT_PIPE_BRACE
+  | DOUBLE_QUOTE
   | COLON
   | DOUBLE_COLON
   | COMMA
@@ -77,18 +78,19 @@ let make ~start_pos ~end_pos typ = { typ; start_pos; end_pos }
 let to_string = function
   | FLOAT f -> Printf.sprintf "%f" f
   | INT i -> Printf.sprintf "%i" i
-  | STRING s -> Printf.sprintf "%S" s
+  | STRING s -> Printf.sprintf "`%s`" s
   | TAG s -> Printf.sprintf "#%s" (String.capitalize_ascii s)
   | IDENT_LOWER s -> Printf.sprintf "%s" (String.lowercase_ascii s)
   | IDENT_UPPER s -> Printf.sprintf "%s" (String.capitalize_ascii s)
-  | STRING_TEMPLATE_START -> "${"
-  | STRING_TEMPLATE_END -> "}"
   | KEYWORD_TRUE -> "true"
   | KEYWORD_FALSE -> "false"
   | LEFT_PAREN -> "("
   | RIGHT_PAREN -> ")"
   | LEFT_BRACE -> "{"
   | RIGHT_BRACE -> "}"
+  | LEFT_PIPE_BRACE -> "{|"
+  | RIGHT_PIPE_BRACE -> "|}"
+  | DOUBLE_QUOTE -> "\""
   | LEFT_BRACK -> "["
   | RIGHT_BRACK -> "]"
   | SEMICOLON -> ";"
@@ -164,6 +166,9 @@ let is_keyword = function
   | RIGHT_BRACK
   | LEFT_BRACE
   | RIGHT_BRACE
+  | LEFT_PIPE_BRACE
+  | RIGHT_PIPE_BRACE
+  | DOUBLE_QUOTE
   | COLON
   | DOUBLE_COLON
   | COMMA
@@ -207,9 +212,7 @@ let is_keyword = function
   | HTML_OPEN_TAG _
   | HTML_CLOSE_TAG _
   | COMPONENT_OPEN_TAG _
-  | COMPONENT_CLOSE_TAG _
-  | STRING_TEMPLATE_START
-  | STRING_TEMPLATE_END -> false
+  | COMPONENT_CLOSE_TAG _ -> false
 ;;
 
 let keyword_of_string = function

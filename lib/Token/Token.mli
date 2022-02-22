@@ -6,14 +6,15 @@ type token_type =
   | FLOAT of float
   | STRING of string
   | TAG of string
-  | STRING_TEMPLATE_START
-  | STRING_TEMPLATE_END
   | LEFT_PAREN
   | RIGHT_PAREN
   | LEFT_BRACK
   | RIGHT_BRACK
   | LEFT_BRACE
   | RIGHT_BRACE
+  | LEFT_PIPE_BRACE
+  | RIGHT_PIPE_BRACE
+  | DOUBLE_QUOTE
   | COLON
   | DOUBLE_COLON
   | COMMA

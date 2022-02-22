@@ -11,7 +11,11 @@ end
 
 type identifier = Id of string
 
-type template_node =
+and string_template =
+  | StringInterpolation of expression
+  | StringText of string
+
+and template_node =
   | HtmlTemplateNode of
       { tag : string
       ; attributes : attribute Iter.t
@@ -62,6 +66,7 @@ and tag =
 and expression =
   | IdentifierExpression of identifier
   | LiteralExpression of Literal.t
+  | StringExpression of string_template Iter.t
   | RecordExpression of (bool * string * expression) Iter.t
   | ArrayExpression of expression Iter.t
   | TagExpression of tag * tag_body

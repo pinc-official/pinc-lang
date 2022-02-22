@@ -31,5 +31,3 @@
 - Functions / Lambdas
 
 - Pipe operator (`|` or `|>`)
-
-- Cleanup String Templates!!
