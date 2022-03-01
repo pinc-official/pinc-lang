@@ -28,9 +28,9 @@ doc: "https://c-cube.github.io/iter/doc/"
 bug-reports: "https://github.com/c-cube/iter/issues"
 dev-repo: "git+https://github.com/c-cube/iter.git"
 url {
-  src: "https://github.com/c-cube/sequence/archive/v1.3.tar.gz"
+  src: "https://github.com/c-cube/sequence/archive/v1.4.tar.gz"
   checksum: [
-    "md5=68ddbe4a3626943308d9a4f2be9fa146"
-    "sha512=ab4c1002cb1fbc83d6dc71bae6f47666eb12f63e23c83dd38a5a2e9a9a6f2b3368ef477a7e269b7c6352035e274b745aa37bf082b7aef8d3a88e380097310678"
+    "md5=24b1ea680cd2f8d3ee664ea21837e58b"
+    "sha512=8bcb6ddaab69aa18a8489a2287313227d59062fd554f70373a10bdbe1d1eabe4b199860223709fe7baa917d0d47aedeed895ed6d610a989ca540e00fe9cd135b"
   ]
 }
