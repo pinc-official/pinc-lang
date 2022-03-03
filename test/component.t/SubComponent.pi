@@ -1,16 +1,16 @@
 component SubComponent {
-  let content = #String;
+  let content = #String(key: "content");
 
-  let shouter = #String(defaultValue: "NOTHING!") :: val -> val ++ "!!";
+  let shouter = #String(key: "shouter", default: "NOTHING!") :: val -> val ++ "!!";
   
-  let num = #Int :: val -> val ** 2;
+  let num = #Int(key: "num") :: val -> val ** 2;
   
-  let array_things = #Array(of: #Int);
+  let array_things = #Array(key: "array_things", of: #Int);
   
-  let record = #Record(of: {
-    a: #Int(defaultValue: 12) :: val -> if (val == 12) "NEEEEIN" else "JAP",
-    b?: #Boolean,
-    c: #String,
+  let record = #Record(key: "record", of: {
+    a: #Int(key: "a", default: 12) :: val -> if (val == 12) "NEEEEIN" else "JAP",
+    b?: #Boolean(key: "b"),
+    c: #String(key: "c"),
   });
 
   #Template {

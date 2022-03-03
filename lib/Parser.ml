@@ -93,8 +93,8 @@ module Helpers = struct
       let has_sep = optional sep t in
       match fn t with
       | Some r ->
-        if has_sep || Iter.is_empty acc
-        then loop (Iter.cons r acc)
+        if has_sep || acc = []
+        then loop (r :: acc)
         else (
           print_endline
             (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
@@ -103,14 +103,14 @@ module Helpers = struct
                (Printf.sprintf
                   "Expected list to be separated by %s"
                   (Token.to_string sep))))
-      | None -> Iter.rev acc
+      | None -> List.rev acc
     in
-    loop Iter.empty
+    loop []
   ;;
 
   let non_empty_separated_list ~sep ~fn t =
     let res = separated_list ~sep ~fn t in
-    if Iter.is_empty res
+    if res = []
     then (
       print_endline
         (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
@@ -121,41 +121,21 @@ module Helpers = struct
   let list ~fn t =
     let rec loop acc =
       match fn t with
-      | Some r -> loop (Iter.cons r acc)
-      | None -> Iter.rev acc
+      | Some r -> loop (r :: acc)
+      | None -> List.rev acc
     in
-    loop Iter.empty
+    loop []
   ;;
 
   let non_empty_list ~fn t =
     let res = list ~fn t in
-    if Iter.is_empty res
-    then raise (Parser_Error (Printf.sprintf "Expected list to not be empty"));
+    if res = [] then raise (Parser_Error (Printf.sprintf "Expected list to not be empty"));
     res
   ;;
 end
 
 module Rules = struct
-  let rec parse_literal t =
-    match t.token.typ with
-    | Token.STRING s ->
-      next t;
-      Some (Ast.Literal.String s)
-    | Token.INT i ->
-      next t;
-      Some (Ast.Literal.Int i)
-    | Token.FLOAT f ->
-      next t;
-      Some (Ast.Literal.Float f)
-    | Token.KEYWORD_TRUE ->
-      next t;
-      Some (Ast.Literal.Bool true)
-    | Token.KEYWORD_FALSE ->
-      next t;
-      Some (Ast.Literal.Bool false)
-    | _ -> None
-
-  and parse_string_template t =
+  let rec parse_string_template t =
     match t.token.typ with
     | Token.STRING s ->
       next t;
@@ -172,78 +152,37 @@ module Rules = struct
     let attributes =
       if t |> optional Token.LEFT_PAREN
       then (
-        let res = t |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA in
+        let res =
+          t
+          |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
+          |> List.to_seq
+          |> Ast.StringMap.of_seq
+        in
         t |> expect Token.RIGHT_PAREN;
         res)
-      else Iter.empty
+      else Ast.StringMap.empty
     in
-    let get_attr key (attr_key, attr_value) =
-      if attr_key = key then Some attr_value else None
+    let body =
+      if t |> optional Token.DOUBLE_COLON
+      then (
+        let bind = t |> Helpers.expect_identifier ~typ:`Lower in
+        t |> expect Token.ARROW;
+        let body =
+          match parse_expression t with
+          | None -> failwith "Expected expression as transformer."
+          | Some expr -> expr
+        in
+        Some (Ast.Lowercase_Id bind, body))
+      else None
     in
     match name with
-    | "String" ->
-      Some
-        (Ast.TagString
-           { label = Iter.find (get_attr "label") attributes
-           ; placeholder = Iter.find (get_attr "placeholder") attributes
-           ; inline = Iter.find (get_attr "inline") attributes
-           ; default_value = Iter.find (get_attr "defaultValue") attributes
-           })
-    | "Int" ->
-      Some
-        (Ast.TagInt
-           { label = Iter.find (get_attr "label") attributes
-           ; placeholder = Iter.find (get_attr "placeholder") attributes
-           ; default_value = Iter.find (get_attr "defaultValue") attributes
-           })
-    | "Float" ->
-      Some
-        (Ast.TagFloat
-           { label = Iter.find (get_attr "label") attributes
-           ; placeholder = Iter.find (get_attr "placeholder") attributes
-           ; default_value = Iter.find (get_attr "defaultValue") attributes
-           })
-    | "Boolean" ->
-      Some
-        (Ast.TagBoolean
-           { label = Iter.find (get_attr "label") attributes
-           ; default_value = Iter.find (get_attr "defaultValue") attributes
-           })
-    | "Array" ->
-      Some
-        (Ast.TagArray
-           { label = Iter.find (get_attr "label") attributes
-           ; default_value = Iter.find (get_attr "defaultValue") attributes
-           ; elements =
-               (match Iter.find (get_attr "of") attributes with
-               | Some (Ast.TagExpression (tag, body)) -> tag, body
-               | Some _ -> failwith "expected attribute `of` on array tag, to be a tag."
-               | None ->
-                 failwith
-                   "expected attribute `of` on array tag, to describe the type of the \
-                    elements inside the array.")
-           })
-    | "Record" ->
-      Some
-        (Ast.TagRecord
-           { label = Iter.find (get_attr "label") attributes
-           ; properties =
-               (match Iter.find (get_attr "of") attributes with
-               | Some (Ast.RecordExpression attributes) ->
-                 attributes
-                 |> Iter.map (fun (nullable, key, value) ->
-                        match value with
-                        | Ast.TagExpression (tag, body) -> nullable, key, tag, body
-                        | _ ->
-                          failwith
-                            ("expected property `" ^ key ^ "` on record tag, to be a tag."))
-               | Some _ ->
-                 failwith "expected attribute `of` on record tag, to be a record of tags."
-               | None ->
-                 failwith
-                   "expected attribute `of` on record tag, to describe the type of the \
-                    properties inside the record.")
-           })
+    | "String" -> Some (Ast.TagString (attributes, body))
+    | "Int" -> Some (Ast.TagInt (attributes, body))
+    | "Float" -> Some (Ast.TagFloat (attributes, body))
+    | "Boolean" -> Some (Ast.TagBoolean (attributes, body))
+    | "Array" -> Some (Ast.TagArray (attributes, body))
+    | "Record" -> Some (Ast.TagRecord (attributes, body))
+    | "Slot" -> Some (Ast.TagSlot attributes)
     | s -> failwith ("Unknown tag with name `" ^ s ^ "`.")
 
   and parse_attribute ?(sep = Token.COLON) t =
@@ -262,7 +201,24 @@ module Rules = struct
       let nullable = optional Token.QUESTIONMARK t in
       expect Token.COLON t;
       let value = parse_expression t in
-      value |> Option.map (fun value -> nullable, key, value)
+      value |> Option.map (fun value -> key, (nullable, value))
+    | _ -> None
+
+  and parse_component_slots t =
+    match t.token.typ with
+    | Token.COMPONENT_SLOT_OPEN_TAG (component, slot_identifier) ->
+      next t;
+      let children =
+        t |> expect Token.HTML_OR_COMPONENT_TAG_END;
+        let children = t |> Helpers.list ~fn:parse_template_node in
+        t |> expect (Token.COMPONENT_SLOT_CLOSE_TAG (component, slot_identifier));
+        children
+      in
+      Some Ast.(Uppercase_Id slot_identifier, children)
+    | Token.STRING s ->
+      (* TODO: This is crap! *)
+      next t;
+      Some Ast.(Uppercase_Id "", [ TextTemplateNode s ])
     | _ -> None
 
   and parse_template_node t =
@@ -276,18 +232,23 @@ module Rules = struct
         match parse_expression t with
         | Some e -> Ast.ExpressionTemplateNode e
         | None ->
-          (* TODO: Should this be an error? *)
-          ExpressionTemplateNode (Ast.LiteralExpression Ast.Literal.Null)
+          (* TODO: This is `<div>{}</div>` ... Should this be an error? Probably yes... *)
+          ExpressionTemplateNode (Ast.BlockExpression (String [ StringText "" ]))
       in
       t |> expect Token.RIGHT_BRACE;
       Some expression
     | Token.HTML_OPEN_TAG tag ->
       next t;
-      let attributes = Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL) t in
+      let attributes =
+        t
+        |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
+        |> List.to_seq
+        |> Ast.StringMap.of_seq
+      in
       let self_closing = t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING in
       let children =
         if self_closing
-        then Iter.empty
+        then []
         else (
           t |> expect Token.HTML_OR_COMPONENT_TAG_END;
           let children = t |> Helpers.list ~fn:parse_template_node in
@@ -297,23 +258,35 @@ module Rules = struct
       Some (Ast.HtmlTemplateNode { tag; attributes; children; self_closing })
     | Token.COMPONENT_OPEN_TAG identifier ->
       next t;
-      let attributes = Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL) t in
+      let attributes =
+        t
+        |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
+        |> List.to_seq
+        |> Ast.StringMap.of_seq
+      in
       let self_closing = t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING in
       let children =
         if self_closing
-        then Iter.empty
+        then []
         else (
           t |> expect Token.HTML_OR_COMPONENT_TAG_END;
-          let children = t |> Helpers.list ~fn:parse_template_node in
+          let children = t |> Helpers.list ~fn:parse_component_slots in
           t |> expect (Token.COMPONENT_CLOSE_TAG identifier);
           children)
       in
       Some
-        (Ast.ComponentTemplateNode { identifier = Id identifier; attributes; children })
+        (Ast.ComponentTemplateNode
+           { identifier = Uppercase_Id identifier; attributes; children })
     | _ -> None
 
   and parse_expression_part t =
     match t.token.typ with
+    | Token.KEYWORD_BREAK ->
+      next t;
+      Some Ast.BreakExpression
+    | Token.KEYWORD_CONTINUE ->
+      next t;
+      Some Ast.ContinueExpression
     (* PARSING PARENTHESIZED EXPRESSION *)
     | Token.LEFT_PAREN ->
       next t;
@@ -332,19 +305,42 @@ module Rules = struct
       in
       if is_record
       then (
-        let attrs = Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field t in
+        let attrs =
+          t
+          |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field
+          |> List.to_seq
+          |> Ast.StringMap.of_seq
+        in
         t |> expect Token.RIGHT_BRACE;
-        Some (Ast.RecordExpression attrs))
-      else (
-        let statements = Helpers.list ~fn:parse_statement t in
+        Some Ast.(Record attrs))
+      else
+        let* expression = parse_expression t in
         t |> expect Token.RIGHT_BRACE;
-        Some (Ast.BlockExpression statements))
+        Some (Ast.BlockExpression expression)
+    (* PARSING LET EXPRESSION *)
+    | Token.KEYWORD_LET ->
+      next t;
+      let identifier = Helpers.expect_identifier ~typ:`Lower t in
+      let nullable = t |> optional Token.QUESTIONMARK in
+      t |> expect Token.EQUAL;
+      let expression = parse_expression t in
+      expect Token.SEMICOLON t;
+      let body = parse_expression t in
+      (match body with
+      | None -> failwith "Unused let declaration"
+      | Some body ->
+        (match expression with
+        | Some expression when nullable ->
+          Some (Ast.OptionalLetExpression (Lowercase_Id identifier, expression, body))
+        | Some expression ->
+          Some (Ast.LetExpression (Lowercase_Id identifier, expression, body))
+        | None -> failwith "Expected expression as right hand side of let declaration"))
     (* PARSING FOR IN EXPRESSION *)
     | Token.KEYWORD_FOR ->
       next t;
       expect Token.LEFT_PAREN t;
       let identifier = Helpers.expect_identifier ~typ:`Lower t in
-      let iterator = Ast.Id identifier in
+      let iterator = Ast.Lowercase_Id identifier in
       expect Token.KEYWORD_IN t;
       let reverse = optional Token.KEYWORD_REVERSE t in
       let* expr1 = parse_expression t in
@@ -354,20 +350,26 @@ module Rules = struct
       then (
         let* expr2 = parse_expression t in
         expect Token.RIGHT_PAREN t;
-        let body = Helpers.list ~fn:parse_statement t in
-        Some
-          (Ast.ForInRangeExpression
-             { iterator
-             ; reverse
-             ; from = expr1
-             ; upto = expr2
-             ; inclusive = inclusive_range
-             ; body
-             }))
+        let body = parse_expression t in
+        match body with
+        | None -> failwith "Expected expression as body of for loop"
+        | Some body ->
+          Some
+            (Ast.ForInRangeExpression
+               { iterator
+               ; reverse
+               ; from = expr1
+               ; upto = expr2
+               ; inclusive = inclusive_range
+               ; body
+               }))
       else (
         expect Token.RIGHT_PAREN t;
-        let body = Helpers.list ~fn:parse_statement t in
-        Some (Ast.ForInExpression { iterator; reverse; iterable = expr1; body }))
+        let body = parse_expression t in
+        match body with
+        | None -> failwith "Expected expression as body of for loop"
+        | Some body ->
+          Some (Ast.ForInExpression { iterator; reverse; iterable = expr1; body }))
     (* PARSING IF EXPRESSION *)
     | Token.KEYWORD_IF ->
       next t;
@@ -379,29 +381,10 @@ module Rules = struct
         if optional Token.KEYWORD_ELSE t then parse_expression t else None
       in
       Some (Ast.ConditionalExpression { condition; consequent; alternate })
-    (* PARSING ARRAY EXPRESSION *)
-    | Token.LEFT_BRACK ->
-      next t;
-      let expressions = Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t in
-      expect Token.RIGHT_BRACK t;
-      Some (Ast.ArrayExpression expressions)
     (* PARSING TAG EXPRESSION *)
     | Token.TAG name ->
       let* tag = parse_tag name t in
-      let transformer =
-        if t |> optional Token.DOUBLE_COLON
-        then (
-          let bind = t |> Helpers.expect_identifier ~typ:`Lower in
-          t |> expect Token.ARROW;
-          let body =
-            match parse_expression t with
-            | None -> failwith "Expected expression as transformer."
-            | Some expr -> expr
-          in
-          Some (Ast.Id bind, body))
-        else None
-      in
-      Some (Ast.TagExpression (tag, transformer))
+      Some (Ast.TagExpression tag)
     (* PARSING TEMPLATE EXPRESSION *)
     | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
       let template_nodes = t |> Helpers.list ~fn:parse_template_node in
@@ -418,27 +401,45 @@ module Rules = struct
       next t;
       let operator = Ast.Operators.Unary.make NOT in
       let* argument = parse_expression ~prio:operator.precedence t in
-      Some (Ast.UnaryExpression { operator = Ast.Operators.Unary.NOT; argument })
+      Some (Ast.UnaryExpression (Ast.Operators.Unary.NOT, argument))
     (* PARSING UNARY MINUS EXPRESSION *)
     | Token.UNARY_MINUS ->
       next t;
       let operator = Ast.Operators.Unary.make MINUS in
       let* argument = parse_expression ~prio:operator.precedence t in
-      Some (Ast.UnaryExpression { operator = Ast.Operators.Unary.MINUS; argument })
+      Some (Ast.UnaryExpression (Ast.Operators.Unary.MINUS, argument))
     (* PARSING IDENTIFIER EXPRESSION *)
-    | Token.IDENT_LOWER identifier | Token.IDENT_UPPER identifier ->
+    | Token.IDENT_LOWER identifier ->
       next t;
-      Some (Ast.IdentifierExpression (Id identifier))
-    (* PARSING STRING EXPRESSION *)
+      Some (Ast.LowercaseIdentifierExpression (Lowercase_Id identifier))
+    | Token.IDENT_UPPER identifier ->
+      next t;
+      Some (Ast.UppercaseIdentifierExpression (Uppercase_Id identifier))
+    (* PARSING VALUE EXPRESSION *)
     | Token.DOUBLE_QUOTE ->
       next t;
       let s = t |> Helpers.list ~fn:parse_string_template in
       t |> expect Token.DOUBLE_QUOTE;
-      Some (Ast.StringExpression s)
-      (* PARSING LITERAL EXPRESSION *)
-    | Token.INT _ | Token.FLOAT _ | Token.KEYWORD_TRUE | Token.KEYWORD_FALSE ->
-      let literal = parse_literal t in
-      literal |> Option.map (fun o -> Ast.LiteralExpression o)
+      Some Ast.(String s)
+    | Token.INT i ->
+      next t;
+      Some Ast.(Int i)
+    | Token.FLOAT f ->
+      next t;
+      Some Ast.(Float f)
+    | Token.KEYWORD_TRUE ->
+      next t;
+      Some Ast.(Bool true)
+    | Token.KEYWORD_FALSE ->
+      next t;
+      Some Ast.(Bool false)
+    | Token.LEFT_BRACK ->
+      next t;
+      let expressions =
+        Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t |> Iter.of_list
+      in
+      expect Token.RIGHT_BRACK t;
+      Some Ast.(Array expressions)
     | _ -> None
 
   and parse_binary_operator t =
@@ -488,7 +489,7 @@ module Rules = struct
             ("Expected expression on right hand side of "
             ^ (operator |> Ast.Operators.Binary.to_string))
         | Some right ->
-          let left = Ast.BinaryExpression { left; operator; right } in
+          let left = Ast.BinaryExpression (left, operator, right) in
           let expect_close token = expect token t in
           let () = Option.iter expect_close closing_token in
           loop ~left ~prio t)
@@ -496,70 +497,44 @@ module Rules = struct
     let* left = parse_expression_part t in
     Some (loop ~prio ~left t)
 
-  and parse_statement t =
-    match t.token.typ with
-    | Token.KEYWORD_BREAK ->
-      next t;
-      Some Ast.BreakStmt
-    | Token.KEYWORD_CONTINUE ->
-      next t;
-      Some Ast.ContinueStmt
-    | Token.KEYWORD_LET ->
-      next t;
-      let identifier = Helpers.expect_identifier t in
-      let nullable = t |> optional Token.QUESTIONMARK in
-      t |> expect Token.EQUAL;
-      let expression = parse_expression t in
-      expect Token.SEMICOLON t;
-      (match expression with
-      | Some right -> Some (Ast.DeclarationStmt { nullable; left = Id identifier; right })
-      | None -> assert false)
-      (* TODO: Exception *)
-    | _ ->
-      (match parse_expression t with
-      | Some expr -> Some (Ast.ExpressionStmt expr)
-      | None -> None)
-
   and parse_declaration t =
     match t.token.typ with
     | ( Token.KEYWORD_SITE
       | Token.KEYWORD_PAGE
       | Token.KEYWORD_COMPONENT
       | Token.KEYWORD_STORE ) as typ ->
-      let start_pos = t.token.start_pos in
       next t;
       let identifier = Helpers.expect_identifier ~typ:`Upper t in
-      let identifier = Ast.Id identifier in
       let attributes =
         if optional Token.LEFT_PAREN t
         then (
           let attributes =
             Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t
+            |> List.to_seq
+            |> Ast.StringMap.of_seq
           in
           t |> expect Token.RIGHT_PAREN;
           Some attributes)
         else None
       in
-      let body = Helpers.non_empty_list ~fn:parse_statement t in
-      (match typ with
-      | Token.KEYWORD_SITE ->
-        Some (Ast.SiteDeclaration { location = start_pos; identifier; attributes; body })
-      | Token.KEYWORD_PAGE ->
-        Some (Ast.PageDeclaration { location = start_pos; identifier; attributes; body })
-      | Token.KEYWORD_COMPONENT ->
-        Some
-          (Ast.ComponentDeclaration { location = start_pos; identifier; attributes; body })
-      | Token.KEYWORD_STORE ->
-        Some (Ast.StoreDeclaration { location = start_pos; identifier; attributes; body })
-      | _ -> assert false)
+      let body = parse_expression t in
+      (match body with
+      | None -> failwith "Expected declaration to have a body"
+      | Some body ->
+        (match typ with
+        | Token.KEYWORD_SITE -> Some (identifier, Ast.SiteDeclaration (attributes, body))
+        | Token.KEYWORD_PAGE -> Some (identifier, Ast.PageDeclaration (attributes, body))
+        | Token.KEYWORD_COMPONENT ->
+          Some (identifier, Ast.ComponentDeclaration (attributes, body))
+        | Token.KEYWORD_STORE -> Some (identifier, Ast.StoreDeclaration (attributes, body))
+        | _ -> assert false))
     | Token.END_OF_INPUT -> None
     | _ -> assert false
   ;;
 end
 
 let scan t =
-  let declarations = t |> Helpers.list ~fn:Rules.parse_declaration in
-  declarations
+  t |> Helpers.list ~fn:Rules.parse_declaration |> List.to_seq |> Ast.StringMap.of_seq
 ;;
 
 let parse_file filename =

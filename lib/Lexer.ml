@@ -315,27 +315,131 @@ let get_uppercase_ident t =
   loop buf t
 ;;
 
+let scan_component_open_tag t =
+  let start_pos = make_position t in
+  (* NEXT once to skip the beginning < char *)
+  next t;
+  let open_tag =
+    match t.current with
+    | `Chr 'A' .. 'Z' -> get_uppercase_ident t
+    | `Chr c ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        (Diagnostics.Message
+           (Printf.sprintf
+              "Invalid Component tag! Component tags have to start with an uppercase \
+               letter. Instead saw: %c"
+              c))
+    | `EOF ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        Diagnostics.NonTerminatedTemplate
+  in
+  match t.current with
+  | `Chr '.' ->
+    next t;
+    (match t.current with
+    | `Chr 'A' .. 'Z' -> Token.COMPONENT_SLOT_OPEN_TAG (open_tag, get_uppercase_ident t)
+    | `Chr c ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        (Diagnostics.Message
+           (Printf.sprintf
+              "Invalid Slot identifier! Slot identifiers have to start with an uppercase \
+               letter. Instead saw: %c"
+              c))
+    | `EOF ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        Diagnostics.NonTerminatedTemplate)
+  | _ -> Token.COMPONENT_OPEN_TAG open_tag
+;;
+
 let scan_open_tag t =
   let start_pos = make_position t in
   (* NEXT once to skip the beginning < char *)
   next t;
   match t.current with
   | `Chr 'a' .. 'z' -> Token.HTML_OPEN_TAG (get_html_tag_ident t)
-  | `Chr 'A' .. 'Z' -> Token.COMPONENT_OPEN_TAG (get_uppercase_ident t)
   | `Chr c ->
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
       (Diagnostics.Message
          (Printf.sprintf
-            "Invalid Template tag! Template tags have to start with an uppercase or \
-             lowercase letter. Instead saw: %c"
+            "Invalid Template tag! Template tags have to start with a lowercase letter. \
+             Instead saw: %c"
             c))
   | `EOF ->
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
       Diagnostics.NonTerminatedTemplate
+;;
+
+let scan_component_close_tag t =
+  let start_pos = make_position t in
+  (* NEXT twice to skip the beginning </ chars *)
+  next_n ~n:2 t;
+  let close_tag =
+    match t.current with
+    | `Chr 'A' .. 'Z' -> get_uppercase_ident t
+    | `Chr c ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        (Diagnostics.Message
+           (Printf.sprintf
+              "Invalid Component tag! Component tags have to start with an uppercase \
+               letter. Instead saw: %c"
+              c))
+    | `EOF ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        Diagnostics.NonTerminatedTemplate
+  in
+  let expect_closing_greater fn =
+    match t.current with
+    | `Chr '>' ->
+      next t;
+      fn
+    | _ ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        (ExpectedToken Token.GREATER)
+  in
+  match t.current with
+  | `Chr '>' ->
+    next t;
+    Token.COMPONENT_CLOSE_TAG close_tag
+  | `Chr '.' ->
+    next t;
+    (match t.current with
+    | `Chr 'A' .. 'Z' ->
+      let slot_ident = get_uppercase_ident t in
+      expect_closing_greater @@ Token.COMPONENT_SLOT_CLOSE_TAG (close_tag, slot_ident)
+    | `Chr c ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        (Diagnostics.Message
+           (Printf.sprintf
+              "Invalid Slot identifier! Slot identifiers have to start with an uppercase \
+               letter. Instead saw: %c"
+              c))
+    | `EOF ->
+      Diagnostics.report
+        ~start_pos
+        ~end_pos:(make_position t)
+        Diagnostics.NonTerminatedTemplate)
+  | _ ->
+    Diagnostics.report ~start_pos ~end_pos:(make_position t) (ExpectedToken Token.GREATER)
 ;;
 
 let scan_close_tag t =
@@ -345,15 +449,14 @@ let scan_close_tag t =
   let close_tag =
     match t.current with
     | `Chr 'a' .. 'z' -> Token.HTML_CLOSE_TAG (get_html_tag_ident t)
-    | `Chr 'A' .. 'Z' -> Token.COMPONENT_CLOSE_TAG (get_uppercase_ident t)
     | `Chr c ->
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
         (Diagnostics.Message
            (Printf.sprintf
-              "Invalid Template tag! Template tags have to start with an uppercase or \
-               lowercase letter. Instead saw: %c"
+              "Invalid Template tag! Template tags have to start with a lowercase \
+               letter. Instead saw: %c"
               c))
     | `EOF ->
       Diagnostics.report
@@ -499,10 +602,26 @@ let rec scan_template_token ~start_pos t =
     | `Chr 'A' .. 'Z' ->
       setTemplateMode t;
       setComponentAttributesMode t;
-      scan_open_tag t
+      scan_component_open_tag t
     | `Chr '/' ->
       popTemplateMode t;
-      scan_close_tag t
+      (match peek ~n:2 t with
+      | `Chr 'a' .. 'z' -> scan_close_tag t
+      | `Chr 'A' .. 'Z' -> scan_component_close_tag t
+      | `Chr c ->
+        Diagnostics.report
+          ~start_pos
+          ~end_pos:(make_position t)
+          (Diagnostics.Message
+             (Printf.sprintf
+                "Invalid Template tag! Template tags have to start with an uppercase or \
+                 lowercase letter. Instead saw: %c"
+                c))
+      | `EOF ->
+        Diagnostics.report
+          ~start_pos
+          ~end_pos:(make_position t)
+          Diagnostics.NonTerminatedTemplate)
     | _ -> scan_template_text t)
   | `Chr '/' ->
     (match peek t with
@@ -813,7 +932,23 @@ and scan_normal_token ~start_pos t =
       Token.LESS_EQUAL
     | `Chr '/' ->
       popTemplateMode t;
-      scan_close_tag t
+      (match peek ~n:2 t with
+      | `Chr 'a' .. 'z' -> scan_close_tag t
+      | `Chr 'A' .. 'Z' -> scan_component_close_tag t
+      | `Chr c ->
+        Diagnostics.report
+          ~start_pos
+          ~end_pos:(make_position t)
+          (Diagnostics.Message
+             (Printf.sprintf
+                "Invalid Template tag! Template tags have to start with an uppercase or \
+                 lowercase letter. Instead saw: %c"
+                c))
+      | `EOF ->
+        Diagnostics.report
+          ~start_pos
+          ~end_pos:(make_position t)
+          Diagnostics.NonTerminatedTemplate)
     | `Chr 'a' .. 'z' ->
       setTemplateMode t;
       setTemplateAttributesMode t;
@@ -821,7 +956,7 @@ and scan_normal_token ~start_pos t =
     | `Chr 'A' .. 'Z' ->
       setTemplateMode t;
       setComponentAttributesMode t;
-      scan_open_tag t
+      scan_component_open_tag t
     | c when is_whitespace t.prev && is_whitespace c ->
       next t;
       Token.LESS

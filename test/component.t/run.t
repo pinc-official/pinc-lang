@@ -14,7 +14,6 @@
   8
   9
   
-  
         JAP
         
         Something

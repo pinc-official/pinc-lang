@@ -11,7 +11,9 @@ let main =
   let rec loop lexer =
     match Lexer.scan lexer with
     | { typ = Token.END_OF_INPUT; _ } -> ()
-    | _ -> loop lexer
+    | _t ->
+      print_endline (Token.to_string _t.Token.typ);
+      loop lexer
   in
   let () = loop lexer in
   let end_time = Unix.gettimeofday () in

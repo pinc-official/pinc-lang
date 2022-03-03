@@ -1,142 +1,89 @@
-module Literal = Literal
+module StringMap = Map.Make (String)
 module Operators = Operators
 
 module SourceLocation = struct
-  type t =
-    { source : string
-    ; pos_start : Position.t
-    ; pos_end : Position.t
-    }
+  type t = string * Position.t * Position.t
 end
 
-type identifier = Id of string
+type uppercase_identifier = Uppercase_Id of string
+and lowercase_identifier = Lowercase_Id of string
 
 and string_template =
   | StringInterpolation of expression
   | StringText of string
 
+and component_slot = uppercase_identifier * template_node list
+
 and template_node =
   | HtmlTemplateNode of
       { tag : string
-      ; attributes : attribute Iter.t
-      ; children : template_node Iter.t
+      ; attributes : attributes
+      ; children : template_node list
       ; self_closing : bool
       }
   | ComponentTemplateNode of
-      { identifier : identifier
-      ; attributes : attribute Iter.t
-      ; children : template_node Iter.t
+      { identifier : uppercase_identifier
+      ; attributes : attributes
+      ; children : component_slot list
       }
   | ExpressionTemplateNode of expression
   | TextTemplateNode of string
 
-and tag_body = (identifier * expression) option
+and tag_body = lowercase_identifier * expression
 
 and tag =
-  | TagString of
-      { label : expression option
-      ; placeholder : expression option
-      ; inline : expression option
-      ; default_value : expression option
-      }
-  | TagInt of
-      { label : expression option
-      ; placeholder : expression option
-      ; default_value : expression option
-      }
-  | TagFloat of
-      { label : expression option
-      ; placeholder : expression option
-      ; default_value : expression option
-      }
-  | TagBoolean of
-      { label : expression option
-      ; default_value : expression option
-      }
-  | TagArray of
-      { label : expression option
-      ; default_value : expression option
-      ; elements : tag * tag_body
-      }
-  | TagRecord of
-      { label : expression option
-      ; properties : (bool * string * tag * tag_body) Iter.t
-      }
+  | TagString of attributes * tag_body option
+  | TagInt of attributes * tag_body option
+  | TagFloat of attributes * tag_body option
+  | TagBoolean of attributes * tag_body option
+  | TagArray of attributes * tag_body option
+  | TagRecord of attributes * tag_body option
+  | TagSlot of attributes
 
 and expression =
-  | IdentifierExpression of identifier
-  | LiteralExpression of Literal.t
-  | StringExpression of string_template Iter.t
-  | RecordExpression of (bool * string * expression) Iter.t
-  | ArrayExpression of expression Iter.t
-  | TagExpression of tag * tag_body
+  | String of string_template list
+  | Int of int
+  | Float of float
+  | Bool of bool
+  | Array of expression Iter.t
+  | Record of (bool * expression) StringMap.t
+  | UppercaseIdentifierExpression of uppercase_identifier
+  | LowercaseIdentifierExpression of lowercase_identifier
+  | OptionalLetExpression of lowercase_identifier * expression * expression
+  | LetExpression of lowercase_identifier * expression * expression
+  | TagExpression of tag
+  | BreakExpression
+  | ContinueExpression
   | ForInExpression of
-      { iterator : identifier
+      { iterator : lowercase_identifier
       ; reverse : bool
       ; iterable : expression
-      ; body : statement Iter.t
+      ; body : expression
       }
   | ForInRangeExpression of
-      { iterator : identifier
+      { iterator : lowercase_identifier
       ; reverse : bool
       ; inclusive : bool
       ; from : expression
       ; upto : expression
-      ; body : statement Iter.t
+      ; body : expression
       }
-  | TemplateExpression of template_node Iter.t
-  | BlockExpression of statement Iter.t
+  | TemplateExpression of template_node list
+  | BlockExpression of expression
   | ConditionalExpression of
       { condition : expression
       ; consequent : expression
       ; alternate : expression option
       }
-  | UnaryExpression of
-      { operator : Operators.Unary.typ
-      ; argument : expression
-      }
-  | BinaryExpression of
-      { left : expression
-      ; operator : Operators.Binary.typ
-      ; right : expression
-      }
+  | UnaryExpression of Operators.Unary.typ * expression
+  | BinaryExpression of expression * Operators.Binary.typ * expression
 
-and attribute = string * expression
-
-and statement =
-  | BreakStmt
-  | ContinueStmt
-  | DeclarationStmt of
-      { nullable : bool
-      ; left : identifier
-      ; right : expression
-      }
-  | ExpressionStmt of expression
+and attributes = expression StringMap.t
 
 and declaration =
-  | SiteDeclaration of
-      { location : Position.t
-      ; identifier : identifier
-      ; attributes : attribute Iter.t option
-      ; body : statement Iter.t
-      }
-  | PageDeclaration of
-      { location : Position.t
-      ; identifier : identifier
-      ; attributes : attribute Iter.t option
-      ; body : statement Iter.t
-      }
-  | ComponentDeclaration of
-      { location : Position.t
-      ; identifier : identifier
-      ; attributes : attribute Iter.t option
-      ; body : statement Iter.t
-      }
-  | StoreDeclaration of
-      { location : Position.t
-      ; identifier : identifier
-      ; attributes : attribute Iter.t option
-      ; body : statement Iter.t
-      }
+  | ComponentDeclaration of attributes option * expression
+  | SiteDeclaration of attributes option * expression
+  | PageDeclaration of attributes option * expression
+  | StoreDeclaration of attributes option * expression
 
-and t = declaration Iter.t
+and t = declaration StringMap.t
