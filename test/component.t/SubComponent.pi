@@ -1,16 +1,18 @@
   component HeadlineSecondary {
-  let class? = #String(key: "class", default: "");
+  let class? = #String(default: "");
 
-  let tag? = #String(key: "tag", default: "h3");
-  let text = #String(key: "text");
-  let subheadline? = #String(key: "subheadline");
+  let tag? = #String(default: "h3");
+  let data = {
+    text: #String,
+    subheadline?: #String
+  };
 
   let class = "HeadlineSecondary {| class |}";
 
   let content =
   <>
-    {if (subheadline) <Subheadline text={subheadline} />}
-    {text}
+    {if (data.subheadline) <Subheadline text={data.subheadline} />}
+    {data.text}
   </>;
 
   if (tag == "h1") {

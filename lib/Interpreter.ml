@@ -80,6 +80,7 @@ end
 
 type state =
   { output : Buffer.t
+  ; binding_identifier : string option
   ; models : string -> Value.t option
   ; slots : string -> (state * Ast.template_node list) option
   ; declarations : declaration StringMap.t
@@ -87,7 +88,15 @@ type state =
   }
 
 let init_state ?(models = fun _ -> None) ?(slots = fun _ -> None) declarations =
-  let state = { output = Buffer.create 4096; scope = []; models; slots; declarations } in
+  let state =
+    { output = Buffer.create 4096
+    ; binding_identifier = None
+    ; scope = []
+    ; models
+    ; slots
+    ; declarations
+    }
+  in
   state
 ;;
 
@@ -113,7 +122,17 @@ let rec eval_expression ~state = function
   | Array l -> Value.Array (Iter.map (eval_expression ~state) l)
   | Record map ->
     Value.Record
-      (map |> Ast.StringMap.map (fun (_, expression) -> eval_expression ~state expression))
+      (map
+      |> Ast.StringMap.mapi (fun ident (optional, expression) ->
+             expression
+             |> eval_expression ~state:{ state with binding_identifier = Some ident }
+             |> function
+             | Value.Null when not optional ->
+               failwith
+                 (Printf.sprintf
+                    "identifier %s is not marked as nullable, but was given a null value."
+                    ident)
+             | value -> value))
   | String template -> eval_string_template ~state template
   | LetExpression (Lowercase_Id ident, expression, body) ->
     eval_let ~state ~ident ~optional:false ~expression body
@@ -388,7 +407,7 @@ and eval_lowercase_identifier ~state id =
 and eval_let ~state ~ident ~optional ~expression body =
   let state =
     expression
-    |> eval_expression ~state
+    |> eval_expression ~state:{ state with binding_identifier = Some ident }
     |> function
     | Value.Null when not optional ->
       failwith
@@ -501,12 +520,14 @@ and eval_tag ?value ~state =
   in
   let get_value attributes =
     let get_key attributes =
-      match
+      let key =
         StringMap.find_opt "key" attributes |> Option.map (eval_expression ~state)
-      with
-      | Some (Value.String s) -> s
-      | Some _ -> failwith "Expected attribute `key` on tag to be of type string"
-      | None -> failwith "Expected attribute `key` to exist on tag"
+      in
+      match key, state.binding_identifier with
+      | Some (Value.String s), _ident -> s
+      | Some _, _ident -> failwith "Expected attribute `key` on tag to be of type string"
+      | None, Some ident -> ident
+      | None, None -> failwith "Expected attribute `key` to exist on tag"
     in
     match value with
     | Some v -> v
@@ -610,7 +631,7 @@ and eval_tag ?value ~state =
         match expr with
         | Ast.TagExpression tag ->
           tag
-          |> eval_tag ~state
+          |> eval_tag ~state:{ state with binding_identifier = Some key }
           |> (function
           | Value.Null when not nullable ->
             failwith
