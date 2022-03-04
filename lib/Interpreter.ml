@@ -81,7 +81,7 @@ end
 type state =
   { output : Buffer.t
   ; models : string -> Value.t option
-  ; slots : string -> (state * Ast.template_node Iter.t) option
+  ; slots : string -> (state * Ast.template_node list) option
   ; declarations : declaration StringMap.t
   ; scope : Value.t StringMap.t list
   }
@@ -639,7 +639,18 @@ and eval_tag ?value ~state =
       in
       let r = of' |> StringMap.mapi eval_property in
       Value.Record r |> apply_transformer ~transformer:body)
-  | _ -> failwith "Not Implemented"
+  | Ast.TagSlot attributes ->
+    let id =
+      match StringMap.find_opt "id" attributes with
+      | Some (UppercaseIdentifierExpression (Uppercase_Id id)) -> id
+      | Some _ ->
+        failwith "Expected attribute `id` on #Slot to be an uppercase identifier"
+      | None -> failwith "Expected attribute `id` to exist on #Slot"
+    in
+    (match state.slots id with
+    | None -> Value.Null
+    | Some (caller_state, nodes) ->
+      Value.Array (nodes |> List.map (eval_template ~state:caller_state) |> Iter.of_list))
 
 and eval_template ~state template =
   match template with
@@ -682,11 +693,18 @@ and eval_template ~state template =
     Value.String (Buffer.contents buf)
   | Ast.ExpressionTemplateNode expr -> eval_expression ~state expr
   | Ast.ComponentTemplateNode
-      { identifier = Uppercase_Id identifier; attributes; children = _ } ->
+      { identifier = Uppercase_Id identifier; attributes; children } ->
     let models s =
       attributes |> StringMap.map (eval_expression ~state) |> StringMap.find_opt s
     in
-    let state = init_state ~models state.declarations in
+    let slots s =
+      children
+      |> List.map (fun (Ast.Uppercase_Id id, value) -> id, (state, value))
+      |> List.to_seq
+      |> StringMap.of_seq
+      |> StringMap.find_opt s
+    in
+    let state = init_state ~models ~slots state.declarations in
     eval ~state ~root:identifier
 
 and eval_declaration ~state declaration =

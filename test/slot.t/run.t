@@ -1,11 +1,14 @@
   $ esy x print . Component
   <div class="SlotProvider">
         
-          <div>Hello Default</div>
+          
+  <div>Hello Default</div>
+  
         
   
         
-          <div class="SubComponent" data-foo="9">
+          
+  <div class="SubComponent" data-foo="9">
         Hello, SubComponent!
   
         0
@@ -19,13 +22,13 @@
   8
   9
   
-  
         JAP
         
         Something
         
         NOTHING!!!
       </div>
+  
         
   
         
