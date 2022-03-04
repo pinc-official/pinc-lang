@@ -124,9 +124,6 @@ let rec eval_expression ~state = function
   | TagExpression tag -> eval_tag ~state tag
   | ForInExpression { iterator = Lowercase_Id ident; reverse; iterable; body } ->
     eval_for_in ~state ~ident ~reverse ~iterable body
-  | ForInRangeExpression
-      { iterator = Lowercase_Id ident; reverse; inclusive; from; upto; body } ->
-    eval_for_in_range ~state ~ident ~reverse ~inclusive ~from ~upto body
   | TemplateExpression nodes ->
     Value.Array (nodes |> List.map (eval_template ~state) |> Iter.of_list)
   | BlockExpression e -> eval_block ~state e
@@ -173,6 +170,10 @@ let rec eval_expression ~state = function
     eval_binary_array_add ~state left right
   | BinaryExpression (left, Operators.Binary.MERGE, right) ->
     eval_binary_merge ~state left right
+  | BinaryExpression (left, Operators.Binary.RANGE, right) ->
+    eval_range ~state ~inclusive:false left right
+  | BinaryExpression (left, Operators.Binary.INCLUSIVE_RANGE, right) ->
+    eval_range ~state ~inclusive:true left right
   | BreakExpression -> failwith "Not Implemented"
   | ContinueExpression -> failwith "Not Implemented"
 
@@ -429,7 +430,7 @@ and eval_for_in ~state ~ident ~reverse ~iterable body =
   | Value.Float _ -> failwith "Cannot iterate over float value"
   | Value.Bool _ -> failwith "Cannot iterate over boolean value"
 
-and eval_for_in_range ~state ~ident ~reverse ~inclusive ~from ~upto body =
+and eval_range ~state ~inclusive from upto =
   let from = from |> eval_expression ~state in
   let upto = upto |> eval_expression ~state in
   let from, upto =
@@ -447,26 +448,14 @@ and eval_for_in_range ~state ~ident ~reverse ~inclusive ~from ~upto body =
          type int."
   in
   let iter =
-    match reverse, from > upto with
-    | true, true ->
-      let start = from in
-      let stop = if not inclusive then upto + 1 else upto in
-      Iter.int_range_dec ~start ~stop
-    | true, false -> Iter.empty
-    | false, true -> Iter.empty
-    | false, false ->
+    if from > upto
+    then Iter.empty
+    else (
       let start = from in
       let stop = if not inclusive then upto - 1 else upto in
-      Iter.int_range ~start ~stop
+      Iter.int_range ~start ~stop |> Iter.map (fun i -> Value.Int i))
   in
-  let result =
-    iter
-    |> Iter.map (fun i ->
-           let value = Value.Int i in
-           let state = state |> add_value_to_scope ~ident ~value in
-           eval_block ~state body)
-  in
-  Value.Array result
+  Value.Array iter
 
 and eval_block ~state expr =
   let state = state |> add_scope in

@@ -2,9 +2,7 @@ component Component {
 
   let max = 10;
 
-  let array = for (i in 0..max) {
-    i
-  };
+  let array = 0..max;
 
   let string_array = ["one", "two", "three", "!"];
 
@@ -44,8 +42,8 @@ component Component {
         <div class="item">{i}</div>
       }}
 
-      10..0 reverse
-      {for (i in reverse 10..0) {
+      0..10 reverse
+      {for (i in reverse 0..10) {
         <div class="item">{i}</div>
       }}
 
@@ -82,8 +80,8 @@ component Component {
         <div class="item">{i}</div>
       }}
 
-      10...0 reverse
-      {for (i in reverse 10...0) {
+      0...10 reverse
+      {for (i in reverse 0...10) {
         <div class="item">{i}</div>
       }}
 

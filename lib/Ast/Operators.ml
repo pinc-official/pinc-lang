@@ -25,6 +25,8 @@ module Binary = struct
     | BRACKET_ACCESS
     | ARRAY_ADD
     | MERGE
+    | RANGE
+    | INCLUSIVE_RANGE
 
   type t =
     { typ : typ
@@ -54,6 +56,9 @@ module Binary = struct
       { typ = LESS_EQUAL; precedence = 30; assoc = Left; closing_token = None }
     | AND -> { typ = AND; precedence = 20; assoc = Left; closing_token = None }
     | OR -> { typ = OR; precedence = 10; assoc = Left; closing_token = None }
+    | RANGE -> { typ = RANGE; precedence = 5; assoc = Left; closing_token = None }
+    | INCLUSIVE_RANGE ->
+      { typ = INCLUSIVE_RANGE; precedence = 5; assoc = Left; closing_token = None }
     | ARRAY_ADD -> { typ = ARRAY_ADD; precedence = 0; assoc = Left; closing_token = None }
     | MERGE -> { typ = MERGE; precedence = 0; assoc = Left; closing_token = None }
     | BRACKET_ACCESS ->
@@ -84,6 +89,8 @@ module Binary = struct
     | ARRAY_ADD -> "<-"
     | MERGE -> "@@"
     | BRACKET_ACCESS -> "["
+    | RANGE -> ".."
+    | INCLUSIVE_RANGE -> "..."
   ;;
 end
 

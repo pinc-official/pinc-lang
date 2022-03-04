@@ -48,9 +48,8 @@
         10..0
         
   
-        10..0 reverse
-        <div class="item">10</div>
-  <div class="item">9</div>
+        0..10 reverse
+        <div class="item">9</div>
   <div class="item">8</div>
   <div class="item">7</div>
   <div class="item">6</div>
@@ -59,6 +58,7 @@
   <div class="item">3</div>
   <div class="item">2</div>
   <div class="item">1</div>
+  <div class="item">0</div>
   
   
         <h1>INCLUSIVE RANGES</h1>
@@ -112,7 +112,7 @@
         10...0
         
   
-        10...0 reverse
+        0...10 reverse
         <div class="item">10</div>
   <div class="item">9</div>
   <div class="item">8</div>

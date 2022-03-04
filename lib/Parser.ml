@@ -344,32 +344,12 @@ module Rules = struct
       expect Token.KEYWORD_IN t;
       let reverse = optional Token.KEYWORD_REVERSE t in
       let* expr1 = parse_expression t in
-      let exclusive_range = t |> optional Token.DOTDOT in
-      let inclusive_range = t |> optional Token.DOTDOTDOT in
-      if exclusive_range || inclusive_range
-      then (
-        let* expr2 = parse_expression t in
-        expect Token.RIGHT_PAREN t;
-        let body = parse_expression t in
-        match body with
-        | None -> failwith "Expected expression as body of for loop"
-        | Some body ->
-          Some
-            (Ast.ForInRangeExpression
-               { iterator
-               ; reverse
-               ; from = expr1
-               ; upto = expr2
-               ; inclusive = inclusive_range
-               ; body
-               }))
-      else (
-        expect Token.RIGHT_PAREN t;
-        let body = parse_expression t in
-        match body with
-        | None -> failwith "Expected expression as body of for loop"
-        | Some body ->
-          Some (Ast.ForInExpression { iterator; reverse; iterable = expr1; body }))
+      expect Token.RIGHT_PAREN t;
+      let body = parse_expression t in
+      (match body with
+      | None -> failwith "Expected expression as body of for loop"
+      | Some body ->
+        Some (Ast.ForInExpression { iterator; reverse; iterable = expr1; body }))
     (* PARSING IF EXPRESSION *)
     | Token.KEYWORD_IF ->
       next t;
@@ -463,6 +443,8 @@ module Rules = struct
     | Token.ARROW_LEFT -> Some Ast.Operators.Binary.(make ARRAY_ADD)
     | Token.ATAT -> Some Ast.Operators.Binary.(make MERGE)
     | Token.LEFT_BRACK -> Some Ast.Operators.Binary.(make BRACKET_ACCESS)
+    | Token.DOTDOT -> Some Ast.Operators.Binary.(make RANGE)
+    | Token.DOTDOTDOT -> Some Ast.Operators.Binary.(make INCLUSIVE_RANGE)
     | _ -> None
 
   and parse_unary_operator t =

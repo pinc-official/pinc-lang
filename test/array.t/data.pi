@@ -1,10 +1,10 @@
 component C {
-  let array = [0, 1, 2, 3];
+  let array = 0...3;
   let new_array = array <- 4;
   let new_array_2 = array <- 4 <- 5 <- 6;
   
-  let merged_array = new_array @@ [5, 6, 7];
-  let merged_array_2 = new_array @@ [5, 6, 7] @@ [8, 9];
+  let merged_array = new_array @@ 5...7;
+  let merged_array_2 = new_array @@ 5...7 @@ [8, 9];
   
   let merged_record = { a: 1, b: 2 } @@ { c: 3 };
   let merged_record_2 = { a: 1, b: 2 } @@ { b: 3 }  @@ { y: 8 };

@@ -60,14 +60,6 @@ and expression =
       ; iterable : expression
       ; body : expression
       }
-  | ForInRangeExpression of
-      { iterator : lowercase_identifier
-      ; reverse : bool
-      ; inclusive : bool
-      ; from : expression
-      ; upto : expression
-      ; body : expression
-      }
   | TemplateExpression of template_node list
   | BlockExpression of expression
   | ConditionalExpression of
