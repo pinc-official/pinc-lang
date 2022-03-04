@@ -1,15 +1,15 @@
   $ esy x print . Component
   <section>
-        1
+      1
   foo
   true
   3.1415
   
-        1
-        321
-        
+      1
+      321
+      
   
-        0
+      0
   1
   4
   9
@@ -20,5 +20,5 @@
   64
   81
   100
-      </section>
+    </section>
 

@@ -13,17 +13,15 @@ component SubComponent {
     c: #String(key: "c"),
   });
 
-  #Template {
-    <div class="SubComponent" data-foo={num}>
-      {content}
+  <div class="SubComponent" data-foo={num}>
+    {content}
 
-      {array_things}
+    {array_things}
 
-      {record.a}
-      {record.b}
-      {record.c}
-      
-      {shouter}
-    </div>
-  }
+    {record.a}
+    {record.b}
+    {record.c}
+    
+    {shouter}
+  </div>
 }

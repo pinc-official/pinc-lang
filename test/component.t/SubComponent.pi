@@ -1,29 +1,31 @@
-component SubComponent {
-  let content = #String(key: "content");
+  component HeadlineSecondary {
+  let class? = #String(key: "class", default: "");
 
-  let shouter = #String(key: "shouter", default: "NOTHING!") :: val -> val ++ "!!";
-  
-  let num = #Int(key: "num") :: val -> val ** 2;
-  
-  let array_things = #Array(key: "array_things", of: #Int);
-  
-  let record = #Record(key: "record", of: {
-    a: #Int(key: "a", default: 12) :: val -> if (val == 12) "NEEEEIN" else "JAP",
-    b?: #Boolean(key: "b"),
-    c: #String(key: "c"),
-  });
+  let tag? = #String(key: "tag", default: "h3");
+  let text = #String(key: "text");
+  let subheadline? = #String(key: "subheadline");
 
-  #Template {
-    <div class="SubComponent" data-foo={num}>
-      {content}
+  let class = "HeadlineSecondary {| class |}";
 
-      {array_things}
+  let content =
+  <>
+    {if (subheadline) <Subheadline text={subheadline} />}
+    {text}
+  </>;
 
-      {record.a}
-      {record.b}
-      {record.c}
-      
-      {shouter}
-    </div>
+  if (tag == "h1") {
+    <h1 class={class}>{content}</h1>
+  } else if (tag == "h2") {
+    <h2 class={class}>{content}</h2>
+  } else if (tag == "h3") {
+    <h3 class={class}>{content}</h3>
+  } else if (tag == "h4") {
+    <h4 class={class}>{content}</h4>
+  } else if (tag == "h5") {
+    <h5 class={class}>{content}</h5>
+  } else if (tag == "h6") {
+    <h6 class={class}>{content}</h6>
+  } else {
+    "INVALID TAG!"
   }
 }

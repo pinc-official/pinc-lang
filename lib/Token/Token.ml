@@ -58,7 +58,8 @@ type token_type =
   | KEYWORD_SITE
   | KEYWORD_PAGE
   | KEYWORD_STORE
-  | TEMPLATE
+  | HTML_OPEN_FRAGMENT
+  | HTML_CLOSE_FRAGMENT
   | HTML_OPEN_TAG of string
   | HTML_CLOSE_TAG of string
   | COMPONENT_OPEN_TAG of string
@@ -137,7 +138,8 @@ let to_string = function
   | KEYWORD_PAGE -> "page"
   | KEYWORD_STORE -> "store"
   | COMMENT -> "// Comment"
-  | TEMPLATE -> "#Template"
+  | HTML_OPEN_FRAGMENT -> "<>"
+  | HTML_CLOSE_FRAGMENT -> "</>"
   | HTML_OPEN_TAG s -> Printf.sprintf "<%s" s
   | HTML_CLOSE_TAG s -> Printf.sprintf "</%s" s
   | COMPONENT_OPEN_TAG s -> Printf.sprintf "<%s" s
@@ -203,7 +205,8 @@ let is_keyword = function
   | LESS_EQUAL
   | PLUSPLUS
   | KEYWORD_REVERSE
-  | TEMPLATE
+  | HTML_OPEN_FRAGMENT
+  | HTML_CLOSE_FRAGMENT
   | HTML_OR_COMPONENT_TAG_END
   | HTML_OR_COMPONENT_TAG_SELF_CLOSING
   | END_OF_INPUT

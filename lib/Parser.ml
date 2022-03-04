@@ -40,14 +40,15 @@ let expect token t =
   let test = t.token.typ = token in
   if test
   then next t
-  else (
-    print_endline (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
-    raise
-      (Parser_Error
+  else
+    Diagnostics.report
+      ~start_pos:t.token.start_pos
+      ~end_pos:t.token.end_pos
+      (Diagnostics.Message
          (Printf.sprintf
-            "Expected: %s, got %s"
+            "Expected: `%s`, got `%s`"
             (Token.to_string token)
-            (Token.to_string t.token.typ))))
+            (Token.to_string t.token.typ)))
 ;;
 
 let make ~filename src =
@@ -95,14 +96,14 @@ module Helpers = struct
       | Some r ->
         if has_sep || acc = []
         then loop (r :: acc)
-        else (
-          print_endline
-            (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
-          raise
-            (Parser_Error
+        else
+          Diagnostics.report
+            ~start_pos:t.token.start_pos
+            ~end_pos:t.token.end_pos
+            (Diagnostics.Message
                (Printf.sprintf
-                  "Expected list to be separated by %s"
-                  (Token.to_string sep))))
+                  "Expected list to be separated by `%s`"
+                  (Token.to_string sep)))
       | None -> List.rev acc
     in
     loop []
@@ -111,11 +112,12 @@ module Helpers = struct
   let non_empty_separated_list ~sep ~fn t =
     let res = separated_list ~sep ~fn t in
     if res = []
-    then (
-      print_endline
-        (Printf.sprintf "%i:%i" t.token.start_pos.line t.token.start_pos.column);
-      raise (Parser_Error (Printf.sprintf "Expected list to not be empty")));
-    res
+    then
+      Diagnostics.report
+        ~start_pos:t.token.start_pos
+        ~end_pos:t.token.end_pos
+        (Diagnostics.Message (Printf.sprintf "Expected list to not be empty"))
+    else res
   ;;
 
   let list ~fn t =
@@ -129,8 +131,13 @@ module Helpers = struct
 
   let non_empty_list ~fn t =
     let res = list ~fn t in
-    if res = [] then raise (Parser_Error (Printf.sprintf "Expected list to not be empty"));
-    res
+    if res = []
+    then
+      Diagnostics.report
+        ~start_pos:t.token.start_pos
+        ~end_pos:t.token.end_pos
+        (Diagnostics.Message (Printf.sprintf "Expected list to not be empty"))
+    else res
   ;;
 end
 
@@ -169,7 +176,12 @@ module Rules = struct
         t |> expect Token.ARROW;
         let body =
           match parse_expression t with
-          | None -> failwith "Expected expression as transformer."
+          | None ->
+            Diagnostics.report
+              ~start_pos:t.token.start_pos
+              ~end_pos:t.token.end_pos
+              (Diagnostics.Message
+                 (Printf.sprintf "Expected expression as transformer of tag"))
           | Some expr -> expr
         in
         Some (Ast.Lowercase_Id bind, body))
@@ -183,7 +195,11 @@ module Rules = struct
     | "Array" -> Some (Ast.TagArray (attributes, body))
     | "Record" -> Some (Ast.TagRecord (attributes, body))
     | "Slot" -> Some (Ast.TagSlot attributes)
-    | s -> failwith ("Unknown tag with name `" ^ s ^ "`.")
+    | s ->
+      Diagnostics.report
+        ~start_pos:t.token.start_pos
+        ~end_pos:t.token.end_pos
+        (Diagnostics.Message (Printf.sprintf "Unknown tag with name `%s`." s))
 
   and parse_attribute ?(sep = Token.COLON) t =
     match t.token.typ with
@@ -327,14 +343,24 @@ module Rules = struct
       expect Token.SEMICOLON t;
       let body = parse_expression t in
       (match body with
-      | None -> failwith "Unused let declaration"
+      | None ->
+        Diagnostics.report
+          ~start_pos:t.token.start_pos
+          ~end_pos:t.token.end_pos
+          (Diagnostics.Message (Printf.sprintf "Unused let declaration"))
       | Some body ->
         (match expression with
         | Some expression when nullable ->
           Some (Ast.OptionalLetExpression (Lowercase_Id identifier, expression, body))
         | Some expression ->
           Some (Ast.LetExpression (Lowercase_Id identifier, expression, body))
-        | None -> failwith "Expected expression as right hand side of let declaration"))
+        | None ->
+          Diagnostics.report
+            ~start_pos:t.token.start_pos
+            ~end_pos:t.token.end_pos
+            (Diagnostics.Message
+               (Printf.sprintf
+                  "Expected expression as right hand side of let declaration"))))
     (* PARSING FOR IN EXPRESSION *)
     | Token.KEYWORD_FOR ->
       next t;
@@ -347,7 +373,11 @@ module Rules = struct
       expect Token.RIGHT_PAREN t;
       let body = parse_expression t in
       (match body with
-      | None -> failwith "Expected expression as body of for loop"
+      | None ->
+        Diagnostics.report
+          ~start_pos:t.token.start_pos
+          ~end_pos:t.token.end_pos
+          (Diagnostics.Message (Printf.sprintf "Expected expression as body of for loop"))
       | Some body ->
         Some (Ast.ForInExpression { iterator; reverse; iterable = expr1; body }))
     (* PARSING IF EXPRESSION *)
@@ -370,11 +400,10 @@ module Rules = struct
       let template_nodes = t |> Helpers.list ~fn:parse_template_node in
       Some (Ast.TemplateExpression template_nodes)
     (* PARSING TEMPLATE EXPRESSION *)
-    | Token.TEMPLATE ->
+    | Token.HTML_OPEN_FRAGMENT ->
       next t;
-      t |> expect Token.LEFT_BRACE;
       let template_nodes = t |> Helpers.list ~fn:parse_template_node in
-      t |> expect Token.RIGHT_BRACE;
+      t |> expect Token.HTML_CLOSE_FRAGMENT;
       Some (Ast.TemplateExpression template_nodes)
     (* PARSING UNARY NOT EXPRESSION *)
     | Token.NOT ->
@@ -467,9 +496,13 @@ module Rules = struct
         in
         (match parse_expression ~prio:new_prio t with
         | None ->
-          failwith
-            ("Expected expression on right hand side of "
-            ^ (operator |> Ast.Operators.Binary.to_string))
+          Diagnostics.report
+            ~start_pos:t.token.start_pos
+            ~end_pos:t.token.end_pos
+            (Diagnostics.Message
+               (Printf.sprintf
+                  "Expected expression on right hand side of `%s`"
+                  (Ast.Operators.Binary.to_string operator)))
         | Some right ->
           let left = Ast.BinaryExpression (left, operator, right) in
           let expect_close token = expect token t in
@@ -501,7 +534,11 @@ module Rules = struct
       in
       let body = parse_expression t in
       (match body with
-      | None -> failwith "Expected declaration to have a body"
+      | None ->
+        Diagnostics.report
+          ~start_pos:t.token.start_pos
+          ~end_pos:t.token.end_pos
+          (Diagnostics.Message "Expected declaration to have a body")
       | Some body ->
         (match typ with
         | Token.KEYWORD_SITE -> Some (identifier, Ast.SiteDeclaration (attributes, body))

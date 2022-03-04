@@ -12,23 +12,21 @@ component C {
   let nested_array = new_array <- (merged_array <- merged_record_2);
   let index = 8;
 
-  #Template {
-    <section>
-      {array}
+  <section>
+    {array}
 
-      {new_array}
+    {new_array}
 
-      {new_array_2}
+    {new_array_2}
 
-      {merged_array}
-      
-      {merged_array_2}
+    {merged_array}
+    
+    {merged_array_2}
 
-      {merged_record}
-      {merged_record_2}
+    {merged_record}
+    {merged_record_2}
 
-      {nested_array[2 + 3 * 1][index]["y"]}
-      {nested_array[2 + 3 * 1][index].y}
-    </section>
-  }
+    {nested_array[2 + 3 * 1][index]["y"]}
+    {nested_array[2 + 3 * 1][index].y}
+  </section>
 }

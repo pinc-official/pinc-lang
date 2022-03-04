@@ -25,16 +25,14 @@ component Component {
     },
   };
 
-  #Template {
-    <section>
-      {record}
-      {record_nested.a}
-      {record_nested.d.f}
-      {record_nested.d.h.y}
+  <section>
+    {record}
+    {record_nested.a}
+    {record_nested.d.f}
+    {record_nested.d.h.y}
 
-      {for (el in record_nested.d.g) {
-        el ** 2
-      }}
-    </section>
-  }
+    {for (el in record_nested.d.g) {
+      el ** 2
+    }}
+  </section>
 }

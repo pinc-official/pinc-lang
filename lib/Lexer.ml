@@ -55,43 +55,11 @@ let previous_mode t =
   | _ :: ComponentAttributes :: _ -> ComponentAttributes
 ;;
 
-let setNormalMode t = t.mode <- Normal :: t.mode
+let setMode mode t = t.mode <- mode :: t.mode
 
-let popNormalMode t =
+let popMode mode t =
   match t.mode with
-  | Normal :: tl -> t.mode <- tl
-  | _ -> ()
-;;
-
-let setStringMode t = t.mode <- String :: t.mode
-
-let popStringMode t =
-  match t.mode with
-  | String :: tl -> t.mode <- tl
-  | _ -> ()
-;;
-
-let setTemplateMode t = t.mode <- Template :: t.mode
-
-let popTemplateMode t =
-  match t.mode with
-  | Template :: tl -> t.mode <- tl
-  | _ -> ()
-;;
-
-let setTemplateAttributesMode t = t.mode <- TemplateAttributes :: t.mode
-
-let popTemplateAttributesMode t =
-  match t.mode with
-  | TemplateAttributes :: tl -> t.mode <- tl
-  | _ -> ()
-;;
-
-let setComponentAttributesMode t = t.mode <- ComponentAttributes :: t.mode
-
-let popComponentAttributesMode t =
-  match t.mode with
-  | ComponentAttributes :: tl -> t.mode <- tl
+  | current_mode :: tl when current_mode = mode -> t.mode <- tl
   | _ -> ()
 ;;
 
@@ -256,20 +224,17 @@ let scan_tag_or_template t =
   next t;
   let () = loop t in
   let found = Buffer.contents buf in
-  match found with
-  | "Template" -> Token.TEMPLATE
-  | s ->
-    (match s.[0] with
-    | 'A' .. 'Z' -> Token.TAG found
-    | _ ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.Message
-           (Printf.sprintf
-              "Invalid Tag! Tags have to start with an uppercase character. Did you mean \
-               to write #%s?"
-              (String.capitalize_ascii found))))
+  match found.[0] with
+  | 'A' .. 'Z' -> Token.TAG found
+  | _ ->
+    Diagnostics.report
+      ~start_pos
+      ~end_pos:(make_position t)
+      (Diagnostics.Message
+         (Printf.sprintf
+            "Invalid Tag! Tags have to start with an uppercase character. Did you mean \
+             to write #%s?"
+            (String.capitalize_ascii found)))
 ;;
 
 let get_html_tag_ident t =
@@ -586,28 +551,35 @@ let skip_comment t =
 let rec scan_template_token ~start_pos t =
   match t.current with
   | `Chr '{' ->
-    setNormalMode t;
+    setMode Normal t;
     next t;
     Token.LEFT_BRACE
   | `Chr '}' ->
-    popNormalMode t;
+    popMode Normal t;
     next t;
     Token.RIGHT_BRACE
   | `Chr '<' ->
     (match peek t with
+    | `Chr '>' ->
+      next_n ~n:2 t;
+      setMode Template t;
+      Token.HTML_OPEN_FRAGMENT
     | `Chr 'a' .. 'z' ->
-      setTemplateMode t;
-      setTemplateAttributesMode t;
+      setMode Template t;
+      setMode TemplateAttributes t;
       scan_open_tag t
     | `Chr 'A' .. 'Z' ->
-      setTemplateMode t;
-      setComponentAttributesMode t;
+      setMode Template t;
+      setMode ComponentAttributes t;
       scan_component_open_tag t
     | `Chr '/' ->
-      popTemplateMode t;
+      popMode Template t;
       (match peek ~n:2 t with
       | `Chr 'a' .. 'z' -> scan_close_tag t
       | `Chr 'A' .. 'Z' -> scan_component_close_tag t
+      | `Chr '>' ->
+        next_n ~n:3 t;
+        Token.HTML_CLOSE_FRAGMENT
       | `Chr c ->
         Diagnostics.report
           ~start_pos
@@ -626,7 +598,7 @@ let rec scan_template_token ~start_pos t =
   | `Chr '/' ->
     (match peek t with
     | `Chr '>' ->
-      popTemplateMode t;
+      popMode Template t;
       next_n ~n:2 t;
       Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING
     | `Chr c ->
@@ -652,15 +624,15 @@ let rec scan_template_token ~start_pos t =
 and scan_string_token ~start_pos t =
   match t.current with
   | `Chr '"' ->
-    popStringMode t;
+    popMode String t;
     next t;
     Token.DOUBLE_QUOTE
   | `Chr '{' when peek t = `Chr '|' ->
-    setNormalMode t;
+    setMode Normal t;
     next_n ~n:2 t;
     Token.LEFT_PIPE_BRACE
   | `Chr '|' when peek t = `Chr '}' ->
-    popNormalMode t;
+    popMode Normal t;
     next_n ~n:2 t;
     Token.RIGHT_PIPE_BRACE
   | _ -> scan_string ~start_pos t
@@ -670,23 +642,23 @@ and scan_component_attributes_token ~start_pos t =
   | `Chr '_' | `Chr 'a' .. 'z' -> scan_ident t
   | `Chr '"' ->
     next t;
-    setStringMode t;
+    setMode String t;
     Token.DOUBLE_QUOTE
   | `Chr '=' ->
     next t;
     Token.EQUAL
   | `Chr '{' ->
-    setNormalMode t;
+    setMode Normal t;
     next t;
     Token.LEFT_BRACE
   | `Chr '}' ->
-    popNormalMode t;
+    popMode Normal t;
     next t;
     Token.RIGHT_BRACE
   | `Chr '/' ->
     (match peek t with
     | `Chr '>' ->
-      popComponentAttributesMode t;
+      popMode ComponentAttributes t;
       scan_template_token ~start_pos t
     | `Chr c ->
       Diagnostics.report
@@ -699,7 +671,7 @@ and scan_component_attributes_token ~start_pos t =
         ~end_pos:(make_position t)
         Diagnostics.NonTerminatedTemplate)
   | `Chr '>' ->
-    popComponentAttributesMode t;
+    popMode ComponentAttributes t;
     scan_template_token ~start_pos t
   | `EOF ->
     Diagnostics.report
@@ -713,23 +685,23 @@ and scan_template_attributes_token ~start_pos t =
   | `Chr 'A' .. 'Z' | `Chr 'a' .. 'z' -> scan_html_attribute_ident t
   | `Chr '"' ->
     next t;
-    setStringMode t;
+    setMode String t;
     Token.DOUBLE_QUOTE
   | `Chr '=' ->
     next t;
     Token.EQUAL
   | `Chr '{' ->
-    setNormalMode t;
+    setMode Normal t;
     next t;
     Token.LEFT_BRACE
   | `Chr '}' ->
-    popNormalMode t;
+    popMode Normal t;
     next t;
     Token.RIGHT_BRACE
   | `Chr '/' ->
     (match peek t with
     | `Chr '>' ->
-      popTemplateAttributesMode t;
+      popMode TemplateAttributes t;
       scan_template_token ~start_pos t
     | `Chr c ->
       Diagnostics.report
@@ -742,7 +714,7 @@ and scan_template_attributes_token ~start_pos t =
         ~end_pos:(make_position t)
         Diagnostics.NonTerminatedTemplate)
   | `Chr '>' ->
-    popTemplateAttributesMode t;
+    popMode TemplateAttributes t;
     scan_template_token ~start_pos t
   | `EOF ->
     Diagnostics.report
@@ -757,7 +729,7 @@ and scan_normal_token ~start_pos t =
   | `Chr '0' .. '9' -> scan_number t
   | `Chr '"' ->
     next t;
-    setStringMode t;
+    setMode String t;
     Token.DOUBLE_QUOTE
   | `Chr '(' ->
     next t;
@@ -772,17 +744,11 @@ and scan_normal_token ~start_pos t =
     next t;
     Token.RIGHT_BRACK
   | `Chr '{' ->
-    (match peek t with
-    | `Chr '|' ->
-      next_n ~n:2 t;
-      Token.LEFT_PIPE_BRACE
-    | _ ->
-      (* NOTE: Do we always want to go into normal mode when seeing { ? *)
-      setNormalMode t;
-      next t;
-      Token.LEFT_BRACE)
+    setMode Normal t;
+    next t;
+    Token.LEFT_BRACE
   | `Chr '}' ->
-    popNormalMode t;
+    popMode Normal t;
     next t;
     Token.RIGHT_BRACE
   | `Chr ':' ->
@@ -882,7 +848,7 @@ and scan_normal_token ~start_pos t =
       next_n ~n:2 t;
       Token.LOGICAL_OR
     | `Chr '}' ->
-      popNormalMode t;
+      popMode Normal t;
       next_n ~n:2 t;
       Token.RIGHT_PIPE_BRACE
     | _ ->
@@ -924,15 +890,32 @@ and scan_normal_token ~start_pos t =
       Token.STAR)
   | `Chr '<' ->
     (match peek t with
+    | `Chr '>' ->
+      next_n ~n:2 t;
+      Token.HTML_OPEN_FRAGMENT
     | `Chr '-' ->
       next_n ~n:2 t;
       Token.ARROW_LEFT
     | `Chr '=' ->
       next_n ~n:2 t;
       Token.LESS_EQUAL
+    | `Chr 'a' .. 'z' ->
+      setMode Template t;
+      setMode TemplateAttributes t;
+      scan_open_tag t
+    | `Chr 'A' .. 'Z' ->
+      setMode Template t;
+      setMode ComponentAttributes t;
+      scan_component_open_tag t
+    | c when is_whitespace t.prev && is_whitespace c ->
+      next t;
+      Token.LESS
     | `Chr '/' ->
-      popTemplateMode t;
+      popMode Template t;
       (match peek ~n:2 t with
+      | `Chr '>' ->
+        next_n ~n:3 t;
+        Token.HTML_CLOSE_FRAGMENT
       | `Chr 'a' .. 'z' -> scan_close_tag t
       | `Chr 'A' .. 'Z' -> scan_component_close_tag t
       | `Chr c ->
@@ -949,17 +932,6 @@ and scan_normal_token ~start_pos t =
           ~start_pos
           ~end_pos:(make_position t)
           Diagnostics.NonTerminatedTemplate)
-    | `Chr 'a' .. 'z' ->
-      setTemplateMode t;
-      setTemplateAttributesMode t;
-      scan_open_tag t
-    | `Chr 'A' .. 'Z' ->
-      setTemplateMode t;
-      setComponentAttributesMode t;
-      scan_component_open_tag t
-    | c when is_whitespace t.prev && is_whitespace c ->
-      next t;
-      Token.LESS
     | _ ->
       Diagnostics.report
         ~start_pos

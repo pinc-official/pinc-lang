@@ -3,13 +3,11 @@ component SlotProvider {
   let slot_restricted = #Slot(id: Restricted, instanceOf: [SubComponent]);
   let slot_nothing = #Slot(id: Nothing, instanceOf: []);
 
-  #Template {
-    <div class="SlotProvider">
-      {slot_default}
+  <div class="SlotProvider">
+    {slot_default}
 
-      {slot_restricted}
+    {slot_restricted}
 
-      {slot_nothing}
-    </div>
-  }
+    {slot_nothing}
+  </div>
 }
