@@ -284,44 +284,22 @@ let scan_component_open_tag t =
   let start_pos = make_position t in
   (* NEXT once to skip the beginning < char *)
   next t;
-  let open_tag =
-    match t.current with
-    | `Chr 'A' .. 'Z' -> get_uppercase_ident t
-    | `Chr c ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.Message
-           (Printf.sprintf
-              "Invalid Component tag! Component tags have to start with an uppercase \
-               letter. Instead saw: %c"
-              c))
-    | `EOF ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedTemplate
-  in
   match t.current with
-  | `Chr '.' ->
-    next t;
-    (match t.current with
-    | `Chr 'A' .. 'Z' -> Token.COMPONENT_SLOT_OPEN_TAG (open_tag, get_uppercase_ident t)
-    | `Chr c ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.Message
-           (Printf.sprintf
-              "Invalid Slot identifier! Slot identifiers have to start with an uppercase \
-               letter. Instead saw: %c"
-              c))
-    | `EOF ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedTemplate)
-  | _ -> Token.COMPONENT_OPEN_TAG open_tag
+  | `Chr 'A' .. 'Z' -> Token.COMPONENT_OPEN_TAG (get_uppercase_ident t)
+  | `Chr c ->
+    Diagnostics.report
+      ~start_pos
+      ~end_pos:(make_position t)
+      (Diagnostics.Message
+         (Printf.sprintf
+            "Invalid Component tag! Component tags have to start with an uppercase \
+             letter. Instead saw: %c"
+            c))
+  | `EOF ->
+    Diagnostics.report
+      ~start_pos
+      ~end_pos:(make_position t)
+      Diagnostics.NonTerminatedTemplate
 ;;
 
 let scan_open_tag t =
@@ -368,41 +346,10 @@ let scan_component_close_tag t =
         ~end_pos:(make_position t)
         Diagnostics.NonTerminatedTemplate
   in
-  let expect_closing_greater fn =
-    match t.current with
-    | `Chr '>' ->
-      next t;
-      fn
-    | _ ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (ExpectedToken Token.GREATER)
-  in
   match t.current with
   | `Chr '>' ->
     next t;
     Token.COMPONENT_CLOSE_TAG close_tag
-  | `Chr '.' ->
-    next t;
-    (match t.current with
-    | `Chr 'A' .. 'Z' ->
-      let slot_ident = get_uppercase_ident t in
-      expect_closing_greater @@ Token.COMPONENT_SLOT_CLOSE_TAG (close_tag, slot_ident)
-    | `Chr c ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.Message
-           (Printf.sprintf
-              "Invalid Slot identifier! Slot identifiers have to start with an uppercase \
-               letter. Instead saw: %c"
-              c))
-    | `EOF ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedTemplate)
   | _ ->
     Diagnostics.report ~start_pos ~end_pos:(make_position t) (ExpectedToken Token.GREATER)
 ;;

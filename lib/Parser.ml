@@ -220,23 +220,6 @@ module Rules = struct
       value |> Option.map (fun value -> key, (nullable, value))
     | _ -> None
 
-  and parse_component_slots t =
-    match t.token.typ with
-    | Token.COMPONENT_SLOT_OPEN_TAG (component, slot_identifier) ->
-      next t;
-      let children =
-        t |> expect Token.HTML_OR_COMPONENT_TAG_END;
-        let children = t |> Helpers.list ~fn:parse_template_node in
-        t |> expect (Token.COMPONENT_SLOT_CLOSE_TAG (component, slot_identifier));
-        children
-      in
-      Some Ast.(Uppercase_Id slot_identifier, children)
-    | Token.STRING s ->
-      (* TODO: This is crap! *)
-      next t;
-      Some Ast.(Uppercase_Id "", [ TextTemplateNode s ])
-    | _ -> None
-
   and parse_template_node t =
     match t.token.typ with
     | Token.STRING s ->
@@ -286,7 +269,7 @@ module Rules = struct
         then []
         else (
           t |> expect Token.HTML_OR_COMPONENT_TAG_END;
-          let children = t |> Helpers.list ~fn:parse_component_slots in
+          let children = t |> Helpers.list ~fn:parse_template_node in
           t |> expect (Token.COMPONENT_CLOSE_TAG identifier);
           children)
       in

@@ -64,8 +64,6 @@ type token_type =
   | HTML_CLOSE_TAG of string
   | COMPONENT_OPEN_TAG of string
   | COMPONENT_CLOSE_TAG of string
-  | COMPONENT_SLOT_OPEN_TAG of string * string
-  | COMPONENT_SLOT_CLOSE_TAG of string * string
   | HTML_OR_COMPONENT_TAG_SELF_CLOSING
   | HTML_OR_COMPONENT_TAG_END
   | END_OF_INPUT
@@ -144,8 +142,6 @@ let to_string = function
   | HTML_CLOSE_TAG s -> Printf.sprintf "</%s" s
   | COMPONENT_OPEN_TAG s -> Printf.sprintf "<%s" s
   | COMPONENT_CLOSE_TAG s -> Printf.sprintf "</%s" s
-  | COMPONENT_SLOT_OPEN_TAG (component, slot) -> Printf.sprintf "<%s.%s" component slot
-  | COMPONENT_SLOT_CLOSE_TAG (component, slot) -> Printf.sprintf "</%s.%s" component slot
   | HTML_OR_COMPONENT_TAG_SELF_CLOSING -> "/>"
   | HTML_OR_COMPONENT_TAG_END -> "> (TAG END)"
   | END_OF_INPUT -> "(EOF)"
@@ -219,9 +215,7 @@ let is_keyword = function
   | HTML_OPEN_TAG _
   | HTML_CLOSE_TAG _
   | COMPONENT_OPEN_TAG _
-  | COMPONENT_CLOSE_TAG _
-  | COMPONENT_SLOT_OPEN_TAG _
-  | COMPONENT_SLOT_CLOSE_TAG _ -> false
+  | COMPONENT_CLOSE_TAG _ -> false
 ;;
 
 let keyword_of_string = function

@@ -9,6 +9,7 @@ module Value = struct
     | Bool of bool
     | Array of t Iter.t
     | Record of t StringMap.t
+    | TemplateNode of string * t StringMap.t * t list * bool
 
   let rec to_string = function
     | Null -> ""
@@ -25,6 +26,34 @@ module Value = struct
              Buffer.add_string b (to_string value);
              Buffer.add_char b '\n');
       Buffer.contents b
+    | TemplateNode (tag, attributes, children, self_closing) ->
+      let buf = Buffer.create 128 in
+      Buffer.add_char buf '<';
+      Buffer.add_string buf tag;
+      if not (StringMap.is_empty attributes)
+      then
+        attributes
+        |> StringMap.iter (fun key value ->
+               match value with
+               | Null -> ()
+               | String _ | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _
+                 ->
+                 Buffer.add_char buf ' ';
+                 Buffer.add_string buf key;
+                 Buffer.add_char buf '=';
+                 Buffer.add_char buf '"';
+                 Buffer.add_string buf (value |> to_string);
+                 Buffer.add_char buf '"');
+      if self_closing && HTML.is_void_el tag
+      then Buffer.add_string buf " />"
+      else (
+        Buffer.add_char buf '>';
+        children |> List.iter (fun child -> Buffer.add_string buf (to_string child));
+        Buffer.add_char buf '<';
+        Buffer.add_char buf '/';
+        Buffer.add_string buf tag;
+        Buffer.add_char buf '>');
+      Buffer.contents buf
   ;;
 
   let is_true = function
@@ -33,6 +62,7 @@ module Value = struct
     | String s -> s |> String.trim |> String.length > 0
     | Int _ -> true
     | Float _ -> true
+    | TemplateNode _ -> true
     | Array l -> not (Iter.is_empty l)
     | Record m -> not (StringMap.is_empty m)
   ;;
@@ -47,14 +77,22 @@ module Value = struct
     | Bool a, Bool b -> a = b
     | Array a, Array b -> Iter.to_rev_list a = Iter.to_rev_list b
     | Record a, Record b -> StringMap.equal equal a b
+    | ( TemplateNode (a_tag, a_attrs, a_children, a_self_closing)
+      , TemplateNode (b_tag, b_attrs, b_children, b_self_closing) ) ->
+      a_tag = b_tag
+      && a_self_closing = b_self_closing
+      && StringMap.equal equal a_attrs b_attrs
+      && a_children = b_children
     | Null, Null -> true
-    | Null, (String _ | Int _ | Float _ | Bool _ | Array _ | Record _)
-    | Array _, (Null | String _ | Int _ | Float _ | Bool _ | Record _)
-    | Bool _, (Null | String _ | Int _ | Float _ | Array _ | Record _)
-    | Float _, (Null | String _ | Bool _ | Array _ | Record _)
-    | Int _, (Null | String _ | Bool _ | Array _ | Record _)
-    | String _, (Null | Int _ | Float _ | Bool _ | Array _ | Record _)
-    | Record _, (Null | Int _ | Float _ | Bool _ | Array _ | String _) -> false
+    | TemplateNode _, (Null | String _ | Int _ | Float _ | Bool _ | Array _ | Record _)
+    | Null, (String _ | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _)
+    | Array _, (Null | String _ | Int _ | Float _ | Bool _ | Record _ | TemplateNode _)
+    | Bool _, (Null | String _ | Int _ | Float _ | Array _ | Record _ | TemplateNode _)
+    | Float _, (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _)
+    | Int _, (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _)
+    | String _, (Null | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _)
+    | Record _, (Null | Int _ | Float _ | Bool _ | Array _ | String _ | TemplateNode _) ->
+      false
   ;;
 
   let rec compare a b =
@@ -68,13 +106,23 @@ module Value = struct
     | Array a, Array b -> Int.compare (Iter.length a) (Iter.length b)
     | Record a, Record b -> StringMap.compare compare a b
     | Null, Null -> 0
-    | Null, (String _ | Int _ | Float _ | Bool _ | Array _ | Record _) -> assert false
-    | Array _, (Null | String _ | Int _ | Float _ | Bool _ | Record _) -> assert false
-    | Bool _, (Null | String _ | Int _ | Float _ | Array _ | Record _) -> assert false
-    | Float _, (Null | String _ | Bool _ | Array _ | Record _) -> assert false
-    | Int _, (Null | String _ | Bool _ | Array _ | Record _) -> assert false
-    | String _, (Null | Int _ | Float _ | Bool _ | Array _ | Record _) -> assert false
-    | Record _, (Null | String _ | Int _ | Float _ | Bool _ | Array _) -> assert false
+    | TemplateNode _, TemplateNode _ -> 0
+    | TemplateNode _, (Null | String _ | Int _ | Float _ | Bool _ | Array _ | Record _) ->
+      assert false
+    | Null, (String _ | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _) ->
+      assert false
+    | Array _, (Null | String _ | Int _ | Float _ | Bool _ | Record _ | TemplateNode _) ->
+      assert false
+    | Bool _, (Null | String _ | Int _ | Float _ | Array _ | Record _ | TemplateNode _) ->
+      assert false
+    | Float _, (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _) ->
+      assert false
+    | Int _, (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _) ->
+      assert false
+    | String _, (Null | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _) ->
+      assert false
+    | Record _, (Null | String _ | Int _ | Float _ | Bool _ | Array _ | TemplateNode _) ->
+      assert false
   ;;
 end
 
@@ -82,7 +130,7 @@ type state =
   { output : Buffer.t
   ; binding_identifier : string option
   ; models : string -> Value.t option
-  ; slots : string -> (state * Ast.template_node list) option
+  ; slots : string -> Value.t Iter.t option
   ; declarations : declaration StringMap.t
   ; scope : Value.t StringMap.t list
   }
@@ -444,6 +492,7 @@ and eval_for_in ~state ~ident ~reverse ~iterable body =
     in
     Value.Array (s |> Iter.of_str |> maybe_rev |> Iter.map loop)
   | Value.Null -> Value.Null
+  | Value.TemplateNode _ -> failwith "Cannot iterate over template node"
   | Value.Record _ -> failwith "Cannot iterate over record value"
   | Value.Int _ -> failwith "Cannot iterate over int value"
   | Value.Float _ -> failwith "Cannot iterate over float value"
@@ -543,6 +592,7 @@ and eval_tag ?value ~state =
     | Value.Bool _ -> failwith "tried to assign boolean value to a string tag."
     | Value.Array _ -> failwith "tried to assign array value to a string tag."
     | Value.Record _ -> failwith "tried to assign record value to a string tag."
+    | Value.TemplateNode _ -> failwith "tried to assign template node to a string tag."
     | Value.Null -> Value.Null |> apply_transformer ~transformer:body
     | Value.String s -> Value.String s |> apply_transformer ~transformer:body)
   | Ast.TagInt (attributes, body) ->
@@ -554,6 +604,7 @@ and eval_tag ?value ~state =
     | Value.Array _ -> failwith "tried to assign array value to a int tag."
     | Value.String _ -> failwith "tried to assign string value to a int tag."
     | Value.Record _ -> failwith "tried to assign record value to a int tag."
+    | Value.TemplateNode _ -> failwith "tried to assign template node to a int tag."
     | Value.Null -> Value.Null |> apply_transformer ~transformer:body
     | Value.Int i -> Value.Int i |> apply_transformer ~transformer:body)
   | Ast.TagFloat (attributes, body) ->
@@ -565,6 +616,7 @@ and eval_tag ?value ~state =
     | Value.String _ -> failwith "tried to assign string value to a float tag."
     | Value.Int _ -> failwith "tried to assign int value to a float tag."
     | Value.Record _ -> failwith "tried to assign record value to a float tag."
+    | Value.TemplateNode _ -> failwith "tried to assign template node to a float tag."
     | Value.Null -> Value.Null |> apply_transformer ~transformer:body
     | Value.Float f -> Value.Float f |> apply_transformer ~transformer:body)
   | Ast.TagBoolean (attributes, body) ->
@@ -576,6 +628,7 @@ and eval_tag ?value ~state =
     | Value.Int _ -> failwith "tried to assign int value to a boolean tag."
     | Value.Float _ -> failwith "tried to assign float value to a boolean tag."
     | Value.Record _ -> failwith "tried to assign record value to a boolean tag."
+    | Value.TemplateNode _ -> failwith "tried to assign template node to a boolean tag."
     | Value.Null -> Value.Null |> apply_transformer ~transformer:body
     | Value.Bool b -> Value.Bool b |> apply_transformer ~transformer:body)
   | Ast.TagArray (attributes, body) ->
@@ -599,6 +652,7 @@ and eval_tag ?value ~state =
     | Value.Int _ -> failwith "tried to assign int value to a array tag."
     | Value.Float _ -> failwith "tried to assign float value to a array tag."
     | Value.Record _ -> failwith "tried to assign record value to a array tag."
+    | Value.TemplateNode _ -> failwith "tried to assign template node to a array tag."
     | Value.Null -> Value.Null
     | Value.Array l ->
       let eval_item item = of' |> eval_tag ~value:item ~state in
@@ -623,6 +677,7 @@ and eval_tag ?value ~state =
     | Value.Int _ -> failwith "tried to assign int value to a record tag."
     | Value.Float _ -> failwith "tried to assign float value to a record tag."
     | Value.Array _ -> failwith "tried to assign array value to a record tag."
+    | Value.TemplateNode _ -> failwith "tried to assign template node to a record tag."
     | Value.Null -> Value.Null
     | Value.Record r ->
       let models key = StringMap.find_opt key r in
@@ -650,71 +705,86 @@ and eval_tag ?value ~state =
       let r = of' |> StringMap.mapi eval_property in
       Value.Record r |> apply_transformer ~transformer:body)
   | Ast.TagSlot attributes ->
-    let id =
-      match StringMap.find_opt "id" attributes with
-      | Some (UppercaseIdentifierExpression (Uppercase_Id id)) -> id
-      | Some _ ->
-        failwith "Expected attribute `id` on #Slot to be an uppercase identifier"
-      | None -> failwith "Expected attribute `id` to exist on #Slot"
+    let name =
+      attributes
+      |> StringMap.find_opt "name"
+      |> Option.map (eval_expression ~state)
+      |> Option.value ~default:(Value.String "")
+      |> function
+      | Value.String s -> s
+      | _ -> failwith "Expected attribute `name` on #Slot to be of type string."
     in
-    (match state.slots id with
+    (match state.slots name with
     | None -> Value.Null
-    | Some (caller_state, nodes) ->
-      Value.Array (nodes |> List.map (eval_template ~state:caller_state) |> Iter.of_list))
+    | Some values -> Value.Array values)
 
 and eval_template ~state template =
   match template with
   | Ast.TextTemplateNode text -> Value.String text
   | Ast.HtmlTemplateNode { tag; attributes; children; self_closing } ->
-    let buf = Buffer.create 128 in
-    Buffer.add_char buf '<';
-    Buffer.add_string buf tag;
-    if not (StringMap.is_empty attributes)
-    then
-      attributes
-      |> StringMap.iter (fun key value ->
-             let value = value |> eval_expression ~state in
-             match value with
-             | Value.Null -> ()
-             | Value.String _
-             | Value.Int _
-             | Value.Float _
-             | Value.Bool _
-             | Value.Array _
-             | Value.Record _ ->
-               Buffer.add_char buf ' ';
-               Buffer.add_string buf key;
-               Buffer.add_char buf '=';
-               Buffer.add_char buf '"';
-               Buffer.add_string buf (value |> Value.to_string);
-               Buffer.add_char buf '"');
-    if self_closing && HTML.is_void_el tag
-    then Buffer.add_string buf " />"
-    else (
-      Buffer.add_char buf '>';
-      children
-      |> List.iter (fun child ->
-             let res = eval_template ~state child in
-             Buffer.add_string buf (Value.to_string res));
-      Buffer.add_char buf '<';
-      Buffer.add_char buf '/';
-      Buffer.add_string buf tag;
-      Buffer.add_char buf '>');
-    Value.String (Buffer.contents buf)
+    let attributes = attributes |> StringMap.map (eval_expression ~state) in
+    let children = children |> List.map (eval_template ~state) in
+    Value.TemplateNode (tag, attributes, children, self_closing)
   | Ast.ExpressionTemplateNode expr -> eval_expression ~state expr
   | Ast.ComponentTemplateNode
       { identifier = Uppercase_Id identifier; attributes; children } ->
     let models s =
       attributes |> StringMap.map (eval_expression ~state) |> StringMap.find_opt s
     in
-    let slots s =
+    let slots =
       children
-      |> List.map (fun (Ast.Uppercase_Id id, value) -> id, (state, value))
-      |> List.to_seq
-      |> StringMap.of_seq
-      |> StringMap.find_opt s
+      |> List.fold_left
+           (fun acc curr ->
+             let add key value acc =
+               StringMap.update
+                 key
+                 (function
+                   | None -> Some (Iter.singleton value)
+                   | Some current_value ->
+                     Some (Iter.append current_value (Iter.singleton value)))
+                 acc
+             in
+             match curr with
+             | TextTemplateNode _ as node -> acc |> add "" (eval_template ~state node)
+             | ( HtmlTemplateNode { attributes; _ }
+               | ComponentTemplateNode { attributes; _ } ) as node ->
+               let key =
+                 attributes
+                 |> StringMap.find_opt "slot"
+                 |> Option.map (eval_expression ~state)
+                 |> Option.value ~default:(Value.String "")
+                 |> function
+                 | Value.String s -> s
+                 | _ -> failwith "Expected slot attribute to be of type string"
+               in
+               acc |> add key (eval_template ~state node)
+             | ExpressionTemplateNode expression ->
+               let rec sort_into_slot acc = function
+                 | Value.TemplateNode (_tag, attributes, _children, _self_closing) as
+                   value ->
+                   let key =
+                     attributes
+                     |> StringMap.find_opt "slot"
+                     |> Option.value ~default:(Value.String "")
+                     |> function
+                     | Value.String s -> s
+                     | _ -> failwith "Expected slot attribute to be of type string"
+                   in
+                   acc |> add key value
+                 | Value.Array l -> l |> Iter.fold (fun m v -> v |> sort_into_slot m) acc
+                 | ( Value.String _
+                   | Value.Null
+                   | Value.Int _
+                   | Value.Float _
+                   | Value.Bool _
+                   | Value.Record _ ) as value -> acc |> add "" value
+               in
+               expression |> eval_expression ~state |> sort_into_slot acc)
+           StringMap.empty
     in
-    let state = init_state ~models ~slots state.declarations in
+    let state =
+      init_state ~models ~slots:(fun s -> StringMap.find_opt s slots) state.declarations
+    in
     eval ~state ~root:identifier
 
 and eval_declaration ~state declaration =

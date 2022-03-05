@@ -1,12 +1,18 @@
 component SlotProvider {
-  let slot_default = #Slot(id: Default);
-  let slot_restricted = #Slot(id: Restricted, instanceOf: [SubComponent]);
-  let slot_nothing = #Slot(id: Nothing, instanceOf: []);
+  let slot_default = #Slot;
+
+  let slot_restricted = #Slot(name: "restricted", instanceOf: [SubComponent]);
+  
+  let multi = #Slot(name: "multi");
+
+  let slot_nothing? = #Slot(name: "nothing", instanceOf: []);
 
   <div class="SlotProvider">
     {slot_default}
 
     {slot_restricted}
+
+    {multi}
 
     {slot_nothing}
   </div>

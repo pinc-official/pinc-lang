@@ -7,19 +7,24 @@ component Component(
   let record = { a: 10, c: "Something" };
 
   <SlotProvider>
-    <SlotProvider.Default>
-      <div>Hello Default</div>
-    </SlotProvider.Default>
+    <div>Hello Default</div>
 
-    <SlotProvider.Restricted>
-      <SubComponent
-        content="Hello, SubComponent!"
-        num={3}
-        array_things={array}
-        record={record}
-      ></SubComponent>
-    </SlotProvider.Restricted>
+    <div slot="nope">I am not rendered!</div>
 
-    <SlotProvider.Nothing></SlotProvider.Nothing>
+    <SubComponent
+      slot="restricted"
+      content="Hello, SubComponent!"
+      num={3}
+      array_things={array}
+      record={record}
+    ></SubComponent>
+
+    {if (record.a > 9) {
+      <span slot="nope">Yaaay!</span>
+    }}
+
+    {for (i in 0..record.a) {
+      <span slot="multi">Yaaay! {i}</span>
+    }}
   </SlotProvider>
 }

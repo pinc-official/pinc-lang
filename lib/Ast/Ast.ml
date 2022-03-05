@@ -24,7 +24,7 @@ and template_node =
   | ComponentTemplateNode of
       { identifier : uppercase_identifier
       ; attributes : attributes
-      ; children : component_slot list
+      ; children : template_node list
       }
   | ExpressionTemplateNode of expression
   | TextTemplateNode of string
