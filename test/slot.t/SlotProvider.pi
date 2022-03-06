@@ -5,15 +5,12 @@ component SlotProvider {
   
   let multi = #Slot(name: "multi");
 
-  let slot_nothing? = #Slot(name: "nothing", instanceOf: []);
+  let slot_nothing = #Slot(name: "nothing", instanceOf: []);
 
   <div class="SlotProvider">
-    {slot_default}
-
-    {slot_restricted}
-
-    {multi}
-
-    {slot_nothing}
+    <area class="slot_default">{slot_default}</area>
+    <area class="slot_restricted">{slot_restricted}</area>
+    <area class="multi">{multi}</area>
+    <area class="slot_nothing">{slot_nothing}</area>
   </div>
 }

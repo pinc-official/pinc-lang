@@ -1,6 +1,9 @@
   $ esy x print . Component
   <div class="SlotProvider">
-      
+      <area class="slot_default">
+  
+      Lorem Foo!!
+  
       
   <div>Hello Default</div>
   
@@ -16,9 +19,8 @@
   
       
   
-    
-  
-      <div class="SubComponent" data-foo="9">
+    </area>
+      <area class="slot_restricted"><div class="SubComponent" data-foo="9">
       Hello, SubComponent!
   
       0
@@ -37,9 +39,8 @@
       Something
       
       NOTHING!!!
-    </div>
-  
-      <span slot="multi">Yaaay! 0</span>
+    </div></area>
+      <area class="multi"><span slot="multi">Yaaay! 0</span>
   <span slot="multi">Yaaay! 1</span>
   <span slot="multi">Yaaay! 2</span>
   <span slot="multi">Yaaay! 3</span>
@@ -48,7 +49,6 @@
   <span slot="multi">Yaaay! 6</span>
   <span slot="multi">Yaaay! 7</span>
   <span slot="multi">Yaaay! 8</span>
-  <span slot="multi">Yaaay! 9</span>
-  
-      
+  <span slot="multi">Yaaay! 9</span></area>
+      <area class="slot_nothing"></area>
     </div>

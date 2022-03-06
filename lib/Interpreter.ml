@@ -9,7 +9,7 @@ module Value = struct
     | Bool of bool
     | Array of t Iter.t
     | Record of t StringMap.t
-    | TemplateNode of string * t StringMap.t * t list * bool
+    | TemplateNode of [ `Component of t | `Html ] * string * t StringMap.t * t list * bool
 
   let rec to_string = function
     | Null -> ""
@@ -26,7 +26,7 @@ module Value = struct
              Buffer.add_string b (to_string value);
              Buffer.add_char b '\n');
       Buffer.contents b
-    | TemplateNode (tag, attributes, children, self_closing) ->
+    | TemplateNode (`Html, tag, attributes, children, self_closing) ->
       let buf = Buffer.create 128 in
       Buffer.add_char buf '<';
       Buffer.add_string buf tag;
@@ -54,6 +54,9 @@ module Value = struct
         Buffer.add_string buf tag;
         Buffer.add_char buf '>');
       Buffer.contents buf
+    | TemplateNode
+        (`Component rendered_template, _tag, _attributes, _children, _self_closing) ->
+      to_string rendered_template
   ;;
 
   let is_true = function
@@ -77,9 +80,10 @@ module Value = struct
     | Bool a, Bool b -> a = b
     | Array a, Array b -> Iter.to_rev_list a = Iter.to_rev_list b
     | Record a, Record b -> StringMap.equal equal a b
-    | ( TemplateNode (a_tag, a_attrs, a_children, a_self_closing)
-      , TemplateNode (b_tag, b_attrs, b_children, b_self_closing) ) ->
-      a_tag = b_tag
+    | ( TemplateNode (a_typ, a_tag, a_attrs, a_children, a_self_closing)
+      , TemplateNode (b_typ, b_tag, b_attrs, b_children, b_self_closing) ) ->
+      a_typ = b_typ
+      && a_tag = b_tag
       && a_self_closing = b_self_closing
       && StringMap.equal equal a_attrs b_attrs
       && a_children = b_children
@@ -130,19 +134,26 @@ type state =
   { output : Buffer.t
   ; binding_identifier : string option
   ; models : string -> Value.t option
-  ; slots : string -> Value.t Iter.t option
+  ; slotted_children : Value.t list option
   ; declarations : declaration StringMap.t
+  ; declaration_instances : Value.t array StringMap.t
   ; scope : Value.t StringMap.t list
   }
 
-let init_state ?(models = fun _ -> None) ?(slots = fun _ -> None) declarations =
+let init_state
+    ?(models = fun _ -> None)
+    ?slotted_children
+    ?(declaration_instances = StringMap.empty)
+    declarations
+  =
   let state =
     { output = Buffer.create 4096
     ; binding_identifier = None
     ; scope = []
     ; models
-    ; slots
+    ; slotted_children
     ; declarations
+    ; declaration_instances
     }
   in
   state
@@ -705,7 +716,7 @@ and eval_tag ?value ~state =
       let r = of' |> StringMap.mapi eval_property in
       Value.Record r |> apply_transformer ~transformer:body)
   | Ast.TagSlot attributes ->
-    let name =
+    let slot_name =
       attributes
       |> StringMap.find_opt "name"
       |> Option.map (eval_expression ~state)
@@ -714,9 +725,33 @@ and eval_tag ?value ~state =
       | Value.String s -> s
       | _ -> failwith "Expected attribute `name` on #Slot to be of type string."
     in
-    (match state.slots name with
+    (match state.slotted_children with
     | None -> Value.Null
-    | Some values -> Value.Array values)
+    | Some children ->
+      let find_slot_key attributes =
+        attributes
+        |> StringMap.find_opt "slot"
+        |> Option.value ~default:(Value.String "")
+        |> function
+        | Value.String s -> s
+        | _ -> failwith "Expected slot attribute to be of type string"
+      in
+      let rec keep_slotted acc = function
+        | (Value.TemplateNode (`Html, _tag, attributes, _children, _self_closing) as
+          value)
+        | Value.TemplateNode (`Component value, _tag, attributes, _children, _self_closing)
+          ->
+          if find_slot_key attributes = slot_name
+          then Iter.append acc (Iter.singleton value)
+          else acc
+        | Value.Array l -> l |> Iter.fold keep_slotted acc
+        | value when slot_name = "" -> Iter.append acc (Iter.singleton value)
+        | _ -> acc
+      in
+      let slotted_children =
+        children |> Iter.of_list |> Iter.fold keep_slotted Iter.empty
+      in
+      Value.Array slotted_children)
 
 and eval_template ~state template =
   match template with
@@ -724,68 +759,15 @@ and eval_template ~state template =
   | Ast.HtmlTemplateNode { tag; attributes; children; self_closing } ->
     let attributes = attributes |> StringMap.map (eval_expression ~state) in
     let children = children |> List.map (eval_template ~state) in
-    Value.TemplateNode (tag, attributes, children, self_closing)
+    Value.TemplateNode (`Html, tag, attributes, children, self_closing)
   | Ast.ExpressionTemplateNode expr -> eval_expression ~state expr
-  | Ast.ComponentTemplateNode
-      { identifier = Uppercase_Id identifier; attributes; children } ->
-    let models s =
-      attributes |> StringMap.map (eval_expression ~state) |> StringMap.find_opt s
-    in
-    let slots =
-      children
-      |> List.fold_left
-           (fun acc curr ->
-             let add key value acc =
-               StringMap.update
-                 key
-                 (function
-                   | None -> Some (Iter.singleton value)
-                   | Some current_value ->
-                     Some (Iter.append current_value (Iter.singleton value)))
-                 acc
-             in
-             match curr with
-             | TextTemplateNode _ as node -> acc |> add "" (eval_template ~state node)
-             | ( HtmlTemplateNode { attributes; _ }
-               | ComponentTemplateNode { attributes; _ } ) as node ->
-               let key =
-                 attributes
-                 |> StringMap.find_opt "slot"
-                 |> Option.map (eval_expression ~state)
-                 |> Option.value ~default:(Value.String "")
-                 |> function
-                 | Value.String s -> s
-                 | _ -> failwith "Expected slot attribute to be of type string"
-               in
-               acc |> add key (eval_template ~state node)
-             | ExpressionTemplateNode expression ->
-               let rec sort_into_slot acc = function
-                 | Value.TemplateNode (_tag, attributes, _children, _self_closing) as
-                   value ->
-                   let key =
-                     attributes
-                     |> StringMap.find_opt "slot"
-                     |> Option.value ~default:(Value.String "")
-                     |> function
-                     | Value.String s -> s
-                     | _ -> failwith "Expected slot attribute to be of type string"
-                   in
-                   acc |> add key value
-                 | Value.Array l -> l |> Iter.fold (fun m v -> v |> sort_into_slot m) acc
-                 | ( Value.String _
-                   | Value.Null
-                   | Value.Int _
-                   | Value.Float _
-                   | Value.Bool _
-                   | Value.Record _ ) as value -> acc |> add "" value
-               in
-               expression |> eval_expression ~state |> sort_into_slot acc)
-           StringMap.empty
-    in
-    let state =
-      init_state ~models ~slots:(fun s -> StringMap.find_opt s slots) state.declarations
-    in
-    eval ~state ~root:identifier
+  | Ast.ComponentTemplateNode { identifier = Uppercase_Id tag; attributes; children } ->
+    let attributes = attributes |> StringMap.map (eval_expression ~state) in
+    let children = children |> List.map (eval_template ~state) in
+    let models s = attributes |> StringMap.find_opt s in
+    let state = init_state ~models ~slotted_children:children state.declarations in
+    let value = eval ~root:tag ~state in
+    Value.TemplateNode (`Component value, tag, attributes, children, false)
 
 and eval_declaration ~state declaration =
   match declaration with
