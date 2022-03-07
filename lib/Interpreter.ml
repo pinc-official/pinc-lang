@@ -786,7 +786,7 @@ and eval ~state ~root =
 
 let file_contents chan = really_input_string chan (in_channel_length chan)
 
-let from_directory ?models ~directory root =
+let from_directory ?models ?slotted_children ~directory root =
   let src_match = FileUtil.Has_extension "pi" in
   let src_files = FileUtil.find src_match directory Iter.snoc Iter.empty in
   (* TODO: This should happen asynchronously *)
@@ -807,17 +807,17 @@ let from_directory ?models ~directory root =
            StringMap.merge f acc decls)
          StringMap.empty
   in
-  let state = init_state ?models declarations in
+  let state = init_state ?models ?slotted_children declarations in
   eval ~state ~root |> Value.to_string
 ;;
 
-let from_file ?models ~filename root =
+let from_file ?models ?slotted_children ~filename root =
   let declarations = Parser.parse_file filename in
-  let state = init_state ?models declarations in
+  let state = init_state ?models ?slotted_children declarations in
   eval ~state ~root |> Value.to_string
 ;;
 
-let from_ast ?models declarations root =
-  let state = init_state ?models declarations in
+let from_ast ?models ?slotted_children declarations root =
+  let state = init_state ?models ?slotted_children declarations in
   eval ~state ~root |> Value.to_string
 ;;
