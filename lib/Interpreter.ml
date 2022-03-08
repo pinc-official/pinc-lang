@@ -1,6 +1,12 @@
 open Ast
 
 module Value = struct
+  type definition_info =
+    { name : string
+    ; exists : bool
+    ; negated : bool
+    }
+
   type t =
     | Null
     | String of string
@@ -9,6 +15,7 @@ module Value = struct
     | Bool of bool
     | Array of t Iter.t
     | Record of t StringMap.t
+    | DefinitionInfo of definition_info
     | TemplateNode of
         [ `Component of models:(string -> t option) -> slotted_children:t list -> t
         | `Html
@@ -43,8 +50,14 @@ module Value = struct
         |> StringMap.iter (fun key value ->
                match value with
                | Null -> ()
-               | String _ | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _
-                 ->
+               | String _
+               | Int _
+               | Float _
+               | Bool _
+               | Array _
+               | Record _
+               | TemplateNode _
+               | DefinitionInfo _ ->
                  Buffer.add_char buf ' ';
                  Buffer.add_string buf key;
                  Buffer.add_char buf '=';
@@ -65,6 +78,7 @@ module Value = struct
         (`Component render_fn, _tag, attributes, slotted_children, _self_closing) ->
       let models s = attributes |> StringMap.find_opt s in
       render_fn ~models ~slotted_children |> to_string
+    | DefinitionInfo _ -> ""
   ;;
 
   let is_true = function
@@ -74,6 +88,7 @@ module Value = struct
     | Int _ -> true
     | Float _ -> true
     | TemplateNode _ -> true
+    | DefinitionInfo { exists; _ } -> exists
     | Array l -> not (Iter.is_empty l)
     | Record m -> not (StringMap.is_empty m)
   ;;
@@ -88,6 +103,7 @@ module Value = struct
     | Bool a, Bool b -> a = b
     | Array a, Array b -> Iter.to_rev_list a = Iter.to_rev_list b
     | Record a, Record b -> StringMap.equal equal a b
+    | DefinitionInfo { name = a; _ }, DefinitionInfo { name = b; _ } -> String.equal a b
     | ( TemplateNode (a_typ, a_tag, a_attrs, a_children, a_self_closing)
       , TemplateNode (b_typ, b_tag, b_attrs, b_children, b_self_closing) ) ->
       a_typ = b_typ
@@ -96,15 +112,69 @@ module Value = struct
       && StringMap.equal equal a_attrs b_attrs
       && a_children = b_children
     | Null, Null -> true
-    | TemplateNode _, (Null | String _ | Int _ | Float _ | Bool _ | Array _ | Record _)
-    | Null, (String _ | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _)
-    | Array _, (Null | String _ | Int _ | Float _ | Bool _ | Record _ | TemplateNode _)
-    | Bool _, (Null | String _ | Int _ | Float _ | Array _ | Record _ | TemplateNode _)
-    | Float _, (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _)
-    | Int _, (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _)
-    | String _, (Null | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _)
-    | Record _, (Null | Int _ | Float _ | Bool _ | Array _ | String _ | TemplateNode _) ->
-      false
+    | ( DefinitionInfo _
+      , (Null | String _ | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _)
+      )
+    | ( TemplateNode _
+      , ( Null
+        | String _
+        | Int _
+        | Float _
+        | Bool _
+        | Array _
+        | Record _
+        | DefinitionInfo _ ) )
+    | ( Null
+      , ( String _
+        | Int _
+        | Float _
+        | Bool _
+        | Array _
+        | Record _
+        | TemplateNode _
+        | DefinitionInfo _ ) )
+    | ( Array _
+      , ( Null
+        | String _
+        | Int _
+        | Float _
+        | Bool _
+        | Record _
+        | TemplateNode _
+        | DefinitionInfo _ ) )
+    | ( Bool _
+      , ( Null
+        | String _
+        | Int _
+        | Float _
+        | Array _
+        | Record _
+        | TemplateNode _
+        | DefinitionInfo _ ) )
+    | ( Float _
+      , (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _ | DefinitionInfo _)
+      )
+    | ( Int _
+      , (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _ | DefinitionInfo _)
+      )
+    | ( String _
+      , ( Null
+        | Int _
+        | Float _
+        | Bool _
+        | Array _
+        | Record _
+        | TemplateNode _
+        | DefinitionInfo _ ) )
+    | ( Record _
+      , ( Null
+        | Int _
+        | Float _
+        | Bool _
+        | Array _
+        | String _
+        | TemplateNode _
+        | DefinitionInfo _ ) ) -> false
   ;;
 
   let rec compare a b =
@@ -119,22 +189,70 @@ module Value = struct
     | Record a, Record b -> StringMap.compare compare a b
     | Null, Null -> 0
     | TemplateNode _, TemplateNode _ -> 0
-    | TemplateNode _, (Null | String _ | Int _ | Float _ | Bool _ | Array _ | Record _) ->
-      assert false
-    | Null, (String _ | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _) ->
-      assert false
-    | Array _, (Null | String _ | Int _ | Float _ | Bool _ | Record _ | TemplateNode _) ->
-      assert false
-    | Bool _, (Null | String _ | Int _ | Float _ | Array _ | Record _ | TemplateNode _) ->
-      assert false
-    | Float _, (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _) ->
-      assert false
-    | Int _, (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _) ->
-      assert false
-    | String _, (Null | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _) ->
-      assert false
-    | Record _, (Null | String _ | Int _ | Float _ | Bool _ | Array _ | TemplateNode _) ->
-      assert false
+    | DefinitionInfo _, DefinitionInfo _ -> 0
+    | ( DefinitionInfo _
+      , (Null | String _ | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _)
+      ) -> assert false
+    | ( TemplateNode _
+      , ( Null
+        | String _
+        | Int _
+        | Float _
+        | Bool _
+        | Array _
+        | Record _
+        | DefinitionInfo _ ) ) -> assert false
+    | ( Null
+      , ( String _
+        | Int _
+        | Float _
+        | Bool _
+        | Array _
+        | Record _
+        | TemplateNode _
+        | DefinitionInfo _ ) ) -> assert false
+    | ( Array _
+      , ( Null
+        | String _
+        | Int _
+        | Float _
+        | Bool _
+        | Record _
+        | TemplateNode _
+        | DefinitionInfo _ ) ) -> assert false
+    | ( Bool _
+      , ( Null
+        | String _
+        | Int _
+        | Float _
+        | Array _
+        | Record _
+        | TemplateNode _
+        | DefinitionInfo _ ) ) -> assert false
+    | ( Float _
+      , (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _ | DefinitionInfo _)
+      ) -> assert false
+    | ( Int _
+      , (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _ | DefinitionInfo _)
+      ) -> assert false
+    | ( String _
+      , ( Null
+        | Int _
+        | Float _
+        | Bool _
+        | Array _
+        | Record _
+        | TemplateNode _
+        | DefinitionInfo _ ) ) -> assert false
+    | ( Record _
+      , ( Null
+        | String _
+        | Int _
+        | Float _
+        | Bool _
+        | Array _
+        | TemplateNode _
+        | DefinitionInfo _ ) ) -> assert false
   ;;
 end
 
@@ -205,7 +323,9 @@ let rec eval_expression ~state = function
     eval_let ~state ~ident ~optional:false ~expression body
   | OptionalLetExpression (Lowercase_Id ident, expression, body) ->
     eval_let ~state ~ident ~optional:true ~expression body
-  | UppercaseIdentifierExpression _ -> failwith "Not Implemented"
+  | UppercaseIdentifierExpression (Uppercase_Id id) ->
+    let value = state.declarations |> StringMap.find_opt id in
+    Value.DefinitionInfo { name = id; exists = Option.is_some value; negated = false }
   | LowercaseIdentifierExpression (Lowercase_Id id) -> eval_lowercase_identifier ~state id
   | TagExpression tag -> eval_tag ~state tag
   | ForInExpression { iterator = Lowercase_Id ident; reverse; iterable; body } ->
@@ -480,7 +600,10 @@ and eval_binary_merge ~state left right =
   | _ -> failwith "Trying to merge two non array values."
 
 and eval_unary_not ~state expression =
-  Value.Bool (not (Value.is_true @@ eval_expression ~state expression))
+  match eval_expression ~state expression with
+  | Value.DefinitionInfo info ->
+    Value.DefinitionInfo { info with negated = not info.negated }
+  | v -> Value.Bool (not (Value.is_true v))
 
 and eval_unary_minus ~state expression =
   match eval_expression ~state expression with
@@ -543,6 +666,7 @@ and eval_for_in ~state ~ident ~reverse ~iterable body =
   | Value.Int _ -> failwith "Cannot iterate over int value"
   | Value.Float _ -> failwith "Cannot iterate over float value"
   | Value.Bool _ -> failwith "Cannot iterate over boolean value"
+  | Value.DefinitionInfo _ -> failwith "Cannot iterate over definition info"
 
 and eval_range ~state ~inclusive from upto =
   let from = from |> eval_expression ~state in
@@ -574,31 +698,6 @@ and eval_range ~state ~inclusive from upto =
 and eval_block ~state expr =
   let state = state |> add_scope in
   eval_expression ~state expr
-
-(* let rec literal_of_expr ?ident ~state expr =
-  match expr with
-  | Ast.UppercaseIdentifierExpression (Uppercase_Id id) ->
-    let value =
-      state.declarations
-      |> Iter.find_pred (function
-             | Ast.PageDeclaration { identifier = Uppercase_Id identifier; _ }
-               when identifier = id -> true
-             | Ast.SiteDeclaration { identifier = Uppercase_Id identifier; _ }
-               when identifier = id -> true
-             | Ast.ComponentDeclaration { identifier = Uppercase_Id identifier; _ }
-               when identifier = id -> true
-             | Ast.StoreDeclaration { identifier = Uppercase_Id identifier; _ }
-               when identifier = id -> true
-             | _ -> false)
-    in
-    (match value with
-    | None ->
-      failwith (Printf.sprintf "Unbound identifier `%s`" id) (* Unbound identifier *)
-    | Some _v -> failwith "ok")
-  
-  | Ast.BinaryExpression { left; operator; right } ->
-    (match operator with
-    ) *)
 
 and eval_tag ?value ~state =
   let apply_default_value ~default value =
@@ -639,6 +738,8 @@ and eval_tag ?value ~state =
     | Value.Array _ -> failwith "tried to assign array value to a string tag."
     | Value.Record _ -> failwith "tried to assign record value to a string tag."
     | Value.TemplateNode _ -> failwith "tried to assign template node to a string tag."
+    | Value.DefinitionInfo _ ->
+      failwith "tried to assign definition info to a string tag."
     | Value.Null -> Value.Null |> apply_transformer ~transformer:body
     | Value.String s -> Value.String s |> apply_transformer ~transformer:body)
   | Ast.TagInt (attributes, body) ->
@@ -651,6 +752,7 @@ and eval_tag ?value ~state =
     | Value.String _ -> failwith "tried to assign string value to a int tag."
     | Value.Record _ -> failwith "tried to assign record value to a int tag."
     | Value.TemplateNode _ -> failwith "tried to assign template node to a int tag."
+    | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a int tag."
     | Value.Null -> Value.Null |> apply_transformer ~transformer:body
     | Value.Int i -> Value.Int i |> apply_transformer ~transformer:body)
   | Ast.TagFloat (attributes, body) ->
@@ -663,6 +765,7 @@ and eval_tag ?value ~state =
     | Value.Int _ -> failwith "tried to assign int value to a float tag."
     | Value.Record _ -> failwith "tried to assign record value to a float tag."
     | Value.TemplateNode _ -> failwith "tried to assign template node to a float tag."
+    | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a float tag."
     | Value.Null -> Value.Null |> apply_transformer ~transformer:body
     | Value.Float f -> Value.Float f |> apply_transformer ~transformer:body)
   | Ast.TagBoolean (attributes, body) ->
@@ -675,6 +778,8 @@ and eval_tag ?value ~state =
     | Value.Float _ -> failwith "tried to assign float value to a boolean tag."
     | Value.Record _ -> failwith "tried to assign record value to a boolean tag."
     | Value.TemplateNode _ -> failwith "tried to assign template node to a boolean tag."
+    | Value.DefinitionInfo _ ->
+      failwith "tried to assign definition info to a boolean tag."
     | Value.Null -> Value.Null |> apply_transformer ~transformer:body
     | Value.Bool b -> Value.Bool b |> apply_transformer ~transformer:body)
   | Ast.TagArray (attributes, body) ->
@@ -699,6 +804,7 @@ and eval_tag ?value ~state =
     | Value.Float _ -> failwith "tried to assign float value to a array tag."
     | Value.Record _ -> failwith "tried to assign record value to a array tag."
     | Value.TemplateNode _ -> failwith "tried to assign template node to a array tag."
+    | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a array tag."
     | Value.Null -> Value.Null
     | Value.Array l ->
       let eval_item item = of' |> eval_tag ~value:item ~state in
@@ -724,6 +830,8 @@ and eval_tag ?value ~state =
     | Value.Float _ -> failwith "tried to assign float value to a record tag."
     | Value.Array _ -> failwith "tried to assign array value to a record tag."
     | Value.TemplateNode _ -> failwith "tried to assign template node to a record tag."
+    | Value.DefinitionInfo _ ->
+      failwith "tried to assign definition info to a record tag."
     | Value.Null -> Value.Null
     | Value.Record r ->
       let models key = StringMap.find_opt key r in
@@ -778,6 +886,23 @@ and eval_tag ?value ~state =
       | Some (Value.Int i) -> Some i
       | _ -> failwith "Expected attribute `max` on #Slot to be of type int."
     in
+    let instanceOf =
+      attributes
+      |> StringMap.find_opt "instanceOf"
+      |> Option.map (eval_expression ~state)
+      |> function
+      | None -> None
+      | Some (Value.Array l) ->
+        Some
+          (l
+          |> Iter.map (function
+                 | Value.DefinitionInfo info -> info
+                 | _ ->
+                   failwith
+                     "Expected attribute `instanceOf` on #Slot to be an array of \
+                      uppercase identifiers."))
+      | _ -> failwith "Expected attribute `instanceOf` on #Slot to be an array."
+    in
     (match state.slotted_children with
     | None -> Value.Null
     | Some children ->
@@ -789,14 +914,34 @@ and eval_tag ?value ~state =
         | Value.String s -> s
         | _ -> failwith "Expected slot attribute to be of type string"
       in
+      let check_instance_restriction tag =
+        match instanceOf with
+        | None -> true
+        | Some restrictions ->
+          not
+            (restrictions
+            |> Iter.exists (function
+                   | Value.{ name; negated = false; _ } -> name <> tag
+                   | Value.{ name; negated = true; _ } -> name = tag))
+      in
       let rec keep_slotted acc = function
-        | ( Value.TemplateNode (`Html, _tag, attributes, _children, _self_closing)
-          | Value.TemplateNode (`Component _, _tag, attributes, _children, _self_closing)
+        | ( Value.TemplateNode (`Html, tag, attributes, _children, _self_closing)
+          | Value.TemplateNode (`Component _, tag, attributes, _children, _self_closing)
             ) as value ->
           if find_slot_key attributes = slot_name
-          then (
-            let transformed_value = value |> apply_transformer ~transformer:body in
-            Iter.append acc (Iter.singleton transformed_value))
+          then
+            if check_instance_restriction tag
+            then (
+              let transformed_value = value |> apply_transformer ~transformer:body in
+              Iter.append acc (Iter.singleton transformed_value))
+            else
+              failwith
+                (Printf.sprintf
+                   "Child with tag `%s` may not be used inside the %s"
+                   tag
+                   (if slot_name = ""
+                   then "Default #Slot."
+                   else Printf.sprintf "#Slot with name `%s`" slot_name))
           else acc
         | Value.Array l -> l |> Iter.fold keep_slotted acc
         (* TODO: Decide on wether to render text nodes inside slots or not...
