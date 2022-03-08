@@ -760,6 +760,24 @@ and eval_tag ?value ~state =
       | Value.String s -> s
       | _ -> failwith "Expected attribute `name` on #Slot to be of type string."
     in
+    let min =
+      attributes
+      |> StringMap.find_opt "min"
+      |> Option.map (eval_expression ~state)
+      |> Option.value ~default:(Value.Int 0)
+      |> function
+      | Value.Int i -> i
+      | _ -> failwith "Expected attribute `min` on #Slot to be of type int."
+    in
+    let max =
+      attributes
+      |> StringMap.find_opt "max"
+      |> Option.map (eval_expression ~state)
+      |> function
+      | None -> None
+      | Some (Value.Int i) -> Some i
+      | _ -> failwith "Expected attribute `max` on #Slot to be of type int."
+    in
     (match state.slotted_children with
     | None -> Value.Null
     | Some children ->
@@ -788,7 +806,34 @@ and eval_tag ?value ~state =
       let slotted_children =
         children |> Iter.of_list |> Iter.fold keep_slotted Iter.empty
       in
-      Value.Array slotted_children)
+      let amount_of_children = Iter.length slotted_children in
+      (match slot_name, min, amount_of_children, max with
+      | "", min, len, _ when len < min ->
+        failwith
+          (Printf.sprintf
+             "Default #Slot did not reach the minimum amount of nodes (specified as %i)."
+             min)
+      | slot_name, min, len, _ when len < min ->
+        failwith
+          (Printf.sprintf
+             "#Slot with name `%s` did not reach the minimum amount of nodes (specified \
+              as %i)."
+             slot_name
+             min)
+      | "", _, len, Some max when len > max ->
+        failwith
+          (Printf.sprintf
+             "Default #Slot includes more than the maximum amount of nodes (specified as \
+              %i)."
+             max)
+      | slot_name, _, len, Some max when len > max ->
+        failwith
+          (Printf.sprintf
+             "#Slot with name `%s` includes more than the maximum amount of nodes \
+              (specified as %i)."
+             slot_name
+             max)
+      | _ -> Value.Array slotted_children))
 
 and eval_template ~state template =
   match template with
