@@ -26,6 +26,13 @@
     let result = arr |> default([1, 2, 3]) |> map(fn (item) -> item + 2);
   ```
 
+- Currently only nodes are placed into slots. Normal text (<Text>Lorem Ipsum</Text>) is ignored and not put into any slot.
+  You could argue, that this should be placed into the default slot, but what do you do with the `min` and `max` restrictions?
+  Does every word, every sectence or every string count as an element?
+  Also transformers would become more complex, as you would get an array of nodes and strings handed. 
+  And there is currently no way, to distinguish the two before you use them...
+  So..is not rendering them the correct solution or not?
+
 ## Things
 
 - Functions / Lambdas

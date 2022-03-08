@@ -781,8 +781,7 @@ and eval_tag ?value ~state =
             Iter.append acc (Iter.singleton transformed_value))
           else acc
         | Value.Array l -> l |> Iter.fold keep_slotted acc
-        (* TODO: May slots only get nodes?
-          Otherwise, the transformation would become pretty complex, as every value is allowed to enter
+        (* TODO: Decide on wether to render text nodes inside slots or not...
          | value when slot_name = "" -> Iter.append acc (Iter.singleton value) *)
         | _ -> acc
       in
