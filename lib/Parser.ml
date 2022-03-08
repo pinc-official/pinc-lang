@@ -194,7 +194,7 @@ module Rules = struct
     | "Boolean" -> Some (Ast.TagBoolean (attributes, body))
     | "Array" -> Some (Ast.TagArray (attributes, body))
     | "Record" -> Some (Ast.TagRecord (attributes, body))
-    | "Slot" -> Some (Ast.TagSlot attributes)
+    | "Slot" -> Some (Ast.TagSlot (attributes, body))
     | s ->
       Diagnostics.report
         ~start_pos:t.token.start_pos

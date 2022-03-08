@@ -3,7 +3,7 @@ component SlotProvider {
 
   let slot_restricted = #Slot(name: "restricted", instanceOf: [SubComponent]);
   
-  let multi = #Slot(name: "multi");
+  let multi = #Slot(name: "multi") :: el -> <div>{el @@ { class: "item" }}</div>;
 
   let slot_nothing = #Slot(name: "nothing", instanceOf: []);
 

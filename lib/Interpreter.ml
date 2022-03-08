@@ -9,7 +9,14 @@ module Value = struct
     | Bool of bool
     | Array of t Iter.t
     | Record of t StringMap.t
-    | TemplateNode of [ `Component of t | `Html ] * string * t StringMap.t * t list * bool
+    | TemplateNode of
+        [ `Component of models:(string -> t option) -> slotted_children:t list -> t
+        | `Html
+        ]
+        * string
+        * t StringMap.t
+        * t list
+        * bool
 
   let rec to_string = function
     | Null -> ""
@@ -55,8 +62,9 @@ module Value = struct
         Buffer.add_char buf '>');
       Buffer.contents buf
     | TemplateNode
-        (`Component rendered_template, _tag, _attributes, _children, _self_closing) ->
-      to_string rendered_template
+        (`Component render_fn, _tag, attributes, slotted_children, _self_closing) ->
+      let models s = attributes |> StringMap.find_opt s in
+      render_fn ~models ~slotted_children |> to_string
   ;;
 
   let is_true = function
@@ -396,11 +404,23 @@ and eval_binary_dot_access ~state left right =
   match left, right with
   | Value.Record left, Ast.LowercaseIdentifierExpression (Lowercase_Id b) ->
     left |> StringMap.find_opt b |> Option.value ~default:Value.Null
+  | ( Value.TemplateNode (_typ, tag, attributes, children, _self_closing)
+    , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) ->
+    (match b with
+    | "tag" -> Value.String tag
+    | "attributes" -> Value.Record attributes
+    | "children" -> Value.Array (Iter.of_list children)
+    | s ->
+      failwith
+        (Printf.sprintf
+           "Unknown property %s on template node. Known properties are: `tag`, \
+            `attributes` and `children`."
+           s))
   | Value.Record _, _ ->
     failwith "Expected right hand side of record access to be a lowercase identifier."
   | Value.Null, _ -> Value.Null
   | _, Ast.LowercaseIdentifierExpression _ ->
-    failwith "Trying to access a property on a non record value."
+    failwith "Trying to access a property on a non record or template value."
   | _ -> failwith "I am really not sure what you are trying to do here..."
 
 and eval_binary_bracket_access ~state left right =
@@ -440,6 +460,21 @@ and eval_binary_merge ~state left right =
            | None, None -> None)
          left
          right)
+  | Value.TemplateNode (typ, tag, attributes, children, self_closing), Value.Record right
+    ->
+    let attributes =
+      StringMap.merge
+        (fun _ x y ->
+          match x, y with
+          | (Some _ | None), Some y -> Some y
+          | Some x, None -> Some x
+          | None, None -> None)
+        attributes
+        right
+    in
+    Value.TemplateNode (typ, tag, attributes, children, self_closing)
+  | Value.TemplateNode _, _ ->
+    failwith "Trying to merge a non record value onto tag attributes."
   | Value.Array _, _ -> failwith "Trying to merge a non array value onto an array."
   | _, Value.Array _ -> failwith "Trying to merge an array value onto a non array."
   | _ -> failwith "Trying to merge two non array values."
@@ -715,7 +750,7 @@ and eval_tag ?value ~state =
       in
       let r = of' |> StringMap.mapi eval_property in
       Value.Record r |> apply_transformer ~transformer:body)
-  | Ast.TagSlot attributes ->
+  | Ast.TagSlot (attributes, body) ->
     let slot_name =
       attributes
       |> StringMap.find_opt "name"
@@ -737,15 +772,18 @@ and eval_tag ?value ~state =
         | _ -> failwith "Expected slot attribute to be of type string"
       in
       let rec keep_slotted acc = function
-        | (Value.TemplateNode (`Html, _tag, attributes, _children, _self_closing) as
-          value)
-        | Value.TemplateNode (`Component value, _tag, attributes, _children, _self_closing)
-          ->
+        | ( Value.TemplateNode (`Html, _tag, attributes, _children, _self_closing)
+          | Value.TemplateNode (`Component _, _tag, attributes, _children, _self_closing)
+            ) as value ->
           if find_slot_key attributes = slot_name
-          then Iter.append acc (Iter.singleton value)
+          then (
+            let transformed_value = value |> apply_transformer ~transformer:body in
+            Iter.append acc (Iter.singleton transformed_value))
           else acc
         | Value.Array l -> l |> Iter.fold keep_slotted acc
-        | value when slot_name = "" -> Iter.append acc (Iter.singleton value)
+        (* TODO: May slots only get nodes?
+          Otherwise, the transformation would become pretty complex, as every value is allowed to enter
+         | value when slot_name = "" -> Iter.append acc (Iter.singleton value) *)
         | _ -> acc
       in
       let slotted_children =
@@ -764,10 +802,10 @@ and eval_template ~state template =
   | Ast.ComponentTemplateNode { identifier = Uppercase_Id tag; attributes; children } ->
     let attributes = attributes |> StringMap.map (eval_expression ~state) in
     let children = children |> List.map (eval_template ~state) in
-    let models s = attributes |> StringMap.find_opt s in
-    let state = init_state ~models ~slotted_children:children state.declarations in
-    let value = eval ~root:tag ~state in
-    Value.TemplateNode (`Component value, tag, attributes, children, false)
+    let render_fn ~models ~slotted_children =
+      eval ~models ~slotted_children ~root:tag state.declarations
+    in
+    Value.TemplateNode (`Component render_fn, tag, attributes, children, false)
 
 and eval_declaration ~state declaration =
   match declaration with
@@ -776,8 +814,9 @@ and eval_declaration ~state declaration =
   | Ast.PageDeclaration (_attrs, body) -> eval_expression ~state body
   | Ast.StoreDeclaration (_attrs, body) -> eval_expression ~state body
 
-and eval ~state ~root =
-  state.declarations
+and eval ?models ?slotted_children ~root declarations =
+  let state = init_state ?models ?slotted_children declarations in
+  declarations
   |> StringMap.find_opt root
   |> function
   | Some declaration -> eval_declaration ~state declaration
@@ -807,17 +846,14 @@ let from_directory ?models ?slotted_children ~directory root =
            StringMap.merge f acc decls)
          StringMap.empty
   in
-  let state = init_state ?models ?slotted_children declarations in
-  eval ~state ~root |> Value.to_string
+  eval ?models ?slotted_children ~root declarations |> Value.to_string
 ;;
 
 let from_file ?models ?slotted_children ~filename root =
   let declarations = Parser.parse_file filename in
-  let state = init_state ?models ?slotted_children declarations in
-  eval ~state ~root |> Value.to_string
+  eval ?models ?slotted_children ~root declarations |> Value.to_string
 ;;
 
 let from_ast ?models ?slotted_children declarations root =
-  let state = init_state ?models ?slotted_children declarations in
-  eval ~state ~root |> Value.to_string
+  eval ?models ?slotted_children ~root declarations |> Value.to_string
 ;;

@@ -38,7 +38,7 @@ and tag =
   | TagBoolean of attributes * tag_body option
   | TagArray of attributes * tag_body option
   | TagRecord of attributes * tag_body option
-  | TagSlot of attributes
+  | TagSlot of attributes * tag_body option
 
 and expression =
   | String of string_template list
