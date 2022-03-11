@@ -1103,15 +1103,42 @@ and eval_tag ~output ?value ~state tag =
         | Value.String s -> s
         | _ -> failwith "Expected slot attribute to be of type string"
       in
-      let check_instance_restriction tag =
+      let check_instance_restriction tag f =
         match instanceOf with
-        | None -> true
+        | None -> f
         | Some restrictions ->
-          not
-            (restrictions
-            |> Iter.exists (function
-                   | Value.{ name; negated = false; _ } -> name <> tag
-                   | Value.{ name; negated = true; _ } -> name = tag))
+          let is_in_list = ref false in
+          let allowed, disallowed =
+            restrictions
+            |> Iter.to_rev_list
+            |> List.partition_map (fun Value.{ name; negated; _ } ->
+                   if name = tag then is_in_list := true;
+                   if negated then Either.right name else Either.left name)
+          in
+          let is_in_list = !is_in_list in
+          let is_allowed =
+            match allowed, disallowed with
+            | [], _disallowed -> not is_in_list
+            | _allowed, [] -> is_in_list
+            | allowed, _disallowed -> List.mem tag allowed
+          in
+          if not is_allowed
+          then
+            failwith
+              (Printf.sprintf
+                 "Child with tag `%s` may not be used inside the %s. The following \
+                  restrictions are set: [ %s ]"
+                 tag
+                 (if slot_name = ""
+                 then "Default #Slot."
+                 else Printf.sprintf "#Slot with name `%s`" slot_name)
+                 (instanceOf
+                 |> Option.value ~default:Iter.empty
+                 |> Iter.map (fun res ->
+                        (if res.Value.negated then "!" else "") ^ res.Value.name)
+                 |> Iter.intersperse ","
+                 |> Iter.concat_str))
+          else f
       in
       let rec keep_slotted acc = function
         | ( Value.TemplateNode (`Html, tag, attributes, _children, _self_closing)
@@ -1119,18 +1146,10 @@ and eval_tag ~output ?value ~state tag =
             ) as value ->
           if find_slot_key attributes = slot_name
           then
-            if check_instance_restriction tag
-            then (
-              let transformed_value = value |> apply_transformer ~transformer:body in
-              Iter.append acc (Iter.singleton transformed_value))
-            else
-              failwith
-                (Printf.sprintf
-                   "Child with tag `%s` may not be used inside the %s"
-                   tag
-                   (if slot_name = ""
-                   then "Default #Slot."
-                   else Printf.sprintf "#Slot with name `%s`" slot_name))
+            check_instance_restriction tag
+            @@
+            let transformed_value = value |> apply_transformer ~transformer:body in
+            Iter.append acc (Iter.singleton transformed_value)
           else acc
         | Value.Array l -> l |> Iter.fold keep_slotted acc
         (* TODO: Decide on wether to render text nodes inside slots or not...
