@@ -55,7 +55,8 @@ and expression =
   | BreakExpression of expression * expression
   | ContinueExpression of expression * expression
   | ForInExpression of
-      { iterator : lowercase_identifier
+      { index : lowercase_identifier option
+      ; iterator : lowercase_identifier
       ; reverse : bool
       ; iterable : expression
       ; body : expression

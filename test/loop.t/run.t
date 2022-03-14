@@ -171,10 +171,10 @@
   <div class="item">S</div>
   
       string array
-      <div class="item">one</div>
-  <div class="item">two</div>
-  <div class="item">three</div>
-  <div class="item">!</div>
+      <div class="item">0 one</div>
+  <div class="item">1 two</div>
+  <div class="item">2 three</div>
+  <div class="item">3 !</div>
   
       null value
       

@@ -387,8 +387,8 @@ let rec eval_expression ~output ~state = function
   | Ast.LowercaseIdentifierExpression (Lowercase_Id id) ->
     eval_lowercase_identifier ~output ~state id
   | Ast.TagExpression tag -> eval_tag ~output ~state tag
-  | Ast.ForInExpression { iterator = Lowercase_Id ident; reverse; iterable; body } ->
-    eval_for_in ~output ~state ~ident ~reverse ~iterable body
+  | Ast.ForInExpression { index; iterator = Lowercase_Id ident; reverse; iterable; body }
+    -> eval_for_in ~output ~state ~index_ident:index ~ident ~reverse ~iterable body
   | Ast.TemplateExpression nodes ->
     output
     |> Output.add_value
@@ -753,32 +753,37 @@ and eval_if ~output ~state ~condition ~alternate consequent =
     | Some alt -> alt |> eval_expression ~output ~state
     | None -> output |> Output.add_value Value.Null)
 
-and eval_for_in ~output ~state ~ident ~reverse ~iterable body =
+and eval_for_in ~output ~state ~index_ident ~ident ~reverse ~iterable body =
   let iterable = iterable |> eval_expression ~output ~state |> Output.get_value in
   let maybe_rev = if reverse then Iter.rev else fun i -> i in
+  let index = ref (-1) in
+  let loop acc value =
+    index := succ !index;
+    let state = state |> State.add_value_to_scope ~ident ~value in
+    let state =
+      match index_ident with
+      | Some (Lowercase_Id ident) ->
+        state |> State.add_value_to_scope ~ident ~value:(Value.Int !index)
+      | None -> state
+    in
+    match eval_block ~output ~state body with
+    | exception Loop_Continue -> acc, `Continue
+    | exception Loop_Break -> acc, `Stop
+    | v -> Iter.append acc (Iter.singleton (Output.get_value v)), `Continue
+  in
   match iterable with
   | Value.Array l ->
-    let loop acc value =
-      let state = state |> State.add_value_to_scope ~ident ~value in
-      match eval_block ~output ~state body with
-      | exception Loop_Continue -> acc, `Continue
-      | exception Loop_Break -> acc, `Stop
-      | v -> Iter.append acc (Iter.singleton (Output.get_value v)), `Continue
-    in
-    output
-    |> Output.add_value (Value.Array (l |> maybe_rev |> Iter.fold_while loop Iter.empty))
+    let res = l |> maybe_rev |> Iter.fold_while loop Iter.empty in
+    output |> Output.add_value (Value.Array res)
   | Value.String s ->
-    let loop acc c =
-      let value = Value.String (String.make 1 c) in
-      let state = state |> State.add_value_to_scope ~ident ~value in
-      match eval_block ~output ~state body with
-      | exception Loop_Continue -> acc, `Continue
-      | exception Loop_Break -> acc, `Stop
-      | v -> Iter.append acc (Iter.singleton (Output.get_value v)), `Continue
+    let res =
+      s
+      |> Iter.of_str
+      |> maybe_rev
+      |> Iter.map (fun c -> Value.String (String.make 1 c))
+      |> Iter.fold_while loop Iter.empty
     in
-    output
-    |> Output.add_value
-         (Value.Array (s |> Iter.of_str |> maybe_rev |> Iter.fold_while loop Iter.empty))
+    output |> Output.add_value (Value.Array res)
   | Value.Null -> output |> Output.add_value Value.Null
   | Value.TemplateNode _ -> failwith "Cannot iterate over template node"
   | Value.Record _ -> failwith "Cannot iterate over record value"

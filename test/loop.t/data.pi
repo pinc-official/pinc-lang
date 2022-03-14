@@ -108,8 +108,8 @@ component Component {
     }}
 
     string array
-    {for (s in string_array) {
-      <div class="item">{s}</div>
+    {for (index, s in string_array) {
+      <div class="item">{index} {s}</div>
     }}
 
     null value

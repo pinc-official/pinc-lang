@@ -374,8 +374,15 @@ module Rules = struct
     | Token.KEYWORD_FOR ->
       next t;
       expect Token.LEFT_PAREN t;
-      let identifier = Helpers.expect_identifier ~typ:`Lower t in
-      let iterator = Ast.Lowercase_Id identifier in
+      let index_or_iterator = Helpers.expect_identifier ~typ:`Lower t in
+      let index, iterator =
+        if optional Token.COMMA t
+        then (
+          let identifier = Helpers.expect_identifier ~typ:`Lower t in
+          Some (Ast.Lowercase_Id index_or_iterator), identifier)
+        else None, index_or_iterator
+      in
+      let iterator = Ast.Lowercase_Id iterator in
       expect Token.KEYWORD_IN t;
       let reverse = optional Token.KEYWORD_REVERSE t in
       let* expr1 = parse_expression t in
@@ -388,7 +395,7 @@ module Rules = struct
           ~end_pos:t.token.end_pos
           (Diagnostics.Message (Printf.sprintf "Expected expression as body of for loop"))
       | Some body ->
-        Some (Ast.ForInExpression { iterator; reverse; iterable = expr1; body }))
+        Some (Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }))
     (* PARSING IF EXPRESSION *)
     | Token.KEYWORD_IF ->
       next t;
