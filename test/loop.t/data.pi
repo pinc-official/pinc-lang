@@ -116,5 +116,25 @@ component Component {
     {for (s in null_value) {
       <div class="item">{s}</div>
     }}
+
+
+    <h1>BREAK / CONTINUE</h1>
+
+    {for (c in "String!") {
+      if (c == "i") {
+        continue
+      } else {
+        c
+      }
+    }}
+
+    {for (i in 0..5) {
+      if (i == 3) {
+        break
+      } else {
+        i
+      }
+    }}
+
   </section>
 }

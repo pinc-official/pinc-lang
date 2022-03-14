@@ -1,5 +1,8 @@
 module StringMap = Ast.StringMap
 
+exception Loop_Break
+exception Loop_Continue
+
 module Value = struct
   type definition_info =
     { name : string
@@ -443,8 +446,8 @@ let rec eval_expression ~output ~state = function
     eval_range ~output ~state ~inclusive:false left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.INCLUSIVE_RANGE, right) ->
     eval_range ~output ~state ~inclusive:true left right
-  | Ast.BreakExpression -> failwith "Not Implemented"
-  | Ast.ContinueExpression -> failwith "Not Implemented"
+  | Ast.BreakExpression -> raise_notrace Loop_Break
+  | Ast.ContinueExpression -> raise_notrace Loop_Continue
 
 and eval_string_template ~output ~state template =
   output
@@ -749,23 +752,27 @@ and eval_for_in ~output ~state ~ident ~reverse ~iterable body =
   let maybe_rev = if reverse then Iter.rev else fun i -> i in
   match iterable with
   | Value.Array l ->
-    let loop value =
+    let loop acc value =
       let state = state |> State.add_value_to_scope ~ident ~value in
-      eval_block ~output ~state body
+      match eval_block ~output ~state body with
+      | exception Loop_Continue -> acc, `Continue
+      | exception Loop_Break -> acc, `Stop
+      | v -> Iter.append acc (Iter.singleton (Output.get_value v)), `Continue
     in
     output
-    |> Output.add_value
-         (Value.Array (l |> maybe_rev |> Iter.map loop |> Iter.map Output.get_value))
+    |> Output.add_value (Value.Array (l |> maybe_rev |> Iter.fold_while loop Iter.empty))
   | Value.String s ->
-    let loop c =
+    let loop acc c =
       let value = Value.String (String.make 1 c) in
       let state = state |> State.add_value_to_scope ~ident ~value in
-      eval_block ~output ~state body
+      match eval_block ~output ~state body with
+      | exception Loop_Continue -> acc, `Continue
+      | exception Loop_Break -> acc, `Stop
+      | v -> Iter.append acc (Iter.singleton (Output.get_value v)), `Continue
     in
     output
     |> Output.add_value
-         (Value.Array
-            (s |> Iter.of_str |> maybe_rev |> Iter.map loop |> Iter.map Output.get_value))
+         (Value.Array (s |> Iter.of_str |> maybe_rev |> Iter.fold_while loop Iter.empty))
   | Value.Null -> output |> Output.add_value Value.Null
   | Value.TemplateNode _ -> failwith "Cannot iterate over template node"
   | Value.Record _ -> failwith "Cannot iterate over record value"
