@@ -52,8 +52,8 @@ and expression =
   | OptionalLetExpression of lowercase_identifier * expression * expression
   | LetExpression of lowercase_identifier * expression * expression
   | TagExpression of tag
-  | BreakExpression
-  | ContinueExpression
+  | BreakExpression of expression * expression
+  | ContinueExpression of expression * expression
   | ForInExpression of
       { iterator : lowercase_identifier
       ; reverse : bool

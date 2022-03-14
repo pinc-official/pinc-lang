@@ -121,19 +121,15 @@ component Component {
     <h1>BREAK / CONTINUE</h1>
 
     {for (c in "String!") {
-      if (c == "i") {
-        continue
-      } else {
-        c
-      }
+      continue if (c == "i");
+
+      c
     }}
 
     {for (i in 0..5) {
-      if (i == 3) {
-        break
-      } else {
-        i
-      }
+      break if (i == 3);
+
+      i
     }}
 
   </section>

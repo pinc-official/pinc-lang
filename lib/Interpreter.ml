@@ -446,8 +446,14 @@ let rec eval_expression ~output ~state = function
     eval_range ~output ~state ~inclusive:false left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.INCLUSIVE_RANGE, right) ->
     eval_range ~output ~state ~inclusive:true left right
-  | Ast.BreakExpression -> raise_notrace Loop_Break
-  | Ast.ContinueExpression -> raise_notrace Loop_Continue
+  | Ast.BreakExpression (condition, body) ->
+    if condition |> eval_expression ~output ~state |> Output.get_value |> Value.is_true
+    then raise_notrace Loop_Break
+    else eval_expression ~output ~state body
+  | Ast.ContinueExpression (condition, body) ->
+    if condition |> eval_expression ~output ~state |> Output.get_value |> Value.is_true
+    then raise_notrace Loop_Continue
+    else eval_expression ~output ~state body
 
 and eval_string_template ~output ~state template =
   output

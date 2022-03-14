@@ -282,10 +282,36 @@ module Rules = struct
     match t.token.typ with
     | Token.KEYWORD_BREAK ->
       next t;
-      Some Ast.BreakExpression
+      expect Token.KEYWORD_IF t;
+      expect Token.LEFT_PAREN t;
+      let* condition = parse_expression t in
+      expect Token.RIGHT_PAREN t;
+      expect Token.SEMICOLON t;
+      let body = parse_expression t in
+      (match body with
+      | None ->
+        Diagnostics.report
+          ~start_pos:t.token.start_pos
+          ~end_pos:t.token.end_pos
+          (Diagnostics.Message
+             (Printf.sprintf "Expected some expression after a break statement."))
+      | Some body -> Some (Ast.BreakExpression (condition, body)))
     | Token.KEYWORD_CONTINUE ->
       next t;
-      Some Ast.ContinueExpression
+      expect Token.KEYWORD_IF t;
+      expect Token.LEFT_PAREN t;
+      let* condition = parse_expression t in
+      expect Token.RIGHT_PAREN t;
+      expect Token.SEMICOLON t;
+      let body = parse_expression t in
+      (match body with
+      | None ->
+        Diagnostics.report
+          ~start_pos:t.token.start_pos
+          ~end_pos:t.token.end_pos
+          (Diagnostics.Message
+             (Printf.sprintf "Expected some expression after a continue statement."))
+      | Some body -> Some (Ast.ContinueExpression (condition, body)))
     (* PARSING PARENTHESIZED EXPRESSION *)
     | Token.LEFT_PAREN ->
       next t;
