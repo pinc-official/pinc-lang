@@ -18,6 +18,7 @@ module Value = struct
     | Bool of bool
     | Array of t Iter.t
     | Record of t StringMap.t
+    | Function of (string list * (t StringMap.t -> t))
     | DefinitionInfo of definition_info
     | TemplateNode of
         [ `Component of models:(string -> t option) -> slotted_children:t list -> t
@@ -53,6 +54,7 @@ module Value = struct
         |> StringMap.iter (fun key value ->
                match value with
                | Null -> ()
+               | Function _
                | String _
                | Int _
                | Float _
@@ -81,6 +83,7 @@ module Value = struct
         (`Component render_fn, _tag, attributes, slotted_children, _self_closing) ->
       let models s = attributes |> StringMap.find_opt s in
       render_fn ~models ~slotted_children |> to_string
+    | Function _ -> ""
     | DefinitionInfo _ -> ""
   ;;
 
@@ -92,6 +95,7 @@ module Value = struct
     | Float _ -> true
     | TemplateNode _ -> true
     | DefinitionInfo { exists; _ } -> exists
+    | Function _ -> true
     | Array l -> not (Iter.is_empty l)
     | Record m -> not (StringMap.is_empty m)
   ;;
@@ -106,6 +110,7 @@ module Value = struct
     | Bool a, Bool b -> a = b
     | Array a, Array b -> Iter.to_rev_list a = Iter.to_rev_list b
     | Record a, Record b -> StringMap.equal equal a b
+    | Function _, Function _ -> false
     | DefinitionInfo { name = a; _ }, DefinitionInfo { name = b; _ } -> String.equal a b
     | ( TemplateNode (a_typ, a_tag, a_attrs, a_children, a_self_closing)
       , TemplateNode (b_typ, b_tag, b_attrs, b_children, b_self_closing) ) ->
@@ -115,69 +120,7 @@ module Value = struct
       && StringMap.equal equal a_attrs b_attrs
       && a_children = b_children
     | Null, Null -> true
-    | ( DefinitionInfo _
-      , (Null | String _ | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _)
-      )
-    | ( TemplateNode _
-      , ( Null
-        | String _
-        | Int _
-        | Float _
-        | Bool _
-        | Array _
-        | Record _
-        | DefinitionInfo _ ) )
-    | ( Null
-      , ( String _
-        | Int _
-        | Float _
-        | Bool _
-        | Array _
-        | Record _
-        | TemplateNode _
-        | DefinitionInfo _ ) )
-    | ( Array _
-      , ( Null
-        | String _
-        | Int _
-        | Float _
-        | Bool _
-        | Record _
-        | TemplateNode _
-        | DefinitionInfo _ ) )
-    | ( Bool _
-      , ( Null
-        | String _
-        | Int _
-        | Float _
-        | Array _
-        | Record _
-        | TemplateNode _
-        | DefinitionInfo _ ) )
-    | ( Float _
-      , (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _ | DefinitionInfo _)
-      )
-    | ( Int _
-      , (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _ | DefinitionInfo _)
-      )
-    | ( String _
-      , ( Null
-        | Int _
-        | Float _
-        | Bool _
-        | Array _
-        | Record _
-        | TemplateNode _
-        | DefinitionInfo _ ) )
-    | ( Record _
-      , ( Null
-        | Int _
-        | Float _
-        | Bool _
-        | Array _
-        | String _
-        | TemplateNode _
-        | DefinitionInfo _ ) ) -> false
+    | _ -> false
   ;;
 
   let rec compare a b =
@@ -193,69 +136,8 @@ module Value = struct
     | Null, Null -> 0
     | TemplateNode _, TemplateNode _ -> 0
     | DefinitionInfo _, DefinitionInfo _ -> 0
-    | ( DefinitionInfo _
-      , (Null | String _ | Int _ | Float _ | Bool _ | Array _ | Record _ | TemplateNode _)
-      ) -> assert false
-    | ( TemplateNode _
-      , ( Null
-        | String _
-        | Int _
-        | Float _
-        | Bool _
-        | Array _
-        | Record _
-        | DefinitionInfo _ ) ) -> assert false
-    | ( Null
-      , ( String _
-        | Int _
-        | Float _
-        | Bool _
-        | Array _
-        | Record _
-        | TemplateNode _
-        | DefinitionInfo _ ) ) -> assert false
-    | ( Array _
-      , ( Null
-        | String _
-        | Int _
-        | Float _
-        | Bool _
-        | Record _
-        | TemplateNode _
-        | DefinitionInfo _ ) ) -> assert false
-    | ( Bool _
-      , ( Null
-        | String _
-        | Int _
-        | Float _
-        | Array _
-        | Record _
-        | TemplateNode _
-        | DefinitionInfo _ ) ) -> assert false
-    | ( Float _
-      , (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _ | DefinitionInfo _)
-      ) -> assert false
-    | ( Int _
-      , (Null | String _ | Bool _ | Array _ | Record _ | TemplateNode _ | DefinitionInfo _)
-      ) -> assert false
-    | ( String _
-      , ( Null
-        | Int _
-        | Float _
-        | Bool _
-        | Array _
-        | Record _
-        | TemplateNode _
-        | DefinitionInfo _ ) ) -> assert false
-    | ( Record _
-      , ( Null
-        | String _
-        | Int _
-        | Float _
-        | Bool _
-        | Array _
-        | TemplateNode _
-        | DefinitionInfo _ ) ) -> assert false
+    | Function _, Function _ -> 0
+    | _ -> assert false
   ;;
 end
 
@@ -341,6 +223,27 @@ module State = struct
     in
     { t with scope = update_scope t }
   ;;
+
+  let get_value_from_scope ~ident t = t.scope |> List.find_map (StringMap.find_opt ident)
+
+  let merge_scope a b =
+    let new_scope =
+      match a.scope, b.scope with
+      | [], b_scope :: _ -> [ b_scope ]
+      | a_scope, [] -> a_scope
+      | scope_a :: rest, scope_b :: _ ->
+        StringMap.merge
+          (fun _ x y ->
+            match x, y with
+            | (Some _ | None), Some y -> Some y
+            | Some x, None -> Some x
+            | None, None -> None)
+          scope_a
+          scope_b
+        :: rest
+    in
+    { a with scope = new_scope }
+  ;;
 end
 
 let rec eval_expression ~output ~state = function
@@ -374,6 +277,10 @@ let rec eval_expression ~output ~state = function
                           ident)
                    | value -> value)))
   | Ast.String template -> eval_string_template ~output ~state template
+  | Ast.Function (parameters, body) ->
+    eval_function_declaration ~output ~state ~parameters body
+  | Ast.FunctionCall (left, arguments) ->
+    eval_function_call ~output ~state ~arguments left
   | Ast.LetExpression (Lowercase_Id ident, expression, body) ->
     eval_let ~output ~state ~ident ~optional:false ~expression body
   | Ast.OptionalLetExpression (Lowercase_Id ident, expression, body) ->
@@ -446,6 +353,8 @@ let rec eval_expression ~output ~state = function
     eval_range ~output ~state ~inclusive:false left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.INCLUSIVE_RANGE, right) ->
     eval_range ~output ~state ~inclusive:true left right
+  | Ast.BinaryExpression (left, Ast.Operators.Binary.FUNCTION_CALL, right) ->
+    eval_function_call ~output ~state ~arguments:[ right ] left
   | Ast.BreakExpression (condition, body) ->
     if condition |> eval_expression ~output ~state |> Output.get_value |> Value.is_true
     then raise_notrace Loop_Break
@@ -465,6 +374,55 @@ and eval_string_template ~output ~state template =
                  | Ast.StringInterpolation e ->
                    eval_expression ~output ~state e |> Output.get_value |> Value.to_string)
           |> String.concat ""))
+
+and eval_function_declaration ~output ~state ~parameters body =
+  let eval_fn arguments =
+    let state =
+      state
+      |> State.add_scope
+      |> StringMap.fold
+           (fun ident value -> State.add_value_to_scope ~ident ~value)
+           arguments
+    in
+    eval_expression ~output:Output.empty ~state body |> Output.get_value
+  in
+  output |> Output.add_value (Value.Function (parameters, eval_fn))
+
+and eval_function_call ~output ~state ~arguments left =
+  let maybe_fn = eval_expression ~output ~state left |> Output.get_value in
+  match maybe_fn with
+  | Value.Function (parameters, eval_fn)
+    when List.compare_lengths parameters arguments = 0 ->
+    let state =
+      List.combine parameters arguments
+      |> List.fold_left
+           (fun acc (param, arg) ->
+             let value = arg |> eval_expression ~output ~state |> Output.get_value in
+             acc |> StringMap.add param value)
+           StringMap.empty
+    in
+    output |> Output.add_value (eval_fn state)
+  | Value.Function (parameters, _) ->
+    if List.compare_lengths parameters arguments > 0
+    then (
+      let arguments_len = List.length arguments in
+      let missing =
+        parameters
+        |> List.filteri (fun index _ -> index > arguments_len)
+        |> String.concat ", "
+      in
+      failwith
+        (Printf.sprintf
+           "This function was provided too few arguments. The following parameters are \
+            missing: %s."
+           missing))
+    else
+      failwith
+        (Printf.sprintf
+           "This function only accepts %i arguments, but was provided %i here."
+           (List.length parameters)
+           (List.length arguments))
+  | _ -> failwith "Trying to call a non function value"
 
 and eval_binary_plus ~output ~state left right =
   let a = left |> eval_expression ~output ~state |> Output.get_value in
@@ -711,11 +669,11 @@ and eval_unary_minus ~output ~state expression =
       "Invalid usage of unary `-` operator. You are only able to negate integers or \
        floats."
 
-and eval_lowercase_identifier ~output ~state id =
-  state.State.scope
-  |> List.find_map (StringMap.find_opt id)
+and eval_lowercase_identifier ~output ~state ident =
+  state
+  |> State.get_value_from_scope ~ident
   |> function
-  | None -> failwith (Printf.sprintf "Unbound identifier `%s`" id)
+  | None -> failwith (Printf.sprintf "Unbound identifier `%s`" ident)
   | Some v -> output |> Output.add_value v
 
 and eval_let ~output ~state ~ident ~optional ~expression body =
@@ -791,6 +749,7 @@ and eval_for_in ~output ~state ~index_ident ~ident ~reverse ~iterable body =
   | Value.Float _ -> failwith "Cannot iterate over float value"
   | Value.Bool _ -> failwith "Cannot iterate over boolean value"
   | Value.DefinitionInfo _ -> failwith "Cannot iterate over definition info"
+  | Value.Function _ -> failwith "Cannot iterate over function"
 
 and eval_range ~output ~state ~inclusive from upto =
   let from = from |> eval_expression ~output ~state |> Output.get_value in
@@ -915,6 +874,7 @@ and eval_tag ~output ?value ~state tag =
     | Value.TemplateNode _ -> failwith "tried to assign template node to a string tag."
     | Value.DefinitionInfo _ ->
       failwith "tried to assign definition info to a string tag."
+    | Value.Function _ -> failwith "tried to assign function to a string tag."
     | Value.Null ->
       output |> Output.add_value (Value.Null |> apply_transformer ~transformer:body)
     | Value.String s ->
@@ -932,6 +892,7 @@ and eval_tag ~output ?value ~state tag =
     | Value.Record _ -> failwith "tried to assign record value to a int tag."
     | Value.TemplateNode _ -> failwith "tried to assign template node to a int tag."
     | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a int tag."
+    | Value.Function _ -> failwith "tried to assign function to a int tag."
     | Value.Null ->
       output |> Output.add_value (Value.Null |> apply_transformer ~transformer:body)
     | Value.Int i ->
@@ -949,6 +910,7 @@ and eval_tag ~output ?value ~state tag =
     | Value.Record _ -> failwith "tried to assign record value to a float tag."
     | Value.TemplateNode _ -> failwith "tried to assign template node to a float tag."
     | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a float tag."
+    | Value.Function _ -> failwith "tried to assign function to a float tag."
     | Value.Null ->
       output |> Output.add_value (Value.Null |> apply_transformer ~transformer:body)
     | Value.Float f ->
@@ -967,6 +929,7 @@ and eval_tag ~output ?value ~state tag =
     | Value.TemplateNode _ -> failwith "tried to assign template node to a boolean tag."
     | Value.DefinitionInfo _ ->
       failwith "tried to assign definition info to a boolean tag."
+    | Value.Function _ -> failwith "tried to assign function to a boolean tag."
     | Value.Null ->
       output |> Output.add_value (Value.Null |> apply_transformer ~transformer:body)
     | Value.Bool b ->
@@ -996,6 +959,7 @@ and eval_tag ~output ?value ~state tag =
     | Value.Record _ -> failwith "tried to assign record value to a array tag."
     | Value.TemplateNode _ -> failwith "tried to assign template node to a array tag."
     | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a array tag."
+    | Value.Function _ -> failwith "tried to assign function to a array tag."
     | Value.Null -> output |> Output.add_value Value.Null
     | Value.Array l ->
       let eval_item item = of' |> eval_tag ~value:item ~output ~state in
@@ -1039,6 +1003,7 @@ and eval_tag ~output ?value ~state tag =
     | Value.TemplateNode _ -> failwith "tried to assign template node to a record tag."
     | Value.DefinitionInfo _ ->
       failwith "tried to assign definition info to a record tag."
+    | Value.Function _ -> failwith "tried to assign function to a record tag."
     | Value.Null -> output |> Output.add_value Value.Null
     | Value.Record r ->
       let models key = StringMap.find_opt key r in

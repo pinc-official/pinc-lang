@@ -1,0 +1,42 @@
+component Component {
+
+  let max = fn (a, b) -> {
+    if (a > b) {
+      a
+    } else {
+      b
+    }
+  };
+
+  let min = fn (a, b) -> {
+    if (a < b) {
+      a
+    } else {
+      b
+    }
+  };
+
+  let until = 5;
+  let map = fn (array, f) -> {
+    for (el in array) {
+      continue if (min(el, until) == until);
+
+      f(el)
+    }
+  };
+
+  let add_curry = fn (a) -> {
+    fn (b) -> {
+      a + b
+    }
+  };
+
+  <section>
+    max(1, 5) = {max(1, 5)}
+    min(1, 5) = {min(1, 5)}
+    add_curry(1)(5) = {add_curry(1)(5)}
+
+    Map:
+    {map(1...10, fn (item) -> item ** 2)}
+  </section>
+}

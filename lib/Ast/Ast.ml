@@ -47,6 +47,8 @@ and expression =
   | Bool of bool
   | Array of expression Iter.t
   | Record of (bool * expression) StringMap.t
+  | Function of string list * expression
+  | FunctionCall of expression * expression list
   | UppercaseIdentifierExpression of uppercase_identifier
   | LowercaseIdentifierExpression of lowercase_identifier
   | OptionalLetExpression of lowercase_identifier * expression * expression

@@ -3,7 +3,7 @@
 - What to do with `<!DOCTYPE html>`? Do we want to parse it or just fail compiling with an error message that this is
   not needed?
 
-- Do we want to provide an `library` or `module` type, for which all declarations inside are exported? This could be a
+- Do we want to provide a `library` or `module` type, for which all top level declarations inside are exported? This could be a
   way, we could implement a "Std" library...
 
   ```
@@ -18,12 +18,6 @@
     ...
 
     let result = arr |> Std.default([1, 2, 3]) |> Std.map(fn (item) -> item + 2);
-
-    ...
-
-    (maybe even)
-    use Std;
-    let result = arr |> default([1, 2, 3]) |> map(fn (item) -> item + 2);
   ```
 
 - Currently only nodes are placed into slots. Normal text (<Text>Lorem Ipsum</Text>) is ignored and not put into any slot.
@@ -35,6 +29,6 @@
 
 ## Things
 
-- Functions / Lambdas
+- Recursive & Mutually Recursive Functions
 
 - Pipe operator (`|` or `|>`)

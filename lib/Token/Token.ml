@@ -44,6 +44,7 @@ type token_type =
   | GREATER_EQUAL
   | LESS_EQUAL
   | PLUSPLUS
+  | KEYWORD_FN
   | KEYWORD_LET
   | KEYWORD_TRUE
   | KEYWORD_FALSE
@@ -123,6 +124,7 @@ let to_string = function
   | STAR_STAR -> "**"
   | SLASH -> "/"
   | PERCENT -> "%"
+  | KEYWORD_FN -> "fn"
   | KEYWORD_LET -> "let"
   | KEYWORD_IF -> "if"
   | KEYWORD_ELSE -> "else"
@@ -148,6 +150,7 @@ let to_string = function
 ;;
 
 let is_keyword = function
+  | KEYWORD_FN
   | KEYWORD_LET
   | KEYWORD_TRUE
   | KEYWORD_FALSE
@@ -219,6 +222,7 @@ let is_keyword = function
 ;;
 
 let keyword_of_string = function
+  | "fn" -> Some KEYWORD_FN
   | "let" -> Some KEYWORD_LET
   | "true" -> Some KEYWORD_TRUE
   | "false" -> Some KEYWORD_FALSE

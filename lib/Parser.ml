@@ -201,6 +201,13 @@ module Rules = struct
         ~end_pos:t.token.end_pos
         (Diagnostics.Message (Printf.sprintf "Unknown tag with name `%s`." s))
 
+  and parse_fn_param t =
+    match t.token.typ with
+    | Token.IDENT_LOWER key ->
+      next t;
+      Some key
+    | _ -> None
+
   and parse_attribute ?(sep = Token.COLON) t =
     match t.token.typ with
     | Token.IDENT_LOWER key ->
@@ -396,6 +403,15 @@ module Rules = struct
           (Diagnostics.Message (Printf.sprintf "Expected expression as body of for loop"))
       | Some body ->
         Some (Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }))
+    (* PARSING FN EXPRESSION *)
+    | Token.KEYWORD_FN ->
+      next t;
+      expect Token.LEFT_PAREN t;
+      let parameters = t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_fn_param in
+      expect Token.RIGHT_PAREN t;
+      expect Token.ARROW t;
+      let* body = parse_expression t in
+      Some (Ast.Function (parameters, body))
     (* PARSING IF EXPRESSION *)
     | Token.KEYWORD_IF ->
       next t;
@@ -488,6 +504,7 @@ module Rules = struct
     | Token.ARROW_LEFT -> Some Ast.Operators.Binary.(make ARRAY_ADD)
     | Token.ATAT -> Some Ast.Operators.Binary.(make MERGE)
     | Token.LEFT_BRACK -> Some Ast.Operators.Binary.(make BRACKET_ACCESS)
+    | Token.LEFT_PAREN -> Some Ast.Operators.Binary.(make FUNCTION_CALL)
     | Token.DOTDOT -> Some Ast.Operators.Binary.(make RANGE)
     | Token.DOTDOTDOT -> Some Ast.Operators.Binary.(make INCLUSIVE_RANGE)
     | _ -> None
@@ -503,6 +520,15 @@ module Rules = struct
       match parse_binary_operator t with
       | None -> left
       | Some { precedence; _ } when precedence < prio -> left
+      | Some { typ = Ast.Operators.Binary.FUNCTION_CALL; closing_token; _ } ->
+        next t;
+        let arguments =
+          t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression
+        in
+        let left = Ast.FunctionCall (left, arguments) in
+        let expect_close token = expect token t in
+        let () = Option.iter expect_close closing_token in
+        loop ~left ~prio t
       | Some { typ = operator; precedence; assoc; closing_token } ->
         next t;
         let new_prio =

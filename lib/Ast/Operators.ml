@@ -23,6 +23,7 @@ module Binary = struct
     | OR
     | DOT_ACCESS
     | BRACKET_ACCESS
+    | FUNCTION_CALL
     | ARRAY_ADD
     | MERGE
     | RANGE
@@ -67,6 +68,12 @@ module Binary = struct
       ; assoc = Left
       ; closing_token = Some Token.RIGHT_BRACK
       }
+    | FUNCTION_CALL ->
+      { typ = FUNCTION_CALL
+      ; precedence = 0
+      ; assoc = Left
+      ; closing_token = Some Token.RIGHT_PAREN
+      }
   ;;
 
   let to_string = function
@@ -89,6 +96,7 @@ module Binary = struct
     | ARRAY_ADD -> "<-"
     | MERGE -> "@@"
     | BRACKET_ACCESS -> "["
+    | FUNCTION_CALL -> "("
     | RANGE -> ".."
     | INCLUSIVE_RANGE -> "..."
   ;;
