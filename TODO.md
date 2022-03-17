@@ -32,3 +32,5 @@
 - Mutually Recursive Functions
 
 - Pipe operator (`|` or `|>`)
+
+- Variable mutation (`let mutable x = 2; ... x := 3;`)
