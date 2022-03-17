@@ -29,6 +29,6 @@
 
 ## Things
 
-- Recursive & Mutually Recursive Functions
+- Mutually Recursive Functions
 
 - Pipe operator (`|` or `|>`)
