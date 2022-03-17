@@ -416,7 +416,8 @@ and eval_function_call ~output ~state ~arguments left =
       let arguments_len = List.length arguments in
       let missing =
         parameters
-        |> List.filteri (fun index _ -> index > arguments_len)
+        |> List.filteri (fun index _ -> index > arguments_len - 1)
+        |> List.map (fun item -> "`" ^ item ^ "`")
         |> String.concat ", "
       in
       failwith
