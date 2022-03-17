@@ -376,7 +376,14 @@ and eval_string_template ~output ~state template =
           |> String.concat ""))
 
 and eval_function_declaration ~output ~state ~parameters body =
+  let ident = state.State.binding_identifier in
+  let self = ref Value.Null in
   let eval_fn arguments =
+    let state =
+      match ident with
+      | None -> state
+      | Some ident -> state |> State.add_value_to_scope ~ident ~value:!self
+    in
     let state =
       state
       |> State.add_scope
@@ -386,7 +393,8 @@ and eval_function_declaration ~output ~state ~parameters body =
     in
     eval_expression ~output:Output.empty ~state body |> Output.get_value
   in
-  output |> Output.add_value (Value.Function (parameters, eval_fn))
+  self := Value.Function (parameters, eval_fn);
+  output |> Output.add_value !self
 
 and eval_function_call ~output ~state ~arguments left =
   let maybe_fn = eval_expression ~output ~state left |> Output.get_value in

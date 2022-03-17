@@ -31,10 +31,28 @@ component Component {
     }
   };
 
+  let fibonacci = fn (n) -> {
+      if (n <= 1) {
+        n
+      } else {
+        fibonacci(n - 1) + fibonacci(n - 2)
+      }
+  };
+
+  let factorial = fn (n) -> {
+    if (n <= 1) {
+      1
+    } else {
+      n * factorial(n - 1)
+    }
+  };
+
   <section>
     max(1, 5) = {max(1, 5)}
     min(1, 5) = {min(1, 5)}
     add_curry(1)(5) = {add_curry(1)(5)}
+    fibonacci(9) = {fibonacci(9)}
+    factorial(5) = {factorial(5)}
 
     Map:
     {map(1...10, fn (item) -> item ** 2)}

@@ -37,6 +37,12 @@ module Binary = struct
     }
 
   let make = function
+    | FUNCTION_CALL ->
+      { typ = FUNCTION_CALL
+      ; precedence = 120
+      ; assoc = Left
+      ; closing_token = Some Token.RIGHT_PAREN
+      }
     | DOT_ACCESS ->
       { typ = DOT_ACCESS; precedence = 110; assoc = Left; closing_token = None }
     | POW -> { typ = POW; precedence = 70; assoc = Right; closing_token = None }
@@ -67,12 +73,6 @@ module Binary = struct
       ; precedence = 0
       ; assoc = Left
       ; closing_token = Some Token.RIGHT_BRACK
-      }
-    | FUNCTION_CALL ->
-      { typ = FUNCTION_CALL
-      ; precedence = 0
-      ; assoc = Left
-      ; closing_token = Some Token.RIGHT_PAREN
       }
   ;;
 
