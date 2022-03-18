@@ -10,7 +10,7 @@
   And there is currently no way, to distinguish the two before you use them...
   So..is not rendering them the correct solution or not?
 
-## Things
+## TODOs till feature completion
 
 - Mutually Recursive Functions
 
@@ -48,3 +48,9 @@
 
     let result = arr |> Std.default([1, 2, 3]) |> Std.Array.map(fn (item) -> item + 2);
   ```
+
+## TODOs after feature completion:
+
+- Type checker
+
+- Type inference
