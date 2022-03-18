@@ -1137,11 +1137,7 @@ and eval_tag ~output ?value ~state tag =
           | Value.TemplateNode (`Component _, tag, attributes, _children, _self_closing)
             ) as value ->
           if find_slot_key attributes = slot_name
-          then
-            check_instance_restriction tag
-            @@
-            let transformed_value = value |> apply_transformer ~transformer:body in
-            Iter.append acc (Iter.singleton transformed_value)
+          then check_instance_restriction tag @@ Iter.append acc (Iter.singleton value)
           else acc
         | Value.Array l -> l |> Iter.fold keep_slotted acc
         (* TODO: Decide on wether to render text nodes inside slots or not...
@@ -1151,7 +1147,14 @@ and eval_tag ~output ?value ~state tag =
       let slotted_children =
         children |> Iter.of_list |> Iter.fold keep_slotted Iter.empty
       in
-      let amount_of_children = Iter.length slotted_children in
+      let slotted_children =
+        Value.Array slotted_children |> apply_transformer ~transformer:body
+      in
+      let amount_of_children =
+        match slotted_children with
+        | Value.Array slotted_children -> Iter.length slotted_children
+        | _ -> assert false
+      in
       (match slot_name, min, amount_of_children, max with
       | "", min, len, _ when len < min ->
         failwith
@@ -1178,7 +1181,7 @@ and eval_tag ~output ?value ~state tag =
               (specified as %i)."
              slot_name
              max)
-      | _ -> output |> Output.add_value (Value.Array slotted_children)))
+      | _ -> output |> Output.add_value slotted_children))
 
 and eval_template ~output ~state template =
   match template with
