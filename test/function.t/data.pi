@@ -54,7 +54,14 @@ component Component {
     fibonacci(9) = {fibonacci(9)}
     factorial(5) = {factorial(5)}
 
+    1 |> max(5) |> factorial = {1 |> max(5) |> factorial}
+    1 |> add_curry(5)() = {1 |> add_curry(5)()}
+    5 |> factorial = {5 |> factorial}
+
     Map:
     {map(1...10, fn (item) -> item ** 2)}
+    
+    Map Pipe:
+    {1...10 |> map(fn (item) -> item ** 2)}
   </section>
 }

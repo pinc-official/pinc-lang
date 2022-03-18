@@ -507,6 +507,7 @@ module Rules = struct
     | Token.LEFT_PAREN -> Some Ast.Operators.Binary.(make FUNCTION_CALL)
     | Token.DOTDOT -> Some Ast.Operators.Binary.(make RANGE)
     | Token.DOTDOTDOT -> Some Ast.Operators.Binary.(make INCLUSIVE_RANGE)
+    | Token.PIPE -> Some Ast.Operators.Binary.(make PIPE)
     | _ -> None
 
   and parse_unary_operator t =

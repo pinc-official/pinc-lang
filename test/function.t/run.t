@@ -6,7 +6,17 @@
       fibonacci(9) = 34
       factorial(5) = 120
   
+      1 |> max(5) |> factorial = 120
+      1 |> add_curry(5)() = 6
+      5 |> factorial = 120
+  
       Map:
+      1
+  4
+  9
+  16
+      
+      Map Pipe:
       1
   4
   9

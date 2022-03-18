@@ -355,6 +355,8 @@ let rec eval_expression ~output ~state = function
     eval_range ~output ~state ~inclusive:true left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.FUNCTION_CALL, right) ->
     eval_function_call ~output ~state ~arguments:[ right ] left
+  | Ast.BinaryExpression (left, Ast.Operators.Binary.PIPE, right) ->
+    eval_binary_pipe ~output ~state left right
   | Ast.BreakExpression (condition, body) ->
     if condition |> eval_expression ~output ~state |> Output.get_value |> Value.is_true
     then raise_notrace Loop_Break
@@ -432,6 +434,14 @@ and eval_function_call ~output ~state ~arguments left =
            (List.length parameters)
            (List.length arguments))
   | _ -> failwith "Trying to call a non function value"
+
+and eval_binary_pipe ~output ~state left right =
+  let right =
+    match right with
+    | Ast.FunctionCall (fn, arguments) -> Ast.FunctionCall (fn, left :: arguments)
+    | fn -> Ast.FunctionCall (fn, [ left ])
+  in
+  right |> eval_expression ~output ~state
 
 and eval_binary_plus ~output ~state left right =
   let a = left |> eval_expression ~output ~state |> Output.get_value in

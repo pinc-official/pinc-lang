@@ -24,6 +24,7 @@ module Binary = struct
     | DOT_ACCESS
     | BRACKET_ACCESS
     | FUNCTION_CALL
+    | PIPE
     | ARRAY_ADD
     | MERGE
     | RANGE
@@ -74,6 +75,7 @@ module Binary = struct
       ; assoc = Left
       ; closing_token = Some Token.RIGHT_BRACK
       }
+    | PIPE -> { typ = PIPE; precedence = 0; assoc = Left; closing_token = None }
   ;;
 
   let to_string = function
@@ -99,6 +101,7 @@ module Binary = struct
     | FUNCTION_CALL -> "("
     | RANGE -> ".."
     | INCLUSIVE_RANGE -> "..."
+    | PIPE -> "|>"
   ;;
 end
 

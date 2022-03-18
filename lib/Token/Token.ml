@@ -24,6 +24,7 @@ type token_type =
   | DOTDOTDOT
   | ARROW
   | ARROW_LEFT
+  | PIPE
   | ATAT
   | QUESTIONMARK
   | EQUAL
@@ -105,6 +106,7 @@ let to_string = function
   | QUESTIONMARK -> "?"
   | ARROW -> "->"
   | ARROW_LEFT -> "<-"
+  | PIPE -> "|>"
   | ATAT -> "@@"
   | EQUAL -> "="
   | NOT_EQUAL -> "!="
@@ -183,6 +185,7 @@ let is_keyword = function
   | DOTDOTDOT
   | ARROW
   | ARROW_LEFT
+  | PIPE
   | ATAT
   | QUESTIONMARK
   | EQUAL

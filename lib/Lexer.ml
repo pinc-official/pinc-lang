@@ -798,6 +798,9 @@ and scan_normal_token ~start_pos t =
       popMode Normal t;
       next_n ~n:2 t;
       Token.RIGHT_PIPE_BRACE
+    | `Chr '>' ->
+      next_n ~n:2 t;
+      Token.PIPE
     | _ ->
       Diagnostics.report
         ~start_pos
