@@ -40,6 +40,8 @@ and tag =
   | TagRecord of attributes * tag_body option
   | TagSlot of attributes * tag_body option
 
+and block = expression list
+
 and expression =
   | String of string_template list
   | Int of int
@@ -47,28 +49,29 @@ and expression =
   | Bool of bool
   | Array of expression Iter.t
   | Record of (bool * expression) StringMap.t
-  | Function of string list * expression
+  | Function of string list * block
   | FunctionCall of expression * expression list
   | UppercaseIdentifierExpression of uppercase_identifier
   | LowercaseIdentifierExpression of lowercase_identifier
-  | OptionalLetExpression of lowercase_identifier * expression * expression
-  | LetExpression of lowercase_identifier * expression * expression
+  | OptionalLetExpression of bool * lowercase_identifier * expression
+  | LetExpression of bool * lowercase_identifier * expression
+  | MutationExpression of lowercase_identifier * expression
   | TagExpression of tag
-  | BreakExpression of expression * expression
-  | ContinueExpression of expression * expression
+  | BreakExpression of expression
+  | ContinueExpression of expression
   | ForInExpression of
       { index : lowercase_identifier option
       ; iterator : lowercase_identifier
       ; reverse : bool
       ; iterable : expression
-      ; body : expression
+      ; body : block
       }
   | TemplateExpression of template_node list
-  | BlockExpression of expression
+  | BlockExpression of block
   | ConditionalExpression of
       { condition : expression
-      ; consequent : expression
-      ; alternate : expression option
+      ; consequent : block
+      ; alternate : block option
       }
   | UnaryExpression of Operators.Unary.typ * expression
   | BinaryExpression of expression * Operators.Binary.typ * expression
@@ -76,9 +79,9 @@ and expression =
 and attributes = expression StringMap.t
 
 and declaration =
-  | ComponentDeclaration of attributes option * expression
-  | SiteDeclaration of attributes option * expression
-  | PageDeclaration of attributes option * expression
-  | StoreDeclaration of attributes option * expression
+  | ComponentDeclaration of attributes option * block
+  | SiteDeclaration of attributes option * block
+  | PageDeclaration of attributes option * block
+  | StoreDeclaration of attributes option * block
 
 and t = declaration StringMap.t

@@ -14,8 +14,6 @@
 
 - Mutually Recursive Functions
 
-- Variable mutation (`let mutable x = 2; ... x := 3;`)
-
 - Portals
 
 - Context

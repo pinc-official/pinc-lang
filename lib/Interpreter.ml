@@ -3,7 +3,7 @@ module StringMap = Ast.StringMap
 exception Loop_Break
 exception Loop_Continue
 
-module Value = struct
+module rec Value : sig
   type definition_info =
     { name : string
     ; exists : bool
@@ -18,7 +18,45 @@ module Value = struct
     | Bool of bool
     | Array of t Iter.t
     | Record of t StringMap.t
-    | Function of (string list * (t StringMap.t -> t))
+    | Function of
+        { parameters : string list
+        ; state : State.t
+        ; exec : arguments:t StringMap.t -> state:State.t -> unit -> t
+        }
+    | DefinitionInfo of definition_info
+    | TemplateNode of
+        [ `Component of models:(string -> t option) -> slotted_children:t list -> t
+        | `Html
+        ]
+        * string
+        * t StringMap.t
+        * t list
+        * bool
+
+  val to_string : t -> string
+  val is_true : t -> bool
+  val equal : t -> t -> bool
+  val compare : t -> t -> int
+end = struct
+  type definition_info =
+    { name : string
+    ; exists : bool
+    ; negated : bool
+    }
+
+  type t =
+    | Null
+    | String of string
+    | Int of int
+    | Float of float
+    | Bool of bool
+    | Array of t Iter.t
+    | Record of t StringMap.t
+    | Function of
+        { parameters : string list
+        ; state : State.t
+        ; exec : arguments:t StringMap.t -> state:State.t -> unit -> t
+        }
     | DefinitionInfo of definition_info
     | TemplateNode of
         [ `Component of models:(string -> t option) -> slotted_children:t list -> t
@@ -141,11 +179,23 @@ module Value = struct
   ;;
 end
 
-module Output = struct
+and State : sig
   type t =
-    { value : Value.t option
-    ; top_level_bindings : Value.t StringMap.t
+    { binding_identifier : string option
+    ; models : string -> Value.t option
+    ; slotted_children : Value.t list option
+    ; declarations : Ast.declaration StringMap.t
+    ; output : Value.t
+    ; environment : environment
     ; tags : tag_meta StringMap.t
+    }
+
+  and environment = { mutable scope : (string * binding) list list }
+
+  and binding =
+    { is_mutable : bool
+    ; is_optional : bool
+    ; value : Value.t
     }
 
   and tag_meta = { typ : tag_typ }
@@ -159,25 +209,142 @@ module Output = struct
     | Record of (bool * tag_typ) StringMap.t
     | Slot
 
-  let empty =
-    { value = None; top_level_bindings = StringMap.empty; tags = StringMap.empty }
+  val make
+    :  ?models:(string -> Value.t option)
+    -> ?slotted_children:Value.t list
+    -> Ast.declaration StringMap.t
+    -> t
+
+  val add_scope : t -> t
+
+  val add_value_to_scope
+    :  ident:string
+    -> value:Value.t
+    -> is_optional:bool
+    -> is_mutable:bool
+    -> t
+    -> t
+
+  val update_value_in_scope : ident:string -> value:Value.t -> t -> unit
+  val get_value_from_scope : ident:string -> t -> binding option
+  val merge_scope : t -> t -> t
+  val get_output : t -> Value.t
+  val add_output : output:Value.t -> t -> t
+  val get_bindings : t -> (string * binding) list
+  val get_tags : t -> (string * tag_meta) list
+  val add_tag : typ:tag_typ -> string -> t -> t
+end = struct
+  type t =
+    { binding_identifier : string option
+    ; models : string -> Value.t option
+    ; slotted_children : Value.t list option
+    ; declarations : Ast.declaration StringMap.t
+    ; output : Value.t
+    ; environment : environment
+    ; tags : tag_meta StringMap.t
+    }
+
+  and environment = { mutable scope : (string * binding) list list }
+
+  and binding =
+    { is_mutable : bool
+    ; is_optional : bool
+    ; value : Value.t
+    }
+
+  and tag_meta = { typ : tag_typ }
+
+  and tag_typ =
+    | String
+    | Int
+    | Float
+    | Boolean
+    | Array of tag_typ
+    | Record of (bool * tag_typ) StringMap.t
+    | Slot
+
+  let make ?(models = fun _ -> None) ?slotted_children declarations =
+    { binding_identifier = None
+    ; models
+    ; slotted_children
+    ; declarations
+    ; output = Value.Null
+    ; environment = { scope = [] }
+    ; tags = StringMap.empty
+    }
   ;;
 
-  let get_value t =
-    match t.value with
-    | Some v -> v
-    | None -> Value.Null
+  let add_scope t =
+    let environment = { scope = [] :: t.environment.scope } in
+    { t with environment }
   ;;
 
-  let add_value v t = { t with value = Some v }
-  let get_bindings t = t.top_level_bindings |> StringMap.bindings
-
-  let add_binding (key, value) t =
-    { t with top_level_bindings = StringMap.add key value t.top_level_bindings }
+  let add_value_to_scope ~ident ~value ~is_optional ~is_mutable t =
+    let update_scope t =
+      match t.environment.scope with
+      | [] -> assert false
+      | scope :: rest -> ((ident, { is_mutable; is_optional; value }) :: scope) :: rest
+    in
+    let environment = { scope = update_scope t } in
+    { t with environment }
   ;;
+
+  let update_value_in_scope ~ident ~value t =
+    let updated = ref false in
+    let rec update_scope state =
+      List.map
+        (function
+          | scope when not !updated ->
+            (List.map (function
+                | key, binding when (not !updated) && key = ident && binding.is_mutable ->
+                  updated := true;
+                  key, { binding with value }
+                | ( key
+                  , ({ value = Value.Function { state = fn_state; parameters; exec }; _ }
+                    as binding) )
+                  when not !updated ->
+                  fn_state.environment.scope <- update_scope fn_state;
+                  ( key
+                  , { binding with
+                      value = Value.Function { state = fn_state; parameters; exec }
+                    } )
+                | v -> v))
+              scope
+          | scope -> scope)
+        state.environment.scope
+    in
+    t.environment.scope <- update_scope t
+  ;;
+
+  let get_value_from_scope ~ident t =
+    t.environment.scope |> List.find_map (List.assoc_opt ident)
+  ;;
+
+  let merge_scope a b =
+    let new_scope =
+      match a.environment.scope, b.environment.scope with
+      | [], b_scope :: _ -> [ b_scope ]
+      | a_scope, [] -> a_scope
+      | scope_a :: rest, scope_b :: _ ->
+        rest
+        |> List.cons
+             (scope_a
+             |> List.map (fun (key, a_value) ->
+                    let new_value =
+                      scope_b |> List.assoc_opt key |> Option.value ~default:a_value
+                    in
+                    key, new_value))
+    in
+    let environment = { scope = new_scope } in
+    { a with environment }
+  ;;
+
+  let get_output t = t.output
+  let add_output ~output t = { t with output }
+  let get_bindings t = t.environment.scope |> List.hd
+  (* NOTE: Should this return the flattened list of all bindings? *)
 
   let get_tags t = t.tags |> StringMap.bindings
-  let print_tags t = t.tags |> StringMap.iter (fun key _ -> print_endline key)
 
   let add_tag ~typ key t =
     let value = { typ } in
@@ -185,234 +352,184 @@ module Output = struct
   ;;
 end
 
-module State = struct
-  type t =
-    { binding_identifier : string option
-    ; models : string -> Value.t option
-    ; slotted_children : Value.t list option
-    ; declarations : Ast.declaration StringMap.t
-    ; declaration_instances : Value.t array StringMap.t
-    ; scope : Value.t StringMap.t list
-    }
-
-  let make
-      ?(models = fun _ -> None)
-      ?slotted_children
-      ?(declaration_instances = StringMap.empty)
-      declarations
-    =
-    { binding_identifier = None
-    ; scope = []
-    ; models
-    ; slotted_children
-    ; declarations
-    ; declaration_instances
-    }
-  ;;
-
-  let add_scope t =
-    let scope = StringMap.empty in
-    { t with scope = scope :: t.scope }
-  ;;
-
-  let add_value_to_scope ~ident ~value t =
-    let update_scope t =
-      match t.scope with
-      | [] -> assert false
-      | scope :: rest -> StringMap.add ident value scope :: rest
-    in
-    { t with scope = update_scope t }
-  ;;
-
-  let get_value_from_scope ~ident t = t.scope |> List.find_map (StringMap.find_opt ident)
-
-  let merge_scope a b =
-    let new_scope =
-      match a.scope, b.scope with
-      | [], b_scope :: _ -> [ b_scope ]
-      | a_scope, [] -> a_scope
-      | scope_a :: rest, scope_b :: _ ->
-        StringMap.merge
-          (fun _ x y ->
-            match x, y with
-            | (Some _ | None), Some y -> Some y
-            | Some x, None -> Some x
-            | None, None -> None)
-          scope_a
-          scope_b
-        :: rest
-    in
-    { a with scope = new_scope }
-  ;;
-end
-
-let rec eval_expression ~output ~state = function
-  | Ast.Int i -> output |> Output.add_value (Value.Int i)
+let rec eval_expression ~state = function
+  | Ast.Int i -> state |> State.add_output ~output:(Value.Int i)
   | Ast.Float f when Float.is_integer f ->
-    output |> Output.add_value (Value.Int (int_of_float f))
-  | Ast.Float f -> output |> Output.add_value (Value.Float f)
-  | Ast.Bool b -> output |> Output.add_value (Value.Bool b)
+    state |> State.add_output ~output:(Value.Int (int_of_float f))
+  | Ast.Float f -> state |> State.add_output ~output:(Value.Float f)
+  | Ast.Bool b -> state |> State.add_output ~output:(Value.Bool b)
   | Ast.Array l ->
-    output
-    |> Output.add_value
-         (Value.Array
-            (l |> Iter.map (eval_expression ~output ~state) |> Iter.map Output.get_value))
+    state
+    |> State.add_output
+         ~output:
+           (Value.Array
+              (l |> Iter.map (eval_expression ~state) |> Iter.map State.get_output))
   | Ast.Record map ->
-    output
-    |> Output.add_value
-         (Value.Record
-            (map
-            |> Ast.StringMap.mapi (fun ident (optional, expression) ->
-                   expression
-                   |> eval_expression
-                        ~output
-                        ~state:{ state with State.binding_identifier = Some ident }
-                   |> Output.get_value
-                   |> function
-                   | Value.Null when not optional ->
-                     failwith
-                       (Printf.sprintf
-                          "identifier %s is not marked as nullable, but was given a null \
-                           value."
-                          ident)
-                   | value -> value)))
-  | Ast.String template -> eval_string_template ~output ~state template
-  | Ast.Function (parameters, body) ->
-    eval_function_declaration ~output ~state ~parameters body
-  | Ast.FunctionCall (left, arguments) ->
-    eval_function_call ~output ~state ~arguments left
-  | Ast.LetExpression (Lowercase_Id ident, expression, body) ->
-    eval_let ~output ~state ~ident ~optional:false ~expression body
-  | Ast.OptionalLetExpression (Lowercase_Id ident, expression, body) ->
-    eval_let ~output ~state ~ident ~optional:true ~expression body
+    state
+    |> State.add_output
+         ~output:
+           (Value.Record
+              (map
+              |> Ast.StringMap.mapi (fun ident (optional, expression) ->
+                     expression
+                     |> eval_expression
+                          ~state:{ state with State.binding_identifier = Some ident }
+                     |> State.get_output
+                     |> function
+                     | Value.Null when not optional ->
+                       failwith
+                         (Printf.sprintf
+                            "identifier %s is not marked as nullable, but was given a \
+                             null value."
+                            ident)
+                     | value -> value)))
+  | Ast.String template -> eval_string_template ~state template
+  | Ast.Function (parameters, body) -> eval_function_declaration ~state ~parameters body
+  | Ast.FunctionCall (left, arguments) -> eval_function_call ~state ~arguments left
+  | Ast.LetExpression (is_mutable, Lowercase_Id ident, expression) ->
+    eval_let ~state ~ident ~is_mutable ~is_optional:false expression
+  | Ast.OptionalLetExpression (is_mutable, Lowercase_Id ident, expression) ->
+    eval_let ~state ~ident ~is_mutable ~is_optional:true expression
+  | Ast.MutationExpression (Lowercase_Id ident, expression) ->
+    eval_mutation ~state ~ident expression
   | Ast.UppercaseIdentifierExpression (Uppercase_Id id) ->
     let value = state.State.declarations |> StringMap.find_opt id in
-    output
-    |> Output.add_value
-         (Value.DefinitionInfo
-            { name = id; exists = Option.is_some value; negated = false })
+    state
+    |> State.add_output
+         ~output:
+           (Value.DefinitionInfo
+              { name = id; exists = Option.is_some value; negated = false })
   | Ast.LowercaseIdentifierExpression (Lowercase_Id id) ->
-    eval_lowercase_identifier ~output ~state id
-  | Ast.TagExpression tag -> eval_tag ~output ~state tag
+    eval_lowercase_identifier ~state id
+  | Ast.TagExpression tag -> eval_tag ~state tag
   | Ast.ForInExpression { index; iterator = Lowercase_Id ident; reverse; iterable; body }
-    -> eval_for_in ~output ~state ~index_ident:index ~ident ~reverse ~iterable body
+    -> eval_for_in ~state ~index_ident:index ~ident ~reverse ~iterable body
   | Ast.TemplateExpression nodes ->
-    output
-    |> Output.add_value
-         (Value.Array
-            (nodes
-            |> List.map (eval_template ~output ~state)
-            |> List.map Output.get_value
-            |> Iter.of_list))
-  | Ast.BlockExpression e -> eval_block ~output ~state e
+    state
+    |> State.add_output
+         ~output:
+           (Value.Array
+              (nodes
+              |> List.map (eval_template ~state)
+              |> List.map State.get_output
+              |> Iter.of_list))
+  | Ast.BlockExpression e -> eval_block ~state e
   | Ast.ConditionalExpression { condition; consequent; alternate } ->
-    eval_if ~output ~state ~condition ~alternate consequent
+    eval_if ~state ~condition ~alternate consequent
   | Ast.UnaryExpression (Ast.Operators.Unary.NOT, expression) ->
-    eval_unary_not ~output ~state expression
+    eval_unary_not ~state expression
   | Ast.UnaryExpression (Ast.Operators.Unary.MINUS, expression) ->
-    eval_unary_minus ~output ~state expression
+    eval_unary_minus ~state expression
   | Ast.BinaryExpression (left, Ast.Operators.Binary.EQUAL, right) ->
-    eval_binary_equal ~output ~state left right
+    eval_binary_equal ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.NOT_EQUAL, right) ->
-    eval_binary_not_equal ~output ~state left right
+    eval_binary_not_equal ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.GREATER, right) ->
-    eval_binary_greater ~output ~state left right
+    eval_binary_greater ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.GREATER_EQUAL, right) ->
-    eval_binary_greater_equal ~output ~state left right
+    eval_binary_greater_equal ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.LESS, right) ->
-    eval_binary_less ~output ~state left right
+    eval_binary_less ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.LESS_EQUAL, right) ->
-    eval_binary_less_equal ~output ~state left right
+    eval_binary_less_equal ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.PLUS, right) ->
-    eval_binary_plus ~output ~state left right
+    eval_binary_plus ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.MINUS, right) ->
-    eval_binary_minus ~output ~state left right
+    eval_binary_minus ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.TIMES, right) ->
-    eval_binary_times ~output ~state left right
+    eval_binary_times ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.DIV, right) ->
-    eval_binary_div ~output ~state left right
+    eval_binary_div ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.POW, right) ->
-    eval_binary_pow ~output ~state left right
+    eval_binary_pow ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.MODULO, right) ->
-    eval_binary_modulo ~output ~state left right
+    eval_binary_modulo ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.CONCAT, right) ->
-    eval_binary_concat ~output ~state left right
+    eval_binary_concat ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.AND, right) ->
-    eval_binary_and ~output ~state left right
+    eval_binary_and ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.OR, right) ->
-    eval_binary_or ~output ~state left right
+    eval_binary_or ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.DOT_ACCESS, right) ->
-    eval_binary_dot_access ~output ~state left right
+    eval_binary_dot_access ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.BRACKET_ACCESS, right) ->
-    eval_binary_bracket_access ~output ~state left right
+    eval_binary_bracket_access ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.ARRAY_ADD, right) ->
-    eval_binary_array_add ~output ~state left right
+    eval_binary_array_add ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.MERGE, right) ->
-    eval_binary_merge ~output ~state left right
+    eval_binary_merge ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.RANGE, right) ->
-    eval_range ~output ~state ~inclusive:false left right
+    eval_range ~state ~inclusive:false left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.INCLUSIVE_RANGE, right) ->
-    eval_range ~output ~state ~inclusive:true left right
+    eval_range ~state ~inclusive:true left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.FUNCTION_CALL, right) ->
-    eval_function_call ~output ~state ~arguments:[ right ] left
+    eval_function_call ~state ~arguments:[ right ] left
   | Ast.BinaryExpression (left, Ast.Operators.Binary.PIPE, right) ->
-    eval_binary_pipe ~output ~state left right
-  | Ast.BreakExpression (condition, body) ->
-    if condition |> eval_expression ~output ~state |> Output.get_value |> Value.is_true
+    eval_binary_pipe ~state left right
+  | Ast.BreakExpression condition ->
+    if condition |> eval_expression ~state |> State.get_output |> Value.is_true
     then raise_notrace Loop_Break
-    else eval_expression ~output ~state body
-  | Ast.ContinueExpression (condition, body) ->
-    if condition |> eval_expression ~output ~state |> Output.get_value |> Value.is_true
+    else state |> State.add_output ~output:Value.Null
+  | Ast.ContinueExpression condition ->
+    if condition |> eval_expression ~state |> State.get_output |> Value.is_true
     then raise_notrace Loop_Continue
-    else eval_expression ~output ~state body
+    else state |> State.add_output ~output:Value.Null
 
-and eval_string_template ~output ~state template =
-  output
-  |> Output.add_value
-       (Value.String
-          (template
-          |> List.map (function
-                 | Ast.StringText s -> s
-                 | Ast.StringInterpolation e ->
-                   eval_expression ~output ~state e |> Output.get_value |> Value.to_string)
-          |> String.concat ""))
+and eval_string_template ~state template =
+  state
+  |> State.add_output
+       ~output:
+         (Value.String
+            (template
+            |> List.map (function
+                   | Ast.StringText s -> s
+                   | Ast.StringInterpolation e ->
+                     eval_expression ~state e |> State.get_output |> Value.to_string)
+            |> String.concat ""))
 
-and eval_function_declaration ~output ~state ~parameters body =
+and eval_function_declaration ~state ~parameters body =
   let ident = state.State.binding_identifier in
   let self = ref Value.Null in
-  let eval_fn arguments =
+  let exec ~arguments ~state () =
     let state =
       match ident with
       | None -> state
-      | Some ident -> state |> State.add_value_to_scope ~ident ~value:!self
+      | Some ident ->
+        state
+        |> State.add_value_to_scope
+             ~ident
+             ~value:!self
+             ~is_mutable:false
+             ~is_optional:false
     in
     let state =
       state
       |> State.add_scope
       |> StringMap.fold
-           (fun ident value -> State.add_value_to_scope ~ident ~value)
+           (fun ident value ->
+             State.add_value_to_scope ~ident ~value ~is_mutable:false ~is_optional:false)
            arguments
     in
-    eval_expression ~output:Output.empty ~state body |> Output.get_value
+    eval_block ~state body |> State.get_output
   in
-  self := Value.Function (parameters, eval_fn);
-  output |> Output.add_value !self
+  self := Value.Function { parameters; state; exec };
+  state |> State.add_output ~output:!self
 
-and eval_function_call ~output ~state ~arguments left =
-  let maybe_fn = eval_expression ~output ~state left |> Output.get_value in
+and eval_function_call ~state ~arguments left =
+  let maybe_fn = eval_expression ~state left |> State.get_output in
   match maybe_fn with
-  | Value.Function (parameters, eval_fn)
+  | Value.Function { parameters; state = fn_state; exec }
     when List.compare_lengths parameters arguments = 0 ->
-    let state =
+    let arguments =
       List.combine parameters arguments
       |> List.fold_left
            (fun acc (param, arg) ->
-             let value = arg |> eval_expression ~output ~state |> Output.get_value in
+             let value = arg |> eval_expression ~state |> State.get_output in
              acc |> StringMap.add param value)
            StringMap.empty
     in
-    output |> Output.add_value (eval_fn state)
-  | Value.Function (parameters, _) ->
+    state |> State.add_output ~output:(exec ~arguments ~state:fn_state ())
+  | Value.Function { parameters; state = _; exec = _ } ->
     if List.compare_lengths parameters arguments > 0
     then (
       let arguments_len = List.length arguments in
@@ -435,53 +552,56 @@ and eval_function_call ~output ~state ~arguments left =
            (List.length arguments))
   | _ -> failwith "Trying to call a non function value"
 
-and eval_binary_pipe ~output ~state left right =
+and eval_binary_pipe ~state left right =
   let right =
     match right with
     | Ast.FunctionCall (fn, arguments) -> Ast.FunctionCall (fn, left :: arguments)
     | fn -> Ast.FunctionCall (fn, [ left ])
   in
-  right |> eval_expression ~output ~state
+  right |> eval_expression ~state
 
-and eval_binary_plus ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_plus ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
   match a, b with
-  | Value.Int a, Value.Int b -> output |> Output.add_value (Value.Int (a + b))
-  | Value.Float a, Value.Float b -> output |> Output.add_value (Value.Float (a +. b))
+  | Value.Int a, Value.Int b -> state |> State.add_output ~output:(Value.Int (a + b))
+  | Value.Float a, Value.Float b ->
+    state |> State.add_output ~output:(Value.Float (a +. b))
   | Value.Float a, Value.Int b ->
-    output |> Output.add_value (Value.Float (a +. float_of_int b))
+    state |> State.add_output ~output:(Value.Float (a +. float_of_int b))
   | Value.Int a, Value.Float b ->
-    output |> Output.add_value (Value.Float (float_of_int a +. b))
+    state |> State.add_output ~output:(Value.Float (float_of_int a +. b))
   | _ -> failwith "Trying to add non numeric literals."
 
-and eval_binary_minus ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_minus ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
   match a, b with
-  | Value.Int a, Value.Int b -> output |> Output.add_value (Value.Int (a - b))
-  | Value.Float a, Value.Float b -> output |> Output.add_value (Value.Float (a -. b))
+  | Value.Int a, Value.Int b -> state |> State.add_output ~output:(Value.Int (a - b))
+  | Value.Float a, Value.Float b ->
+    state |> State.add_output ~output:(Value.Float (a -. b))
   | Value.Float a, Value.Int b ->
-    output |> Output.add_value (Value.Float (a -. float_of_int b))
+    state |> State.add_output ~output:(Value.Float (a -. float_of_int b))
   | Value.Int a, Value.Float b ->
-    output |> Output.add_value (Value.Float (float_of_int a -. b))
+    state |> State.add_output ~output:(Value.Float (float_of_int a -. b))
   | _ -> failwith "Trying to subtract non numeric literals."
 
-and eval_binary_times ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_times ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
   match a, b with
-  | Value.Int a, Value.Int b -> output |> Output.add_value (Value.Int (a * b))
-  | Value.Float a, Value.Float b -> output |> Output.add_value (Value.Float (a *. b))
+  | Value.Int a, Value.Int b -> state |> State.add_output ~output:(Value.Int (a * b))
+  | Value.Float a, Value.Float b ->
+    state |> State.add_output ~output:(Value.Float (a *. b))
   | Value.Float a, Value.Int b ->
-    output |> Output.add_value (Value.Float (a *. float_of_int b))
+    state |> State.add_output ~output:(Value.Float (a *. float_of_int b))
   | Value.Int a, Value.Float b ->
-    output |> Output.add_value (Value.Float (float_of_int a *. b))
+    state |> State.add_output ~output:(Value.Float (float_of_int a *. b))
   | _ -> failwith "Trying to multiply non numeric literals."
 
-and eval_binary_div ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_div ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
   let r =
     match a, b with
     | Value.Int _, Value.Int 0 -> failwith "Trying to divide by 0"
@@ -495,12 +615,12 @@ and eval_binary_div ~output ~state left right =
     | _ -> failwith "Trying to divide non numeric literals."
   in
   if Float.is_integer r
-  then output |> Output.add_value (Value.Int (int_of_float r))
-  else output |> Output.add_value (Value.Float r)
+  then state |> State.add_output ~output:(Value.Int (int_of_float r))
+  else state |> State.add_output ~output:(Value.Float r)
 
-and eval_binary_pow ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_pow ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
   let r =
     match a, b with
     | Value.Int a, Value.Int b -> float_of_int a ** float_of_int b
@@ -510,12 +630,12 @@ and eval_binary_pow ~output ~state left right =
     | _ -> failwith "Trying to raise non numeric literals."
   in
   if Float.is_integer r
-  then output |> Output.add_value (Value.Int (int_of_float r))
-  else output |> Output.add_value (Value.Float r)
+  then state |> State.add_output ~output:(Value.Int (int_of_float r))
+  else state |> State.add_output ~output:(Value.Float r)
 
-and eval_binary_modulo ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_modulo ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
   let ( %. ) = mod_float in
   let ( % ) = ( mod ) in
   let r =
@@ -532,67 +652,69 @@ and eval_binary_modulo ~output ~state left right =
     | Value.Int a, Value.Float b -> a % int_of_float b
     | _ -> failwith "Trying to modulo non numeric literals."
   in
-  output |> Output.add_value (Value.Int r)
+  state |> State.add_output ~output:(Value.Int r)
 
-and eval_binary_and ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
-  output |> Output.add_value (Value.Bool (Value.is_true a && Value.is_true b))
+and eval_binary_and ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
+  state |> State.add_output ~output:(Value.Bool (Value.is_true a && Value.is_true b))
 
-and eval_binary_or ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
-  output |> Output.add_value (Value.Bool (Value.is_true a || Value.is_true b))
+and eval_binary_or ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
+  state |> State.add_output ~output:(Value.Bool (Value.is_true a || Value.is_true b))
 
-and eval_binary_less ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
-  output |> Output.add_value (Value.Bool (Value.compare a b < 0))
+and eval_binary_less ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
+  state |> State.add_output ~output:(Value.Bool (Value.compare a b < 0))
 
-and eval_binary_less_equal ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
-  output |> Output.add_value (Value.Bool (Value.compare a b <= 0))
+and eval_binary_less_equal ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
+  state |> State.add_output ~output:(Value.Bool (Value.compare a b <= 0))
 
-and eval_binary_greater ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
-  output |> Output.add_value (Value.Bool (Value.compare a b > 0))
+and eval_binary_greater ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
+  state |> State.add_output ~output:(Value.Bool (Value.compare a b > 0))
 
-and eval_binary_greater_equal ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
-  output |> Output.add_value (Value.Bool (Value.compare a b >= 0))
+and eval_binary_greater_equal ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
+  state |> State.add_output ~output:(Value.Bool (Value.compare a b >= 0))
 
-and eval_binary_equal ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
-  output |> Output.add_value (Value.Bool (Value.equal a b))
+and eval_binary_equal ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
+  state |> State.add_output ~output:(Value.Bool (Value.equal a b))
 
-and eval_binary_not_equal ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
-  output |> Output.add_value (Value.Bool (not (Value.equal a b)))
+and eval_binary_not_equal ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
+  state |> State.add_output ~output:(Value.Bool (not (Value.equal a b)))
 
-and eval_binary_concat ~output ~state left right =
-  let a = left |> eval_expression ~output ~state |> Output.get_value in
-  let b = right |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_concat ~state left right =
+  let a = left |> eval_expression ~state |> State.get_output in
+  let b = right |> eval_expression ~state |> State.get_output in
   match a, b with
-  | Value.String a, Value.String b -> output |> Output.add_value (Value.String (a ^ b))
+  | Value.String a, Value.String b ->
+    state |> State.add_output ~output:(Value.String (a ^ b))
   | _ -> failwith "Trying to concat non string literals."
 
-and eval_binary_dot_access ~output ~state left right =
-  let left = left |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_dot_access ~state left right =
+  let left = left |> eval_expression ~state |> State.get_output in
   match left, right with
   | Value.Record left, Ast.LowercaseIdentifierExpression (Lowercase_Id b) ->
-    let value = left |> StringMap.find_opt b |> Option.value ~default:Value.Null in
-    output |> Output.add_value value
+    let output = left |> StringMap.find_opt b |> Option.value ~default:Value.Null in
+    state |> State.add_output ~output
   | ( Value.TemplateNode (_typ, tag, attributes, children, _self_closing)
     , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) ->
     (match b with
-    | "tag" -> output |> Output.add_value (Value.String tag)
-    | "attributes" -> output |> Output.add_value (Value.Record attributes)
-    | "children" -> output |> Output.add_value (Value.Array (Iter.of_list children))
+    | "tag" -> state |> State.add_output ~output:(Value.String tag)
+    | "attributes" -> state |> State.add_output ~output:(Value.Record attributes)
+    | "children" ->
+      state |> State.add_output ~output:(Value.Array (Iter.of_list children))
     | s ->
       failwith
         (Printf.sprintf
@@ -601,56 +723,58 @@ and eval_binary_dot_access ~output ~state left right =
            s))
   | Value.Record _, _ ->
     failwith "Expected right hand side of record access to be a lowercase identifier."
-  | Value.Null, _ -> output |> Output.add_value Value.Null
+  | Value.Null, _ -> state |> State.add_output ~output:Value.Null
   | _, Ast.LowercaseIdentifierExpression _ ->
     failwith "Trying to access a property on a non record or template value."
   | _ -> failwith "I am really not sure what you are trying to do here..."
 
-and eval_binary_bracket_access ~output ~state left right =
-  let left = left |> eval_expression ~output ~state |> Output.get_value in
-  let right = right |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_bracket_access ~state left right =
+  let left = left |> eval_expression ~state |> State.get_output in
+  let right = right |> eval_expression ~state |> State.get_output in
   match left, right with
   | Value.Array left, Value.Int right ->
-    let value =
+    let output =
       left
       |> Iter.findi (fun index el -> if index = right then Some el else None)
       |> Option.value ~default:Value.Null
     in
-    output |> Output.add_value value
+    state |> State.add_output ~output
   | Value.Record left, Value.String right ->
-    let value = left |> StringMap.find_opt right |> Option.value ~default:Value.Null in
-    output |> Output.add_value value
-  | Value.Null, _ -> output |> Output.add_value Value.Null
+    let output = left |> StringMap.find_opt right |> Option.value ~default:Value.Null in
+    state |> State.add_output ~output
+  | Value.Null, _ -> state |> State.add_output ~output:Value.Null
   | Value.Array _, _ -> failwith "Cannot access array with a non integer value."
   | Value.Record _, _ -> failwith "Cannot access record with a non string value."
   | _ -> failwith "Trying to access a property on a non record or array value."
 
-and eval_binary_array_add ~output ~state left right =
-  let left = left |> eval_expression ~output ~state |> Output.get_value in
-  let right = right |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_array_add ~state left right =
+  let left = left |> eval_expression ~state |> State.get_output in
+  let right = right |> eval_expression ~state |> State.get_output in
   match left, right with
   | Value.Array left, value ->
-    output |> Output.add_value (Value.Array (Iter.append left (Iter.singleton value)))
+    state
+    |> State.add_output ~output:(Value.Array (Iter.append left (Iter.singleton value)))
   | _ -> failwith "Trying to add an element on a non array value."
 
-and eval_binary_merge ~output ~state left right =
-  let left = left |> eval_expression ~output ~state |> Output.get_value in
-  let right = right |> eval_expression ~output ~state |> Output.get_value in
+and eval_binary_merge ~state left right =
+  let left = left |> eval_expression ~state |> State.get_output in
+  let right = right |> eval_expression ~state |> State.get_output in
   match left, right with
   | Value.Array left, Value.Array right ->
-    output |> Output.add_value (Value.Array (Iter.append left right))
+    state |> State.add_output ~output:(Value.Array (Iter.append left right))
   | Value.Record left, Value.Record right ->
-    output
-    |> Output.add_value
-         (Value.Record
-            (StringMap.merge
-               (fun _ x y ->
-                 match x, y with
-                 | (Some _ | None), Some y -> Some y
-                 | Some x, None -> Some x
-                 | None, None -> None)
-               left
-               right))
+    state
+    |> State.add_output
+         ~output:
+           (Value.Record
+              (StringMap.merge
+                 (fun _ x y ->
+                   match x, y with
+                   | (Some _ | None), Some y -> Some y
+                   | Some x, None -> Some x
+                   | None, None -> None)
+                 left
+                 right))
   | Value.TemplateNode (typ, tag, attributes, children, self_closing), Value.Record right
     ->
     let attributes =
@@ -663,95 +787,115 @@ and eval_binary_merge ~output ~state left right =
         attributes
         right
     in
-    output
-    |> Output.add_value
-         (Value.TemplateNode (typ, tag, attributes, children, self_closing))
+    state
+    |> State.add_output
+         ~output:(Value.TemplateNode (typ, tag, attributes, children, self_closing))
   | Value.TemplateNode _, _ ->
     failwith "Trying to merge a non record value onto tag attributes."
   | Value.Array _, _ -> failwith "Trying to merge a non array value onto an array."
   | _, Value.Array _ -> failwith "Trying to merge an array value onto a non array."
   | _ -> failwith "Trying to merge two non array values."
 
-and eval_unary_not ~output ~state expression =
-  match eval_expression ~output ~state expression |> Output.get_value with
+and eval_unary_not ~state expression =
+  match eval_expression ~state expression |> State.get_output with
   | Value.DefinitionInfo info ->
-    output
-    |> Output.add_value (Value.DefinitionInfo { info with negated = not info.negated })
-  | v -> output |> Output.add_value (Value.Bool (not (Value.is_true v)))
+    state
+    |> State.add_output
+         ~output:(Value.DefinitionInfo { info with negated = not info.negated })
+  | v -> state |> State.add_output ~output:(Value.Bool (not (Value.is_true v)))
 
-and eval_unary_minus ~output ~state expression =
-  match eval_expression ~output ~state expression |> Output.get_value with
-  | Value.Int i -> output |> Output.add_value (Value.Int (Int.neg i))
-  | Value.Float f -> output |> Output.add_value (Value.Float (Float.neg f))
+and eval_unary_minus ~state expression =
+  match eval_expression ~state expression |> State.get_output with
+  | Value.Int i -> state |> State.add_output ~output:(Value.Int (Int.neg i))
+  | Value.Float f -> state |> State.add_output ~output:(Value.Float (Float.neg f))
   | _ ->
     failwith
       "Invalid usage of unary `-` operator. You are only able to negate integers or \
        floats."
 
-and eval_lowercase_identifier ~output ~state ident =
+and eval_lowercase_identifier ~state ident =
   state
   |> State.get_value_from_scope ~ident
   |> function
   | None -> failwith (Printf.sprintf "Unbound identifier `%s`" ident)
-  | Some v -> output |> Output.add_value v
+  | Some { value; is_mutable = _; is_optional = _ } ->
+    state |> State.add_output ~output:value
 
-and eval_let ~output ~state ~ident ~optional ~expression body =
-  let output, state =
+and eval_let ~state ~ident ~is_mutable ~is_optional expression =
+  let state =
+    expression
+    |> eval_expression ~state:{ state with State.binding_identifier = Some ident }
+  in
+  match State.get_output state with
+  | Value.Null when not is_optional ->
+    failwith
+      (Printf.sprintf
+         "identifier %s is not marked as nullable, but was given a null value."
+         ident)
+  | value -> state |> State.add_value_to_scope ~ident ~value ~is_mutable ~is_optional
+
+and eval_mutation ~state ~ident expression =
+  let current_binding = State.get_value_from_scope ~ident state in
+  match current_binding with
+  | None ->
+    failwith "Trying to update a variable, which does not exist in the current scope."
+  | Some { is_mutable = false; _ } -> failwith "Trying to update a non mutable variable."
+  | Some { value = _; is_mutable = true; is_optional } ->
     let output =
       expression
-      |> eval_expression
-           ~output
-           ~state:{ state with State.binding_identifier = Some ident }
+      |> eval_expression ~state:{ state with State.binding_identifier = Some ident }
     in
-    output
-    |> Output.get_value
-    |> function
-    | Value.Null when not optional ->
-      failwith
-        (Printf.sprintf
-           "identifier %s is not marked as nullable, but was given a null value."
-           ident)
-    | value ->
-      let output =
-        match state.State.scope with
-        | [ _ ] -> output |> Output.add_binding (ident, value)
-        | _ -> output
-      in
-      let state = state |> State.add_value_to_scope ~ident ~value in
-      output, state
-  in
-  eval_expression ~output ~state body
+    let () =
+      output
+      |> State.get_output
+      |> function
+      | Value.Null when not is_optional ->
+        failwith
+          (Printf.sprintf
+             "identifier %s is not marked as nullable, but was tried to be updated with \
+              a null value."
+             ident)
+      | value -> state |> State.update_value_in_scope ~ident ~value
+    in
+    state |> State.add_output ~output:Value.Null
 
-and eval_if ~output ~state ~condition ~alternate consequent =
-  if condition |> eval_expression ~output ~state |> Output.get_value |> Value.is_true
-  then consequent |> eval_expression ~output ~state
+and eval_if ~state ~condition ~alternate consequent =
+  if condition |> eval_expression ~state |> State.get_output |> Value.is_true
+  then consequent |> eval_block ~state
   else (
     match alternate with
-    | Some alt -> alt |> eval_expression ~output ~state
-    | None -> output |> Output.add_value Value.Null)
+    | Some alt -> alt |> eval_block ~state
+    | None -> state |> State.add_output ~output:Value.Null)
 
-and eval_for_in ~output ~state ~index_ident ~ident ~reverse ~iterable body =
-  let iterable = iterable |> eval_expression ~output ~state |> Output.get_value in
+and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
+  let iterable = iterable |> eval_expression ~state |> State.get_output in
   let maybe_rev = if reverse then Iter.rev else fun i -> i in
   let index = ref (-1) in
   let loop acc value =
     index := succ !index;
-    let state = state |> State.add_value_to_scope ~ident ~value in
+    let state =
+      state |> State.add_value_to_scope ~ident ~value ~is_mutable:false ~is_optional:false
+    in
     let state =
       match index_ident with
       | Some (Lowercase_Id ident) ->
-        state |> State.add_value_to_scope ~ident ~value:(Value.Int !index)
+        state
+        |> State.add_value_to_scope
+             ~ident
+             ~value:(Value.Int !index)
+             ~is_mutable:false
+             ~is_optional:false
       | None -> state
     in
-    match eval_block ~output ~state body with
+    match eval_block ~state body with
     | exception Loop_Continue -> acc, `Continue
     | exception Loop_Break -> acc, `Stop
-    | v -> Iter.append acc (Iter.singleton (Output.get_value v)), `Continue
+    | v -> Iter.append acc (Iter.singleton (State.get_output v)), `Continue
   in
   match iterable with
   | Value.Array l ->
     let res = l |> maybe_rev |> Iter.fold_while loop Iter.empty in
-    output |> Output.add_value (Value.Array res)
+    state |> State.add_output ~output:(Value.Array res)
   | Value.String s ->
     let res =
       s
@@ -760,8 +904,8 @@ and eval_for_in ~output ~state ~index_ident ~ident ~reverse ~iterable body =
       |> Iter.map (fun c -> Value.String (String.make 1 c))
       |> Iter.fold_while loop Iter.empty
     in
-    output |> Output.add_value (Value.Array res)
-  | Value.Null -> output |> Output.add_value Value.Null
+    state |> State.add_output ~output:(Value.Array res)
+  | Value.Null -> state |> State.add_output ~output:Value.Null
   | Value.TemplateNode _ -> failwith "Cannot iterate over template node"
   | Value.Record _ -> failwith "Cannot iterate over record value"
   | Value.Int _ -> failwith "Cannot iterate over int value"
@@ -770,9 +914,9 @@ and eval_for_in ~output ~state ~index_ident ~ident ~reverse ~iterable body =
   | Value.DefinitionInfo _ -> failwith "Cannot iterate over definition info"
   | Value.Function _ -> failwith "Cannot iterate over function"
 
-and eval_range ~output ~state ~inclusive from upto =
-  let from = from |> eval_expression ~output ~state |> Output.get_value in
-  let upto = upto |> eval_expression ~output ~state |> Output.get_value in
+and eval_range ~state ~inclusive from upto =
+  let from = from |> eval_expression ~state |> State.get_output in
+  let upto = upto |> eval_expression ~state |> State.get_output in
   let from, upto =
     match from, upto with
     | Value.Int from, Value.Int upto -> from, upto
@@ -795,31 +939,34 @@ and eval_range ~output ~state ~inclusive from upto =
       let stop = if not inclusive then upto - 1 else upto in
       Iter.int_range ~start ~stop |> Iter.map (fun i -> Value.Int i))
   in
-  output |> Output.add_value (Value.Array iter)
+  state |> State.add_output ~output:(Value.Array iter)
 
-and eval_block ~output ~state expr =
+and eval_block ~state exprs =
   let state = state |> State.add_scope in
-  eval_expression ~output ~state expr
+  exprs |> List.fold_left (fun state -> eval_expression ~state) state
 
-and eval_tag ~output ?value ~state tag =
+and eval_tag ?value ~state tag =
   let apply_default_value ~default value =
     match default, value with
-    | Some default, Value.Null ->
-      eval_expression ~output ~state default |> Output.get_value
+    | Some default, Value.Null -> eval_expression ~state default |> State.get_output
     | _, value -> value
   in
   let apply_transformer ~transformer value =
     match transformer with
     | Some (Ast.Lowercase_Id ident, expr) ->
-      let state = state |> State.add_scope |> State.add_value_to_scope ~ident ~value in
-      eval_expression ~output ~state expr |> Output.get_value
+      let state =
+        state
+        |> State.add_scope
+        |> State.add_value_to_scope ~ident ~value ~is_optional:false ~is_mutable:false
+      in
+      eval_expression ~state expr |> State.get_output
     | _ -> value
   in
   let get_key attributes =
     let key =
       StringMap.find_opt "key" attributes
-      |> Option.map (eval_expression ~output ~state)
-      |> Option.map Output.get_value
+      |> Option.map (eval_expression ~state)
+      |> Option.map State.get_output
     in
     match key, state.binding_identifier with
     | Some (Value.String s), _ident -> s
@@ -834,11 +981,11 @@ and eval_tag ~output ?value ~state tag =
   in
   let rec get_output_typ tag =
     match tag with
-    | Ast.TagString (_, _) -> Output.String
-    | Ast.TagInt (_, _) -> Output.Int
-    | Ast.TagFloat (_, _) -> Output.Float
-    | Ast.TagBoolean (_, _) -> Output.Boolean
-    | Ast.TagSlot (_, _) -> Output.Slot
+    | Ast.TagString (_, _) -> State.String
+    | Ast.TagInt (_, _) -> State.Int
+    | Ast.TagFloat (_, _) -> State.Float
+    | Ast.TagBoolean (_, _) -> State.Boolean
+    | Ast.TagSlot (_, _) -> State.Slot
     | Ast.TagArray (attributes, _) ->
       let of' =
         StringMap.find_opt "of" attributes
@@ -852,7 +999,7 @@ and eval_tag ~output ?value ~state tag =
         | None -> failwith "Expected attribute `of` to be present on #Array."
         | Some t -> t |> get_output_typ
       in
-      Output.Array of'
+      State.Array of'
     | Ast.TagRecord (attributes, _) ->
       let of' =
         StringMap.find_opt "of" attributes
@@ -876,14 +1023,14 @@ and eval_tag ~output ?value ~state tag =
                          the type of the property."
                         key))
       in
-      Output.Record of'
+      State.Record of'
   in
   match tag with
   | Ast.TagString (attributes, body) ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    let output = output |> Output.add_tag ~typ:(get_output_typ tag) key in
+    let output = state |> State.add_tag ~typ:(get_output_typ tag) key in
     (match apply_default_value ~default value with
     | Value.Int _ -> failwith "tried to assign integer value to a string tag."
     | Value.Float _ -> failwith "tried to assign float value to a string tag."
@@ -895,14 +1042,15 @@ and eval_tag ~output ?value ~state tag =
       failwith "tried to assign definition info to a string tag."
     | Value.Function _ -> failwith "tried to assign function to a string tag."
     | Value.Null ->
-      output |> Output.add_value (Value.Null |> apply_transformer ~transformer:body)
+      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer:body)
     | Value.String s ->
-      output |> Output.add_value (Value.String s |> apply_transformer ~transformer:body))
+      output
+      |> State.add_output ~output:(Value.String s |> apply_transformer ~transformer:body))
   | Ast.TagInt (attributes, body) ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    let output = output |> Output.add_tag ~typ:(get_output_typ tag) key in
+    let output = state |> State.add_tag ~typ:(get_output_typ tag) key in
     (match apply_default_value ~default value with
     | Value.Float _ -> failwith "tried to assign float value to a int tag."
     | Value.Bool _ -> failwith "tried to assign boolean value to a int tag."
@@ -913,14 +1061,15 @@ and eval_tag ~output ?value ~state tag =
     | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a int tag."
     | Value.Function _ -> failwith "tried to assign function to a int tag."
     | Value.Null ->
-      output |> Output.add_value (Value.Null |> apply_transformer ~transformer:body)
+      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer:body)
     | Value.Int i ->
-      output |> Output.add_value (Value.Int i |> apply_transformer ~transformer:body))
+      output
+      |> State.add_output ~output:(Value.Int i |> apply_transformer ~transformer:body))
   | Ast.TagFloat (attributes, body) ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    let output = output |> Output.add_tag ~typ:(get_output_typ tag) key in
+    let output = state |> State.add_tag ~typ:(get_output_typ tag) key in
     (match apply_default_value ~default value with
     | Value.Bool _ -> failwith "tried to assign boolean value to a float tag."
     | Value.Array _ -> failwith "tried to assign array value to a float tag."
@@ -931,14 +1080,15 @@ and eval_tag ~output ?value ~state tag =
     | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a float tag."
     | Value.Function _ -> failwith "tried to assign function to a float tag."
     | Value.Null ->
-      output |> Output.add_value (Value.Null |> apply_transformer ~transformer:body)
+      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer:body)
     | Value.Float f ->
-      output |> Output.add_value (Value.Float f |> apply_transformer ~transformer:body))
+      output
+      |> State.add_output ~output:(Value.Float f |> apply_transformer ~transformer:body))
   | Ast.TagBoolean (attributes, body) ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    let output = output |> Output.add_tag ~typ:(get_output_typ tag) key in
+    let output = state |> State.add_tag ~typ:(get_output_typ tag) key in
     (match apply_default_value ~default value with
     | Value.Array _ -> failwith "tried to assign array value to a boolean tag."
     | Value.String _ -> failwith "tried to assign string value to a boolean tag."
@@ -950,9 +1100,10 @@ and eval_tag ~output ?value ~state tag =
       failwith "tried to assign definition info to a boolean tag."
     | Value.Function _ -> failwith "tried to assign function to a boolean tag."
     | Value.Null ->
-      output |> Output.add_value (Value.Null |> apply_transformer ~transformer:body)
+      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer:body)
     | Value.Bool b ->
-      output |> Output.add_value (Value.Bool b |> apply_transformer ~transformer:body))
+      output
+      |> State.add_output ~output:(Value.Bool b |> apply_transformer ~transformer:body))
   | Ast.TagArray (attributes, body) ->
     let default = StringMap.find_opt "default" attributes in
     let of' =
@@ -969,7 +1120,7 @@ and eval_tag ~output ?value ~state tag =
     in
     let key = get_key attributes in
     let value = get_value key in
-    let output = output |> Output.add_tag ~typ:(get_output_typ tag) key in
+    let state = state |> State.add_tag ~typ:(get_output_typ tag) key in
     (match apply_default_value ~default value with
     | Value.Bool _ -> failwith "tried to assign boolean value to a array tag."
     | Value.String _ -> failwith "tried to assign string value to a array tag."
@@ -979,14 +1130,14 @@ and eval_tag ~output ?value ~state tag =
     | Value.TemplateNode _ -> failwith "tried to assign template node to a array tag."
     | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a array tag."
     | Value.Function _ -> failwith "tried to assign function to a array tag."
-    | Value.Null -> output |> Output.add_value Value.Null
+    | Value.Null -> state |> State.add_output ~output:Value.Null
     | Value.Array l ->
-      let eval_item item = of' |> eval_tag ~value:item ~output ~state in
+      let eval_item item = of' |> eval_tag ~value:item ~state in
       let value =
-        Value.Array (Iter.map eval_item l |> Iter.map Output.get_value)
+        Value.Array (Iter.map eval_item l |> Iter.map State.get_output)
         |> apply_transformer ~transformer:body
       in
-      output |> Output.add_value value)
+      state |> State.add_output ~output:value)
   | Ast.TagRecord (attributes, body) ->
     let of' =
       StringMap.find_opt "of" attributes
@@ -1012,7 +1163,7 @@ and eval_tag ~output ?value ~state tag =
     in
     let key = get_key attributes in
     let value = get_value key in
-    let output = output |> Output.add_tag ~typ:(get_output_typ tag) key in
+    let output = state |> State.add_tag ~typ:(get_output_typ tag) key in
     (match value with
     | Value.Bool _ -> failwith "tried to assign boolean value to a record tag."
     | Value.String _ -> failwith "tried to assign string value to a record tag."
@@ -1023,14 +1174,14 @@ and eval_tag ~output ?value ~state tag =
     | Value.DefinitionInfo _ ->
       failwith "tried to assign definition info to a record tag."
     | Value.Function _ -> failwith "tried to assign function to a record tag."
-    | Value.Null -> output |> Output.add_value Value.Null
+    | Value.Null -> state |> State.add_output ~output:Value.Null
     | Value.Record r ->
       let models key = StringMap.find_opt key r in
       let state = State.make ~models state.State.declarations in
       let eval_property key (nullable, tag) =
         tag
-        |> eval_tag ~output ~state:{ state with binding_identifier = Some key }
-        |> Output.get_value
+        |> eval_tag ~state:{ state with binding_identifier = Some key }
+        |> State.get_output
         |> function
         | Value.Null when not nullable ->
           failwith
@@ -1041,13 +1192,14 @@ and eval_tag ~output ?value ~state tag =
         | value -> value
       in
       let r = of' |> StringMap.mapi eval_property in
-      output |> Output.add_value (Value.Record r |> apply_transformer ~transformer:body))
+      output
+      |> State.add_output ~output:(Value.Record r |> apply_transformer ~transformer:body))
   | Ast.TagSlot (attributes, body) ->
     let slot_name =
       attributes
       |> StringMap.find_opt "name"
-      |> Option.map (eval_expression ~output ~state)
-      |> Option.map Output.get_value
+      |> Option.map (eval_expression ~state)
+      |> Option.map State.get_output
       |> Option.value ~default:(Value.String "")
       |> function
       | Value.String s -> s
@@ -1056,8 +1208,8 @@ and eval_tag ~output ?value ~state tag =
     let min =
       attributes
       |> StringMap.find_opt "min"
-      |> Option.map (eval_expression ~output ~state)
-      |> Option.map Output.get_value
+      |> Option.map (eval_expression ~state)
+      |> Option.map State.get_output
       |> Option.value ~default:(Value.Int 0)
       |> function
       | Value.Int i -> i
@@ -1066,8 +1218,8 @@ and eval_tag ~output ?value ~state tag =
     let max =
       attributes
       |> StringMap.find_opt "max"
-      |> Option.map (eval_expression ~output ~state)
-      |> Option.map Output.get_value
+      |> Option.map (eval_expression ~state)
+      |> Option.map State.get_output
       |> function
       | None -> None
       | Some (Value.Int i) -> Some i
@@ -1076,8 +1228,8 @@ and eval_tag ~output ?value ~state tag =
     let instanceOf =
       attributes
       |> StringMap.find_opt "instanceOf"
-      |> Option.map (eval_expression ~output ~state)
-      |> Option.map Output.get_value
+      |> Option.map (eval_expression ~state)
+      |> Option.map State.get_output
       |> function
       | None -> None
       | Some (Value.Array l) ->
@@ -1091,11 +1243,11 @@ and eval_tag ~output ?value ~state tag =
                       uppercase identifiers."))
       | _ -> failwith "Expected attribute `instanceOf` on #Slot to be an array."
     in
-    let output =
-      output |> Output.add_tag ~typ:(get_output_typ tag) ("__slot:" ^ slot_name)
+    let state =
+      state |> State.add_tag ~typ:(get_output_typ tag) ("__slot:" ^ slot_name)
     in
     (match state.slotted_children with
-    | None -> output |> Output.add_value Value.Null
+    | None -> state |> State.add_output ~output:Value.Null
     | Some children ->
       let find_slot_key attributes =
         attributes
@@ -1191,54 +1343,54 @@ and eval_tag ~output ?value ~state tag =
               (specified as %i)."
              slot_name
              max)
-      | _ -> output |> Output.add_value slotted_children))
+      | _ -> state |> State.add_output ~output:slotted_children))
 
-and eval_template ~output ~state template =
+and eval_template ~state template =
   match template with
-  | Ast.TextTemplateNode text -> output |> Output.add_value (Value.String text)
+  | Ast.TextTemplateNode text -> state |> State.add_output ~output:(Value.String text)
   | Ast.HtmlTemplateNode { tag; attributes; children; self_closing } ->
     let attributes =
       attributes
-      |> StringMap.map (eval_expression ~output ~state)
-      |> StringMap.map Output.get_value
+      |> StringMap.map (eval_expression ~state)
+      |> StringMap.map State.get_output
     in
     let children =
-      children |> List.map (eval_template ~output ~state) |> List.map Output.get_value
+      children |> List.map (eval_template ~state) |> List.map State.get_output
     in
-    output
-    |> Output.add_value
-         (Value.TemplateNode (`Html, tag, attributes, children, self_closing))
-  | Ast.ExpressionTemplateNode expr -> eval_expression ~output ~state expr
+    state
+    |> State.add_output
+         ~output:(Value.TemplateNode (`Html, tag, attributes, children, self_closing))
+  | Ast.ExpressionTemplateNode expr -> eval_expression ~state expr
   | Ast.ComponentTemplateNode { identifier = Uppercase_Id tag; attributes; children } ->
     let attributes =
       attributes
-      |> StringMap.map (eval_expression ~output ~state)
-      |> StringMap.map Output.get_value
+      |> StringMap.map (eval_expression ~state)
+      |> StringMap.map State.get_output
     in
     let children =
-      children |> List.map (eval_template ~output ~state) |> List.map Output.get_value
+      children |> List.map (eval_template ~state) |> List.map State.get_output
     in
     let render_fn ~models ~slotted_children =
-      eval ~models ~slotted_children ~root:tag state.declarations |> Output.get_value
+      eval ~models ~slotted_children ~root:tag state.declarations |> State.get_output
     in
-    output
-    |> Output.add_value
-         (Value.TemplateNode (`Component render_fn, tag, attributes, children, false))
+    state
+    |> State.add_output
+         ~output:
+           (Value.TemplateNode (`Component render_fn, tag, attributes, children, false))
 
-and eval_declaration ~output ~state declaration =
+and eval_declaration ~state declaration =
   match declaration with
   | Ast.ComponentDeclaration (_attrs, body)
   | Ast.SiteDeclaration (_attrs, body)
   | Ast.PageDeclaration (_attrs, body)
-  | Ast.StoreDeclaration (_attrs, body) -> eval_expression ~output ~state body
+  | Ast.StoreDeclaration (_attrs, body) -> eval_block ~state body
 
 and eval ?models ?slotted_children ~root declarations =
-  let output = Output.empty in
   let state = State.make ?models ?slotted_children declarations in
   declarations
   |> StringMap.find_opt root
   |> function
-  | Some declaration -> eval_declaration ~output ~state declaration
+  | Some declaration -> eval_declaration ~state declaration
   | None -> failwith (Printf.sprintf "Declaration with name `%s` was not found." root)
 ;;
 

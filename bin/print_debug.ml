@@ -8,7 +8,7 @@ let main =
   let end_time_parser = Unix.gettimeofday () in
   let result =
     Interpreter.from_ast ast root
-    |> Interpreter.Output.get_value
+    |> Interpreter.State.get_output
     |> Interpreter.Value.to_string
   in
   let end_time = Unix.gettimeofday () in

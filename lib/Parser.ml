@@ -239,7 +239,7 @@ module Rules = struct
         | Some e -> Ast.ExpressionTemplateNode e
         | None ->
           (* TODO: This is `<div>{}</div>` ... Should this be an error? Probably yes... *)
-          ExpressionTemplateNode (Ast.BlockExpression (String [ StringText "" ]))
+          ExpressionTemplateNode (Ast.BlockExpression [])
       in
       t |> expect Token.RIGHT_BRACE;
       Some expression
@@ -294,15 +294,7 @@ module Rules = struct
       let* condition = parse_expression t in
       expect Token.RIGHT_PAREN t;
       expect Token.SEMICOLON t;
-      let body = parse_expression t in
-      (match body with
-      | None ->
-        Diagnostics.report
-          ~start_pos:t.token.start_pos
-          ~end_pos:t.token.end_pos
-          (Diagnostics.Message
-             (Printf.sprintf "Expected some expression after a break statement."))
-      | Some body -> Some (Ast.BreakExpression (condition, body)))
+      Some (Ast.BreakExpression condition)
     | Token.KEYWORD_CONTINUE ->
       next t;
       expect Token.KEYWORD_IF t;
@@ -310,15 +302,7 @@ module Rules = struct
       let* condition = parse_expression t in
       expect Token.RIGHT_PAREN t;
       expect Token.SEMICOLON t;
-      let body = parse_expression t in
-      (match body with
-      | None ->
-        Diagnostics.report
-          ~start_pos:t.token.start_pos
-          ~end_pos:t.token.end_pos
-          (Diagnostics.Message
-             (Printf.sprintf "Expected some expression after a continue statement."))
-      | Some body -> Some (Ast.ContinueExpression (condition, body)))
+      Some (Ast.ContinueExpression condition)
     (* PARSING PARENTHESIZED EXPRESSION *)
     | Token.LEFT_PAREN ->
       next t;
@@ -345,38 +329,30 @@ module Rules = struct
         in
         t |> expect Token.RIGHT_BRACE;
         Some Ast.(Record attrs))
-      else
-        let* expression = parse_expression t in
+      else (
+        let expressions = t |> Helpers.list ~fn:parse_expression in
         t |> expect Token.RIGHT_BRACE;
-        Some (Ast.BlockExpression expression)
+        Some (Ast.BlockExpression expressions))
     (* PARSING LET EXPRESSION *)
     | Token.KEYWORD_LET ->
       next t;
+      let is_mutable = t |> optional Token.KEYWORD_MUTABLE in
       let identifier = Helpers.expect_identifier ~typ:`Lower t in
       let nullable = t |> optional Token.QUESTIONMARK in
       t |> expect Token.EQUAL;
       let expression = parse_expression t in
       expect Token.SEMICOLON t;
-      let body = parse_expression t in
-      (match body with
+      (match expression with
+      | Some expression when nullable ->
+        Some (Ast.OptionalLetExpression (is_mutable, Lowercase_Id identifier, expression))
+      | Some expression ->
+        Some (Ast.LetExpression (is_mutable, Lowercase_Id identifier, expression))
       | None ->
         Diagnostics.report
           ~start_pos:t.token.start_pos
           ~end_pos:t.token.end_pos
-          (Diagnostics.Message (Printf.sprintf "Unused let declaration"))
-      | Some body ->
-        (match expression with
-        | Some expression when nullable ->
-          Some (Ast.OptionalLetExpression (Lowercase_Id identifier, expression, body))
-        | Some expression ->
-          Some (Ast.LetExpression (Lowercase_Id identifier, expression, body))
-        | None ->
-          Diagnostics.report
-            ~start_pos:t.token.start_pos
-            ~end_pos:t.token.end_pos
-            (Diagnostics.Message
-               (Printf.sprintf
-                  "Expected expression as right hand side of let declaration"))))
+          (Diagnostics.Message
+             (Printf.sprintf "Expected expression as right hand side of let declaration")))
     (* PARSING FOR IN EXPRESSION *)
     | Token.KEYWORD_FOR ->
       next t;
@@ -394,14 +370,14 @@ module Rules = struct
       let reverse = optional Token.KEYWORD_REVERSE t in
       let* expr1 = parse_expression t in
       expect Token.RIGHT_PAREN t;
-      let body = parse_expression t in
+      let body = Helpers.list ~fn:parse_expression t in
       (match body with
-      | None ->
+      | [] ->
         Diagnostics.report
           ~start_pos:t.token.start_pos
           ~end_pos:t.token.end_pos
           (Diagnostics.Message (Printf.sprintf "Expected expression as body of for loop"))
-      | Some body ->
+      | body ->
         Some (Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }))
     (* PARSING FN EXPRESSION *)
     | Token.KEYWORD_FN ->
@@ -410,17 +386,19 @@ module Rules = struct
       let parameters = t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_fn_param in
       expect Token.RIGHT_PAREN t;
       expect Token.ARROW t;
-      let* body = parse_expression t in
+      let body = t |> Helpers.list ~fn:parse_expression in
       Some (Ast.Function (parameters, body))
     (* PARSING IF EXPRESSION *)
     | Token.KEYWORD_IF ->
       next t;
       expect Token.LEFT_PAREN t;
-      let* condition = parse_expression t in
+      let* condition = t |> parse_expression in
       expect Token.RIGHT_PAREN t;
-      let* consequent = parse_expression t in
+      let consequent = t |> Helpers.list ~fn:parse_expression in
       let alternate =
-        if optional Token.KEYWORD_ELSE t then parse_expression t else None
+        if optional Token.KEYWORD_ELSE t
+        then Some (t |> Helpers.list ~fn:parse_expression)
+        else None
       in
       Some (Ast.ConditionalExpression { condition; consequent; alternate })
     (* PARSING TAG EXPRESSION *)
@@ -449,10 +427,26 @@ module Rules = struct
       let operator = Ast.Operators.Unary.make MINUS in
       let* argument = parse_expression ~prio:operator.precedence t in
       Some (Ast.UnaryExpression (Ast.Operators.Unary.MINUS, argument))
-    (* PARSING IDENTIFIER EXPRESSION *)
+    (* PARSING IDENTIFIER OR MUTATION EXPRESSION *)
     | Token.IDENT_LOWER identifier ->
       next t;
-      Some (Ast.LowercaseIdentifierExpression (Lowercase_Id identifier))
+      let is_mutation = optional Token.COLON_EQUAL t in
+      if is_mutation
+      then (
+        let expression =
+          match parse_expression t with
+          | Some expression -> expression
+          | None ->
+            Diagnostics.report
+              ~start_pos:t.token.start_pos
+              ~end_pos:t.token.end_pos
+              (Diagnostics.Message
+                 (Printf.sprintf
+                    "Expected expression as right hand side of mutation expression"))
+        in
+        expect Token.SEMICOLON t;
+        Some (Ast.MutationExpression (Lowercase_Id identifier, expression)))
+      else Some (Ast.LowercaseIdentifierExpression (Lowercase_Id identifier))
     | Token.IDENT_UPPER identifier ->
       next t;
       Some (Ast.UppercaseIdentifierExpression (Uppercase_Id identifier))
@@ -575,14 +569,16 @@ module Rules = struct
           Some attributes)
         else None
       in
-      let body = parse_expression t in
+      t |> expect Token.LEFT_BRACE;
+      let body = t |> Helpers.list ~fn:parse_expression in
+      t |> expect Token.RIGHT_BRACE;
       (match body with
-      | None ->
+      | [] ->
         Diagnostics.report
           ~start_pos:t.token.start_pos
           ~end_pos:t.token.end_pos
           (Diagnostics.Message "Expected declaration to have a body")
-      | Some body ->
+      | body ->
         (match typ with
         | Token.KEYWORD_SITE -> Some (identifier, Ast.SiteDeclaration (attributes, body))
         | Token.KEYWORD_PAGE -> Some (identifier, Ast.PageDeclaration (attributes, body))

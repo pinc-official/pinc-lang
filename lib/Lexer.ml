@@ -703,6 +703,9 @@ and scan_normal_token ~start_pos t =
     | `Chr ':' ->
       next_n ~n:2 t;
       Token.DOUBLE_COLON
+    | `Chr '=' ->
+      next_n ~n:2 t;
+      Token.COLON_EQUAL
     | _ ->
       next t;
       Token.COLON)

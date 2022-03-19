@@ -28,6 +28,7 @@ type token_type =
   | ATAT
   | QUESTIONMARK
   | EQUAL
+  | COLON_EQUAL
   | NOT
   | GREATER
   | LESS
@@ -47,6 +48,7 @@ type token_type =
   | PLUSPLUS
   | KEYWORD_FN
   | KEYWORD_LET
+  | KEYWORD_MUTABLE
   | KEYWORD_TRUE
   | KEYWORD_FALSE
   | KEYWORD_IF
@@ -109,6 +111,7 @@ let to_string = function
   | PIPE -> "|>"
   | ATAT -> "@@"
   | EQUAL -> "="
+  | COLON_EQUAL -> ":="
   | NOT_EQUAL -> "!="
   | EQUAL_EQUAL -> "=="
   | LOGICAL_AND -> "&&"
@@ -128,6 +131,7 @@ let to_string = function
   | PERCENT -> "%"
   | KEYWORD_FN -> "fn"
   | KEYWORD_LET -> "let"
+  | KEYWORD_MUTABLE -> "mutable"
   | KEYWORD_IF -> "if"
   | KEYWORD_ELSE -> "else"
   | KEYWORD_FOR -> "for"
@@ -154,6 +158,7 @@ let to_string = function
 let is_keyword = function
   | KEYWORD_FN
   | KEYWORD_LET
+  | KEYWORD_MUTABLE
   | KEYWORD_TRUE
   | KEYWORD_FALSE
   | KEYWORD_IF
@@ -189,6 +194,7 @@ let is_keyword = function
   | ATAT
   | QUESTIONMARK
   | EQUAL
+  | COLON_EQUAL
   | NOT
   | GREATER
   | LESS
@@ -227,6 +233,7 @@ let is_keyword = function
 let keyword_of_string = function
   | "fn" -> Some KEYWORD_FN
   | "let" -> Some KEYWORD_LET
+  | "mutable" -> Some KEYWORD_MUTABLE
   | "true" -> Some KEYWORD_TRUE
   | "false" -> Some KEYWORD_FALSE
   | "if" -> Some KEYWORD_IF
