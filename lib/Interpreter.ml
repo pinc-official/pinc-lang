@@ -33,6 +33,21 @@ module rec Value : sig
         * t list
         * bool
 
+  val null : unit -> t
+  val of_string : string -> t
+  val of_bool : bool -> t
+  val of_int : int -> t
+  val of_float : float -> t
+  val of_list : t list -> t
+  val of_string_map : t StringMap.t -> t
+
+  val make_component
+    :  render:(models:(string -> t option) -> slotted_children:t list -> t)
+    -> tag:string
+    -> attributes:t StringMap.t
+    -> children:t list
+    -> t
+
   val to_string : t -> string
   val is_true : t -> bool
   val equal : t -> t -> bool
@@ -66,6 +81,18 @@ end = struct
         * t StringMap.t
         * t list
         * bool
+
+  let null () = Value.Null
+  let of_string s = Value.String s
+  let of_bool b = Value.Bool b
+  let of_int i = Value.Int i
+  let of_float f = Value.Float f
+  let of_list l = Value.Array (Iter.of_list l)
+  let of_string_map m = Value.Record m
+
+  let make_component ~render ~tag ~attributes ~children =
+    Value.TemplateNode (`Component render, tag, attributes, children, false)
+  ;;
 
   let rec to_string = function
     | Null -> ""
@@ -1411,8 +1438,6 @@ and eval ?models ?slotted_children ~root declarations =
   | Some declaration -> eval_declaration ~state declaration
   | None -> failwith (Printf.sprintf "Declaration with name `%s` was not found." root)
 ;;
-
-let file_contents chan = really_input_string chan (in_channel_length chan)
 
 let from_directory ?models ?slotted_children ~directory root =
   let src_match = FileUtil.Has_extension "pi" in
