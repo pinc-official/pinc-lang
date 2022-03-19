@@ -3,13 +3,6 @@
 - What to do with `<!DOCTYPE html>`? Do we want to parse it or just fail compiling with an error message that this is
   not needed?
 
-- Currently only nodes are placed into slots. Normal text (<Text>Lorem Ipsum</Text>) is ignored and not put into any slot.
-  You could argue, that this should be placed into the default slot, but what do you do with the `min` and `max` restrictions?
-  Does every word, every sectence or every string count as an element?
-  Also transformers would become more complex, as you would get an array of nodes and strings handed. 
-  And there is currently no way, to distinguish the two before you use them...
-  So..is not rendering them the correct solution or not?
-
 ## TODOs till feature completion
 
 - Mutually Recursive Functions

@@ -1302,9 +1302,11 @@ and eval_tag ?value ~state tag =
           then check_instance_restriction tag @@ Iter.append acc (Iter.singleton value)
           else acc
         | Value.Array l -> l |> Iter.fold keep_slotted acc
-        (* TODO: Decide on wether to render text nodes inside slots or not...
-         | value when slot_name = "" -> Iter.append acc (Iter.singleton value) *)
-        | _ -> acc
+        | Value.String s when String.trim s = "" -> acc
+        | _ ->
+          failwith
+            "Only nodes may be placed into slots. If you want to put a plain text into a \
+             slot, you have to wrap it in a <p></p> tag for example."
       in
       let slotted_children =
         children |> Iter.of_list |> Iter.fold keep_slotted Iter.empty

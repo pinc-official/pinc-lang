@@ -7,9 +7,6 @@ component Component(
   let record = { a: 10, c: "Something" };
 
   <SlotProvider>
-
-    Lorem Foo!!
-
     <div>Hello Default</div>
 
     <div slot="nope">I am not rendered!</div>
