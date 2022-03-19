@@ -225,9 +225,16 @@ and State : sig
     -> t
     -> t
 
+  val add_value_to_function_scopes
+    :  ident:string
+    -> value:Value.t
+    -> is_optional:bool
+    -> is_mutable:bool
+    -> t
+    -> unit
+
   val update_value_in_scope : ident:string -> value:Value.t -> t -> unit
   val get_value_from_scope : ident:string -> t -> binding option
-  val merge_scope : t -> t -> t
   val get_output : t -> Value.t
   val add_output : output:Value.t -> t -> t
   val get_bindings : t -> (string * binding) list
@@ -316,27 +323,27 @@ end = struct
     t.environment.scope <- update_scope t
   ;;
 
-  let get_value_from_scope ~ident t =
-    t.environment.scope |> List.find_map (List.assoc_opt ident)
+  let add_value_to_function_scopes ~ident ~value ~is_optional ~is_mutable t =
+    let update_scope state =
+      List.map
+        (List.map (function
+            | key, ({ value = Value.Function { state; parameters; exec }; _ } as binding)
+              ->
+              let new_state =
+                add_value_to_scope ~ident ~value ~is_optional ~is_mutable state
+              in
+              ( key
+              , { binding with
+                  value = Value.Function { state = new_state; parameters; exec }
+                } )
+            | v -> v))
+        state.environment.scope
+    in
+    t.environment.scope <- update_scope t
   ;;
 
-  let merge_scope a b =
-    let new_scope =
-      match a.environment.scope, b.environment.scope with
-      | [], b_scope :: _ -> [ b_scope ]
-      | a_scope, [] -> a_scope
-      | scope_a :: rest, scope_b :: _ ->
-        rest
-        |> List.cons
-             (scope_a
-             |> List.map (fun (key, a_value) ->
-                    let new_value =
-                      scope_b |> List.assoc_opt key |> Option.value ~default:a_value
-                    in
-                    key, new_value))
-    in
-    let environment = { scope = new_scope } in
-    { a with environment }
+  let get_value_from_scope ~ident t =
+    t.environment.scope |> List.find_map (List.assoc_opt ident)
   ;;
 
   let get_output t = t.output
@@ -512,8 +519,17 @@ and eval_function_declaration ~state ~parameters body =
     in
     eval_block ~state body |> State.get_output
   in
-  self := Value.Function { parameters; state; exec };
-  state |> State.add_output ~output:!self
+  let fn = Value.Function { parameters; state; exec } in
+  ident
+  |> Option.iter (fun ident ->
+         state
+         |> State.add_value_to_function_scopes
+              ~ident
+              ~value:fn
+              ~is_optional:false
+              ~is_mutable:false);
+  self := fn;
+  state |> State.add_output ~output:fn
 
 and eval_function_call ~state ~arguments left =
   let maybe_fn = eval_expression ~state left |> State.get_output in

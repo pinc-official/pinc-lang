@@ -5,8 +5,6 @@
 
 ## TODOs till feature completion
 
-- Mutually Recursive Functions
-
 - Portals
 
 - Context
@@ -21,7 +19,7 @@
     library Std {
       include Array = Std__Array;
       include String = Std__String;
-      
+
       let default = fn (t, default) -> if (!t) default else t;
     }
 

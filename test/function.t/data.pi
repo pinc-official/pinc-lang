@@ -47,12 +47,30 @@ component Component {
     }
   };
 
+  let is_even = fn (i) -> {
+    if(i == 0) {
+      true
+    } else {
+      is_odd(i - 1)
+    }
+  };
+
+  let is_odd = fn (i) -> {
+    if (i == 0) {
+      false
+    } else {
+      is_even(i - 1)
+    }
+  };
+
   <section>
     max(1, 5) = {max(1, 5)}
     min(1, 5) = {min(1, 5)}
     add_curry(1)(5) = {add_curry(1)(5)}
     fibonacci(9) = {fibonacci(9)}
     factorial(5) = {factorial(5)}
+    is_even(10) = {is_even(10)}
+    is_odd(10) = {is_odd(10)}
 
     1 |> max(5) |> factorial = {1 |> max(5) |> factorial}
     1 |> add_curry(5)() = {1 |> add_curry(5)()}
