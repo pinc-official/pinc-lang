@@ -29,16 +29,12 @@ and template_node =
   | ExpressionTemplateNode of expression
   | TextTemplateNode of string
 
-and tag_body = lowercase_identifier * expression
-
 and tag =
-  | TagString of attributes * tag_body option
-  | TagInt of attributes * tag_body option
-  | TagFloat of attributes * tag_body option
-  | TagBoolean of attributes * tag_body option
-  | TagArray of attributes * tag_body option
-  | TagRecord of attributes * tag_body option
-  | TagSlot of attributes * tag_body option
+  { tag_name : string
+  ; attributes : attributes
+  ; transformer : (lowercase_identifier * expression) option
+  ; exec : bool
+  }
 
 and block = expression list
 

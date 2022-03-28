@@ -7,10 +7,7 @@
 
 - Portals
 
-- Context
-
-- Selection / Enum
-  _Maybe we want to add the ability for the "user" (cms / playground) to define this._
+- Selection / Enum _Maybe we want to add the ability for the "user" (cms / playground) to define this._
 
 - A `library` type, for which all top level declarations inside are exported.
 

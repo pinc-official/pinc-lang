@@ -154,53 +154,6 @@ module Rules = struct
       Some (Ast.StringInterpolation expression)
     | _ -> None
 
-  and parse_tag name t =
-    next t;
-    let attributes =
-      if t |> optional Token.LEFT_PAREN
-      then (
-        let res =
-          t
-          |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
-          |> List.to_seq
-          |> Ast.StringMap.of_seq
-        in
-        t |> expect Token.RIGHT_PAREN;
-        res)
-      else Ast.StringMap.empty
-    in
-    let body =
-      if t |> optional Token.DOUBLE_COLON
-      then (
-        let bind = t |> Helpers.expect_identifier ~typ:`Lower in
-        t |> expect Token.ARROW;
-        let body =
-          match parse_expression t with
-          | None ->
-            Diagnostics.report
-              ~start_pos:t.token.start_pos
-              ~end_pos:t.token.end_pos
-              (Diagnostics.Message
-                 (Printf.sprintf "Expected expression as transformer of tag"))
-          | Some expr -> expr
-        in
-        Some (Ast.Lowercase_Id bind, body))
-      else None
-    in
-    match name with
-    | "String" -> Some (Ast.TagString (attributes, body))
-    | "Int" -> Some (Ast.TagInt (attributes, body))
-    | "Float" -> Some (Ast.TagFloat (attributes, body))
-    | "Boolean" -> Some (Ast.TagBoolean (attributes, body))
-    | "Array" -> Some (Ast.TagArray (attributes, body))
-    | "Record" -> Some (Ast.TagRecord (attributes, body))
-    | "Slot" -> Some (Ast.TagSlot (attributes, body))
-    | s ->
-      Diagnostics.report
-        ~start_pos:t.token.start_pos
-        ~end_pos:t.token.end_pos
-        (Diagnostics.Message (Printf.sprintf "Unknown tag with name `%s`." s))
-
   and parse_fn_param t =
     match t.token.typ with
     | Token.IDENT_LOWER key ->
@@ -402,9 +355,53 @@ module Rules = struct
       in
       Some (Ast.ConditionalExpression { condition; consequent; alternate })
     (* PARSING TAG EXPRESSION *)
-    | Token.TAG name ->
-      let* tag = parse_tag name t in
-      Some (Ast.TagExpression tag)
+    | Token.TAG tag_name ->
+      next t;
+      let attributes =
+        if t |> optional Token.LEFT_PAREN
+        then (
+          let res =
+            t
+            |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
+            |> List.to_seq
+            |> Ast.StringMap.of_seq
+          in
+          t |> expect Token.RIGHT_PAREN;
+          res)
+        else Ast.StringMap.empty
+      in
+      let transformer =
+        if t |> optional Token.DOUBLE_COLON
+        then (
+          let bind = t |> Helpers.expect_identifier ~typ:`Lower in
+          t |> expect Token.ARROW;
+          let body =
+            match parse_expression t with
+            | None ->
+              Diagnostics.report
+                ~start_pos:t.token.start_pos
+                ~end_pos:t.token.end_pos
+                (Diagnostics.Message
+                   (Printf.sprintf "Expected expression as transformer of tag"))
+            | Some expr -> expr
+          in
+          Some (Ast.Lowercase_Id bind, body))
+        else None
+      in
+      Some (Ast.TagExpression { tag_name; attributes; transformer; exec = false })
+    (* PARSING TAG_EXEC EXPRESSION *)
+    | Token.TAG_EXEC tag_name ->
+      next t;
+      t |> expect Token.LEFT_PAREN;
+      let attributes =
+        t
+        |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
+        |> List.to_seq
+        |> Ast.StringMap.of_seq
+      in
+      t |> expect Token.RIGHT_PAREN;
+      t |> expect Token.SEMICOLON;
+      Some (Ast.TagExpression { tag_name; attributes; transformer = None; exec = true })
     (* PARSING TEMPLATE EXPRESSION *)
     | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
       let template_nodes = t |> Helpers.list ~fn:parse_template_node in

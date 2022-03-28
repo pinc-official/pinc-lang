@@ -1,0 +1,12 @@
+component Component(
+  label: "Section",
+  icon: "/images/icons/group.svg",
+  group: "Structure",
+) {
+  >#Context(name: "background", value: "grey");
+
+  <section class="Section">
+    <HeadlineSecondary text="Hello, Headline Secondary!" />
+    <SubComponent />
+  </section>
+}

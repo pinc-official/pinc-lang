@@ -205,7 +205,7 @@ let scan_string ~start_pos t =
   Token.STRING (Buffer.contents buf)
 ;;
 
-let scan_tag_or_template t =
+let scan_tag t =
   let start_pos = make_position t in
   let buf = Buffer.create 32 in
   (* NOTE: List all vaid chars for identifiers here: *)
@@ -220,12 +220,10 @@ let scan_tag_or_template t =
       loop t
     | _ -> ()
   in
-  (* NEXT once to skip the beginning # symbol *)
-  next t;
   let () = loop t in
   let found = Buffer.contents buf in
   match found.[0] with
-  | 'A' .. 'Z' -> Token.TAG found
+  | 'A' .. 'Z' -> found
   | _ ->
     Diagnostics.report
       ~start_pos
@@ -776,7 +774,9 @@ and scan_normal_token ~start_pos t =
         (Diagnostics.UnknownCharacter '@'))
   | `Chr '#' ->
     (match peek t with
-    | `Chr 'A' .. 'Z' | `Chr 'a' .. 'z' -> scan_tag_or_template t
+    | `Chr 'A' .. 'Z' ->
+      next t;
+      Token.TAG (scan_tag t)
     | _ ->
       Diagnostics.report
         ~start_pos
@@ -830,6 +830,16 @@ and scan_normal_token ~start_pos t =
     | `Chr '=' ->
       next_n ~n:2 t;
       Token.GREATER_EQUAL
+    | `Chr '#' ->
+      (match peek ~n:2 t with
+      | `Chr 'A' .. 'Z' ->
+        next_n ~n:2 t;
+        Token.TAG_EXEC (scan_tag t)
+      | _ ->
+        Diagnostics.report
+          ~start_pos
+          ~end_pos:(make_position t)
+          (Diagnostics.UnknownCharacter '>'))
     | _ ->
       next t;
       Token.GREATER)

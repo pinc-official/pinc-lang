@@ -49,6 +49,7 @@ end
 val eval
   :  ?models:(string -> Value.t option)
   -> ?slotted_children:Value.t list
+  -> ?context:Value.t StringMap.t
   -> root:StringMap.key
   -> Ast.declaration StringMap.t
   -> State.t

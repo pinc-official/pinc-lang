@@ -212,6 +212,7 @@ and State : sig
     ; models : string -> Value.t option
     ; slotted_children : Value.t list option
     ; declarations : Ast.declaration StringMap.t
+    ; context : Value.t StringMap.t
     ; output : Value.t
     ; environment : environment
     ; tags : tag_meta StringMap.t
@@ -239,9 +240,12 @@ and State : sig
   val make
     :  ?models:(string -> Value.t option)
     -> ?slotted_children:Value.t list
+    -> ?context:Value.t StringMap.t
     -> Ast.declaration StringMap.t
     -> t
 
+  val add_context : name:string -> value:Value.t -> t -> t
+  val get_context : name:string -> t -> Value.t option
   val add_scope : t -> t
 
   val add_value_to_scope
@@ -273,6 +277,7 @@ end = struct
     ; models : string -> Value.t option
     ; slotted_children : Value.t list option
     ; declarations : Ast.declaration StringMap.t
+    ; context : Value.t StringMap.t
     ; output : Value.t
     ; environment : environment
     ; tags : tag_meta StringMap.t
@@ -297,16 +302,29 @@ end = struct
     | Record of (bool * tag_typ) StringMap.t
     | Slot
 
-  let make ?(models = fun _ -> None) ?slotted_children declarations =
+  let make
+      ?(models = fun _ -> None)
+      ?slotted_children
+      ?(context = StringMap.empty)
+      declarations
+    =
     { binding_identifier = None
     ; models
     ; slotted_children
     ; declarations
+    ; context
     ; output = Value.Null
     ; environment = { scope = [] }
     ; tags = StringMap.empty
     }
   ;;
+
+  let add_context ~name ~value t =
+    let context = t.context |> StringMap.add name value in
+    { t with context }
+  ;;
+
+  let get_context ~name t = t.context |> StringMap.find_opt name
 
   let add_scope t =
     let environment = { scope = [] :: t.environment.scope } in
@@ -1024,12 +1042,12 @@ and eval_tag ?value ~state tag =
   in
   let rec get_output_typ tag =
     match tag with
-    | Ast.TagString (_, _) -> State.String
-    | Ast.TagInt (_, _) -> State.Int
-    | Ast.TagFloat (_, _) -> State.Float
-    | Ast.TagBoolean (_, _) -> State.Boolean
-    | Ast.TagSlot (_, _) -> State.Slot
-    | Ast.TagArray (attributes, _) ->
+    | Ast.{ tag_name = "String"; _ } -> State.String
+    | Ast.{ tag_name = "Int"; _ } -> State.Int
+    | Ast.{ tag_name = "Float"; _ } -> State.Float
+    | Ast.{ tag_name = "Boolean"; _ } -> State.Boolean
+    | Ast.{ tag_name = "Slot"; _ } -> State.Slot
+    | Ast.{ tag_name = "Array"; attributes; _ } ->
       let of' =
         StringMap.find_opt "of" attributes
         |> Option.map (function
@@ -1043,7 +1061,7 @@ and eval_tag ?value ~state tag =
         | Some t -> t |> get_output_typ
       in
       State.Array of'
-    | Ast.TagRecord (attributes, _) ->
+    | Ast.{ tag_name = "Record"; attributes; _ } ->
       let of' =
         StringMap.find_opt "of" attributes
         |> Option.map (function
@@ -1067,9 +1085,10 @@ and eval_tag ?value ~state tag =
                         key))
       in
       State.Record of'
+    | { tag_name; _ } -> failwith (Printf.sprintf "Unknown tag with name `%s`." tag_name)
   in
   match tag with
-  | Ast.TagString (attributes, body) ->
+  | { tag_name = "String"; attributes; transformer; exec = false } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1085,11 +1104,10 @@ and eval_tag ?value ~state tag =
       failwith "tried to assign definition info to a string tag."
     | Value.Function _ -> failwith "tried to assign function to a string tag."
     | Value.Null ->
-      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer:body)
+      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.String s ->
-      output
-      |> State.add_output ~output:(Value.String s |> apply_transformer ~transformer:body))
-  | Ast.TagInt (attributes, body) ->
+      output |> State.add_output ~output:(Value.String s |> apply_transformer ~transformer))
+  | { tag_name = "Int"; attributes; transformer; exec = false } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1104,11 +1122,10 @@ and eval_tag ?value ~state tag =
     | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a int tag."
     | Value.Function _ -> failwith "tried to assign function to a int tag."
     | Value.Null ->
-      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer:body)
+      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.Int i ->
-      output
-      |> State.add_output ~output:(Value.Int i |> apply_transformer ~transformer:body))
-  | Ast.TagFloat (attributes, body) ->
+      output |> State.add_output ~output:(Value.Int i |> apply_transformer ~transformer))
+  | { tag_name = "Float"; attributes; transformer; exec = false } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1123,11 +1140,10 @@ and eval_tag ?value ~state tag =
     | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a float tag."
     | Value.Function _ -> failwith "tried to assign function to a float tag."
     | Value.Null ->
-      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer:body)
+      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.Float f ->
-      output
-      |> State.add_output ~output:(Value.Float f |> apply_transformer ~transformer:body))
-  | Ast.TagBoolean (attributes, body) ->
+      output |> State.add_output ~output:(Value.Float f |> apply_transformer ~transformer))
+  | { tag_name = "Boolean"; attributes; transformer; exec = false } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1143,11 +1159,10 @@ and eval_tag ?value ~state tag =
       failwith "tried to assign definition info to a boolean tag."
     | Value.Function _ -> failwith "tried to assign function to a boolean tag."
     | Value.Null ->
-      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer:body)
+      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.Bool b ->
-      output
-      |> State.add_output ~output:(Value.Bool b |> apply_transformer ~transformer:body))
-  | Ast.TagArray (attributes, body) ->
+      output |> State.add_output ~output:(Value.Bool b |> apply_transformer ~transformer))
+  | { tag_name = "Array"; attributes; transformer; exec = false } ->
     let default = StringMap.find_opt "default" attributes in
     let of' =
       StringMap.find_opt "of" attributes
@@ -1178,10 +1193,10 @@ and eval_tag ?value ~state tag =
       let eval_item item = of' |> eval_tag ~value:item ~state in
       let value =
         Value.Array (Iter.map eval_item l |> Iter.map State.get_output)
-        |> apply_transformer ~transformer:body
+        |> apply_transformer ~transformer
       in
       state |> State.add_output ~output:value)
-  | Ast.TagRecord (attributes, body) ->
+  | { tag_name = "Record"; attributes; transformer; exec = false } ->
     let of' =
       StringMap.find_opt "of" attributes
       |> Option.map (function
@@ -1235,9 +1250,8 @@ and eval_tag ?value ~state tag =
         | value -> value
       in
       let r = of' |> StringMap.mapi eval_property in
-      output
-      |> State.add_output ~output:(Value.Record r |> apply_transformer ~transformer:body))
-  | Ast.TagSlot (attributes, body) ->
+      output |> State.add_output ~output:(Value.Record r |> apply_transformer ~transformer))
+  | { tag_name = "Slot"; attributes; transformer; exec = false } ->
     let slot_name =
       attributes
       |> StringMap.find_opt "name"
@@ -1355,7 +1369,7 @@ and eval_tag ?value ~state tag =
         children |> Iter.of_list |> Iter.fold keep_slotted Iter.empty
       in
       let slotted_children =
-        Value.Array slotted_children |> apply_transformer ~transformer:body
+        Value.Array slotted_children |> apply_transformer ~transformer
       in
       let amount_of_children =
         match slotted_children with
@@ -1389,6 +1403,51 @@ and eval_tag ?value ~state tag =
              slot_name
              max)
       | _ -> state |> State.add_output ~output:slotted_children))
+  | { tag_name = "Context"; attributes; transformer; exec = false } ->
+    let default = StringMap.find_opt "default" attributes in
+    let name =
+      attributes
+      |> StringMap.find_opt "name"
+      |> (function
+           | Some name -> name
+           | None -> failwith "attribute name is required when getting a context.")
+      |> eval_expression ~state
+      |> State.get_output
+      |> function
+      | Value.String s -> s
+      | _ -> failwith "Expected attribute `name` on #Context to be of type string."
+    in
+    let value =
+      state
+      |> State.get_context ~name
+      |> Option.value ~default:Value.Null
+      |> apply_default_value ~default
+    in
+    state |> State.add_output ~output:(value |> apply_transformer ~transformer)
+  | { tag_name = "Context"; attributes; transformer = None; exec = true } ->
+    let name =
+      attributes
+      |> StringMap.find_opt "name"
+      |> (function
+           | Some name -> name
+           | None -> failwith "attribute name is required when setting a context.")
+      |> eval_expression ~state
+      |> State.get_output
+      |> function
+      | Value.String s -> s
+      | _ -> failwith "Expected attribute `name` on >#Context to be of type string."
+    in
+    let value =
+      attributes
+      |> StringMap.find_opt "value"
+      |> (function
+           | Some value -> value
+           | None -> failwith "attribute value is required when setting a context.")
+      |> eval_expression ~state
+      |> State.get_output
+    in
+    state |> State.add_context ~name ~value |> State.add_output ~output:Value.Null
+  | { tag_name; _ } -> failwith (Printf.sprintf "Unknown tag with name `%s`." tag_name)
 
 and eval_template ~state template =
   match template with
@@ -1416,7 +1475,8 @@ and eval_template ~state template =
       children |> List.map (eval_template ~state) |> List.map State.get_output
     in
     let render_fn ~models ~slotted_children =
-      eval ~models ~slotted_children ~root:tag state.declarations |> State.get_output
+      eval ~models ~slotted_children ~context:state.context ~root:tag state.declarations
+      |> State.get_output
     in
     state
     |> State.add_output
@@ -1430,8 +1490,8 @@ and eval_declaration ~state declaration =
   | Ast.PageDeclaration (_attrs, body)
   | Ast.StoreDeclaration (_attrs, body) -> eval_block ~state body
 
-and eval ?models ?slotted_children ~root declarations =
-  let state = State.make ?models ?slotted_children declarations in
+and eval ?models ?slotted_children ?context ~root declarations =
+  let state = State.make ?context ?models ?slotted_children declarations in
   declarations
   |> StringMap.find_opt root
   |> function
