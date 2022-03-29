@@ -1,0 +1,14 @@
+10
+Pinc
+Pinc_Ast
+Pinc_HTML
+Pinc_Lexer
+Pinc_Token
+Pinc_Parser
+Pinc_Position
+Pinc_Operators
+Pinc_Diagnostics
+Pinc_Interpreter
+./lib	
+1
+0

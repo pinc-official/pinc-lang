@@ -1,4 +1,15 @@
-module Token = Pinc_Token
-module Lexer = Pinc_Lexer
-module Parser = Pinc_Parser
-module Interpreter = Pinc_Interpreter
+module Token = struct
+  include Pinc_Token
+end
+
+module Lexer = struct
+  include Pinc_Lexer
+end
+
+module Parser = struct
+  include Pinc_Parser
+end
+
+module Interpreter = struct
+  include Pinc_Interpreter
+end

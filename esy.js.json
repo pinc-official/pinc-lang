@@ -1,0 +1,21 @@
+{
+  "name": "pinc-lang-js",
+  "esy": {
+    "buildsInSource": "unsafe",
+    "build": ["ln -sfn #{melange.install} node_modules/bs-platform", "bsb -make-world"]
+  },
+  "installConfig": {
+    "pnp": false
+  },
+  "dependencies": {
+    "ocaml": "4.12.x",
+    "melange": "melange-re/melange#a175fc07893de23ecc18106904d9dd1eb1dfacce"
+  },
+  "devDependencies": {
+    "@opam/ocaml-lsp-server": "*"
+  },
+  "resolutions": {
+    "@opam/cmdliner": "1.0.4",
+    "@opam/reason": "3.7.0"
+  }
+}

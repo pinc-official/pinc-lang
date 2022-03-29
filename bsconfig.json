@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/rescript-lang/rescript-compiler/master/docs/docson/build-schema.json",
+  "name": "pinc-lang-js",
+  "version": "0.0.1",
+  "sources": {
+    "dir": "lib"
+  },
+  "package-specs": {
+    "module": "es6",
+    "in-source": true
+  },
+  "suffix": ".js",
+  "bs-dependencies": [],
+  "warnings": {
+    "error": "+101"
+  }
+}

@@ -4,8 +4,6 @@ module Diagnostics = Pinc_Diagnostics
 module Token = Pinc_Token
 module Lexer = Pinc_Lexer
 
-exception Parser_Error of string
-
 type t =
   { mutable lexer : Lexer.t
   ; mutable token : Token.t
@@ -115,17 +113,6 @@ module Helpers = struct
     loop []
   ;;
 
-  let non_empty_separated_list ~sep ~fn t =
-    let res = separated_list ~sep ~fn t in
-    if res = []
-    then
-      Diagnostics.report
-        ~start_pos:t.token.start_pos
-        ~end_pos:t.token.end_pos
-        (Diagnostics.Message (Printf.sprintf "Expected list to not be empty"))
-    else res
-  ;;
-
   let list ~fn t =
     let rec loop acc =
       match fn t with
@@ -133,17 +120,6 @@ module Helpers = struct
       | None -> List.rev acc
     in
     loop []
-  ;;
-
-  let non_empty_list ~fn t =
-    let res = list ~fn t in
-    if res = []
-    then
-      Diagnostics.report
-        ~start_pos:t.token.start_pos
-        ~end_pos:t.token.end_pos
-        (Diagnostics.Message (Printf.sprintf "Expected list to not be empty"))
-    else res
   ;;
 end
 
@@ -505,12 +481,6 @@ module Rules = struct
     | Token.DOTDOT -> Some Ast.Operators.Binary.(make RANGE)
     | Token.DOTDOTDOT -> Some Ast.Operators.Binary.(make INCLUSIVE_RANGE)
     | Token.PIPE -> Some Ast.Operators.Binary.(make PIPE)
-    | _ -> None
-
-  and parse_unary_operator t =
-    match t.token.typ with
-    | Token.NOT -> Some Ast.Operators.Unary.(make NOT)
-    | Token.UNARY_MINUS -> Some Ast.Operators.Unary.(make MINUS)
     | _ -> None
 
   and parse_expression ?(prio = -999) t =

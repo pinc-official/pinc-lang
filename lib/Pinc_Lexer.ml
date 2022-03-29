@@ -31,13 +31,13 @@ let make_position a =
   Position.make ~filename:a.filename ~line:a.line ~column:(a.column + 1)
 ;;
 
-let show_mode = function
+(* let show_mode = function
   | Normal -> "NORMAL"
   | String -> "String"
   | TemplateAttributes -> "TemplateAttributes"
   | ComponentAttributes -> "ComponentAttributes"
   | Template -> "Template"
-;;
+;; *)
 
 let current_mode t =
   match t.mode with
@@ -49,7 +49,7 @@ let current_mode t =
   | ComponentAttributes :: _ -> ComponentAttributes
 ;;
 
-let previous_mode t =
+(* let previous_mode t =
   match t.mode with
   | [] | [ _ ] -> Normal
   | _ :: Normal :: _ -> Normal
@@ -57,7 +57,7 @@ let previous_mode t =
   | _ :: Template :: _ -> Template
   | _ :: TemplateAttributes :: _ -> TemplateAttributes
   | _ :: ComponentAttributes :: _ -> ComponentAttributes
-;;
+;; *)
 
 let setMode mode t = t.mode <- mode :: t.mode
 
