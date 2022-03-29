@@ -1,10 +1,57 @@
-open Pinc_lib
+open Pinc
+
+let get_source filename =
+  let file_contents chan = really_input_string chan (in_channel_length chan) in
+  let chan = open_in filename in
+  let src = chan |> file_contents in
+  close_in chan;
+  src
+;;
+
+let get_files_with_ext ~ext dir =
+  let rec loop result = function
+    | file :: rest when Sys.is_directory file ->
+      Sys.readdir file
+      |> Array.to_list
+      |> List.map (Filename.concat file)
+      |> List.append rest
+      |> loop result
+    | file :: rest when Filename.extension file = ext -> loop (file :: result) rest
+    | _file :: rest -> loop result rest
+    | [] -> result
+  in
+  loop [] [ dir ]
+;;
+
+let get_declarations_from ~directory () =
+  (* TODO: This should happen asynchronously *)
+  directory
+  |> get_files_with_ext ~ext:".pi"
+  |> List.fold_left
+       (fun acc filename ->
+         let decls = filename |> get_source |> Parser.parse ~filename in
+         let f key x y =
+           match x, y with
+           | None, Some y -> Some y
+           | Some x, None -> Some x
+           | Some _, Some _ ->
+             failwith
+               (Printf.sprintf "Found multiple declarations with identifier %s" key)
+           | None, None -> None
+         in
+         Interpreter.StringMap.merge f acc decls)
+       Interpreter.StringMap.empty
+;;
 
 let main =
   let directory = Sys.argv.(1) in
-  let root_name = Sys.argv.(2) in
-  let result = Interpreter.from_directory ~directory root_name in
-  result |> Interpreter.State.get_output |> Interpreter.Value.to_string |> print_endline
+  let root = Sys.argv.(2) in
+  let declarations = get_declarations_from ~directory () in
+  declarations
+  |> Interpreter.eval ~root
+  |> Interpreter.State.get_output
+  |> Interpreter.Value.to_string
+  |> print_endline
 ;;
 
 let () = main

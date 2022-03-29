@@ -1,3 +1,5 @@
+module Position = Pinc_Position
+
 type token_type =
   | COMMENT
   | IDENT_LOWER of string

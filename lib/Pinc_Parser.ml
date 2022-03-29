@@ -1,3 +1,9 @@
+module Ast = Pinc_Ast
+module Position = Pinc_Position
+module Diagnostics = Pinc_Diagnostics
+module Token = Pinc_Token
+module Lexer = Pinc_Lexer
+
 exception Parser_Error of string
 
 type t =
@@ -468,7 +474,7 @@ module Rules = struct
     | Token.LEFT_BRACK ->
       next t;
       let expressions =
-        Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t |> Iter.of_list
+        Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t |> Array.of_list
       in
       expect Token.RIGHT_BRACK t;
       Some Ast.(Array expressions)
@@ -592,11 +598,7 @@ let scan t =
   t |> Helpers.list ~fn:Rules.parse_declaration |> List.to_seq |> Ast.StringMap.of_seq
 ;;
 
-let parse_file filename =
-  let file_contents chan = really_input_string chan (in_channel_length chan) in
-  let chan = open_in filename in
-  let src = chan |> file_contents in
-  close_in chan;
-  let parser = make ~filename src in
+let parse ~filename source =
+  let parser = make ~filename source in
   scan parser
 ;;

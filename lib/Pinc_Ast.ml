@@ -1,5 +1,6 @@
 module StringMap = Map.Make (String)
-module Operators = Operators
+module Position = Pinc_Position
+module Operators = Pinc_Operators
 
 module SourceLocation = struct
   type t = string * Position.t * Position.t
@@ -43,7 +44,7 @@ and expression =
   | Int of int
   | Float of float
   | Bool of bool
-  | Array of expression Iter.t
+  | Array of expression array
   | Record of (bool * expression) StringMap.t
   | Function of string list * block
   | FunctionCall of expression * expression list

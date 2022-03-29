@@ -1,4 +1,4 @@
-open Pinc_lib
+open Pinc
 
 let file_contents chan = really_input_string chan (in_channel_length chan)
 

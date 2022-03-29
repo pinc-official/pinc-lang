@@ -1,3 +1,4 @@
+module Ast = Pinc_Ast
 module StringMap = Ast.StringMap
 
 module rec Value : sig
@@ -54,23 +55,10 @@ val eval
   -> Ast.declaration StringMap.t
   -> State.t
 
-val from_directory
+val from_source
   :  ?models:(string -> Value.t option)
   -> ?slotted_children:Value.t list
-  -> directory:string
-  -> StringMap.key
-  -> State.t
-
-val from_file
-  :  ?models:(string -> Value.t option)
-  -> ?slotted_children:Value.t list
-  -> filename:string
-  -> StringMap.key
-  -> State.t
-
-val from_ast
-  :  ?models:(string -> Value.t option)
-  -> ?slotted_children:Value.t list
-  -> Ast.declaration StringMap.t
-  -> StringMap.key
+  -> ?filename:string
+  -> source:string
+  -> string
   -> State.t

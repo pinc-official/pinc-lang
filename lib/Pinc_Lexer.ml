@@ -1,3 +1,7 @@
+module Diagnostics = Pinc_Diagnostics
+module Position = Pinc_Position
+module Token = Pinc_Token
+
 type mode =
   | Normal
   | String

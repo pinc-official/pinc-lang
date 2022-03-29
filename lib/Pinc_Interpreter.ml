@@ -1,3 +1,5 @@
+module Parser = Pinc_Parser
+module Ast = Pinc_Ast
 module StringMap = Ast.StringMap
 
 exception Loop_Break
@@ -16,7 +18,7 @@ module rec Value : sig
     | Int of int
     | Float of float
     | Bool of bool
-    | Array of t Iter.t
+    | Array of t array
     | Record of t StringMap.t
     | Function of
         { parameters : string list
@@ -65,7 +67,7 @@ end = struct
     | Int of int
     | Float of float
     | Bool of bool
-    | Array of t Iter.t
+    | Array of t array
     | Record of t StringMap.t
     | Function of
         { parameters : string list
@@ -87,7 +89,7 @@ end = struct
   let of_bool b = Value.Bool b
   let of_int i = Value.Int i
   let of_float f = Value.Float f
-  let of_list l = Value.Array (Iter.of_list l)
+  let of_list l = Value.Array (Array.of_list l)
   let of_string_map m = Value.Record m
 
   let make_component ~render ~tag ~attributes ~children =
@@ -101,7 +103,13 @@ end = struct
     | Float f when Float.is_integer f -> string_of_int (int_of_float f)
     | Float f -> string_of_float f
     | Bool b -> if b then "true" else "false"
-    | Array l -> l |> Iter.map to_string |> Iter.intersperse "\n" |> Iter.concat_str
+    | Array l ->
+      let buf = Buffer.create 200 in
+      l
+      |> Array.iteri (fun i it ->
+             if i <> 0 then Buffer.add_char buf '\n';
+             Buffer.add_string buf (to_string it));
+      Buffer.contents buf
     | Record m ->
       let b = Buffer.create 1024 in
       m
@@ -134,7 +142,7 @@ end = struct
                  Buffer.add_char buf '"';
                  Buffer.add_string buf (value |> to_string);
                  Buffer.add_char buf '"');
-      if self_closing && HTML.is_void_el tag
+      if self_closing && Pinc_HTML.is_void_el tag
       then Buffer.add_string buf " />"
       else (
         Buffer.add_char buf '>';
@@ -161,7 +169,8 @@ end = struct
     | TemplateNode _ -> true
     | DefinitionInfo { exists; _ } -> exists
     | Function _ -> true
-    | Array l -> not (Iter.is_empty l)
+    | Array [||] -> false
+    | Array _ -> true
     | Record m -> not (StringMap.is_empty m)
   ;;
 
@@ -173,7 +182,7 @@ end = struct
     | Float a, Int b -> a = float_of_int b
     | Int a, Float b -> float_of_int a = b
     | Bool a, Bool b -> a = b
-    | Array a, Array b -> Iter.to_rev_list a = Iter.to_rev_list b
+    | Array a, Array b -> a = b
     | Record a, Record b -> StringMap.equal equal a b
     | Function _, Function _ -> false
     | DefinitionInfo { name = a; _ }, DefinitionInfo { name = b; _ } -> String.equal a b
@@ -196,7 +205,7 @@ end = struct
     | Float a, Int b -> Float.compare a (float_of_int b)
     | Int a, Float b -> Float.compare (float_of_int a) b
     | Bool a, Bool b -> Bool.compare a b
-    | Array a, Array b -> Int.compare (Iter.length a) (Iter.length b)
+    | Array a, Array b -> Int.compare (Array.length a) (Array.length b)
     | Record a, Record b -> StringMap.compare compare a b
     | Null, Null -> 0
     | TemplateNode _, TemplateNode _ -> 0
@@ -415,7 +424,7 @@ let rec eval_expression ~state = function
     |> State.add_output
          ~output:
            (Value.Array
-              (l |> Iter.map (eval_expression ~state) |> Iter.map State.get_output))
+              (l |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)))
   | Ast.Record map ->
     state
     |> State.add_output
@@ -462,9 +471,8 @@ let rec eval_expression ~state = function
          ~output:
            (Value.Array
               (nodes
-              |> List.map (eval_template ~state)
-              |> List.map State.get_output
-              |> Iter.of_list))
+              |> List.map (fun it -> it |> eval_template ~state |> State.get_output)
+              |> Array.of_list))
   | Ast.BlockExpression e -> eval_block ~state e
   | Ast.ConditionalExpression { condition; consequent; alternate } ->
     eval_if ~state ~condition ~alternate consequent
@@ -775,7 +783,7 @@ and eval_binary_dot_access ~state left right =
     | "tag" -> state |> State.add_output ~output:(Value.String tag)
     | "attributes" -> state |> State.add_output ~output:(Value.Record attributes)
     | "children" ->
-      state |> State.add_output ~output:(Value.Array (Iter.of_list children))
+      state |> State.add_output ~output:(Value.Array (Array.of_list children))
     | s ->
       failwith
         (Printf.sprintf
@@ -795,9 +803,8 @@ and eval_binary_bracket_access ~state left right =
   match left, right with
   | Value.Array left, Value.Int right ->
     let output =
-      left
-      |> Iter.findi (fun index el -> if index = right then Some el else None)
-      |> Option.value ~default:Value.Null
+      try left.(right) with
+      | Invalid_argument _ -> Value.Null
     in
     state |> State.add_output ~output
   | Value.Record left, Value.String right ->
@@ -813,8 +820,7 @@ and eval_binary_array_add ~state left right =
   let right = right |> eval_expression ~state |> State.get_output in
   match left, right with
   | Value.Array left, value ->
-    state
-    |> State.add_output ~output:(Value.Array (Iter.append left (Iter.singleton value)))
+    state |> State.add_output ~output:(Value.Array (Array.append left [| value |]))
   | _ -> failwith "Trying to add an element on a non array value."
 
 and eval_binary_merge ~state left right =
@@ -822,7 +828,7 @@ and eval_binary_merge ~state left right =
   let right = right |> eval_expression ~state |> State.get_output in
   match left, right with
   | Value.Array left, Value.Array right ->
-    state |> State.add_output ~output:(Value.Array (Iter.append left right))
+    state |> State.add_output ~output:(Value.Array (Array.append left right))
   | Value.Record left, Value.Record right ->
     state
     |> State.add_output
@@ -929,41 +935,51 @@ and eval_if ~state ~condition ~alternate consequent =
     | None -> state |> State.add_output ~output:Value.Null)
 
 and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
+  let make_rev array =
+    array |> Array.stable_sort (fun _ _ -> 1);
+    array
+  in
   let iterable = iterable |> eval_expression ~state |> State.get_output in
-  let maybe_rev = if reverse then Iter.rev else fun i -> i in
+  let maybe_rev = if reverse then make_rev else fun arr -> arr in
   let index = ref (-1) in
-  let loop acc value =
-    index := succ !index;
-    let state =
-      state |> State.add_value_to_scope ~ident ~value ~is_mutable:false ~is_optional:false
-    in
-    let state =
-      match index_ident with
-      | Some (Lowercase_Id ident) ->
+  let rec loop acc = function
+    | [] -> List.rev acc
+    | value :: tl ->
+      index := succ !index;
+      let state =
         state
-        |> State.add_value_to_scope
-             ~ident
-             ~value:(Value.Int !index)
-             ~is_mutable:false
-             ~is_optional:false
-      | None -> state
-    in
-    match eval_block ~state body with
-    | exception Loop_Continue -> acc, `Continue
-    | exception Loop_Break -> acc, `Stop
-    | v -> Iter.append acc (Iter.singleton (State.get_output v)), `Continue
+        |> State.add_value_to_scope ~ident ~value ~is_mutable:false ~is_optional:false
+      in
+      let state =
+        match index_ident with
+        | Some (Lowercase_Id ident) ->
+          state
+          |> State.add_value_to_scope
+               ~ident
+               ~value:(Value.Int !index)
+               ~is_mutable:false
+               ~is_optional:false
+        | None -> state
+      in
+      (match eval_block ~state body with
+      | exception Loop_Continue -> loop acc tl
+      | exception Loop_Break -> List.rev acc
+      | v -> loop (State.get_output v :: acc) tl)
   in
   match iterable with
   | Value.Array l ->
-    let res = l |> maybe_rev |> Iter.fold_while loop Iter.empty in
+    let res = l |> maybe_rev |> Array.to_list |> loop [] |> Array.of_list in
     state |> State.add_output ~output:(Value.Array res)
   | Value.String s ->
     let res =
       s
-      |> Iter.of_str
+      |> String.to_seq
+      |> Array.of_seq
       |> maybe_rev
-      |> Iter.map (fun c -> Value.String (String.make 1 c))
-      |> Iter.fold_while loop Iter.empty
+      |> Array.map (fun c -> Value.String (String.make 1 c))
+      |> Array.to_list
+      |> loop []
+      |> Array.of_list
     in
     state |> State.add_output ~output:(Value.Array res)
   | Value.Null -> state |> State.add_output ~output:Value.Null
@@ -994,11 +1010,11 @@ and eval_range ~state ~inclusive from upto =
   in
   let iter =
     if from > upto
-    then Iter.empty
+    then [||]
     else (
       let start = from in
-      let stop = if not inclusive then upto - 1 else upto in
-      Iter.int_range ~start ~stop |> Iter.map (fun i -> Value.Int i))
+      let stop = if not inclusive then upto else upto + 1 in
+      Array.init (stop - start) (fun i -> Value.Int (i + start)))
   in
   state |> State.add_output ~output:(Value.Array iter)
 
@@ -1192,7 +1208,7 @@ and eval_tag ?value ~state tag =
     | Value.Array l ->
       let eval_item item = of' |> eval_tag ~value:item ~state in
       let value =
-        Value.Array (Iter.map eval_item l |> Iter.map State.get_output)
+        Value.Array (l |> Array.map (fun it -> it |> eval_item |> State.get_output))
         |> apply_transformer ~transformer
       in
       state |> State.add_output ~output:value)
@@ -1292,7 +1308,7 @@ and eval_tag ?value ~state tag =
       | Some (Value.Array l) ->
         Some
           (l
-          |> Iter.map (function
+          |> Array.map (function
                  | Value.DefinitionInfo info -> info
                  | _ ->
                    failwith
@@ -1321,7 +1337,7 @@ and eval_tag ?value ~state tag =
           let is_in_list = ref false in
           let allowed, disallowed =
             restrictions
-            |> Iter.to_rev_list
+            |> Array.to_list
             |> List.partition_map (fun Value.{ name; negated; _ } ->
                    if name = tag then is_in_list := true;
                    if negated then Either.right name else Either.left name)
@@ -1344,11 +1360,11 @@ and eval_tag ?value ~state tag =
                  then "Default #Slot."
                  else Printf.sprintf "#Slot with name `%s`" slot_name)
                  (instanceOf
-                 |> Option.value ~default:Iter.empty
-                 |> Iter.map (fun res ->
+                 |> Option.value ~default:[||]
+                 |> Array.to_list
+                 |> List.map (fun res ->
                         (if res.Value.negated then "!" else "") ^ res.Value.name)
-                 |> Iter.intersperse ","
-                 |> Iter.concat_str))
+                 |> String.concat ","))
           else f
       in
       let rec keep_slotted acc = function
@@ -1356,9 +1372,9 @@ and eval_tag ?value ~state tag =
           | Value.TemplateNode (`Component _, tag, attributes, _children, _self_closing)
             ) as value ->
           if find_slot_key attributes = slot_name
-          then check_instance_restriction tag @@ Iter.append acc (Iter.singleton value)
+          then check_instance_restriction tag @@ Array.append acc [| value |]
           else acc
-        | Value.Array l -> l |> Iter.fold keep_slotted acc
+        | Value.Array l -> l |> Array.fold_left keep_slotted acc
         | Value.String s when String.trim s = "" -> acc
         | _ ->
           failwith
@@ -1366,14 +1382,14 @@ and eval_tag ?value ~state tag =
              slot, you have to wrap it in a <p></p> tag for example."
       in
       let slotted_children =
-        children |> Iter.of_list |> Iter.fold keep_slotted Iter.empty
+        children |> Array.of_list |> Array.fold_left keep_slotted [||]
       in
       let slotted_children =
         Value.Array slotted_children |> apply_transformer ~transformer
       in
       let amount_of_children =
         match slotted_children with
-        | Value.Array slotted_children -> Iter.length slotted_children
+        | Value.Array slotted_children -> Array.length slotted_children
         | _ -> assert false
       in
       (match slot_name, min, amount_of_children, max with
@@ -1499,35 +1515,7 @@ and eval ?models ?slotted_children ?context ~root declarations =
   | None -> failwith (Printf.sprintf "Declaration with name `%s` was not found." root)
 ;;
 
-let from_directory ?models ?slotted_children ~directory root =
-  let src_match = FileUtil.Has_extension "pi" in
-  let src_files = FileUtil.find src_match directory Iter.snoc Iter.empty in
-  (* TODO: This should happen asynchronously *)
-  let declarations =
-    src_files
-    |> Iter.fold
-         (fun acc curr ->
-           let decls = Parser.parse_file curr in
-           let f key x y =
-             match x, y with
-             | None, Some y -> Some y
-             | Some x, None -> Some x
-             | Some _, Some _ ->
-               failwith
-                 (Printf.sprintf "Found multiple declarations with identifier %s" key)
-             | None, None -> None
-           in
-           StringMap.merge f acc decls)
-         StringMap.empty
-  in
-  eval ?models ?slotted_children ~root declarations
-;;
-
-let from_file ?models ?slotted_children ~filename root =
-  let declarations = Parser.parse_file filename in
-  eval ?models ?slotted_children ~root declarations
-;;
-
-let from_ast ?models ?slotted_children declarations root =
+let from_source ?models ?slotted_children ?(filename = "") ~source root =
+  let declarations = Parser.parse ~filename source in
   eval ?models ?slotted_children ~root declarations
 ;;

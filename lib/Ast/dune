@@ -1,7 +1,0 @@
-(library
- (name Ast)
- (public_name pinc-lang.ast)
- (flags
-  (:standard -w +A-70-42-48-66-40 -warn-error +A-3-44-66-40))
- (ocamlopt_flags -O3)
- (libraries Position Token iter))

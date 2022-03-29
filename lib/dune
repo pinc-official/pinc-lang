@@ -1,6 +1,5 @@
 (library
- (name pinc_lib)
+ (name pinc)
  (public_name pinc-lang)
  (flags :standard)
- (ocamlopt_flags -O3)
- (libraries Token Ast Position iter fileutils))
+ (ocamlopt_flags -O3))

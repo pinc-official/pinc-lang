@@ -4,7 +4,7 @@
  (modules print)
  (modes native)
  (ocamlopt_flags -O3)
- (libraries pinc_lib))
+ (libraries pinc))
 
 (executable
  (name print_debug)
@@ -12,7 +12,7 @@
  (modules print_debug)
  (modes native)
  (ocamlopt_flags -O3)
- (libraries pinc_lib unix))
+ (libraries pinc unix))
 
 (executable
  (name print_tokens)
@@ -20,7 +20,7 @@
  (modules print_tokens)
  (modes native)
  (ocamlopt_flags -O3)
- (libraries pinc_lib unix))
+ (libraries pinc unix))
 
 (cram
  (deps %{bin:print}))

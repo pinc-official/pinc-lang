@@ -1,3 +1,6 @@
+module Position = Pinc_Position
+module Token = Pinc_Token
+
 type typ =
   | NonTerminatedString
   | NonTerminatedTemplate
