@@ -15,3 +15,7 @@ node_modules
 
 .DS_Store
 
+# Melange Specifics
+.bsb.lock
+dune.bsb
+.melange.eobjs
