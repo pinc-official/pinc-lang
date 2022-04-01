@@ -257,12 +257,12 @@ module Rules = struct
     (* PARSING BREAK STATEMENT *)
     | Token.KEYWORD_BREAK ->
       next t;
-      expect Token.SEMICOLON t;
+      let _ = optional Token.SEMICOLON t in
       Some Ast.BreakStatement
     (* PARSING CONTINUE STATEMENT *)
     | Token.KEYWORD_CONTINUE ->
       next t;
-      expect Token.SEMICOLON t;
+      let _ = optional Token.SEMICOLON t in
       Some Ast.ContinueStatement
     (* PARSING LET STATEMENT *)
     | Token.KEYWORD_LET ->
@@ -272,7 +272,7 @@ module Rules = struct
       let is_nullable = t |> optional Token.QUESTIONMARK in
       t |> expect Token.EQUAL;
       let expression = parse_expression t in
-      expect Token.SEMICOLON t;
+      let _ = optional Token.SEMICOLON t in
       (match is_mutable, is_nullable, expression with
       | false, true, Some expression ->
         Some (Ast.OptionalLetStatement (Lowercase_Id identifier, expression))
@@ -301,11 +301,12 @@ module Rules = struct
             (Diagnostics.Message
                "Expected expression as right hand side of mutation statement")
       in
-      expect Token.SEMICOLON t;
+      let _ = optional Token.SEMICOLON t in
       Some (Ast.MutationStatement (Lowercase_Id identifier, expression))
     | _ ->
-      parse_expression t
-      |> Option.map (fun expression -> Ast.ExpressionStatement expression)
+      let expr = parse_expression t in
+      let _ = optional Token.SEMICOLON t in
+      expr |> Option.map (fun expression -> Ast.ExpressionStatement expression)
 
   and parse_expression_part t =
     match t.token.typ with
@@ -531,16 +532,14 @@ module Rules = struct
           Some attributes)
         else None
       in
-      t |> expect Token.LEFT_BRACE;
-      let body = t |> Helpers.list ~fn:parse_statement in
-      t |> expect Token.RIGHT_BRACE;
+      let body = t |> parse_expression in
       (match body with
-      | [] ->
+      | None ->
         Diagnostics.report
           ~start_pos:t.token.start_pos
           ~end_pos:t.token.end_pos
           (Diagnostics.Message "Expected declaration to have a body")
-      | body ->
+      | Some body ->
         (match typ with
         | Token.KEYWORD_SITE -> Some (identifier, Ast.SiteDeclaration (attributes, body))
         | Token.KEYWORD_PAGE -> Some (identifier, Ast.PageDeclaration (attributes, body))

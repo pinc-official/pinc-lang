@@ -78,9 +78,9 @@ and statement =
   | ExpressionStatement of expression
 
 and declaration =
-  | ComponentDeclaration of attributes option * statement list
-  | SiteDeclaration of attributes option * statement list
-  | PageDeclaration of attributes option * statement list
-  | StoreDeclaration of attributes option * statement list
+  | ComponentDeclaration of attributes option * expression
+  | SiteDeclaration of attributes option * expression
+  | PageDeclaration of attributes option * expression
+  | StoreDeclaration of attributes option * expression
 
 and t = declaration StringMap.t

@@ -1449,7 +1449,7 @@ and eval_declaration ~state declaration =
   | Ast.ComponentDeclaration (_attrs, body)
   | Ast.SiteDeclaration (_attrs, body)
   | Ast.PageDeclaration (_attrs, body)
-  | Ast.StoreDeclaration (_attrs, body) -> eval_block ~state body
+  | Ast.StoreDeclaration (_attrs, body) -> eval_expression ~state body
 
 and eval ?models ?slotted_children ?context ~root declarations =
   let state = State.make ?context ?models ?slotted_children declarations in
