@@ -22,6 +22,15 @@ module rec Value : sig
 end
 
 and State : sig
+  module Tag : sig
+    type t =
+      { name : string
+      ; key : string
+      ; is_optional : bool
+      ; value : Value.t
+      }
+  end
+
   type t
   and environment
 
@@ -36,7 +45,8 @@ and State : sig
 end
 
 val eval
-  :  ?models:(string -> Value.t option)
+  :  ?tag_listeners:(State.Tag.t -> unit) StringMap.t
+  -> ?models:(string -> Value.t option)
   -> ?slotted_children:Value.t list
   -> ?context:Value.t StringMap.t
   -> root:StringMap.key

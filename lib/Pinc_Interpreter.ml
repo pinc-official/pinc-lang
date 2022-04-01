@@ -216,14 +216,24 @@ end = struct
 end
 
 and State : sig
+  module Tag : sig
+    type t =
+      { name : string
+      ; key : string
+      ; is_optional : bool
+      ; value : Value.t
+      }
+  end
+
   type t =
-    { binding_identifier : string option
+    { binding_identifier : (bool * string) option
     ; models : string -> Value.t option
     ; slotted_children : Value.t list option
     ; declarations : Ast.declaration StringMap.t
     ; context : Value.t StringMap.t
     ; output : Value.t
     ; environment : environment
+    ; tag_listeners : (Tag.t -> unit) StringMap.t
     }
 
   and environment = { mutable scope : (string * binding) list list }
@@ -236,6 +246,7 @@ and State : sig
 
   val make
     :  ?models:(string -> Value.t option)
+    -> ?tag_listeners:(Tag.t -> unit) StringMap.t
     -> ?slotted_children:Value.t list
     -> ?context:Value.t StringMap.t
     -> Ast.declaration StringMap.t
@@ -266,15 +277,26 @@ and State : sig
   val get_output : t -> Value.t
   val add_output : output:Value.t -> t -> t
   val get_bindings : t -> (string * binding) list
+  val call_tag_listener : key:string -> tag:Tag.t -> t -> unit
 end = struct
+  module Tag = struct
+    type t =
+      { name : string
+      ; key : string
+      ; is_optional : bool
+      ; value : Value.t
+      }
+  end
+
   type t =
-    { binding_identifier : string option
+    { binding_identifier : (bool * string) option
     ; models : string -> Value.t option
     ; slotted_children : Value.t list option
     ; declarations : Ast.declaration StringMap.t
     ; context : Value.t StringMap.t
     ; output : Value.t
     ; environment : environment
+    ; tag_listeners : (Tag.t -> unit) StringMap.t
     }
 
   and environment = { mutable scope : (string * binding) list list }
@@ -287,6 +309,7 @@ end = struct
 
   let make
       ?(models = fun _ -> None)
+      ?(tag_listeners = StringMap.empty)
       ?slotted_children
       ?(context = StringMap.empty)
       declarations
@@ -298,6 +321,7 @@ end = struct
     ; context
     ; output = Value.Null
     ; environment = { scope = [] }
+    ; tag_listeners
     }
   ;;
 
@@ -375,8 +399,15 @@ end = struct
 
   let get_output t = t.output
   let add_output ~output t = { t with output }
-  let get_bindings t = t.environment.scope |> List.hd
+
   (* NOTE: Should this return the flattened list of all bindings? *)
+  let get_bindings t = t.environment.scope |> List.hd
+
+  let call_tag_listener ~key ~tag t =
+    match t.tag_listeners |> StringMap.find_opt key with
+    | None -> ()
+    | Some fn -> fn tag
+  ;;
 end
 
 let rec eval_statement ~state = function
@@ -415,7 +446,10 @@ and eval_expression ~state = function
               |> Ast.StringMap.mapi (fun ident (optional, expression) ->
                      expression
                      |> eval_expression
-                          ~state:{ state with State.binding_identifier = Some ident }
+                          ~state:
+                            { state with
+                              State.binding_identifier = Some (optional, ident)
+                            }
                      |> State.get_output
                      |> function
                      | Value.Null when not optional ->
@@ -520,7 +554,7 @@ and eval_function_declaration ~state ~parameters body =
     let state =
       match ident with
       | None -> state
-      | Some ident ->
+      | Some (_, ident) ->
         state
         |> State.add_value_to_scope
              ~ident
@@ -540,7 +574,7 @@ and eval_function_declaration ~state ~parameters body =
   in
   let fn = Value.Function { parameters; state; exec } in
   ident
-  |> Option.iter (fun ident ->
+  |> Option.iter (fun (_, ident) ->
          state
          |> State.add_value_to_function_scopes
               ~ident
@@ -856,7 +890,8 @@ and eval_lowercase_identifier ~state ident =
 and eval_let ~state ~ident ~is_mutable ~is_optional expression =
   let state =
     expression
-    |> eval_expression ~state:{ state with State.binding_identifier = Some ident }
+    |> eval_expression
+         ~state:{ state with State.binding_identifier = Some (is_optional, ident) }
   in
   match State.get_output state with
   | Value.Null when not is_optional ->
@@ -876,7 +911,8 @@ and eval_mutation ~state ~ident expression =
   | Some { value = _; is_mutable = true; is_optional } ->
     let output =
       expression
-      |> eval_expression ~state:{ state with State.binding_identifier = Some ident }
+      |> eval_expression
+           ~state:{ state with State.binding_identifier = Some (is_optional, ident) }
     in
     let () =
       output
@@ -989,6 +1025,9 @@ and eval_block ~state statements =
   statements |> List.fold_left (fun state -> eval_statement ~state) state
 
 and eval_tag ?value ~state tag =
+  let is_optional =
+    state.binding_identifier |> Option.map fst |> Option.value ~default:false
+  in
   let apply_default_value ~default value =
     match default, value with
     | Some default, Value.Null -> eval_expression ~state default |> State.get_output
@@ -1014,7 +1053,7 @@ and eval_tag ?value ~state tag =
     match key, state.binding_identifier with
     | Some (Value.String s), _ident -> s
     | Some _, _ident -> failwith "Expected attribute `key` on tag to be of type string"
-    | None, Some ident -> ident
+    | None, Some (_, ident) -> ident
     | None, None -> failwith "Expected attribute `key` to exist on tag"
   in
   let get_value key =
@@ -1022,128 +1061,98 @@ and eval_tag ?value ~state tag =
     | Some v -> v
     | None -> state.models key |> Option.value ~default:Value.Null
   in
-  (* let rec get_output_typ tag =
-    match tag with
-    | Ast.{ tag_name = "String"; _ } -> State.String
-    | Ast.{ tag_name = "Int"; _ } -> State.Int
-    | Ast.{ tag_name = "Float"; _ } -> State.Float
-    | Ast.{ tag_name = "Boolean"; _ } -> State.Boolean
-    | Ast.{ tag_name = "Slot"; _ } -> State.Slot
-    | Ast.{ tag_name = "Array"; attributes; _ } ->
-      let of' =
-        StringMap.find_opt "of" attributes
-        |> Option.map (function
-               | Ast.TagExpression t -> t
-               | _ ->
-                 failwith
-                   "Expected attribute `of` to on #Array to be a tag, describing the \
-                    type of the items of the array.")
-        |> function
-        | None -> failwith "Expected attribute `of` to be present on #Array."
-        | Some t -> t |> get_output_typ
-      in
-      State.Array of'
-    | Ast.{ tag_name = "Record"; attributes; _ } ->
-      let of' =
-        StringMap.find_opt "of" attributes
-        (* |> Option.map (function
-               | Ast.Record t -> t
-               | _ ->
-                 failwith
-                   "Expected attribute `of` to on #Record to be a record, describing the \
-                    shape the items inside.") *)
-        |> function
-        | None -> failwith "Expected attribute `of` to be present on #Record."
-        | Some t ->
-          t
-          |> StringMap.mapi (fun key (nullable, expr) ->
-                 match expr with
-                 | Ast.TagExpression tag -> nullable, get_output_typ tag
-                 | _ ->
-                   failwith
-                     ("expected property `"
-                     ^ key
-                     ^ "` on record tag to be a tag, describing the type of the property."
-                     ))
-      in
-      State.Record of'
-    | { tag_name; _ } -> failwith ("Unknown tag with name `" ^ tag_name ^ "`.")
-  in *)
   match tag with
   | { tag_name = "String"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
-    (match apply_default_value ~default value with
-    | Value.Int _ -> failwith "tried to assign integer value to a string tag."
-    | Value.Float _ -> failwith "tried to assign float value to a string tag."
-    | Value.Bool _ -> failwith "tried to assign boolean value to a string tag."
-    | Value.Array _ -> failwith "tried to assign array value to a string tag."
-    | Value.Record _ -> failwith "tried to assign record value to a string tag."
-    | Value.TemplateNode _ -> failwith "tried to assign template node to a string tag."
-    | Value.DefinitionInfo _ ->
-      failwith "tried to assign definition info to a string tag."
-    | Value.Function _ -> failwith "tried to assign function to a string tag."
-    | Value.Null ->
-      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
-    | Value.String s ->
-      state |> State.add_output ~output:(Value.String s |> apply_transformer ~transformer))
+    let value =
+      match apply_default_value ~default value with
+      | Value.Int _ -> failwith "tried to assign integer value to a string tag."
+      | Value.Float _ -> failwith "tried to assign float value to a string tag."
+      | Value.Bool _ -> failwith "tried to assign boolean value to a string tag."
+      | Value.Array _ -> failwith "tried to assign array value to a string tag."
+      | Value.Record _ -> failwith "tried to assign record value to a string tag."
+      | Value.TemplateNode _ -> failwith "tried to assign template node to a string tag."
+      | Value.DefinitionInfo _ ->
+        failwith "tried to assign definition info to a string tag."
+      | Value.Function _ -> failwith "tried to assign function to a string tag."
+      | Value.Null -> Value.Null
+      | Value.String s -> Value.String s
+    in
+    state
+    |> State.call_tag_listener
+         ~key:"#String"
+         ~tag:State.Tag.{ name = "String"; key; is_optional; value };
+    state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Int"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
-    (match apply_default_value ~default value with
-    | Value.Float _ -> failwith "tried to assign float value to a int tag."
-    | Value.Bool _ -> failwith "tried to assign boolean value to a int tag."
-    | Value.Array _ -> failwith "tried to assign array value to a int tag."
-    | Value.String _ -> failwith "tried to assign string value to a int tag."
-    | Value.Record _ -> failwith "tried to assign record value to a int tag."
-    | Value.TemplateNode _ -> failwith "tried to assign template node to a int tag."
-    | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a int tag."
-    | Value.Function _ -> failwith "tried to assign function to a int tag."
-    | Value.Null ->
-      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
-    | Value.Int i ->
-      state |> State.add_output ~output:(Value.Int i |> apply_transformer ~transformer))
+    let value =
+      match apply_default_value ~default value with
+      | Value.Float _ -> failwith "tried to assign float value to a int tag."
+      | Value.Bool _ -> failwith "tried to assign boolean value to a int tag."
+      | Value.Array _ -> failwith "tried to assign array value to a int tag."
+      | Value.String _ -> failwith "tried to assign string value to a int tag."
+      | Value.Record _ -> failwith "tried to assign record value to a int tag."
+      | Value.TemplateNode _ -> failwith "tried to assign template node to a int tag."
+      | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a int tag."
+      | Value.Function _ -> failwith "tried to assign function to a int tag."
+      | Value.Null -> Value.Null
+      | Value.Int i -> Value.Int i
+    in
+    state
+    |> State.call_tag_listener
+         ~key:"#Int"
+         ~tag:State.Tag.{ name = "Int"; key; is_optional; value };
+    state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Float"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
-    (match apply_default_value ~default value with
-    | Value.Bool _ -> failwith "tried to assign boolean value to a float tag."
-    | Value.Array _ -> failwith "tried to assign array value to a float tag."
-    | Value.String _ -> failwith "tried to assign string value to a float tag."
-    | Value.Int _ -> failwith "tried to assign int value to a float tag."
-    | Value.Record _ -> failwith "tried to assign record value to a float tag."
-    | Value.TemplateNode _ -> failwith "tried to assign template node to a float tag."
-    | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a float tag."
-    | Value.Function _ -> failwith "tried to assign function to a float tag."
-    | Value.Null ->
-      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
-    | Value.Float f ->
-      state |> State.add_output ~output:(Value.Float f |> apply_transformer ~transformer))
+    let value =
+      match apply_default_value ~default value with
+      | Value.Bool _ -> failwith "tried to assign boolean value to a float tag."
+      | Value.Array _ -> failwith "tried to assign array value to a float tag."
+      | Value.String _ -> failwith "tried to assign string value to a float tag."
+      | Value.Int _ -> failwith "tried to assign int value to a float tag."
+      | Value.Record _ -> failwith "tried to assign record value to a float tag."
+      | Value.TemplateNode _ -> failwith "tried to assign template node to a float tag."
+      | Value.DefinitionInfo _ ->
+        failwith "tried to assign definition info to a float tag."
+      | Value.Function _ -> failwith "tried to assign function to a float tag."
+      | Value.Null -> Value.Null
+      | Value.Float f -> Value.Float f
+    in
+    state
+    |> State.call_tag_listener
+         ~key:"#Float"
+         ~tag:State.Tag.{ name = "Float"; key; is_optional; value };
+    state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Boolean"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
-    (match apply_default_value ~default value with
-    | Value.Array _ -> failwith "tried to assign array value to a boolean tag."
-    | Value.String _ -> failwith "tried to assign string value to a boolean tag."
-    | Value.Int _ -> failwith "tried to assign int value to a boolean tag."
-    | Value.Float _ -> failwith "tried to assign float value to a boolean tag."
-    | Value.Record _ -> failwith "tried to assign record value to a boolean tag."
-    | Value.TemplateNode _ -> failwith "tried to assign template node to a boolean tag."
-    | Value.DefinitionInfo _ ->
-      failwith "tried to assign definition info to a boolean tag."
-    | Value.Function _ -> failwith "tried to assign function to a boolean tag."
-    | Value.Null ->
-      state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
-    | Value.Bool b ->
-      state |> State.add_output ~output:(Value.Bool b |> apply_transformer ~transformer))
+    let value =
+      match apply_default_value ~default value with
+      | Value.Array _ -> failwith "tried to assign array value to a boolean tag."
+      | Value.String _ -> failwith "tried to assign string value to a boolean tag."
+      | Value.Int _ -> failwith "tried to assign int value to a boolean tag."
+      | Value.Float _ -> failwith "tried to assign float value to a boolean tag."
+      | Value.Record _ -> failwith "tried to assign record value to a boolean tag."
+      | Value.TemplateNode _ -> failwith "tried to assign template node to a boolean tag."
+      | Value.DefinitionInfo _ ->
+        failwith "tried to assign definition info to a boolean tag."
+      | Value.Function _ -> failwith "tried to assign function to a boolean tag."
+      | Value.Null -> Value.Null
+      | Value.Bool b -> Value.Bool b
+    in
+    state
+    |> State.call_tag_listener
+         ~key:"#Boolean"
+         ~tag:State.Tag.{ name = "Boolean"; key; is_optional; value };
+    state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Array"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let of' =
@@ -1160,24 +1169,27 @@ and eval_tag ?value ~state tag =
     in
     let key = get_key attributes in
     let value = get_value key in
-    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
-    (match apply_default_value ~default value with
-    | Value.Bool _ -> failwith "tried to assign boolean value to a array tag."
-    | Value.String _ -> failwith "tried to assign string value to a array tag."
-    | Value.Int _ -> failwith "tried to assign int value to a array tag."
-    | Value.Float _ -> failwith "tried to assign float value to a array tag."
-    | Value.Record _ -> failwith "tried to assign record value to a array tag."
-    | Value.TemplateNode _ -> failwith "tried to assign template node to a array tag."
-    | Value.DefinitionInfo _ -> failwith "tried to assign definition info to a array tag."
-    | Value.Function _ -> failwith "tried to assign function to a array tag."
-    | Value.Null -> state |> State.add_output ~output:Value.Null
-    | Value.Array l ->
-      let eval_item item = of' |> eval_tag ~value:item ~state in
-      let value =
+    let value =
+      match apply_default_value ~default value with
+      | Value.Bool _ -> failwith "tried to assign boolean value to a array tag."
+      | Value.String _ -> failwith "tried to assign string value to a array tag."
+      | Value.Int _ -> failwith "tried to assign int value to a array tag."
+      | Value.Float _ -> failwith "tried to assign float value to a array tag."
+      | Value.Record _ -> failwith "tried to assign record value to a array tag."
+      | Value.TemplateNode _ -> failwith "tried to assign template node to a array tag."
+      | Value.DefinitionInfo _ ->
+        failwith "tried to assign definition info to a array tag."
+      | Value.Function _ -> failwith "tried to assign function to a array tag."
+      | Value.Null -> Value.Null
+      | Value.Array l ->
+        let eval_item item = of' |> eval_tag ~value:item ~state in
         Value.Array (l |> Array.map (fun it -> it |> eval_item |> State.get_output))
-        |> apply_transformer ~transformer
-      in
-      state |> State.add_output ~output:value)
+    in
+    state
+    |> State.call_tag_listener
+         ~key:"#Array"
+         ~tag:State.Tag.{ name = "Array"; key; is_optional; value };
+    state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Record"; attributes; transformer } ->
     let of' =
       attributes
@@ -1188,30 +1200,35 @@ and eval_tag ?value ~state tag =
     in
     let key = get_key attributes in
     let value = get_value key in
-    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
-    (match value with
-    | Value.Bool _ -> failwith "tried to assign boolean value to a record tag."
-    | Value.String _ -> failwith "tried to assign string value to a record tag."
-    | Value.Int _ -> failwith "tried to assign int value to a record tag."
-    | Value.Float _ -> failwith "tried to assign float value to a record tag."
-    | Value.Array _ -> failwith "tried to assign array value to a record tag."
-    | Value.TemplateNode _ -> failwith "tried to assign template node to a record tag."
-    | Value.DefinitionInfo _ ->
-      failwith "tried to assign definition info to a record tag."
-    | Value.Function _ -> failwith "tried to assign function to a record tag."
-    | Value.Null -> state |> State.add_output ~output:Value.Null
-    | Value.Record r ->
-      let models key = StringMap.find_opt key r in
-      of'
-      |> eval_expression ~state:{ state with models }
-      |> State.get_output
-      |> (function
-      | Value.Record _ as r ->
-        state |> State.add_output ~output:(r |> apply_transformer ~transformer)
-      | _ ->
-        failwith
-          "Expected attribute `of` to on #Record to be a record, describing the shape \
-           the items inside."))
+    let value =
+      match value with
+      | Value.Bool _ -> failwith "tried to assign boolean value to a record tag."
+      | Value.String _ -> failwith "tried to assign string value to a record tag."
+      | Value.Int _ -> failwith "tried to assign int value to a record tag."
+      | Value.Float _ -> failwith "tried to assign float value to a record tag."
+      | Value.Array _ -> failwith "tried to assign array value to a record tag."
+      | Value.TemplateNode _ -> failwith "tried to assign template node to a record tag."
+      | Value.DefinitionInfo _ ->
+        failwith "tried to assign definition info to a record tag."
+      | Value.Function _ -> failwith "tried to assign function to a record tag."
+      | Value.Null -> Value.Null
+      | Value.Record r ->
+        let models key = StringMap.find_opt key r in
+        of'
+        |> eval_expression ~state:{ state with models }
+        |> State.get_output
+        |> (function
+        | Value.Record r -> Value.Record r
+        | _ ->
+          failwith
+            "Expected attribute `of` to on #Record to be a record, describing the shape \
+             the items inside.")
+    in
+    state
+    |> State.call_tag_listener
+         ~key:"#Record"
+         ~tag:State.Tag.{ name = "Record"; key; is_optional; value };
+    state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Slot"; attributes; transformer } ->
     let slot_name =
       attributes
@@ -1261,9 +1278,6 @@ and eval_tag ?value ~state tag =
                       uppercase identifiers."))
       | _ -> failwith "Expected attribute `instanceOf` on #Slot to be an array."
     in
-    (* let state =
-      state |> State.add_tag ~typ:(get_output_typ tag) ("__slot:" ^ slot_name)
-    in *)
     (match state.slotted_children with
     | None -> state |> State.add_output ~output:Value.Null
     | Some children ->
@@ -1330,6 +1344,16 @@ and eval_tag ?value ~state tag =
       let slotted_children =
         children |> Array.of_list |> Array.fold_left keep_slotted [||]
       in
+      state
+      |> State.call_tag_listener
+           ~key:"#Slot"
+           ~tag:
+             State.Tag.
+               { name = "Slot"
+               ; key = slot_name
+               ; is_optional
+               ; value = Value.Array slotted_children
+               };
       let slotted_children =
         Value.Array slotted_children |> apply_transformer ~transformer
       in
@@ -1451,8 +1475,8 @@ and eval_declaration ~state declaration =
   | Ast.PageDeclaration (_attrs, body)
   | Ast.StoreDeclaration (_attrs, body) -> eval_expression ~state body
 
-and eval ?models ?slotted_children ?context ~root declarations =
-  let state = State.make ?context ?models ?slotted_children declarations in
+and eval ?tag_listeners ?models ?slotted_children ?context ~root declarations =
+  let state = State.make ?tag_listeners ?context ?models ?slotted_children declarations in
   declarations
   |> StringMap.find_opt root
   |> function
