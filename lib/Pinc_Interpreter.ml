@@ -222,6 +222,7 @@ and State : sig
       ; key : string
       ; is_optional : bool
       ; value : Value.t
+      ; attributes : Value.t StringMap.t
       }
   end
 
@@ -285,6 +286,7 @@ end = struct
       ; key : string
       ; is_optional : bool
       ; value : Value.t
+      ; attributes : Value.t StringMap.t
       }
   end
 
@@ -1030,7 +1032,7 @@ and eval_tag ?value ~state tag =
   in
   let apply_default_value ~default value =
     match default, value with
-    | Some default, Value.Null -> eval_expression ~state default |> State.get_output
+    | Some default, Value.Null -> default
     | _, value -> value
   in
   let apply_transformer ~transformer value =
@@ -1045,11 +1047,7 @@ and eval_tag ?value ~state tag =
     | _ -> value
   in
   let get_key attributes =
-    let key =
-      StringMap.find_opt "key" attributes
-      |> Option.map (eval_expression ~state)
-      |> Option.map State.get_output
-    in
+    let key = StringMap.find_opt "key" attributes in
     match key, state.binding_identifier with
     | Some (Value.String s), _ident -> s
     | Some _, _ident -> failwith "Expected attribute `key` on tag to be of type string"
@@ -1063,6 +1061,10 @@ and eval_tag ?value ~state tag =
   in
   match tag with
   | { tag_name = "String"; attributes; transformer } ->
+    let attributes =
+      attributes
+      |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+    in
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1083,9 +1085,13 @@ and eval_tag ?value ~state tag =
     state
     |> State.call_tag_listener
          ~key:"#String"
-         ~tag:State.Tag.{ name = "String"; key; is_optional; value };
+         ~tag:State.Tag.{ name = "String"; key; is_optional; value; attributes };
     state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Int"; attributes; transformer } ->
+    let attributes =
+      attributes
+      |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+    in
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1105,9 +1111,13 @@ and eval_tag ?value ~state tag =
     state
     |> State.call_tag_listener
          ~key:"#Int"
-         ~tag:State.Tag.{ name = "Int"; key; is_optional; value };
+         ~tag:State.Tag.{ name = "Int"; key; is_optional; value; attributes };
     state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Float"; attributes; transformer } ->
+    let attributes =
+      attributes
+      |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+    in
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1128,9 +1138,13 @@ and eval_tag ?value ~state tag =
     state
     |> State.call_tag_listener
          ~key:"#Float"
-         ~tag:State.Tag.{ name = "Float"; key; is_optional; value };
+         ~tag:State.Tag.{ name = "Float"; key; is_optional; value; attributes };
     state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Boolean"; attributes; transformer } ->
+    let attributes =
+      attributes
+      |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+    in
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1151,10 +1165,10 @@ and eval_tag ?value ~state tag =
     state
     |> State.call_tag_listener
          ~key:"#Boolean"
-         ~tag:State.Tag.{ name = "Boolean"; key; is_optional; value };
+         ~tag:State.Tag.{ name = "Boolean"; key; is_optional; value; attributes };
     state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Array"; attributes; transformer } ->
-    let default = StringMap.find_opt "default" attributes in
+    (* TODO: Cleanup "of" to be similar to the one from the Record Tag. *)
     let of' =
       StringMap.find_opt "of" attributes
       |> Option.map (function
@@ -1167,6 +1181,13 @@ and eval_tag ?value ~state tag =
       | None -> failwith "Expected attribute `of` to be present on #Array."
       | Some t -> t
     in
+    let attributes =
+      attributes
+      |> StringMap.remove "of"
+      (* Remove of, as it is handled separately. This is kind of hacky, but I don't know a better solution currently *)
+      |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+    in
+    let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
     let value =
@@ -1188,7 +1209,7 @@ and eval_tag ?value ~state tag =
     state
     |> State.call_tag_listener
          ~key:"#Array"
-         ~tag:State.Tag.{ name = "Array"; key; is_optional; value };
+         ~tag:State.Tag.{ name = "Array"; key; is_optional; value; attributes };
     state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Record"; attributes; transformer } ->
     let of' =
@@ -1196,7 +1217,13 @@ and eval_tag ?value ~state tag =
       |> StringMap.find_opt "of"
       |> function
       | None -> failwith "Expected attribute `of` to be present on #Record."
-      | Some expr -> expr
+      | Some v -> v
+    in
+    let attributes =
+      attributes
+      |> StringMap.remove "of"
+      (* Remove of, as it is handled separately. This is kind of hacky, but I don't know a better solution currently *)
+      |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
     in
     let key = get_key attributes in
     let value = get_value key in
@@ -1227,14 +1254,16 @@ and eval_tag ?value ~state tag =
     state
     |> State.call_tag_listener
          ~key:"#Record"
-         ~tag:State.Tag.{ name = "Record"; key; is_optional; value };
+         ~tag:State.Tag.{ name = "Record"; key; is_optional; value; attributes };
     state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "Slot"; attributes; transformer } ->
+    let attributes =
+      attributes
+      |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+    in
     let slot_name =
       attributes
       |> StringMap.find_opt "name"
-      |> Option.map (eval_expression ~state)
-      |> Option.map State.get_output
       |> Option.value ~default:(Value.String "")
       |> function
       | Value.String s -> s
@@ -1243,8 +1272,6 @@ and eval_tag ?value ~state tag =
     let min =
       attributes
       |> StringMap.find_opt "min"
-      |> Option.map (eval_expression ~state)
-      |> Option.map State.get_output
       |> Option.value ~default:(Value.Int 0)
       |> function
       | Value.Int i -> i
@@ -1253,8 +1280,6 @@ and eval_tag ?value ~state tag =
     let max =
       attributes
       |> StringMap.find_opt "max"
-      |> Option.map (eval_expression ~state)
-      |> Option.map State.get_output
       |> function
       | None -> None
       | Some (Value.Int i) -> Some i
@@ -1263,8 +1288,6 @@ and eval_tag ?value ~state tag =
     let instanceOf =
       attributes
       |> StringMap.find_opt "instanceOf"
-      |> Option.map (eval_expression ~state)
-      |> Option.map State.get_output
       |> function
       | None -> None
       | Some (Value.Array l) ->
@@ -1353,6 +1376,7 @@ and eval_tag ?value ~state tag =
                ; key = slot_name
                ; is_optional
                ; value = Value.Array slotted_children
+               ; attributes
                };
       let slotted_children =
         Value.Array slotted_children |> apply_transformer ~transformer
@@ -1389,18 +1413,18 @@ and eval_tag ?value ~state tag =
           ^ ").")
       | _ -> state |> State.add_output ~output:slotted_children))
   | { tag_name = "GetContext"; attributes; transformer } ->
+    let attributes =
+      attributes
+      |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+    in
     let default = StringMap.find_opt "default" attributes in
     let name =
       attributes
       |> StringMap.find_opt "name"
-      |> (function
-           | Some name -> name
-           | None -> failwith "attribute name is required when getting a context.")
-      |> eval_expression ~state
-      |> State.get_output
       |> function
-      | Value.String s -> s
-      | _ -> failwith "Expected attribute `name` on #Context to be of type string."
+      | Some (Value.String s) -> s
+      | Some _ -> failwith "Expected attribute `name` on #Context to be of type string."
+      | None -> failwith "attribute name is required when getting a context."
     in
     let value =
       state
@@ -1410,26 +1434,25 @@ and eval_tag ?value ~state tag =
     in
     state |> State.add_output ~output:(value |> apply_transformer ~transformer)
   | { tag_name = "SetContext"; attributes; transformer = None } ->
+    let attributes =
+      attributes
+      |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+    in
     let name =
       attributes
       |> StringMap.find_opt "name"
-      |> (function
-           | Some name -> name
-           | None -> failwith "attribute name is required when setting a context.")
-      |> eval_expression ~state
-      |> State.get_output
       |> function
-      | Value.String s -> s
-      | _ -> failwith "Expected attribute `name` on >#Context to be of type string."
+      | Some (Value.String s) -> s
+      | None -> failwith "attribute name is required when setting a context."
+      | Some _ ->
+        failwith "Expected attribute `name` on #SetContext to be of type string."
     in
     let value =
       attributes
       |> StringMap.find_opt "value"
-      |> (function
-           | Some value -> value
-           | None -> failwith "attribute value is required when setting a context.")
-      |> eval_expression ~state
-      |> State.get_output
+      |> function
+      | Some value -> value
+      | None -> failwith "attribute value is required when setting a context."
     in
     state |> State.add_context ~name ~value |> State.add_output ~output:Value.Null
   | { tag_name; _ } -> failwith ("Unknown tag with name `" ^ tag_name ^ "`.")

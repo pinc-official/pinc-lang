@@ -28,6 +28,7 @@ and State : sig
       ; key : string
       ; is_optional : bool
       ; value : Value.t
+      ; attributes : Value.t StringMap.t
       }
   end
 
