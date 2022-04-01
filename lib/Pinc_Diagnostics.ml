@@ -30,48 +30,45 @@ module Messages = struct
      tag."
   ;;
 
-  let unknown_character =
-    Printf.sprintf "The character %C is unknown. You should remove it."
+  let unknown_character c =
+    "The character " ^ String.make 1 c ^ " is unknown. You should remove it."
   ;;
 
   let unexpected_token t =
-    Printf.sprintf "The token %S is unexpected at this point." (Token.to_string t)
+    "The token " ^ Token.to_string t ^ " is unexpected at this point."
   ;;
 
   let expected_ident = function
     | t when Token.is_keyword t ->
-      Printf.sprintf "`%s` is a keyword. Please choose another name." (Token.to_string t)
+      "\"" ^ Token.to_string t ^ "\" is a keyword. Please choose another name."
     | _ -> "Expected to see an identifier at this point."
   ;;
 
   let expected_uppercase_ident = function
     | Token.IDENT_LOWER i ->
-      Printf.sprintf
-        "Expected to see an uppercase identifier at this point. Did you mean %s instead \
-         of %s?"
-        (String.capitalize_ascii i)
-        i
+      "Expected to see an uppercase identifier at this point. Did you mean "
+      ^ String.capitalize_ascii i
+      ^ " instead of "
+      ^ i
+      ^ "?"
     | _ -> "Expected to see an uppercase identifier at this point."
   ;;
 
   let expected_lowercase_ident = function
     | Token.IDENT_UPPER i ->
-      Printf.sprintf
-        "Expected to see a lowercase identifier at this point. Did you mean %s instead \
-         of %s?"
-        (String.lowercase_ascii i)
-        i
+      "Expected to see a lowercase identifier at this point. Did you mean "
+      ^ String.lowercase_ascii i
+      ^ " instead of "
+      ^ i
+      ^ "?"
     | t when Token.is_keyword t ->
-      Printf.sprintf "`%s` is a keyword. Please choose another name." (Token.to_string t)
+      "`" ^ Token.to_string t ^ "` is a keyword. Please choose another name."
     | t ->
-      Printf.sprintf
-        "Expected to see a lowercase identifier at this point. Instead saw %s"
-        (Token.to_string t)
+      "Expected to see a lowercase identifier at this point. Instead saw "
+      ^ Token.to_string t
   ;;
 
-  let expected_token t =
-    Printf.sprintf "Expected token %s at this point." (Token.to_string t)
-  ;;
+  let expected_token t = "Expected token " ^ Token.to_string t ^ " at this point."
 
   let make t =
     match t.typ with
@@ -88,52 +85,39 @@ module Messages = struct
 end
 
 module Reporter = struct
-  let print fmt ~position message =
-    let print_pos fmt positions =
+  let print ~position message =
+    let print_pos positions =
       Position.(
-        let dim_loc fmt (start_pos, end_pos) =
+        let get_loc (start_pos, end_pos) =
+          let start_line = string_of_int start_pos.line in
+          let start_col = string_of_int start_pos.column in
+          let end_line = string_of_int end_pos.line in
+          let end_col = string_of_int end_pos.column in
           if start_pos.Position.line = end_pos.line
           then
             if start_pos.column = end_pos.column
-            then
-              Format.fprintf
-                fmt
-                "at @{<dim>line %i, column %i@}"
-                start_pos.line
-                start_pos.column
-            else
-              Format.fprintf
-                fmt
-                "at @{<dim>line %i@} from @{<dim>column %i to %i@}"
-                start_pos.line
-                start_pos.column
-                end_pos.column
+            then "at line " ^ start_line ^ ", column " ^ start_col
+            else "at line " ^ start_line ^ " from column " ^ start_col ^ " to " ^ end_col
           else
-            Format.fprintf
-              fmt
-              "from @{<dim>line %i, column %i@} to @{<dim>line %i, column %i@}"
-              start_pos.line
-              start_pos.column
-              end_pos.line
-              end_pos.column
+            "from line "
+            ^ start_line
+            ^ ", column "
+            ^ start_col
+            ^ " to line "
+            ^ end_line
+            ^ ", column "
+            ^ end_col
         in
-        Format.fprintf
-          fmt
-          "@{<filename>%s@} %a"
-          (fst positions).filename
-          dim_loc
-          positions)
+        (fst positions).filename ^ " " ^ get_loc positions)
     in
-    Format.fprintf fmt "  @[%a@]@," print_pos position;
-    Format.fprintf fmt "@[<v>@,  %s@,@]" message
+    prerr_endline (print_pos position);
+    prerr_endline message
   ;;
 
   let print t =
-    Format.fprintf Format.err_formatter "@[<v>";
     let position = t.start_pos, t.end_pos in
     let message = Messages.make t in
-    print Format.err_formatter ~position message;
-    Format.fprintf Format.err_formatter "@]@."
+    print ~position message
   ;;
 end
 

@@ -15,6 +15,12 @@
 
 - A way to include libraries into the namespace of another library. (See below for an example)
 
+## TODOs after feature completion:
+
+- Type checker
+
+- Type inference
+
 - Implement a "Std" library
 
   ```
@@ -37,9 +43,3 @@
 
     let result = arr |> Std.default([1, 2, 3]) |> Std.Array.map(fn (item) -> item + 2);
   ```
-
-## TODOs after feature completion:
-
-- Type checker
-
-- Type inference

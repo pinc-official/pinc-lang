@@ -83,12 +83,12 @@ type t =
 let make ~start_pos ~end_pos typ = { typ; start_pos; end_pos }
 
 let to_string = function
-  | FLOAT f -> Printf.sprintf "%f" f
-  | INT i -> Printf.sprintf "%i" i
-  | STRING s -> Printf.sprintf "`%s`" s
-  | IDENT_LOWER s -> Printf.sprintf "%s" (String.lowercase_ascii s)
-  | IDENT_UPPER s -> Printf.sprintf "%s" (String.capitalize_ascii s)
-  | TAG s -> Printf.sprintf "#%s" (String.capitalize_ascii s)
+  | FLOAT f -> string_of_float f
+  | INT i -> string_of_int i
+  | STRING s -> "\"" ^ s ^ "\""
+  | IDENT_LOWER s -> String.lowercase_ascii s
+  | IDENT_UPPER s -> String.capitalize_ascii s
+  | TAG s -> "#" ^ String.capitalize_ascii s
   | KEYWORD_TRUE -> "true"
   | KEYWORD_FALSE -> "false"
   | LEFT_PAREN -> "("
@@ -148,10 +148,10 @@ let to_string = function
   | COMMENT -> "// Comment"
   | HTML_OPEN_FRAGMENT -> "<>"
   | HTML_CLOSE_FRAGMENT -> "</>"
-  | HTML_OPEN_TAG s -> Printf.sprintf "<%s" s
-  | HTML_CLOSE_TAG s -> Printf.sprintf "</%s" s
-  | COMPONENT_OPEN_TAG s -> Printf.sprintf "<%s" s
-  | COMPONENT_CLOSE_TAG s -> Printf.sprintf "</%s" s
+  | HTML_OPEN_TAG s -> "<" ^ s
+  | HTML_CLOSE_TAG s -> "</" ^ s
+  | COMPONENT_OPEN_TAG s -> "<" ^ s
+  | COMPONENT_CLOSE_TAG s -> "</" ^ s
   | HTML_OR_COMPONENT_TAG_SELF_CLOSING -> "/>"
   | HTML_OR_COMPONENT_TAG_END -> "> (TAG END)"
   | END_OF_INPUT -> "(EOF)"
