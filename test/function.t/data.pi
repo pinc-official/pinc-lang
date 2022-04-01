@@ -19,7 +19,7 @@ component Component {
   let until = 5;
   let map = fn (array, f) -> {
     for (el in array) {
-      continue if (min(el, until) == until);
+      if (min(el, until) == until) continue;
 
       f(el)
     }

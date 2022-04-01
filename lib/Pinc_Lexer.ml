@@ -834,16 +834,6 @@ and scan_normal_token ~start_pos t =
     | `Chr '=' ->
       next_n ~n:2 t;
       Token.GREATER_EQUAL
-    | `Chr '#' ->
-      (match peek ~n:2 t with
-      | `Chr 'A' .. 'Z' ->
-        next_n ~n:2 t;
-        Token.TAG_EXEC (scan_tag t)
-      | _ ->
-        Diagnostics.report
-          ~start_pos
-          ~end_pos:(make_position t)
-          (Diagnostics.UnknownCharacter '>'))
     | _ ->
       next t;
       Token.GREATER)

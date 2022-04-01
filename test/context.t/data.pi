@@ -3,7 +3,7 @@ component Component(
   icon: "/images/icons/group.svg",
   group: "Structure",
 ) {
-  >#Context(name: "background", value: "grey");
+  #SetContext(name: "background", value: "grey");
 
   <section class="Section">
     <HeadlineSecondary text="Hello, Headline Secondary!" />

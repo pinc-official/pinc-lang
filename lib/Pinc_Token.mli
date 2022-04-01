@@ -8,7 +8,6 @@ type token_type =
   | FLOAT of float
   | STRING of string
   | TAG of string
-  | TAG_EXEC of string
   | LEFT_PAREN
   | RIGHT_PAREN
   | LEFT_BRACK

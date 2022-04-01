@@ -8,7 +8,6 @@ type token_type =
   | FLOAT of float
   | STRING of string
   | TAG of string
-  | TAG_EXEC of string
   | LEFT_PAREN
   | RIGHT_PAREN
   | LEFT_BRACK
@@ -90,7 +89,6 @@ let to_string = function
   | IDENT_LOWER s -> Printf.sprintf "%s" (String.lowercase_ascii s)
   | IDENT_UPPER s -> Printf.sprintf "%s" (String.capitalize_ascii s)
   | TAG s -> Printf.sprintf "#%s" (String.capitalize_ascii s)
-  | TAG_EXEC s -> Printf.sprintf ">#%s" (String.capitalize_ascii s)
   | KEYWORD_TRUE -> "true"
   | KEYWORD_FALSE -> "false"
   | LEFT_PAREN -> "("
@@ -228,7 +226,6 @@ let is_keyword = function
   | FLOAT _
   | STRING _
   | TAG _
-  | TAG_EXEC _
   | HTML_OPEN_TAG _
   | HTML_CLOSE_TAG _
   | COMPONENT_OPEN_TAG _

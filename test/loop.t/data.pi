@@ -121,13 +121,13 @@ component Component {
     <h1>BREAK / CONTINUE</h1>
 
     {for (c in "String!") {
-      continue if (c == "i");
+      if (c == "i") continue;
 
       c
     }}
 
     {for (i in 0..5) {
-      break if (i == 3);
+      if (i == 3) break;
 
       i
     }}

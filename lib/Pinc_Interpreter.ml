@@ -413,7 +413,22 @@ end = struct
   ;;
 end
 
-let rec eval_expression ~state = function
+let rec eval_statement ~state = function
+  | Ast.LetStatement (Lowercase_Id ident, expression) ->
+    eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
+  | Ast.OptionalLetStatement (Lowercase_Id ident, expression) ->
+    eval_let ~state ~ident ~is_mutable:false ~is_optional:true expression
+  | Ast.OptionalMutableLetStatement (Lowercase_Id ident, expression) ->
+    eval_let ~state ~ident ~is_mutable:true ~is_optional:true expression
+  | Ast.MutableLetStatement (Lowercase_Id ident, expression) ->
+    eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
+  | Ast.MutationStatement (Lowercase_Id ident, expression) ->
+    eval_mutation ~state ~ident expression
+  | Ast.BreakStatement -> raise_notrace Loop_Break
+  | Ast.ContinueStatement -> raise_notrace Loop_Continue
+  | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
+
+and eval_expression ~state = function
   | Ast.Int i -> state |> State.add_output ~output:(Value.Int i)
   | Ast.Float f when Float.is_integer f ->
     state |> State.add_output ~output:(Value.Int (int_of_float f))
@@ -447,12 +462,6 @@ let rec eval_expression ~state = function
   | Ast.String template -> eval_string_template ~state template
   | Ast.Function (parameters, body) -> eval_function_declaration ~state ~parameters body
   | Ast.FunctionCall (left, arguments) -> eval_function_call ~state ~arguments left
-  | Ast.LetExpression (is_mutable, Lowercase_Id ident, expression) ->
-    eval_let ~state ~ident ~is_mutable ~is_optional:false expression
-  | Ast.OptionalLetExpression (is_mutable, Lowercase_Id ident, expression) ->
-    eval_let ~state ~ident ~is_mutable ~is_optional:true expression
-  | Ast.MutationExpression (Lowercase_Id ident, expression) ->
-    eval_mutation ~state ~ident expression
   | Ast.UppercaseIdentifierExpression (Uppercase_Id id) ->
     let value = state.State.declarations |> StringMap.find_opt id in
     state
@@ -475,7 +484,7 @@ let rec eval_expression ~state = function
               |> Array.of_list))
   | Ast.BlockExpression e -> eval_block ~state e
   | Ast.ConditionalExpression { condition; consequent; alternate } ->
-    eval_if ~state ~condition ~alternate consequent
+    eval_if ~state ~condition ~alternate ~consequent
   | Ast.UnaryExpression (Ast.Operators.Unary.NOT, expression) ->
     eval_unary_not ~state expression
   | Ast.UnaryExpression (Ast.Operators.Unary.MINUS, expression) ->
@@ -526,14 +535,6 @@ let rec eval_expression ~state = function
     eval_function_call ~state ~arguments:[ right ] left
   | Ast.BinaryExpression (left, Ast.Operators.Binary.PIPE, right) ->
     eval_binary_pipe ~state left right
-  | Ast.BreakExpression condition ->
-    if condition |> eval_expression ~state |> State.get_output |> Value.is_true
-    then raise_notrace Loop_Break
-    else state |> State.add_output ~output:Value.Null
-  | Ast.ContinueExpression condition ->
-    if condition |> eval_expression ~state |> State.get_output |> Value.is_true
-    then raise_notrace Loop_Continue
-    else state |> State.add_output ~output:Value.Null
 
 and eval_string_template ~state template =
   state
@@ -570,7 +571,7 @@ and eval_function_declaration ~state ~parameters body =
              State.add_value_to_scope ~ident ~value ~is_mutable:false ~is_optional:false)
            arguments
     in
-    eval_block ~state body |> State.get_output
+    eval_expression ~state body |> State.get_output
   in
   let fn = Value.Function { parameters; state; exec } in
   ident
@@ -899,7 +900,10 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
       (Printf.sprintf
          "identifier %s is not marked as nullable, but was given a null value."
          ident)
-  | value -> state |> State.add_value_to_scope ~ident ~value ~is_mutable ~is_optional
+  | value ->
+    state
+    |> State.add_value_to_scope ~ident ~value ~is_mutable ~is_optional
+    |> State.add_output ~output:Value.Null
 
 and eval_mutation ~state ~ident expression =
   let current_binding = State.get_value_from_scope ~ident state in
@@ -926,13 +930,14 @@ and eval_mutation ~state ~ident expression =
     in
     state |> State.add_output ~output:Value.Null
 
-and eval_if ~state ~condition ~alternate consequent =
-  if condition |> eval_expression ~state |> State.get_output |> Value.is_true
-  then consequent |> eval_block ~state
-  else (
-    match alternate with
-    | Some alt -> alt |> eval_block ~state
-    | None -> state |> State.add_output ~output:Value.Null)
+and eval_if ~state ~condition ~alternate ~consequent =
+  let condition_matches =
+    condition |> eval_expression ~state |> State.get_output |> Value.is_true
+  in
+  match condition_matches, alternate with
+  | true, _ -> consequent |> eval_statement ~state
+  | false, Some alt -> alt |> eval_statement ~state
+  | false, None -> state |> State.add_output ~output:Value.Null
 
 and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
   let make_rev array =
@@ -961,7 +966,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
                ~is_optional:false
         | None -> state
       in
-      (match eval_block ~state body with
+      (match eval_statement ~state body with
       | exception Loop_Continue -> loop acc tl
       | exception Loop_Break -> List.rev acc
       | v -> loop (State.get_output v :: acc) tl)
@@ -1018,9 +1023,9 @@ and eval_range ~state ~inclusive from upto =
   in
   state |> State.add_output ~output:(Value.Array iter)
 
-and eval_block ~state exprs =
+and eval_block ~state statements =
   let state = state |> State.add_scope in
-  exprs |> List.fold_left (fun state -> eval_expression ~state) state
+  statements |> List.fold_left (fun state -> eval_statement ~state) state
 
 and eval_tag ?value ~state tag =
   let apply_default_value ~default value =
@@ -1104,7 +1109,7 @@ and eval_tag ?value ~state tag =
     | { tag_name; _ } -> failwith (Printf.sprintf "Unknown tag with name `%s`." tag_name)
   in
   match tag with
-  | { tag_name = "String"; attributes; transformer; exec = false } ->
+  | { tag_name = "String"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1123,7 +1128,7 @@ and eval_tag ?value ~state tag =
       state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.String s ->
       output |> State.add_output ~output:(Value.String s |> apply_transformer ~transformer))
-  | { tag_name = "Int"; attributes; transformer; exec = false } ->
+  | { tag_name = "Int"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1141,7 +1146,7 @@ and eval_tag ?value ~state tag =
       state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.Int i ->
       output |> State.add_output ~output:(Value.Int i |> apply_transformer ~transformer))
-  | { tag_name = "Float"; attributes; transformer; exec = false } ->
+  | { tag_name = "Float"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1159,7 +1164,7 @@ and eval_tag ?value ~state tag =
       state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.Float f ->
       output |> State.add_output ~output:(Value.Float f |> apply_transformer ~transformer))
-  | { tag_name = "Boolean"; attributes; transformer; exec = false } ->
+  | { tag_name = "Boolean"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
@@ -1178,7 +1183,7 @@ and eval_tag ?value ~state tag =
       state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.Bool b ->
       output |> State.add_output ~output:(Value.Bool b |> apply_transformer ~transformer))
-  | { tag_name = "Array"; attributes; transformer; exec = false } ->
+  | { tag_name = "Array"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let of' =
       StringMap.find_opt "of" attributes
@@ -1212,7 +1217,7 @@ and eval_tag ?value ~state tag =
         |> apply_transformer ~transformer
       in
       state |> State.add_output ~output:value)
-  | { tag_name = "Record"; attributes; transformer; exec = false } ->
+  | { tag_name = "Record"; attributes; transformer } ->
     let of' =
       StringMap.find_opt "of" attributes
       |> Option.map (function
@@ -1267,7 +1272,7 @@ and eval_tag ?value ~state tag =
       in
       let r = of' |> StringMap.mapi eval_property in
       output |> State.add_output ~output:(Value.Record r |> apply_transformer ~transformer))
-  | { tag_name = "Slot"; attributes; transformer; exec = false } ->
+  | { tag_name = "Slot"; attributes; transformer } ->
     let slot_name =
       attributes
       |> StringMap.find_opt "name"
@@ -1419,7 +1424,7 @@ and eval_tag ?value ~state tag =
              slot_name
              max)
       | _ -> state |> State.add_output ~output:slotted_children))
-  | { tag_name = "Context"; attributes; transformer; exec = false } ->
+  | { tag_name = "GetContext"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let name =
       attributes
@@ -1440,7 +1445,7 @@ and eval_tag ?value ~state tag =
       |> apply_default_value ~default
     in
     state |> State.add_output ~output:(value |> apply_transformer ~transformer)
-  | { tag_name = "Context"; attributes; transformer = None; exec = true } ->
+  | { tag_name = "SetContext"; attributes; transformer = None } ->
     let name =
       attributes
       |> StringMap.find_opt "name"

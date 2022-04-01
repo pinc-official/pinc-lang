@@ -162,6 +162,40 @@ module Rules = struct
       value |> Option.map (fun value -> key, (nullable, value))
     | _ -> None
 
+  and parse_tag ~name t =
+    let attributes =
+      if t |> optional Token.LEFT_PAREN
+      then (
+        let res =
+          t
+          |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
+          |> List.to_seq
+          |> Ast.StringMap.of_seq
+        in
+        t |> expect Token.RIGHT_PAREN;
+        res)
+      else Ast.StringMap.empty
+    in
+    let transformer =
+      if t |> optional Token.DOUBLE_COLON
+      then (
+        let bind = t |> Helpers.expect_identifier ~typ:`Lower in
+        t |> expect Token.ARROW;
+        let body =
+          match parse_expression t with
+          | None ->
+            Diagnostics.report
+              ~start_pos:t.token.start_pos
+              ~end_pos:t.token.end_pos
+              (Diagnostics.Message
+                 (Printf.sprintf "Expected expression as transformer of tag"))
+          | Some expr -> expr
+        in
+        Some (Ast.Lowercase_Id bind, body))
+      else None
+    in
+    Some (Ast.TagExpression { tag_name = name; attributes; transformer })
+
   and parse_template_node t =
     match t.token.typ with
     | Token.STRING s ->
@@ -220,24 +254,71 @@ module Rules = struct
            { identifier = Uppercase_Id identifier; attributes; children })
     | _ -> None
 
-  and parse_expression_part t =
+  and parse_statement t =
     match t.token.typ with
+    (* PARSING TAG STATEMENT *)
+    | Token.TAG name ->
+      next t;
+      let* tag = parse_tag ~name t in
+      expect Token.SEMICOLON t;
+      Some (Ast.ExpressionStatement tag)
+    (* PARSING BREAK STATEMENT *)
     | Token.KEYWORD_BREAK ->
       next t;
-      expect Token.KEYWORD_IF t;
-      expect Token.LEFT_PAREN t;
-      let* condition = parse_expression t in
-      expect Token.RIGHT_PAREN t;
       expect Token.SEMICOLON t;
-      Some (Ast.BreakExpression condition)
+      Some Ast.BreakStatement
+    (* PARSING CONTINUE STATEMENT *)
     | Token.KEYWORD_CONTINUE ->
       next t;
-      expect Token.KEYWORD_IF t;
-      expect Token.LEFT_PAREN t;
-      let* condition = parse_expression t in
-      expect Token.RIGHT_PAREN t;
       expect Token.SEMICOLON t;
-      Some (Ast.ContinueExpression condition)
+      Some Ast.ContinueStatement
+    (* PARSING LET STATEMENT *)
+    | Token.KEYWORD_LET ->
+      next t;
+      let is_mutable = t |> optional Token.KEYWORD_MUTABLE in
+      let identifier = Helpers.expect_identifier ~typ:`Lower t in
+      let is_nullable = t |> optional Token.QUESTIONMARK in
+      t |> expect Token.EQUAL;
+      let expression = parse_expression t in
+      expect Token.SEMICOLON t;
+      (match is_mutable, is_nullable, expression with
+      | false, true, Some expression ->
+        Some (Ast.OptionalLetStatement (Lowercase_Id identifier, expression))
+      | true, true, Some expression ->
+        Some (Ast.OptionalMutableLetStatement (Lowercase_Id identifier, expression))
+      | false, false, Some expression ->
+        Some (Ast.LetStatement (Lowercase_Id identifier, expression))
+      | true, false, Some expression ->
+        Some (Ast.MutableLetStatement (Lowercase_Id identifier, expression))
+      | _, _, None ->
+        Diagnostics.report
+          ~start_pos:t.token.start_pos
+          ~end_pos:t.token.end_pos
+          (Diagnostics.Message
+             (Printf.sprintf "Expected expression as right hand side of let declaration")))
+    (* PARSING MUTATION STATEMENT *)
+    | Token.IDENT_LOWER identifier when peek t = Token.COLON_EQUAL ->
+      next t;
+      next t;
+      let expression =
+        match parse_expression t with
+        | Some expression -> expression
+        | None ->
+          Diagnostics.report
+            ~start_pos:t.token.start_pos
+            ~end_pos:t.token.end_pos
+            (Diagnostics.Message
+               (Printf.sprintf
+                  "Expected expression as right hand side of mutation statement"))
+      in
+      expect Token.SEMICOLON t;
+      Some (Ast.MutationStatement (Lowercase_Id identifier, expression))
+    | _ ->
+      parse_expression t
+      |> Option.map (fun expression -> Ast.ExpressionStatement expression)
+
+  and parse_expression_part t =
+    match t.token.typ with
     (* PARSING PARENTHESIZED EXPRESSION *)
     | Token.LEFT_PAREN ->
       next t;
@@ -265,29 +346,9 @@ module Rules = struct
         t |> expect Token.RIGHT_BRACE;
         Some Ast.(Record attrs))
       else (
-        let expressions = t |> Helpers.list ~fn:parse_expression in
+        let statements = t |> Helpers.list ~fn:parse_statement in
         t |> expect Token.RIGHT_BRACE;
-        Some (Ast.BlockExpression expressions))
-    (* PARSING LET EXPRESSION *)
-    | Token.KEYWORD_LET ->
-      next t;
-      let is_mutable = t |> optional Token.KEYWORD_MUTABLE in
-      let identifier = Helpers.expect_identifier ~typ:`Lower t in
-      let nullable = t |> optional Token.QUESTIONMARK in
-      t |> expect Token.EQUAL;
-      let expression = parse_expression t in
-      expect Token.SEMICOLON t;
-      (match expression with
-      | Some expression when nullable ->
-        Some (Ast.OptionalLetExpression (is_mutable, Lowercase_Id identifier, expression))
-      | Some expression ->
-        Some (Ast.LetExpression (is_mutable, Lowercase_Id identifier, expression))
-      | None ->
-        Diagnostics.report
-          ~start_pos:t.token.start_pos
-          ~end_pos:t.token.end_pos
-          (Diagnostics.Message
-             (Printf.sprintf "Expected expression as right hand side of let declaration")))
+        Some (Ast.BlockExpression statements))
     (* PARSING FOR IN EXPRESSION *)
     | Token.KEYWORD_FOR ->
       next t;
@@ -305,14 +366,14 @@ module Rules = struct
       let reverse = optional Token.KEYWORD_REVERSE t in
       let* expr1 = parse_expression t in
       expect Token.RIGHT_PAREN t;
-      let body = Helpers.list ~fn:parse_expression t in
+      let body = parse_statement t in
       (match body with
-      | [] ->
+      | None ->
         Diagnostics.report
           ~start_pos:t.token.start_pos
           ~end_pos:t.token.end_pos
-          (Diagnostics.Message (Printf.sprintf "Expected expression as body of for loop"))
-      | body ->
+          (Diagnostics.Message (Printf.sprintf "Expected statement as body of for loop"))
+      | Some body ->
         Some (Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }))
     (* PARSING FN EXPRESSION *)
     | Token.KEYWORD_FN ->
@@ -321,7 +382,7 @@ module Rules = struct
       let parameters = t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_fn_param in
       expect Token.RIGHT_PAREN t;
       expect Token.ARROW t;
-      let body = t |> Helpers.list ~fn:parse_expression in
+      let* body = t |> parse_expression in
       Some (Ast.Function (parameters, body))
     (* PARSING IF EXPRESSION *)
     | Token.KEYWORD_IF ->
@@ -329,61 +390,15 @@ module Rules = struct
       expect Token.LEFT_PAREN t;
       let* condition = t |> parse_expression in
       expect Token.RIGHT_PAREN t;
-      let consequent = t |> Helpers.list ~fn:parse_expression in
+      let* consequent = t |> parse_statement in
       let alternate =
-        if optional Token.KEYWORD_ELSE t
-        then Some (t |> Helpers.list ~fn:parse_expression)
-        else None
+        if optional Token.KEYWORD_ELSE t then t |> parse_statement else None
       in
       Some (Ast.ConditionalExpression { condition; consequent; alternate })
     (* PARSING TAG EXPRESSION *)
-    | Token.TAG tag_name ->
+    | Token.TAG name ->
       next t;
-      let attributes =
-        if t |> optional Token.LEFT_PAREN
-        then (
-          let res =
-            t
-            |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
-            |> List.to_seq
-            |> Ast.StringMap.of_seq
-          in
-          t |> expect Token.RIGHT_PAREN;
-          res)
-        else Ast.StringMap.empty
-      in
-      let transformer =
-        if t |> optional Token.DOUBLE_COLON
-        then (
-          let bind = t |> Helpers.expect_identifier ~typ:`Lower in
-          t |> expect Token.ARROW;
-          let body =
-            match parse_expression t with
-            | None ->
-              Diagnostics.report
-                ~start_pos:t.token.start_pos
-                ~end_pos:t.token.end_pos
-                (Diagnostics.Message
-                   (Printf.sprintf "Expected expression as transformer of tag"))
-            | Some expr -> expr
-          in
-          Some (Ast.Lowercase_Id bind, body))
-        else None
-      in
-      Some (Ast.TagExpression { tag_name; attributes; transformer; exec = false })
-    (* PARSING TAG_EXEC EXPRESSION *)
-    | Token.TAG_EXEC tag_name ->
-      next t;
-      t |> expect Token.LEFT_PAREN;
-      let attributes =
-        t
-        |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
-        |> List.to_seq
-        |> Ast.StringMap.of_seq
-      in
-      t |> expect Token.RIGHT_PAREN;
-      t |> expect Token.SEMICOLON;
-      Some (Ast.TagExpression { tag_name; attributes; transformer = None; exec = true })
+      parse_tag ~name t
     (* PARSING TEMPLATE EXPRESSION *)
     | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
       let template_nodes = t |> Helpers.list ~fn:parse_template_node in
@@ -406,26 +421,10 @@ module Rules = struct
       let operator = Ast.Operators.Unary.make MINUS in
       let* argument = parse_expression ~prio:operator.precedence t in
       Some (Ast.UnaryExpression (Ast.Operators.Unary.MINUS, argument))
-    (* PARSING IDENTIFIER OR MUTATION EXPRESSION *)
+    (* PARSING IDENTIFIER EXPRESSION *)
     | Token.IDENT_LOWER identifier ->
       next t;
-      let is_mutation = optional Token.COLON_EQUAL t in
-      if is_mutation
-      then (
-        let expression =
-          match parse_expression t with
-          | Some expression -> expression
-          | None ->
-            Diagnostics.report
-              ~start_pos:t.token.start_pos
-              ~end_pos:t.token.end_pos
-              (Diagnostics.Message
-                 (Printf.sprintf
-                    "Expected expression as right hand side of mutation expression"))
-        in
-        expect Token.SEMICOLON t;
-        Some (Ast.MutationExpression (Lowercase_Id identifier, expression)))
-      else Some (Ast.LowercaseIdentifierExpression (Lowercase_Id identifier))
+      Some (Ast.LowercaseIdentifierExpression (Lowercase_Id identifier))
     | Token.IDENT_UPPER identifier ->
       next t;
       Some (Ast.UppercaseIdentifierExpression (Uppercase_Id identifier))
@@ -543,7 +542,7 @@ module Rules = struct
         else None
       in
       t |> expect Token.LEFT_BRACE;
-      let body = t |> Helpers.list ~fn:parse_expression in
+      let body = t |> Helpers.list ~fn:parse_statement in
       t |> expect Token.RIGHT_BRACE;
       (match body with
       | [] ->
