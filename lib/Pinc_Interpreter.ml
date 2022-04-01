@@ -454,10 +454,9 @@ and eval_expression ~state = function
                      |> function
                      | Value.Null when not optional ->
                        failwith
-                         (Printf.sprintf
-                            "identifier %s is not marked as nullable, but was given a \
-                             null value."
-                            ident)
+                         ("identifier "
+                         ^ ident
+                         ^ " is not marked as nullable, but was given a null value.")
                      | value -> value)))
   | Ast.String template -> eval_string_template ~state template
   | Ast.Function (parameters, body) -> eval_function_declaration ~state ~parameters body
@@ -610,16 +609,16 @@ and eval_function_call ~state ~arguments left =
         |> String.concat ", "
       in
       failwith
-        (Printf.sprintf
-           "This function was provided too few arguments. The following parameters are \
-            missing: %s."
-           missing))
+        ("This function was provided too few arguments. The following parameters are \
+          missing: "
+        ^ missing))
     else
       failwith
-        (Printf.sprintf
-           "This function only accepts %i arguments, but was provided %i here."
-           (List.length parameters)
-           (List.length arguments))
+        ("This function only accepts "
+        ^ string_of_int (List.length parameters)
+        ^ " arguments, but was provided "
+        ^ string_of_int (List.length arguments)
+        ^ " here.")
   | _ -> failwith "Trying to call a non function value"
 
 and eval_binary_pipe ~state left right =
@@ -787,10 +786,9 @@ and eval_binary_dot_access ~state left right =
       state |> State.add_output ~output:(Value.Array (Array.of_list children))
     | s ->
       failwith
-        (Printf.sprintf
-           "Unknown property %s on template node. Known properties are: `tag`, \
-            `attributes` and `children`."
-           s))
+        ("Unknown property "
+        ^ s
+        ^ " on template node. Known properties are: `tag`, `attributes` and `children`."))
   | Value.Record _, _ ->
     failwith "Expected right hand side of record access to be a lowercase identifier."
   | Value.Null, _ -> state |> State.add_output ~output:Value.Null
@@ -885,7 +883,7 @@ and eval_lowercase_identifier ~state ident =
   state
   |> State.get_value_from_scope ~ident
   |> function
-  | None -> failwith (Printf.sprintf "Unbound identifier `%s`" ident)
+  | None -> failwith ("Unbound identifier `" ^ ident ^ "`")
   | Some { value; is_mutable = _; is_optional = _ } ->
     state |> State.add_output ~output:value
 
@@ -897,9 +895,7 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
   match State.get_output state with
   | Value.Null when not is_optional ->
     failwith
-      (Printf.sprintf
-         "identifier %s is not marked as nullable, but was given a null value."
-         ident)
+      ("identifier " ^ ident ^ " is not marked as nullable, but was given a null value.")
   | value ->
     state
     |> State.add_value_to_scope ~ident ~value ~is_mutable ~is_optional
@@ -922,10 +918,9 @@ and eval_mutation ~state ~ident expression =
       |> function
       | Value.Null when not is_optional ->
         failwith
-          (Printf.sprintf
-             "identifier %s is not marked as nullable, but was tried to be updated with \
-              a null value."
-             ident)
+          ("identifier "
+          ^ ident
+          ^ " is not marked as nullable, but was tried to be updated with a null value.")
       | value -> state |> State.update_value_in_scope ~ident ~value
     in
     state |> State.add_output ~output:Value.Null
@@ -1100,13 +1095,13 @@ and eval_tag ?value ~state tag =
                  | Ast.TagExpression tag -> nullable, get_output_typ tag
                  | _ ->
                    failwith
-                     (Printf.sprintf
-                        "expected property `%s` on record tag to be a tag, describing \
-                         the type of the property."
-                        key))
+                     ("expected property `"
+                     ^ key
+                     ^ "` on record tag to be a tag, describing the type of the property."
+                     ))
       in
       State.Record of'
-    | { tag_name; _ } -> failwith (Printf.sprintf "Unknown tag with name `%s`." tag_name)
+    | { tag_name; _ } -> failwith ("Unknown tag with name `" ^ tag_name ^ "`.")
   in
   match tag with
   | { tag_name = "String"; attributes; transformer } ->
@@ -1235,10 +1230,9 @@ and eval_tag ?value ~state tag =
                | Ast.TagExpression tag -> nullable, tag
                | _ ->
                  failwith
-                   (Printf.sprintf
-                      "expected property `%s` on record tag to be a tag, describing the \
-                       type of the property."
-                      key))
+                   ("expected property `"
+                   ^ key
+                   ^ "` on record tag to be a tag, describing the type of the property."))
     in
     let key = get_key attributes in
     let value = get_value key in
@@ -1264,10 +1258,9 @@ and eval_tag ?value ~state tag =
         |> function
         | Value.Null when not nullable ->
           failwith
-            (Printf.sprintf
-               "property `%s` on record tag is not marked as nullable, but was given a \
-                null value."
-               key)
+            ("property `"
+            ^ key
+            ^ "` on record tag is not marked as nullable, but was given a null value.")
         | value -> value
       in
       let r = of' |> StringMap.mapi eval_property in
@@ -1357,19 +1350,20 @@ and eval_tag ?value ~state tag =
           if not is_allowed
           then
             failwith
-              (Printf.sprintf
-                 "Child with tag `%s` may not be used inside the %s. The following \
-                  restrictions are set: [ %s ]"
-                 tag
-                 (if slot_name = ""
-                 then "Default #Slot."
-                 else Printf.sprintf "#Slot with name `%s`" slot_name)
-                 (instanceOf
-                 |> Option.value ~default:[||]
-                 |> Array.to_list
-                 |> List.map (fun res ->
-                        (if res.Value.negated then "!" else "") ^ res.Value.name)
-                 |> String.concat ","))
+              ("Child with tag `"
+              ^ tag
+              ^ "` may not be used inside the "
+              ^ (if slot_name = ""
+                then "Default #Slot."
+                else "#Slot with name `" ^ slot_name ^ "`")
+              ^ ". The following restrictions are set: [ "
+              ^ (instanceOf
+                |> Option.value ~default:[||]
+                |> Array.to_list
+                |> List.map (fun res ->
+                       (if res.Value.negated then "!" else "") ^ res.Value.name)
+                |> String.concat ",")
+              ^ " ]")
           else f
       in
       let rec keep_slotted acc = function
@@ -1400,29 +1394,28 @@ and eval_tag ?value ~state tag =
       (match slot_name, min, amount_of_children, max with
       | "", min, len, _ when len < min ->
         failwith
-          (Printf.sprintf
-             "Default #Slot did not reach the minimum amount of nodes (specified as %i)."
-             min)
+          ("Default #Slot did not reach the minimum amount of nodes (specified as "
+          ^ string_of_int min
+          ^ ").")
       | slot_name, min, len, _ when len < min ->
         failwith
-          (Printf.sprintf
-             "#Slot with name `%s` did not reach the minimum amount of nodes (specified \
-              as %i)."
-             slot_name
-             min)
+          ("#Slot with name `"
+          ^ slot_name
+          ^ "` did not reach the minimum amount of nodes (specified as "
+          ^ string_of_int min
+          ^ ").")
       | "", _, len, Some max when len > max ->
         failwith
-          (Printf.sprintf
-             "Default #Slot includes more than the maximum amount of nodes (specified as \
-              %i)."
-             max)
+          ("Default #Slot includes more than the maximum amount of nodes (specified as "
+          ^ string_of_int max
+          ^ ").")
       | slot_name, _, len, Some max when len > max ->
         failwith
-          (Printf.sprintf
-             "#Slot with name `%s` includes more than the maximum amount of nodes \
-              (specified as %i)."
-             slot_name
-             max)
+          ("#Slot with name `"
+          ^ slot_name
+          ^ "` includes more than the maximum amount of nodes (specified as "
+          ^ string_of_int max
+          ^ ").")
       | _ -> state |> State.add_output ~output:slotted_children))
   | { tag_name = "GetContext"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
@@ -1468,7 +1461,7 @@ and eval_tag ?value ~state tag =
       |> State.get_output
     in
     state |> State.add_context ~name ~value |> State.add_output ~output:Value.Null
-  | { tag_name; _ } -> failwith (Printf.sprintf "Unknown tag with name `%s`." tag_name)
+  | { tag_name; _ } -> failwith ("Unknown tag with name `" ^ tag_name ^ "`.")
 
 and eval_template ~state template =
   match template with
@@ -1517,7 +1510,7 @@ and eval ?models ?slotted_children ?context ~root declarations =
   |> StringMap.find_opt root
   |> function
   | Some declaration -> eval_declaration ~state declaration
-  | None -> failwith (Printf.sprintf "Declaration with name `%s` was not found." root)
+  | None -> failwith ("Declaration with name `" ^ root ^ "` was not found.")
 ;;
 
 let from_source ?models ?slotted_children ?(filename = "") ~source root =

@@ -49,10 +49,11 @@ let expect token t =
       ~start_pos:t.token.start_pos
       ~end_pos:t.token.end_pos
       (Diagnostics.Message
-         (Printf.sprintf
-            "Expected: `%s`, got `%s`"
-            (Token.to_string token)
-            (Token.to_string t.token.typ)))
+         ("Expected: `"
+         ^ Token.to_string token
+         ^ "`, got `"
+         ^ Token.to_string t.token.typ
+         ^ "`"))
 ;;
 
 let make ~filename src =
@@ -105,9 +106,7 @@ module Helpers = struct
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
             (Diagnostics.Message
-               (Printf.sprintf
-                  "Expected list to be separated by `%s`"
-                  (Token.to_string sep)))
+               ("Expected list to be separated by `" ^ Token.to_string sep ^ "`"))
       | None -> List.rev acc
     in
     loop []
@@ -187,8 +186,7 @@ module Rules = struct
             Diagnostics.report
               ~start_pos:t.token.start_pos
               ~end_pos:t.token.end_pos
-              (Diagnostics.Message
-                 (Printf.sprintf "Expected expression as transformer of tag"))
+              (Diagnostics.Message "Expected expression as transformer of tag")
           | Some expr -> expr
         in
         Some (Ast.Lowercase_Id bind, body))
@@ -294,8 +292,7 @@ module Rules = struct
         Diagnostics.report
           ~start_pos:t.token.start_pos
           ~end_pos:t.token.end_pos
-          (Diagnostics.Message
-             (Printf.sprintf "Expected expression as right hand side of let declaration")))
+          (Diagnostics.Message "Expected expression as right hand side of let declaration"))
     (* PARSING MUTATION STATEMENT *)
     | Token.IDENT_LOWER identifier when peek t = Token.COLON_EQUAL ->
       next t;
@@ -308,8 +305,7 @@ module Rules = struct
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
             (Diagnostics.Message
-               (Printf.sprintf
-                  "Expected expression as right hand side of mutation statement"))
+               "Expected expression as right hand side of mutation statement")
       in
       expect Token.SEMICOLON t;
       Some (Ast.MutationStatement (Lowercase_Id identifier, expression))
@@ -372,7 +368,7 @@ module Rules = struct
         Diagnostics.report
           ~start_pos:t.token.start_pos
           ~end_pos:t.token.end_pos
-          (Diagnostics.Message (Printf.sprintf "Expected statement as body of for loop"))
+          (Diagnostics.Message "Expected statement as body of for loop")
       | Some body ->
         Some (Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }))
     (* PARSING FN EXPRESSION *)
@@ -509,9 +505,9 @@ module Rules = struct
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
             (Diagnostics.Message
-               (Printf.sprintf
-                  "Expected expression on right hand side of `%s`"
-                  (Ast.Operators.Binary.to_string operator)))
+               ("Expected expression on right hand side of `"
+               ^ Ast.Operators.Binary.to_string operator
+               ^ "`"))
         | Some right ->
           let left = Ast.BinaryExpression (left, operator, right) in
           let expect_close token = expect token t in

@@ -233,10 +233,10 @@ let scan_tag t =
       ~start_pos
       ~end_pos:(make_position t)
       (Diagnostics.Message
-         (Printf.sprintf
-            "Invalid Tag! Tags have to start with an uppercase character. Did you mean \
-             to write #%s?"
-            (String.capitalize_ascii found)))
+         ("Invalid Tag! Tags have to start with an uppercase character. Did you mean to \
+           write #"
+         ^ String.capitalize_ascii found
+         ^ "?"))
 ;;
 
 let get_html_tag_ident t =
@@ -259,10 +259,9 @@ let get_html_tag_ident t =
       ~start_pos
       ~end_pos:(make_position t)
       (Diagnostics.Message
-         (Printf.sprintf
-            "Invalid HTML tag! HTML tags have to start with a lowercase letter. Instead \
-             saw: %s"
-            ident))
+         ("Invalid HTML tag! HTML tags have to start with a lowercase letter. Instead \
+           saw: "
+         ^ ident))
 ;;
 
 let get_uppercase_ident t =
@@ -293,10 +292,9 @@ let scan_component_open_tag t =
       ~start_pos
       ~end_pos:(make_position t)
       (Diagnostics.Message
-         (Printf.sprintf
-            "Invalid Component tag! Component tags have to start with an uppercase \
-             letter. Instead saw: %c"
-            c))
+         ("Invalid Component tag! Component tags have to start with an uppercase letter. \
+           Instead saw: "
+         ^ String.make 1 c))
   | `EOF ->
     Diagnostics.report
       ~start_pos
@@ -315,10 +313,9 @@ let scan_open_tag t =
       ~start_pos
       ~end_pos:(make_position t)
       (Diagnostics.Message
-         (Printf.sprintf
-            "Invalid Template tag! Template tags have to start with a lowercase letter. \
-             Instead saw: %c"
-            c))
+         ("Invalid Template tag! Template tags have to start with a lowercase letter. \
+           Instead saw: "
+         ^ String.make 1 c))
   | `EOF ->
     Diagnostics.report
       ~start_pos
@@ -338,10 +335,9 @@ let scan_component_close_tag t =
         ~start_pos
         ~end_pos:(make_position t)
         (Diagnostics.Message
-           (Printf.sprintf
-              "Invalid Component tag! Component tags have to start with an uppercase \
-               letter. Instead saw: %c"
-              c))
+           ("Invalid Component tag! Component tags have to start with an uppercase \
+             letter. Instead saw: "
+           ^ String.make 1 c))
     | `EOF ->
       Diagnostics.report
         ~start_pos
@@ -368,10 +364,9 @@ let scan_close_tag t =
         ~start_pos
         ~end_pos:(make_position t)
         (Diagnostics.Message
-           (Printf.sprintf
-              "Invalid Template tag! Template tags have to start with a lowercase \
-               letter. Instead saw: %c"
-              c))
+           ("Invalid Template tag! Template tags have to start with a lowercase letter. \
+             Instead saw: "
+           ^ String.make 1 c))
     | `EOF ->
       Diagnostics.report
         ~start_pos
@@ -534,10 +529,9 @@ let rec scan_template_token ~start_pos t =
           ~start_pos
           ~end_pos:(make_position t)
           (Diagnostics.Message
-             (Printf.sprintf
-                "Invalid Template tag! Template tags have to start with an uppercase or \
-                 lowercase letter. Instead saw: %c"
-                c))
+             ("Invalid Template tag! Template tags have to start with an uppercase or \
+               lowercase letter. Instead saw: "
+             ^ String.make 1 c))
       | `EOF ->
         Diagnostics.report
           ~start_pos
@@ -880,10 +874,9 @@ and scan_normal_token ~start_pos t =
           ~start_pos
           ~end_pos:(make_position t)
           (Diagnostics.Message
-             (Printf.sprintf
-                "Invalid Template tag! Template tags have to start with an uppercase or \
-                 lowercase letter. Instead saw: %c"
-                c))
+             ("Invalid Template tag! Template tags have to start with an uppercase or \
+               lowercase letter. Instead saw: "
+             ^ String.make 1 c))
       | `EOF ->
         Diagnostics.report
           ~start_pos
