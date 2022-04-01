@@ -2,10 +2,11 @@
   let class? = #String(default: "");
 
   let tag? = #String(default: "h3");
-  let data = {
-    text: #String,
-    subheadline?: #String
-  };
+
+  let data = #Record(of: {
+    text: if (tag == "h2") #String else "No no no ... make h2 when you want text",
+    subheadline?: if (tag == "h2") #String
+  });
 
   let class = "HeadlineSecondary {| class |}";
 

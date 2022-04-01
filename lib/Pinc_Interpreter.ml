@@ -224,7 +224,6 @@ and State : sig
     ; context : Value.t StringMap.t
     ; output : Value.t
     ; environment : environment
-    ; tags : tag_meta StringMap.t
     }
 
   and environment = { mutable scope : (string * binding) list list }
@@ -234,17 +233,6 @@ and State : sig
     ; is_optional : bool
     ; value : Value.t
     }
-
-  and tag_meta = { typ : tag_typ }
-
-  and tag_typ =
-    | String
-    | Int
-    | Float
-    | Boolean
-    | Array of tag_typ
-    | Record of (bool * tag_typ) StringMap.t
-    | Slot
 
   val make
     :  ?models:(string -> Value.t option)
@@ -278,8 +266,6 @@ and State : sig
   val get_output : t -> Value.t
   val add_output : output:Value.t -> t -> t
   val get_bindings : t -> (string * binding) list
-  val get_tags : t -> (string * tag_meta) list
-  val add_tag : typ:tag_typ -> string -> t -> t
 end = struct
   type t =
     { binding_identifier : string option
@@ -289,7 +275,6 @@ end = struct
     ; context : Value.t StringMap.t
     ; output : Value.t
     ; environment : environment
-    ; tags : tag_meta StringMap.t
     }
 
   and environment = { mutable scope : (string * binding) list list }
@@ -299,17 +284,6 @@ end = struct
     ; is_optional : bool
     ; value : Value.t
     }
-
-  and tag_meta = { typ : tag_typ }
-
-  and tag_typ =
-    | String
-    | Int
-    | Float
-    | Boolean
-    | Array of tag_typ
-    | Record of (bool * tag_typ) StringMap.t
-    | Slot
 
   let make
       ?(models = fun _ -> None)
@@ -324,7 +298,6 @@ end = struct
     ; context
     ; output = Value.Null
     ; environment = { scope = [] }
-    ; tags = StringMap.empty
     }
   ;;
 
@@ -404,13 +377,6 @@ end = struct
   let add_output ~output t = { t with output }
   let get_bindings t = t.environment.scope |> List.hd
   (* NOTE: Should this return the flattened list of all bindings? *)
-
-  let get_tags t = t.tags |> StringMap.bindings
-
-  let add_tag ~typ key t =
-    let value = { typ } in
-    { t with tags = StringMap.add key value t.tags }
-  ;;
 end
 
 let rec eval_statement ~state = function
@@ -1056,7 +1022,7 @@ and eval_tag ?value ~state tag =
     | Some v -> v
     | None -> state.models key |> Option.value ~default:Value.Null
   in
-  let rec get_output_typ tag =
+  (* let rec get_output_typ tag =
     match tag with
     | Ast.{ tag_name = "String"; _ } -> State.String
     | Ast.{ tag_name = "Int"; _ } -> State.Int
@@ -1080,12 +1046,12 @@ and eval_tag ?value ~state tag =
     | Ast.{ tag_name = "Record"; attributes; _ } ->
       let of' =
         StringMap.find_opt "of" attributes
-        |> Option.map (function
+        (* |> Option.map (function
                | Ast.Record t -> t
                | _ ->
                  failwith
                    "Expected attribute `of` to on #Record to be a record, describing the \
-                    shape the items inside.")
+                    shape the items inside.") *)
         |> function
         | None -> failwith "Expected attribute `of` to be present on #Record."
         | Some t ->
@@ -1102,13 +1068,13 @@ and eval_tag ?value ~state tag =
       in
       State.Record of'
     | { tag_name; _ } -> failwith ("Unknown tag with name `" ^ tag_name ^ "`.")
-  in
+  in *)
   match tag with
   | { tag_name = "String"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    let output = state |> State.add_tag ~typ:(get_output_typ tag) key in
+    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
     (match apply_default_value ~default value with
     | Value.Int _ -> failwith "tried to assign integer value to a string tag."
     | Value.Float _ -> failwith "tried to assign float value to a string tag."
@@ -1122,12 +1088,12 @@ and eval_tag ?value ~state tag =
     | Value.Null ->
       state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.String s ->
-      output |> State.add_output ~output:(Value.String s |> apply_transformer ~transformer))
+      state |> State.add_output ~output:(Value.String s |> apply_transformer ~transformer))
   | { tag_name = "Int"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    let output = state |> State.add_tag ~typ:(get_output_typ tag) key in
+    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
     (match apply_default_value ~default value with
     | Value.Float _ -> failwith "tried to assign float value to a int tag."
     | Value.Bool _ -> failwith "tried to assign boolean value to a int tag."
@@ -1140,12 +1106,12 @@ and eval_tag ?value ~state tag =
     | Value.Null ->
       state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.Int i ->
-      output |> State.add_output ~output:(Value.Int i |> apply_transformer ~transformer))
+      state |> State.add_output ~output:(Value.Int i |> apply_transformer ~transformer))
   | { tag_name = "Float"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    let output = state |> State.add_tag ~typ:(get_output_typ tag) key in
+    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
     (match apply_default_value ~default value with
     | Value.Bool _ -> failwith "tried to assign boolean value to a float tag."
     | Value.Array _ -> failwith "tried to assign array value to a float tag."
@@ -1158,12 +1124,12 @@ and eval_tag ?value ~state tag =
     | Value.Null ->
       state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.Float f ->
-      output |> State.add_output ~output:(Value.Float f |> apply_transformer ~transformer))
+      state |> State.add_output ~output:(Value.Float f |> apply_transformer ~transformer))
   | { tag_name = "Boolean"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let key = get_key attributes in
     let value = get_value key in
-    let output = state |> State.add_tag ~typ:(get_output_typ tag) key in
+    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
     (match apply_default_value ~default value with
     | Value.Array _ -> failwith "tried to assign array value to a boolean tag."
     | Value.String _ -> failwith "tried to assign string value to a boolean tag."
@@ -1177,7 +1143,7 @@ and eval_tag ?value ~state tag =
     | Value.Null ->
       state |> State.add_output ~output:(Value.Null |> apply_transformer ~transformer)
     | Value.Bool b ->
-      output |> State.add_output ~output:(Value.Bool b |> apply_transformer ~transformer))
+      state |> State.add_output ~output:(Value.Bool b |> apply_transformer ~transformer))
   | { tag_name = "Array"; attributes; transformer } ->
     let default = StringMap.find_opt "default" attributes in
     let of' =
@@ -1194,7 +1160,7 @@ and eval_tag ?value ~state tag =
     in
     let key = get_key attributes in
     let value = get_value key in
-    let state = state |> State.add_tag ~typ:(get_output_typ tag) key in
+    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
     (match apply_default_value ~default value with
     | Value.Bool _ -> failwith "tried to assign boolean value to a array tag."
     | Value.String _ -> failwith "tried to assign string value to a array tag."
@@ -1214,29 +1180,15 @@ and eval_tag ?value ~state tag =
       state |> State.add_output ~output:value)
   | { tag_name = "Record"; attributes; transformer } ->
     let of' =
-      StringMap.find_opt "of" attributes
-      |> Option.map (function
-             | Ast.Record t -> t
-             | _ ->
-               failwith
-                 "Expected attribute `of` to on #Record to be a record, describing the \
-                  shape the items inside.")
+      attributes
+      |> StringMap.find_opt "of"
       |> function
       | None -> failwith "Expected attribute `of` to be present on #Record."
-      | Some t ->
-        t
-        |> StringMap.mapi (fun key (nullable, expr) ->
-               match expr with
-               | Ast.TagExpression tag -> nullable, tag
-               | _ ->
-                 failwith
-                   ("expected property `"
-                   ^ key
-                   ^ "` on record tag to be a tag, describing the type of the property."))
+      | Some expr -> expr
     in
     let key = get_key attributes in
     let value = get_value key in
-    let output = state |> State.add_tag ~typ:(get_output_typ tag) key in
+    (* let state = state |> State.add_tag ~typ:(get_output_typ tag) key in *)
     (match value with
     | Value.Bool _ -> failwith "tried to assign boolean value to a record tag."
     | Value.String _ -> failwith "tried to assign string value to a record tag."
@@ -1250,21 +1202,16 @@ and eval_tag ?value ~state tag =
     | Value.Null -> state |> State.add_output ~output:Value.Null
     | Value.Record r ->
       let models key = StringMap.find_opt key r in
-      let state = State.make ~models state.State.declarations in
-      let eval_property key (nullable, tag) =
-        tag
-        |> eval_tag ~state:{ state with binding_identifier = Some key }
-        |> State.get_output
-        |> function
-        | Value.Null when not nullable ->
-          failwith
-            ("property `"
-            ^ key
-            ^ "` on record tag is not marked as nullable, but was given a null value.")
-        | value -> value
-      in
-      let r = of' |> StringMap.mapi eval_property in
-      output |> State.add_output ~output:(Value.Record r |> apply_transformer ~transformer))
+      of'
+      |> eval_expression ~state:{ state with models }
+      |> State.get_output
+      |> (function
+      | Value.Record _ as r ->
+        state |> State.add_output ~output:(r |> apply_transformer ~transformer)
+      | _ ->
+        failwith
+          "Expected attribute `of` to on #Record to be a record, describing the shape \
+           the items inside."))
   | { tag_name = "Slot"; attributes; transformer } ->
     let slot_name =
       attributes
@@ -1314,9 +1261,9 @@ and eval_tag ?value ~state tag =
                       uppercase identifiers."))
       | _ -> failwith "Expected attribute `instanceOf` on #Slot to be an array."
     in
-    let state =
+    (* let state =
       state |> State.add_tag ~typ:(get_output_typ tag) ("__slot:" ^ slot_name)
-    in
+    in *)
     (match state.slotted_children with
     | None -> state |> State.add_output ~output:Value.Null
     | Some children ->

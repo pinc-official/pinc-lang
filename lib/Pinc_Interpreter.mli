@@ -31,20 +31,8 @@ and State : sig
     ; value : Value.t
     }
 
-  and tag_meta = { typ : tag_typ }
-
-  and tag_typ =
-    | String
-    | Int
-    | Float
-    | Boolean
-    | Array of tag_typ
-    | Record of (bool * tag_typ) StringMap.t
-    | Slot
-
   val get_output : t -> Value.t
   val get_bindings : t -> (string * binding) list
-  val get_tags : t -> (string * tag_meta) list
 end
 
 val eval

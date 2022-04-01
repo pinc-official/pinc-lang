@@ -254,12 +254,6 @@ module Rules = struct
 
   and parse_statement t =
     match t.token.typ with
-    (* PARSING TAG STATEMENT *)
-    | Token.TAG name ->
-      next t;
-      let* tag = parse_tag ~name t in
-      expect Token.SEMICOLON t;
-      Some (Ast.ExpressionStatement tag)
     (* PARSING BREAK STATEMENT *)
     | Token.KEYWORD_BREAK ->
       next t;

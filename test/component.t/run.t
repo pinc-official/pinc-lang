@@ -1,7 +1,7 @@
   $ esy x print . Component
   <section class="Section">
-      <h3 class="HeadlineSecondary ">
-  Hello, Headline Secondary!</h3>
+      <h2 class="HeadlineSecondary ">
+  Hello, Headline Secondary!</h2>
     </section>
 
   $ esy x print . Foo

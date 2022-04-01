@@ -7,6 +7,6 @@ component Component(
   let record = { a: 10, c: "Something" };
 
   <section class="Section">
-    <HeadlineSecondary text="Hello, Headline Secondary!" />
+    <HeadlineSecondary tag="h2" data={{ text: "Hello, Headline Secondary!" }} />
   </section>
 }
