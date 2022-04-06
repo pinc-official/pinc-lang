@@ -10,12 +10,469 @@ let should_never_happen () =
   raise Internal_Error
 ;;
 
+module StringTag = struct
+  let validate = function
+    | `TagInfo _ -> should_never_happen ()
+    | `Int _ -> failwith "tried to assign integer value to a string tag."
+    | `Float _ -> failwith "tried to assign float value to a string tag."
+    | `Bool _ -> failwith "tried to assign boolean value to a string tag."
+    | `Array _ -> failwith "tried to assign array value to a string tag."
+    | `Record _ -> failwith "tried to assign record value to a string tag."
+    | `TemplateNode _ -> failwith "tried to assign template node to a string tag."
+    | `DefinitionInfo _ -> failwith "tried to assign definition info to a string tag."
+    | `Function _ -> failwith "tried to assign function to a string tag."
+    | `Null -> `Null
+    | `String s -> `String s
+  ;;
+
+  let get_value data (_name, _optional, attributes, transformer) =
+    let key =
+      Ast.StringMap.find_opt "key" attributes
+      |> function
+      | None -> failwith "Expected attribute `key` to exist on #String"
+      | Some (`String s) -> s
+      | Some _ -> failwith "Expected attribute `key` #String to be of type string"
+    in
+    let default = Ast.StringMap.find_opt "default" attributes in
+    data
+    |> Ast.StringMap.find_opt key
+    |> (function
+         | None -> default
+         | Some v -> Some v)
+    |> Option.value ~default:`Null
+    |> validate
+    |> transformer
+  ;;
+end
+
+module IntTag = struct
+  let validate = function
+    | `TagInfo _ -> should_never_happen ()
+    | `Float _ -> failwith "tried to assign float value to a int tag."
+    | `Bool _ -> failwith "tried to assign boolean value to a int tag."
+    | `Array _ -> failwith "tried to assign array value to a int tag."
+    | `String _ -> failwith "tried to assign string value to a int tag."
+    | `Record _ -> failwith "tried to assign record value to a int tag."
+    | `TemplateNode _ -> failwith "tried to assign template node to a int tag."
+    | `DefinitionInfo _ -> failwith "tried to assign definition info to a int tag."
+    | `Function _ -> failwith "tried to assign function to a int tag."
+    | `Null -> `Null
+    | `Int i -> `Int i
+  ;;
+
+  let get_value data (_name, _optional, attributes, transformer) =
+    let key =
+      Ast.StringMap.find_opt "key" attributes
+      |> function
+      | None -> failwith "Expected attribute `key` to exist on #Int"
+      | Some (`String s) -> s
+      | Some _ -> failwith "Expected attribute `key` #Int to be of type string"
+    in
+    let default = Ast.StringMap.find_opt "default" attributes in
+    data
+    |> Ast.StringMap.find_opt key
+    |> (function
+         | None -> default
+         | Some v -> Some v)
+    |> Option.value ~default:`Null
+    |> validate
+    |> transformer
+  ;;
+end
+
+module FloatTag = struct
+  let validate = function
+    | `TagInfo _ -> should_never_happen ()
+    | `Bool _ -> failwith "tried to assign boolean value to a float tag."
+    | `Array _ -> failwith "tried to assign array value to a float tag."
+    | `String _ -> failwith "tried to assign string value to a float tag."
+    | `Int _ -> failwith "tried to assign int value to a float tag."
+    | `Record _ -> failwith "tried to assign record value to a float tag."
+    | `TemplateNode _ -> failwith "tried to assign template node to a float tag."
+    | `DefinitionInfo _ -> failwith "tried to assign definition info to a float tag."
+    | `Function _ -> failwith "tried to assign function to a float tag."
+    | `Null -> `Null
+    | `Float f -> `Float f
+  ;;
+
+  let get_value data (_name, _optional, attributes, transformer) =
+    let key =
+      Ast.StringMap.find_opt "key" attributes
+      |> function
+      | None -> failwith "Expected attribute `key` to exist on #Float"
+      | Some (`String s) -> s
+      | Some _ -> failwith "Expected attribute `key` #Float to be of type string"
+    in
+    let default = Ast.StringMap.find_opt "default" attributes in
+    data
+    |> Ast.StringMap.find_opt key
+    |> (function
+         | None -> default
+         | Some v -> Some v)
+    |> Option.value ~default:`Null
+    |> validate
+    |> transformer
+  ;;
+end
+
+module BooleanTag = struct
+  let validate = function
+    | `TagInfo _ -> should_never_happen ()
+    | `Array _ -> failwith "tried to assign array value to a boolean tag."
+    | `String _ -> failwith "tried to assign string value to a boolean tag."
+    | `Int _ -> failwith "tried to assign int value to a boolean tag."
+    | `Float _ -> failwith "tried to assign float value to a boolean tag."
+    | `Record _ -> failwith "tried to assign record value to a boolean tag."
+    | `TemplateNode _ -> failwith "tried to assign template node to a boolean tag."
+    | `DefinitionInfo _ -> failwith "tried to assign definition info to a boolean tag."
+    | `Function _ -> failwith "tried to assign function to a boolean tag."
+    | `Null -> `Null
+    | `Bool b -> `Bool b
+  ;;
+
+  let get_value data (_name, _optional, attributes, transformer) =
+    let key =
+      Ast.StringMap.find_opt "key" attributes
+      |> function
+      | None -> failwith "Expected attribute `key` to exist on #Boolean"
+      | Some (`String s) -> s
+      | Some _ -> failwith "Expected attribute `key` #Boolean to be of type string"
+    in
+    let default = Ast.StringMap.find_opt "default" attributes in
+    data
+    |> Ast.StringMap.find_opt key
+    |> (function
+         | None -> default
+         | Some v -> Some v)
+    |> Option.value ~default:`Null
+    |> validate
+    |> transformer
+  ;;
+end
+
+module ArrayTag = struct
+  (* TODO: Validate the underlying values with their tags validator *)
+  let validate = function
+    | `TagInfo _ -> should_never_happen ()
+    | `Bool _ -> failwith "tried to assign boolean value to a array tag."
+    | `String _ -> failwith "tried to assign string value to a array tag."
+    | `Int _ -> failwith "tried to assign int value to a array tag."
+    | `Float _ -> failwith "tried to assign float value to a array tag."
+    | `Record _ -> failwith "tried to assign record value to a array tag."
+    | `TemplateNode _ -> failwith "tried to assign template node to a array tag."
+    | `DefinitionInfo _ -> failwith "tried to assign definition info to a array tag."
+    | `Function _ -> failwith "tried to assign function to a array tag."
+    | `Null -> `Null
+    | `Array a -> `Array a
+  ;;
+
+  let get_value data (_name, _optional, attributes, transformer) =
+    let key =
+      Ast.StringMap.find_opt "key" attributes
+      |> function
+      | None -> failwith "Expected attribute `key` to exist on #Array"
+      | Some (`String s) -> s
+      | Some _ -> failwith "Expected attribute `key` #Array to be of type string"
+    in
+    let of' =
+      Ast.StringMap.find_opt "of" attributes
+      |> function
+      | None -> failwith "Expected attribute `of` to exist on #Array"
+      | Some (`TagInfo (_name, _optional, _attributes, transformer)) -> transformer
+      | Some _ ->
+        failwith
+          "Expected attribute `of` #Array to be a tag describing the type of the items \
+           inside."
+    in
+    let default = Ast.StringMap.find_opt "default" attributes in
+    data
+    |> Ast.StringMap.find_opt key
+    |> (function
+         | None -> default
+         | Some v -> Some v)
+    |> Option.value ~default:`Null
+    |> validate
+    |> (function
+         | `Array a -> `Array (a |> Array.map (fun value -> of' value))
+         | `Null -> `Null)
+    |> transformer
+  ;;
+end
+
+module RecordTag = struct
+  (* TODO: Validate the underlying values with their tags validator *)
+  let validate = function
+    | `TagInfo _ -> should_never_happen ()
+    | `Bool _ -> failwith "tried to assign boolean value to a record tag."
+    | `String _ -> failwith "tried to assign string value to a record tag."
+    | `Int _ -> failwith "tried to assign int value to a record tag."
+    | `Float _ -> failwith "tried to assign float value to a record tag."
+    | `Array _ -> failwith "tried to assign array value to a record tag."
+    | `TemplateNode _ -> failwith "tried to assign template node to a record tag."
+    | `DefinitionInfo _ -> failwith "tried to assign definition info to a record tag."
+    | `Function _ -> failwith "tried to assign function to a record tag."
+    | `Null -> `Null
+    | `Record r -> `Record r
+  ;;
+
+  let get_value data (_name, _optional, attributes, transformer) =
+    let key =
+      Ast.StringMap.find_opt "key" attributes
+      |> function
+      | None -> failwith "Expected attribute `key` to exist on #Record"
+      | Some (`String s) -> s
+      | Some _ -> failwith "Expected attribute `key` #Record to be of type string"
+    in
+    let of' =
+      Ast.StringMap.find_opt "of" attributes
+      |> function
+      | None -> failwith "Expected attribute `of` to exist on #Record"
+      | Some (`Record r) ->
+        r
+        |> StringMap.filter_map (fun _key -> function
+             | `TagInfo i -> Some i
+             | _ -> None)
+      | Some _ ->
+        failwith
+          "Expected attribute `of` #Array to be a tag describing the type of the items \
+           inside."
+    in
+    let default = Ast.StringMap.find_opt "default" attributes in
+    data
+    |> Ast.StringMap.find_opt key
+    |> (function
+         | None -> default
+         | Some v -> Some v)
+    |> Option.value ~default:`Null
+    |> validate
+    |> (function
+         | `Record r ->
+           `Record
+             (r
+             |> StringMap.mapi (fun key value ->
+                    of'
+                    |> StringMap.find_opt key
+                    |> function
+                    | Some (_name, _optional, _attributes, transformer) ->
+                      transformer value
+                    | None -> value))
+         | `Null -> `Null)
+    |> transformer
+  ;;
+end
+
+module SlotTag = struct
+  let get_value data (_name, _optional, attributes, transformer) =
+    let slot_name =
+      attributes
+      |> StringMap.find_opt "name"
+      |> Option.value ~default:(`String "")
+      |> function
+      | `String s -> s
+      | _ -> failwith "Expected attribute `name` on #Slot to be of type string."
+    in
+    let min =
+      attributes
+      |> StringMap.find_opt "min"
+      |> Option.value ~default:(`Int 0)
+      |> function
+      | `Int i -> i
+      | _ -> failwith "Expected attribute `min` on #Slot to be of type int."
+    in
+    let max =
+      attributes
+      |> StringMap.find_opt "max"
+      |> function
+      | None -> None
+      | Some (`Int i) -> Some i
+      | _ -> failwith "Expected attribute `max` on #Slot to be of type int."
+    in
+    let instanceOf =
+      attributes
+      |> StringMap.find_opt "instanceOf"
+      |> function
+      | None -> None
+      | Some (`Array l) ->
+        Some
+          (l
+          |> Array.map (function
+                 | `DefinitionInfo info -> info
+                 | _ ->
+                   failwith
+                     "Expected attribute `instanceOf` on #Slot to be an array of \
+                      uppercase identifiers."))
+      | _ -> failwith "Expected attribute `instanceOf` on #Slot to be an array."
+    in
+    let find_slot_key attributes =
+      attributes
+      |> StringMap.find_opt "slot"
+      |> Option.value ~default:(`String "")
+      |> function
+      | `String s -> s
+      | _ -> failwith "Expected slot attribute to be of type string"
+    in
+    let check_instance_restriction tag f =
+      match instanceOf with
+      | None -> f
+      | Some restrictions ->
+        let is_in_list = ref false in
+        let allowed, disallowed =
+          restrictions
+          |> Array.to_list
+          |> List.partition_map (fun (name, _exists, negated) ->
+                 if name = tag then is_in_list := true;
+                 match negated with
+                 | `Negated -> Either.right name
+                 | `NotNegated -> Either.left name)
+        in
+        let is_in_list = !is_in_list in
+        let is_allowed =
+          match allowed, disallowed with
+          | [], _disallowed -> not is_in_list
+          | _allowed, [] -> is_in_list
+          | allowed, _disallowed -> List.mem tag allowed
+        in
+        if not is_allowed
+        then
+          failwith
+            ("Child with tag `"
+            ^ tag
+            ^ "` may not be used inside the "
+            ^ (if slot_name = ""
+              then "Default #Slot."
+              else "#Slot with name `" ^ slot_name ^ "`")
+            ^ ". The following restrictions are set: [ "
+            ^ (instanceOf
+              |> Option.value ~default:[||]
+              |> Array.to_list
+              |> List.map (fun (name, _exists, negated) ->
+                     match negated with
+                     | `Negated -> "!" ^ name
+                     | `NotNegated -> name)
+              |> String.concat ",")
+            ^ " ]")
+        else f
+    in
+    let rec keep_slotted acc = function
+      | ( `TemplateNode (`Html, tag, attributes, _children, _self_closing)
+        | `TemplateNode (`Component _, tag, attributes, _children, _self_closing) ) as
+        value ->
+        if find_slot_key attributes = slot_name
+        then check_instance_restriction tag @@ Array.append acc [| value |]
+        else acc
+      | `Array l -> l |> Array.fold_left keep_slotted acc
+      | `String s when String.trim s = "" -> acc
+      | _ ->
+        failwith
+          "Only nodes may be placed into slots. If you want to put a plain text into a \
+           slot, you have to wrap it in a <p></p> tag for example."
+    in
+    let slotted_children = data |> Array.of_list |> Array.fold_left keep_slotted [||] in
+    let amount_of_children = Array.length slotted_children in
+    match slot_name, min, amount_of_children, max with
+    | "", min, len, _ when len < min ->
+      failwith
+        ("Default #Slot did not reach the minimum amount of nodes (specified as "
+        ^ string_of_int min
+        ^ ").")
+    | slot_name, min, len, _ when len < min ->
+      failwith
+        ("#Slot with name `"
+        ^ slot_name
+        ^ "` did not reach the minimum amount of nodes (specified as "
+        ^ string_of_int min
+        ^ ").")
+    | "", _, len, Some max when len > max ->
+      failwith
+        ("Default #Slot includes more than the maximum amount of nodes (specified as "
+        ^ string_of_int max
+        ^ ").")
+    | slot_name, _, len, Some max when len > max ->
+      failwith
+        ("#Slot with name `"
+        ^ slot_name
+        ^ "` includes more than the maximum amount of nodes (specified as "
+        ^ string_of_int max
+        ^ ").")
+    | _ -> `Array slotted_children |> transformer
+  ;;
+end
+
+module SetContextTag = struct
+  let validate = function
+    | `TagInfo _ -> should_never_happen ()
+    | `Bool _ -> should_never_happen ()
+    | `String _ -> should_never_happen ()
+    | `Int _ -> should_never_happen ()
+    | `Float _ -> should_never_happen ()
+    | `Array _ -> should_never_happen ()
+    | `TemplateNode _ -> should_never_happen ()
+    | `DefinitionInfo _ -> should_never_happen ()
+    | `Function _ -> should_never_happen ()
+    | `Record _ -> should_never_happen ()
+    | `Null -> `Null
+  ;;
+
+  let get_value data (_name, _optional, attributes, transformer) =
+    let name =
+      attributes
+      |> StringMap.find_opt "name"
+      |> function
+      | Some (`String s) -> s
+      | None -> failwith "attribute name is required when setting a context."
+      | Some _ ->
+        failwith "Expected attribute `name` on #SetContext to be of type string."
+    in
+    let value =
+      attributes
+      |> StringMap.find_opt "value"
+      |> function
+      | Some value -> value
+      | None -> failwith "attribute value is required when setting a context."
+    in
+    Hashtbl.add data name value;
+    `Null |> validate |> transformer
+  ;;
+end
+
+module GetContextTag = struct
+  let validate = function
+    | `TagInfo _ -> should_never_happen ()
+    | ( `Bool _
+      | `String _
+      | `Int _
+      | `Float _
+      | `Array _
+      | `TemplateNode _
+      | `DefinitionInfo _
+      | `Function _
+      | `Record _
+      | `Null ) as v -> v
+  ;;
+
+  let get_value data (_name, _optional, attributes, transformer) =
+    let name =
+      attributes
+      |> StringMap.find_opt "name"
+      |> function
+      | Some (`String s) -> s
+      | None -> failwith "attribute name is required when getting a context."
+      | Some _ ->
+        failwith "Expected attribute `name` on #GetContext to be of type string."
+    in
+    let default = Ast.StringMap.find_opt "default" attributes in
+    Hashtbl.find_opt data name
+    |> (function
+         | None -> default
+         | Some v -> Some v)
+    |> Option.value ~default:`Null
+    |> validate
+    |> transformer
+  ;;
+end
+
 module rec Value : sig
-  type definition_info =
-    { name : string
-    ; exists : bool
-    ; negated : bool
-    }
+  type definition_info = string * [ `Exists | `DoesntExist ] * [ `Negated | `NotNegated ]
 
   type t =
     [ `Null
@@ -29,13 +486,7 @@ module rec Value : sig
     | `DefinitionInfo of definition_info
     | `TagInfo of Tag.t
     | `TemplateNode of
-      [ `Component of models:(string -> t option) -> slotted_children:t list -> t
-      | `Html
-      ]
-      * string
-      * t StringMap.t
-      * t list
-      * bool
+      [ `Component of unit -> t | `Html ] * string * t StringMap.t * t list * bool
     ]
 
   and function_info =
@@ -53,7 +504,7 @@ module rec Value : sig
   val of_string_map : t StringMap.t -> t
 
   val make_component
-    :  render:(models:(string -> t option) -> slotted_children:t list -> t)
+    :  render:(unit -> t)
     -> tag:string
     -> attributes:t StringMap.t
     -> children:t list
@@ -64,11 +515,7 @@ module rec Value : sig
   val equal : t -> t -> bool
   val compare : t -> t -> int
 end = struct
-  type definition_info =
-    { name : string
-    ; exists : bool
-    ; negated : bool
-    }
+  type definition_info = string * [ `Exists | `DoesntExist ] * [ `Negated | `NotNegated ]
 
   type t =
     [ `Null
@@ -82,13 +529,7 @@ end = struct
     | `DefinitionInfo of definition_info
     | `TagInfo of Tag.t
     | `TemplateNode of
-      [ `Component of models:(string -> t option) -> slotted_children:t list -> t
-      | `Html
-      ]
-      * string
-      * t StringMap.t
-      * t list
-      * bool
+      [ `Component of unit -> t | `Html ] * string * t StringMap.t * t list * bool
     ]
 
   and function_info =
@@ -167,9 +608,8 @@ end = struct
         Buffer.add_char buf '>');
       Buffer.contents buf
     | `TemplateNode
-        (`Component render_fn, _tag, attributes, slotted_children, _self_closing) ->
-      let models s = attributes |> StringMap.find_opt s in
-      render_fn ~models ~slotted_children |> to_string
+        (`Component render_fn, _tag, _attributes, _slotted_children, _self_closing) ->
+      render_fn () |> to_string
     | `Function _ -> ""
     | `DefinitionInfo _ -> ""
     | `TagInfo _ -> should_never_happen ()
@@ -182,7 +622,8 @@ end = struct
     | `Int _ -> true
     | `Float _ -> true
     | `TemplateNode _ -> true
-    | `DefinitionInfo { exists; _ } -> exists
+    | `DefinitionInfo (_name, `Exists, _negated) -> true
+    | `DefinitionInfo (_name, `DoesntExist, _negated) -> false
     | `Function _ -> true
     | `Array [||] -> false
     | `Array _ -> true
@@ -201,7 +642,7 @@ end = struct
     | `Array a, `Array b -> a = b
     | `Record a, `Record b -> StringMap.equal equal a b
     | `Function _, `Function _ -> false
-    | `DefinitionInfo { name = a; _ }, `DefinitionInfo { name = b; _ } -> String.equal a b
+    | `DefinitionInfo (a, _, _), `DefinitionInfo (b, _, _) -> String.equal a b
     | ( `TemplateNode (a_typ, a_tag, a_attrs, a_children, a_self_closing)
       , `TemplateNode (b_typ, b_tag, b_attrs, b_children, b_self_closing) ) ->
       a_typ = b_typ
@@ -236,20 +677,13 @@ end = struct
 end
 
 and Tag : sig
-  type t =
-    { name : string
-    ; is_optional : bool
-    ; attributes : Value.t StringMap.t
-    ; transformer : Value.t -> Value.t
-    }
+  type t = string * bool * Value.t StringMap.t * (Value.t -> Value.t)
 end =
   Tag
 
 and State : sig
   type t =
     { binding_identifier : (bool * string) option
-    ; models : string -> Value.t option
-    ; slotted_children : Value.t list option
     ; declarations : Ast.declaration StringMap.t
     ; output : Value.t
     ; environment : environment
@@ -266,9 +700,7 @@ and State : sig
     }
 
   val make
-    :  ?models:(string -> Value.t option)
-    -> ?tag_listeners:(Tag.t -> Value.t) StringMap.t
-    -> ?slotted_children:Value.t list
+    :  ?tag_listeners:(Tag.t -> Value.t) StringMap.t
     -> Ast.declaration StringMap.t
     -> t
 
@@ -299,8 +731,6 @@ and State : sig
 end = struct
   type t =
     { binding_identifier : (bool * string) option
-    ; models : string -> Value.t option
-    ; slotted_children : Value.t list option
     ; declarations : Ast.declaration StringMap.t
     ; output : Value.t
     ; environment : environment
@@ -316,15 +746,8 @@ end = struct
     ; value : Value.t
     }
 
-  let make
-      ?(models = fun _ -> None)
-      ?(tag_listeners = StringMap.empty)
-      ?slotted_children
-      declarations
-    =
+  let make ?(tag_listeners = StringMap.empty) declarations =
     { binding_identifier = None
-    ; models
-    ; slotted_children
     ; declarations
     ; output = `Null
     ; environment = { scope = [] }
@@ -407,471 +830,6 @@ end = struct
   ;;
 end
 
-module StringTag = struct
-  let validate = function
-    | `TagInfo _ -> should_never_happen ()
-    | `Int _ -> failwith "tried to assign integer value to a string tag."
-    | `Float _ -> failwith "tried to assign float value to a string tag."
-    | `Bool _ -> failwith "tried to assign boolean value to a string tag."
-    | `Array _ -> failwith "tried to assign array value to a string tag."
-    | `Record _ -> failwith "tried to assign record value to a string tag."
-    | `TemplateNode _ -> failwith "tried to assign template node to a string tag."
-    | `DefinitionInfo _ -> failwith "tried to assign definition info to a string tag."
-    | `Function _ -> failwith "tried to assign function to a string tag."
-    | `Null -> `Null
-    | `String s -> `String s
-  ;;
-
-  let get_value data (tag_info : Tag.t) =
-    let attributes = tag_info.attributes in
-    let key =
-      Ast.StringMap.find_opt "key" attributes
-      |> function
-      | None -> failwith "Expected attribute `key` to exist on #String"
-      | Some (`String s) -> s
-      | Some _ -> failwith "Expected attribute `key` #String to be of type string"
-    in
-    let default = Ast.StringMap.find_opt "default" attributes in
-    data
-    |> Ast.StringMap.find_opt key
-    |> (function
-         | None -> default
-         | Some v -> Some v)
-    |> Option.value ~default:(Value.null ())
-    |> validate
-    |> tag_info.transformer
-  ;;
-end
-
-module IntTag = struct
-  let validate = function
-    | `TagInfo _ -> should_never_happen ()
-    | `Float _ -> failwith "tried to assign float value to a int tag."
-    | `Bool _ -> failwith "tried to assign boolean value to a int tag."
-    | `Array _ -> failwith "tried to assign array value to a int tag."
-    | `String _ -> failwith "tried to assign string value to a int tag."
-    | `Record _ -> failwith "tried to assign record value to a int tag."
-    | `TemplateNode _ -> failwith "tried to assign template node to a int tag."
-    | `DefinitionInfo _ -> failwith "tried to assign definition info to a int tag."
-    | `Function _ -> failwith "tried to assign function to a int tag."
-    | `Null -> `Null
-    | `Int i -> `Int i
-  ;;
-
-  let get_value data (tag_info : Tag.t) =
-    let attributes = tag_info.attributes in
-    let key =
-      Ast.StringMap.find_opt "key" attributes
-      |> function
-      | None -> failwith "Expected attribute `key` to exist on #Int"
-      | Some (`String s) -> s
-      | Some _ -> failwith "Expected attribute `key` #Int to be of type string"
-    in
-    let default = Ast.StringMap.find_opt "default" attributes in
-    data
-    |> Ast.StringMap.find_opt key
-    |> (function
-         | None -> default
-         | Some v -> Some v)
-    |> Option.value ~default:(Value.null ())
-    |> validate
-    |> tag_info.transformer
-  ;;
-end
-
-module FloatTag = struct
-  let validate = function
-    | `TagInfo _ -> should_never_happen ()
-    | `Bool _ -> failwith "tried to assign boolean value to a float tag."
-    | `Array _ -> failwith "tried to assign array value to a float tag."
-    | `String _ -> failwith "tried to assign string value to a float tag."
-    | `Int _ -> failwith "tried to assign int value to a float tag."
-    | `Record _ -> failwith "tried to assign record value to a float tag."
-    | `TemplateNode _ -> failwith "tried to assign template node to a float tag."
-    | `DefinitionInfo _ -> failwith "tried to assign definition info to a float tag."
-    | `Function _ -> failwith "tried to assign function to a float tag."
-    | `Null -> `Null
-    | `Float f -> `Float f
-  ;;
-
-  let get_value data (tag_info : Tag.t) =
-    let attributes = tag_info.attributes in
-    let key =
-      Ast.StringMap.find_opt "key" attributes
-      |> function
-      | None -> failwith "Expected attribute `key` to exist on #Float"
-      | Some (`String s) -> s
-      | Some _ -> failwith "Expected attribute `key` #Float to be of type string"
-    in
-    let default = Ast.StringMap.find_opt "default" attributes in
-    data
-    |> Ast.StringMap.find_opt key
-    |> (function
-         | None -> default
-         | Some v -> Some v)
-    |> Option.value ~default:(Value.null ())
-    |> validate
-    |> tag_info.transformer
-  ;;
-end
-
-module BooleanTag = struct
-  let validate = function
-    | `TagInfo _ -> should_never_happen ()
-    | `Array _ -> failwith "tried to assign array value to a boolean tag."
-    | `String _ -> failwith "tried to assign string value to a boolean tag."
-    | `Int _ -> failwith "tried to assign int value to a boolean tag."
-    | `Float _ -> failwith "tried to assign float value to a boolean tag."
-    | `Record _ -> failwith "tried to assign record value to a boolean tag."
-    | `TemplateNode _ -> failwith "tried to assign template node to a boolean tag."
-    | `DefinitionInfo _ -> failwith "tried to assign definition info to a boolean tag."
-    | `Function _ -> failwith "tried to assign function to a boolean tag."
-    | `Null -> `Null
-    | `Bool b -> `Bool b
-  ;;
-
-  let get_value data (tag_info : Tag.t) =
-    let attributes = tag_info.attributes in
-    let key =
-      Ast.StringMap.find_opt "key" attributes
-      |> function
-      | None -> failwith "Expected attribute `key` to exist on #Boolean"
-      | Some (`String s) -> s
-      | Some _ -> failwith "Expected attribute `key` #Boolean to be of type string"
-    in
-    let default = Ast.StringMap.find_opt "default" attributes in
-    data
-    |> Ast.StringMap.find_opt key
-    |> (function
-         | None -> default
-         | Some v -> Some v)
-    |> Option.value ~default:(Value.null ())
-    |> validate
-    |> tag_info.transformer
-  ;;
-end
-
-module ArrayTag = struct
-  (* TODO: Validate the underlying values with their tags validator *)
-  let validate = function
-    | `TagInfo _ -> should_never_happen ()
-    | `Bool _ -> failwith "tried to assign boolean value to a array tag."
-    | `String _ -> failwith "tried to assign string value to a array tag."
-    | `Int _ -> failwith "tried to assign int value to a array tag."
-    | `Float _ -> failwith "tried to assign float value to a array tag."
-    | `Record _ -> failwith "tried to assign record value to a array tag."
-    | `TemplateNode _ -> failwith "tried to assign template node to a array tag."
-    | `DefinitionInfo _ -> failwith "tried to assign definition info to a array tag."
-    | `Function _ -> failwith "tried to assign function to a array tag."
-    | `Null -> `Null
-    | `Array a -> `Array a
-  ;;
-
-  let get_value data (tag_info : Tag.t) =
-    let attributes = tag_info.attributes in
-    let key =
-      Ast.StringMap.find_opt "key" attributes
-      |> function
-      | None -> failwith "Expected attribute `key` to exist on #Array"
-      | Some (`String s) -> s
-      | Some _ -> failwith "Expected attribute `key` #Array to be of type string"
-    in
-    let of' =
-      Ast.StringMap.find_opt "of" attributes
-      |> function
-      | None -> failwith "Expected attribute `of` to exist on #Array"
-      | Some (`TagInfo i) -> i
-      | Some _ ->
-        failwith
-          "Expected attribute `of` #Array to be a tag describing the type of the items \
-           inside."
-    in
-    let default = Ast.StringMap.find_opt "default" attributes in
-    data
-    |> Ast.StringMap.find_opt key
-    |> (function
-         | None -> default
-         | Some v -> Some v)
-    |> Option.value ~default:(Value.null ())
-    |> validate
-    |> (function
-         | `Array a -> `Array (a |> Array.map (fun value -> of'.transformer value))
-         | `Null -> `Null)
-    |> tag_info.transformer
-  ;;
-end
-
-module RecordTag = struct
-  (* TODO: Validate the underlying values with their tags validator *)
-  let validate = function
-    | `TagInfo _ -> should_never_happen ()
-    | `Bool _ -> failwith "tried to assign boolean value to a record tag."
-    | `String _ -> failwith "tried to assign string value to a record tag."
-    | `Int _ -> failwith "tried to assign int value to a record tag."
-    | `Float _ -> failwith "tried to assign float value to a record tag."
-    | `Array _ -> failwith "tried to assign array value to a record tag."
-    | `TemplateNode _ -> failwith "tried to assign template node to a record tag."
-    | `DefinitionInfo _ -> failwith "tried to assign definition info to a record tag."
-    | `Function _ -> failwith "tried to assign function to a record tag."
-    | `Null -> `Null
-    | `Record r -> `Record r
-  ;;
-
-  let get_value data (tag_info : Tag.t) =
-    let attributes = tag_info.attributes in
-    let key =
-      Ast.StringMap.find_opt "key" attributes
-      |> function
-      | None -> failwith "Expected attribute `key` to exist on #Record"
-      | Some (`String s) -> s
-      | Some _ -> failwith "Expected attribute `key` #Record to be of type string"
-    in
-    let of' =
-      Ast.StringMap.find_opt "of" attributes
-      |> function
-      | None -> failwith "Expected attribute `of` to exist on #Record"
-      | Some (`Record r) ->
-        r
-        |> StringMap.filter_map (fun _key -> function
-             | `TagInfo i -> Some i
-             | _ -> None)
-      | Some _ ->
-        failwith
-          "Expected attribute `of` #Array to be a tag describing the type of the items \
-           inside."
-    in
-    let default = Ast.StringMap.find_opt "default" attributes in
-    data
-    |> Ast.StringMap.find_opt key
-    |> (function
-         | None -> default
-         | Some v -> Some v)
-    |> Option.value ~default:(Value.null ())
-    |> validate
-    |> (function
-         | `Record r ->
-           `Record
-             (r
-             |> StringMap.mapi (fun key value ->
-                    of'
-                    |> StringMap.find_opt key
-                    |> function
-                    | Some info -> info.transformer value
-                    | None -> value))
-         | `Null -> `Null)
-    |> tag_info.transformer
-  ;;
-end
-
-module SlotTag = struct
-  let get_value data (tag_info : Tag.t) =
-    let attributes = tag_info.attributes in
-    let slot_name =
-      attributes
-      |> StringMap.find_opt "name"
-      |> Option.value ~default:(`String "")
-      |> function
-      | `String s -> s
-      | _ -> failwith "Expected attribute `name` on #Slot to be of type string."
-    in
-    let min =
-      attributes
-      |> StringMap.find_opt "min"
-      |> Option.value ~default:(`Int 0)
-      |> function
-      | `Int i -> i
-      | _ -> failwith "Expected attribute `min` on #Slot to be of type int."
-    in
-    let max =
-      attributes
-      |> StringMap.find_opt "max"
-      |> function
-      | None -> None
-      | Some (`Int i) -> Some i
-      | _ -> failwith "Expected attribute `max` on #Slot to be of type int."
-    in
-    let instanceOf =
-      attributes
-      |> StringMap.find_opt "instanceOf"
-      |> function
-      | None -> None
-      | Some (`Array l) ->
-        Some
-          (l
-          |> Array.map (function
-                 | `DefinitionInfo info -> info
-                 | _ ->
-                   failwith
-                     "Expected attribute `instanceOf` on #Slot to be an array of \
-                      uppercase identifiers."))
-      | _ -> failwith "Expected attribute `instanceOf` on #Slot to be an array."
-    in
-    let find_slot_key attributes =
-      attributes
-      |> StringMap.find_opt "slot"
-      |> Option.value ~default:(`String "")
-      |> function
-      | `String s -> s
-      | _ -> failwith "Expected slot attribute to be of type string"
-    in
-    let check_instance_restriction tag f =
-      match instanceOf with
-      | None -> f
-      | Some restrictions ->
-        let is_in_list = ref false in
-        let allowed, disallowed =
-          restrictions
-          |> Array.to_list
-          |> List.partition_map (fun Value.{ name; negated; _ } ->
-                 if name = tag then is_in_list := true;
-                 if negated then Either.right name else Either.left name)
-        in
-        let is_in_list = !is_in_list in
-        let is_allowed =
-          match allowed, disallowed with
-          | [], _disallowed -> not is_in_list
-          | _allowed, [] -> is_in_list
-          | allowed, _disallowed -> List.mem tag allowed
-        in
-        if not is_allowed
-        then
-          failwith
-            ("Child with tag `"
-            ^ tag
-            ^ "` may not be used inside the "
-            ^ (if slot_name = ""
-              then "Default #Slot."
-              else "#Slot with name `" ^ slot_name ^ "`")
-            ^ ". The following restrictions are set: [ "
-            ^ (instanceOf
-              |> Option.value ~default:[||]
-              |> Array.to_list
-              |> List.map (fun res ->
-                     (if res.Value.negated then "!" else "") ^ res.Value.name)
-              |> String.concat ",")
-            ^ " ]")
-        else f
-    in
-    let rec keep_slotted acc = function
-      | ( `TemplateNode (`Html, tag, attributes, _children, _self_closing)
-        | `TemplateNode (`Component _, tag, attributes, _children, _self_closing) ) as
-        value ->
-        if find_slot_key attributes = slot_name
-        then check_instance_restriction tag @@ Array.append acc [| value |]
-        else acc
-      | `Array l -> l |> Array.fold_left keep_slotted acc
-      | `String s when String.trim s = "" -> acc
-      | _ ->
-        failwith
-          "Only nodes may be placed into slots. If you want to put a plain text into a \
-           slot, you have to wrap it in a <p></p> tag for example."
-    in
-    let slotted_children = data |> Array.of_list |> Array.fold_left keep_slotted [||] in
-    let amount_of_children = Array.length slotted_children in
-    match slot_name, min, amount_of_children, max with
-    | "", min, len, _ when len < min ->
-      failwith
-        ("Default #Slot did not reach the minimum amount of nodes (specified as "
-        ^ string_of_int min
-        ^ ").")
-    | slot_name, min, len, _ when len < min ->
-      failwith
-        ("#Slot with name `"
-        ^ slot_name
-        ^ "` did not reach the minimum amount of nodes (specified as "
-        ^ string_of_int min
-        ^ ").")
-    | "", _, len, Some max when len > max ->
-      failwith
-        ("Default #Slot includes more than the maximum amount of nodes (specified as "
-        ^ string_of_int max
-        ^ ").")
-    | slot_name, _, len, Some max when len > max ->
-      failwith
-        ("#Slot with name `"
-        ^ slot_name
-        ^ "` includes more than the maximum amount of nodes (specified as "
-        ^ string_of_int max
-        ^ ").")
-    | _ -> `Array slotted_children |> tag_info.transformer
-  ;;
-end
-
-module SetContextTag = struct
-  let validate = function
-    | `TagInfo _ -> should_never_happen ()
-    | `Bool _ -> should_never_happen ()
-    | `String _ -> should_never_happen ()
-    | `Int _ -> should_never_happen ()
-    | `Float _ -> should_never_happen ()
-    | `Array _ -> should_never_happen ()
-    | `TemplateNode _ -> should_never_happen ()
-    | `DefinitionInfo _ -> should_never_happen ()
-    | `Function _ -> should_never_happen ()
-    | `Record _ -> should_never_happen ()
-    | `Null -> `Null
-  ;;
-
-  let get_value data (tag_info : Tag.t) =
-    let attributes = tag_info.attributes in
-    let name =
-      attributes
-      |> StringMap.find_opt "name"
-      |> function
-      | Some (`String s) -> s
-      | None -> failwith "attribute name is required when setting a context."
-      | Some _ ->
-        failwith "Expected attribute `name` on #SetContext to be of type string."
-    in
-    let value =
-      attributes
-      |> StringMap.find_opt "value"
-      |> function
-      | Some value -> value
-      | None -> failwith "attribute value is required when setting a context."
-    in
-    Hashtbl.add data name value;
-    Value.null () |> validate |> tag_info.transformer
-  ;;
-end
-
-module GetContextTag = struct
-  let validate = function
-    | `TagInfo _ -> should_never_happen ()
-    | ( `Bool _
-      | `String _
-      | `Int _
-      | `Float _
-      | `Array _
-      | `TemplateNode _
-      | `DefinitionInfo _
-      | `Function _
-      | `Record _
-      | `Null ) as v -> v
-  ;;
-
-  let get_value data (tag_info : Tag.t) =
-    let attributes = tag_info.attributes in
-    let name =
-      attributes
-      |> StringMap.find_opt "name"
-      |> function
-      | Some (`String s) -> s
-      | None -> failwith "attribute name is required when getting a context."
-      | Some _ ->
-        failwith "Expected attribute `name` on #GetContext to be of type string."
-    in
-    let default = Ast.StringMap.find_opt "default" attributes in
-    Hashtbl.find_opt data name
-    |> (function
-         | None -> default
-         | Some v -> Some v)
-    |> Option.value ~default:(Value.null ())
-    |> validate
-    |> tag_info.transformer
-  ;;
-end
-
 let rec eval_statement ~state = function
   | Ast.LetStatement (Lowercase_Id ident, expression) ->
     eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
@@ -925,10 +883,12 @@ and eval_expression ~state = function
   | Ast.FunctionCall (left, arguments) -> eval_function_call ~state ~arguments left
   | Ast.UppercaseIdentifierExpression (Uppercase_Id id) ->
     let value = state.State.declarations |> StringMap.find_opt id in
-    state
-    |> State.add_output
-         ~output:
-           (`DefinitionInfo { name = id; exists = Option.is_some value; negated = false })
+    let exists =
+      match value with
+      | None -> `DoesntExist
+      | Some _ -> `Exists
+    in
+    state |> State.add_output ~output:(`DefinitionInfo (id, exists, `NotNegated))
   | Ast.LowercaseIdentifierExpression (Lowercase_Id id) ->
     eval_lowercase_identifier ~state id
   | Ast.TagExpression tag -> eval_tag ~state tag
@@ -1279,27 +1239,9 @@ and eval_binary_merge ~state left right =
   | `Record left, `Record right ->
     state
     |> State.add_output
-         ~output:
-           (`Record
-             (StringMap.merge
-                (fun _ x y ->
-                  match x, y with
-                  | (Some _ | None), Some y -> Some y
-                  | Some x, None -> Some x
-                  | None, None -> None)
-                left
-                right))
+         ~output:(`Record (StringMap.union (fun _key _x y -> Some y) left right))
   | `TemplateNode (typ, tag, attributes, children, self_closing), `Record right ->
-    let attributes =
-      StringMap.merge
-        (fun _ x y ->
-          match x, y with
-          | (Some _ | None), Some y -> Some y
-          | Some x, None -> Some x
-          | None, None -> None)
-        attributes
-        right
-    in
+    let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
     state
     |> State.add_output
          ~output:(`TemplateNode (typ, tag, attributes, children, self_closing))
@@ -1311,9 +1253,13 @@ and eval_binary_merge ~state left right =
 
 and eval_unary_not ~state expression =
   match eval_expression ~state expression |> State.get_output with
-  | `DefinitionInfo info ->
-    state
-    |> State.add_output ~output:(`DefinitionInfo { info with negated = not info.negated })
+  | `DefinitionInfo (name, exists, negated) ->
+    let negated =
+      match negated with
+      | `Negated -> `NotNegated
+      | `NotNegated -> `Negated
+    in
+    state |> State.add_output ~output:(`DefinitionInfo (name, exists, negated))
   | v -> state |> State.add_output ~output:(`Bool (not (Value.is_true v)))
 
 and eval_unary_minus ~state expression =
@@ -1499,14 +1445,7 @@ and eval_tag ~state tag =
     | Some _, _ -> failwith "Expected attribute `key` on tag to be of type string"
     | None, None -> attributes
   in
-  let tag =
-    Tag.
-      { name = tag_name
-      ; is_optional
-      ; attributes
-      ; transformer = apply_transformer ~transformer
-      }
-  in
+  let tag = tag_name, is_optional, attributes, apply_transformer ~transformer in
   let value =
     match state.tag_info with
     | false -> state |> State.call_tag_listener ~key:("#" ^ tag_name) ~tag
@@ -1551,19 +1490,10 @@ and eval_template ~state template =
     in
     let tag_listeners =
       component_tag_listeters
-      |> StringMap.merge
-           (fun _key x y ->
-             match x, y with
-             | None, Some y -> Some y
-             | Some x, None -> Some x
-             | None, None -> None
-             | Some _x, Some y -> Some y)
-           state.tag_listeners
+      |> StringMap.union (fun _key _x y -> Some y) state.tag_listeners
     in
-    let render_fn ~models ~slotted_children =
-      let state =
-        State.make ~tag_listeners ~models ~slotted_children state.declarations
-      in
+    let render_fn () =
+      let state = State.make ~tag_listeners state.declarations in
       state.declarations
       |> StringMap.find_opt tag
       |> (function
@@ -1583,7 +1513,7 @@ and eval_declaration ~state declaration =
   | Ast.StoreDeclaration (_attrs, body) -> eval_expression ~state body
 ;;
 
-let eval ?tag_listeners ?models ?slotted_children ~root declarations =
+let eval ?tag_listeners ~root declarations =
   let context = Hashtbl.create 10 in
   let tag_listeners =
     let default_tag_listeters =
@@ -1594,17 +1524,9 @@ let eval ?tag_listeners ?models ?slotted_children ~root declarations =
     match tag_listeners with
     | None -> default_tag_listeters
     | Some listeners ->
-      default_tag_listeters
-      |> StringMap.merge
-           (fun _key x y ->
-             match x, y with
-             | None, Some y -> Some y
-             | Some x, None -> Some x
-             | None, None -> None
-             | Some x, Some _y -> Some x)
-           listeners
+      default_tag_listeters |> StringMap.union (fun _key x _y -> Some x) listeners
   in
-  let state = State.make ~tag_listeners ?models ?slotted_children declarations in
+  let state = State.make ~tag_listeners declarations in
   declarations
   |> StringMap.find_opt root
   |> function
@@ -1612,7 +1534,7 @@ let eval ?tag_listeners ?models ?slotted_children ~root declarations =
   | None -> failwith ("Declaration with name `" ^ root ^ "` was not found.")
 ;;
 
-let from_source ?models ?slotted_children ?(filename = "") ~source root =
+let from_source ?(filename = "") ~source root =
   let declarations = Parser.parse ~filename source in
-  eval ?models ?slotted_children ~root declarations
+  eval ~root declarations
 ;;

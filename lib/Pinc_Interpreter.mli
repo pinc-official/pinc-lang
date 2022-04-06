@@ -14,7 +14,7 @@ module rec Value : sig
   val of_string_map : t StringMap.t -> t
 
   val make_component
-    :  render:(models:(string -> t option) -> slotted_children:t list -> t)
+    :  render:(unit -> t)
     -> tag:string
     -> attributes:t StringMap.t
     -> children:t list
@@ -22,12 +22,7 @@ module rec Value : sig
 end
 
 and Tag : sig
-  type t =
-    { name : string
-    ; is_optional : bool
-    ; attributes : Value.t StringMap.t
-    ; transformer : Value.t -> Value.t
-    }
+  type t = string * bool * Value.t StringMap.t * (Value.t -> Value.t)
 end
 
 and State : sig
@@ -46,16 +41,8 @@ end
 
 val eval
   :  ?tag_listeners:(Tag.t -> Value.t) StringMap.t
-  -> ?models:(string -> Value.t option)
-  -> ?slotted_children:Value.t list
   -> root:StringMap.key
   -> Ast.declaration StringMap.t
   -> State.t
 
-val from_source
-  :  ?models:(string -> Value.t option)
-  -> ?slotted_children:Value.t list
-  -> ?filename:string
-  -> source:string
-  -> string
-  -> State.t
+val from_source : ?filename:string -> source:string -> string -> State.t
