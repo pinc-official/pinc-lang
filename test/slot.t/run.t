@@ -4,9 +4,7 @@
       <area class="slot_restricted"><div class="SubComponent" data-foo="9">
       Hello, SubComponent!
   
-      0
-  1
-  2
+      2
   3
   4
   5
@@ -14,6 +12,8 @@
   7
   8
   9
+  10
+  11
   
       JAP
       

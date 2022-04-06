@@ -21,17 +21,16 @@ module rec Value : sig
     -> t
 end
 
-and State : sig
-  module Tag : sig
-    type t =
-      { name : string
-      ; key : string
-      ; is_optional : bool
-      ; value : Value.t
-      ; attributes : Value.t StringMap.t
-      }
-  end
+and Tag : sig
+  type t =
+    { name : string
+    ; is_optional : bool
+    ; attributes : Value.t StringMap.t
+    ; transformer : Value.t -> Value.t
+    }
+end
 
+and State : sig
   type t
   and environment
 
@@ -46,10 +45,9 @@ and State : sig
 end
 
 val eval
-  :  ?tag_listeners:(State.Tag.t -> unit) StringMap.t
+  :  ?tag_listeners:(Tag.t -> Value.t) StringMap.t
   -> ?models:(string -> Value.t option)
   -> ?slotted_children:Value.t list
-  -> ?context:Value.t StringMap.t
   -> root:StringMap.key
   -> Ast.declaration StringMap.t
   -> State.t
