@@ -39,8 +39,8 @@ let get_declarations_from ~directory () =
                (Printf.sprintf "Found multiple declarations with identifier %s" key)
            | None, None -> None
          in
-         Interpreter.StringMap.merge f acc decls)
-       Interpreter.StringMap.empty
+         StringMap.merge f acc decls)
+       StringMap.empty
 ;;
 
 let main =

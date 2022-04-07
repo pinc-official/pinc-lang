@@ -13,3 +13,7 @@ end
 module Interpreter = struct
   include Pinc_Interpreter
 end
+
+module StringMap = struct
+  include StringMap
+end

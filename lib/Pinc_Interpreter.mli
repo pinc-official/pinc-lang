@@ -1,5 +1,4 @@
 module Ast = Pinc_Ast
-module StringMap = Ast.StringMap
 
 module rec Value : sig
   type t
@@ -21,10 +20,6 @@ module rec Value : sig
     -> t
 end
 
-and Tag : sig
-  type t = string * bool * Value.t StringMap.t * (Value.t -> Value.t)
-end
-
 and State : sig
   type t
   and environment
@@ -40,7 +35,7 @@ and State : sig
 end
 
 val eval
-  :  ?tag_listeners:(Tag.t -> Value.t) StringMap.t
+  :  ?tag_listeners:Pinc_Interpreter_Generic.Tag.t StringMap.t
   -> root:StringMap.key
   -> Ast.declaration StringMap.t
   -> State.t
