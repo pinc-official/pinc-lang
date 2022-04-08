@@ -659,22 +659,29 @@ and eval_template ~state template =
     let children =
       children |> List.map (eval_template ~state) |> List.map State.get_output
     in
+    (* TODO: Remove this, as we are not really changing anything anymore... *)
     let component_tag_listeters =
       StringMap.empty
-      |> StringMap.add "#String" (Pinc_Tags.make_string attributes)
-      |> StringMap.add "#Int" (Pinc_Tags.make_int attributes)
-      |> StringMap.add "#Float" (Pinc_Tags.make_float attributes)
-      |> StringMap.add "#Boolean" (Pinc_Tags.make_boolean attributes)
-      |> StringMap.add "#Array" (Pinc_Tags.make_array attributes)
-      |> StringMap.add "#Record" (Pinc_Tags.make_record attributes)
-      |> StringMap.add "#Slot" (Pinc_Tags.make_slot children)
+      |> StringMap.add "#String" Pinc_Tags.Default.string
+      |> StringMap.add "#Int" Pinc_Tags.Default.int
+      |> StringMap.add "#Float" Pinc_Tags.Default.float
+      |> StringMap.add "#Boolean" Pinc_Tags.Default.boolean
+      |> StringMap.add "#Array" Pinc_Tags.Default.array
+      |> StringMap.add "#Record" Pinc_Tags.Default.record
+      |> StringMap.add "#Slot" Pinc_Tags.Default.slot
     in
     let tag_listeners =
       component_tag_listeters
       |> StringMap.union (fun _key _x y -> Some y) state.tag_listeners
     in
     let render_fn () =
-      let state = State.make ~tag_listeners state.declarations in
+      let state =
+        State.make
+          ~parent_component:(tag, attributes, children)
+          ~tag_listeners
+          ~context:state.context
+          state.declarations
+      in
       state.declarations
       |> StringMap.find_opt tag
       |> (function
@@ -695,12 +702,11 @@ and eval_declaration ~state declaration =
 ;;
 
 let eval ?tag_listeners ~root declarations =
-  let context = Hashtbl.create 10 in
   let tag_listeners =
     let default_tag_listeters =
       StringMap.empty
-      |> StringMap.add "#SetContext" (Pinc_Tags.make_set_context context)
-      |> StringMap.add "#GetContext" (Pinc_Tags.make_get_context context)
+      |> StringMap.add "#SetContext" Pinc_Tags.Default.set_context
+      |> StringMap.add "#GetContext" Pinc_Tags.Default.get_context
     in
     match tag_listeners with
     | None -> default_tag_listeters

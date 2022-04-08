@@ -209,7 +209,7 @@ and Tag : sig
   type t =
     { validate : info -> Value.t -> (Value.t, string) Result.t
     ; transform : info -> Value.t -> Value.t
-    ; eval : info -> (Value.t, string) Result.t
+    ; eval : State.t -> info -> (Value.t, string) Result.t
     }
 end =
   Tag
@@ -222,6 +222,8 @@ and State : sig
     ; environment : environment
     ; tag_listeners : Tag.t StringMap.t
     ; tag_info : bool
+    ; parent_component : (string * Value.t StringMap.t * Value.t list) option
+    ; context : (string, Value.t) Hashtbl.t
     }
 
   and environment = { mutable scope : (string * binding) list list }
@@ -232,7 +234,13 @@ and State : sig
     ; value : Value.t
     }
 
-  val make : ?tag_listeners:Tag.t StringMap.t -> Pinc_Ast.declaration StringMap.t -> t
+  val make
+    :  ?tag_listeners:Tag.t StringMap.t
+    -> ?parent_component:string * Value.t StringMap.t * Value.t list
+    -> ?context:(string, Value.t) Hashtbl.t
+    -> Pinc_Ast.declaration StringMap.t
+    -> t
+
   val add_scope : t -> t
 
   val add_value_to_scope
@@ -265,6 +273,8 @@ end = struct
     ; environment : environment
     ; tag_listeners : Tag.t StringMap.t
     ; tag_info : bool
+    ; parent_component : (string * Value.t StringMap.t * Value.t list) option
+    ; context : (string, Value.t) Hashtbl.t
     }
 
   and environment = { mutable scope : (string * binding) list list }
@@ -275,13 +285,20 @@ end = struct
     ; value : Value.t
     }
 
-  let make ?(tag_listeners = StringMap.empty) declarations =
+  let make
+      ?(tag_listeners = StringMap.empty)
+      ?parent_component
+      ?(context = Hashtbl.create 10)
+      declarations
+    =
     { binding_identifier = None
     ; declarations
     ; output = `Null
     ; environment = { scope = [] }
     ; tag_listeners
     ; tag_info = false
+    ; parent_component
+    ; context
     }
   ;;
 
@@ -357,7 +374,7 @@ end = struct
     | None -> `Null
     | Some listener ->
       tag
-      |> listener.eval
+      |> listener.eval t
       |> (function
       | Ok v -> v
       | Error e -> failwith e)
