@@ -5,7 +5,7 @@ component SubComponent {
   
   let num = #Int :: val -> val ** 2;
   
-  let array_things = #Array(of: #Int);
+  let array_things = #Array(of: #Int :: i -> i + 2);
   
   let record = #Record(of: {
     a: #Int(default: 12) :: val -> if (val == 12) "NEEEEIN" else "JAP",

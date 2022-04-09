@@ -1,4 +1,3 @@
-module StringMap = Map.Make (String)
 module Position = Pinc_Position
 module Operators = Pinc_Operators
 

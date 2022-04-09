@@ -169,11 +169,11 @@ module Rules = struct
           t
           |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
           |> List.to_seq
-          |> Ast.StringMap.of_seq
+          |> StringMap.of_seq
         in
         t |> expect Token.RIGHT_PAREN;
         res)
-      else Ast.StringMap.empty
+      else StringMap.empty
     in
     let transformer =
       if t |> optional Token.DOUBLE_COLON
@@ -216,7 +216,7 @@ module Rules = struct
         t
         |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
         |> List.to_seq
-        |> Ast.StringMap.of_seq
+        |> StringMap.of_seq
       in
       let self_closing = t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING in
       let children =
@@ -235,7 +235,7 @@ module Rules = struct
         t
         |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
         |> List.to_seq
-        |> Ast.StringMap.of_seq
+        |> StringMap.of_seq
       in
       let self_closing = t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING in
       let children =
@@ -332,7 +332,7 @@ module Rules = struct
           t
           |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field
           |> List.to_seq
-          |> Ast.StringMap.of_seq
+          |> StringMap.of_seq
         in
         t |> expect Token.RIGHT_BRACE;
         Some Ast.(Record attrs))
@@ -526,7 +526,7 @@ module Rules = struct
           let attributes =
             Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t
             |> List.to_seq
-            |> Ast.StringMap.of_seq
+            |> StringMap.of_seq
           in
           t |> expect Token.RIGHT_PAREN;
           Some attributes)
@@ -553,7 +553,7 @@ module Rules = struct
 end
 
 let scan t =
-  t |> Helpers.list ~fn:Rules.parse_declaration |> List.to_seq |> Ast.StringMap.of_seq
+  t |> Helpers.list ~fn:Rules.parse_declaration |> List.to_seq |> StringMap.of_seq
 ;;
 
 let parse ~filename source =

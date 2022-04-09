@@ -1,63 +1,33 @@
+open Pinc_Interpreter_Types
 module Ast = Pinc_Ast
-module StringMap = Ast.StringMap
 
 module rec Value : sig
-  type t
-
-  val to_string : t -> string
-  val null : unit -> t
-  val of_string : string -> t
-  val of_bool : bool -> t
-  val of_int : int -> t
-  val of_float : float -> t
-  val of_list : t list -> t
-  val of_string_map : t StringMap.t -> t
+  val to_string : value -> string
+  val null : unit -> value
+  val of_string : string -> value
+  val of_bool : bool -> value
+  val of_int : int -> value
+  val of_float : float -> value
+  val of_list : value list -> value
+  val of_string_map : value StringMap.t -> value
 
   val make_component
-    :  render:(models:(string -> t option) -> slotted_children:t list -> t)
+    :  render:(value StringMap.t -> value)
     -> tag:string
-    -> attributes:t StringMap.t
-    -> children:t list
-    -> t
+    -> attributes:value StringMap.t
+    -> value
 end
 
 and State : sig
-  module Tag : sig
-    type t =
-      { name : string
-      ; key : string
-      ; is_optional : bool
-      ; value : Value.t
-      ; attributes : Value.t StringMap.t
-      }
-  end
-
-  type t
-  and environment
-
-  and binding =
-    { is_mutable : bool
-    ; is_optional : bool
-    ; value : Value.t
-    }
-
-  val get_output : t -> Value.t
-  val get_bindings : t -> (string * binding) list
+  val get_output : state -> value
+  val get_bindings : state -> (string * binding) list
+  val get_parent_component : state -> (string * value StringMap.t * value list) option
 end
 
 val eval
-  :  ?tag_listeners:(State.Tag.t -> unit) StringMap.t
-  -> ?models:(string -> Value.t option)
-  -> ?slotted_children:Value.t list
-  -> ?context:Value.t StringMap.t
+  :  ?tag_listeners:Pinc_Interpreter_Types.tag_handler StringMap.t
   -> root:StringMap.key
   -> Ast.declaration StringMap.t
-  -> State.t
+  -> state
 
-val from_source
-  :  ?models:(string -> Value.t option)
-  -> ?slotted_children:Value.t list
-  -> ?filename:string
-  -> source:string
-  -> string
-  -> State.t
+val from_source : ?filename:string -> source:string -> string -> state
