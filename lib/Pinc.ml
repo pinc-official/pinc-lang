@@ -1,3 +1,7 @@
+module Tags = struct
+  include Pinc_Tags
+end
+
 module Token = struct
   include Pinc_Token
 end
@@ -12,6 +16,10 @@ end
 
 module Interpreter = struct
   include Pinc_Interpreter
+
+  module Types = struct
+    include Pinc_Interpreter_Types
+  end
 end
 
 module StringMap = struct
