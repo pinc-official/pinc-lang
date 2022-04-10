@@ -448,7 +448,7 @@ module Default = struct
             let allowed, disallowed =
               restrictions
               |> Array.to_list
-              |> List.partition_map (fun (name, _exists, negated) ->
+              |> List.partition_map (fun (name, _typ, negated) ->
                      if name = tag then is_in_list := true;
                      match negated with
                      | `Negated -> Either.right name
@@ -471,7 +471,7 @@ module Default = struct
                 ^ (instanceOf
                   |> Option.value ~default:[||]
                   |> Array.to_list
-                  |> List.map (fun (name, _exists, negated) ->
+                  |> List.map (fun (name, _typ, negated) ->
                          match negated with
                          | `Negated -> "!" ^ name
                          | `NotNegated -> name)

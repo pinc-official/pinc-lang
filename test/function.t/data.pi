@@ -31,22 +31,6 @@ component Component {
     }
   };
 
-  let fibonacci = fn (n) -> {
-      if (n <= 1) {
-        n
-      } else {
-        fibonacci(n - 1) + fibonacci(n - 2)
-      }
-  };
-
-  let factorial = fn (n) -> {
-    if (n <= 1) {
-      1
-    } else {
-      n * factorial(n - 1)
-    }
-  };
-
   let is_even = fn (i) -> {
     if(i == 0) {
       true
@@ -67,14 +51,14 @@ component Component {
     max(1, 5) = {max(1, 5)}
     min(1, 5) = {min(1, 5)}
     add_curry(1)(5) = {add_curry(1)(5)}
-    fibonacci(9) = {fibonacci(9)}
-    factorial(5) = {factorial(5)}
+    Math.fibonacci(9) = {Math.fibonacci(9)}
+    Math.factorial(5) = {Math.factorial(5)}
     is_even(10) = {is_even(10)}
     is_odd(10) = {is_odd(10)}
 
-    1 |> max(5) |> factorial = {1 |> max(5) |> factorial}
+    1 |> max(5) |> Math.factorial = {1 |> max(5) |> Math.factorial}
     1 |> add_curry(5)() = {1 |> add_curry(5)()}
-    5 |> factorial = {5 |> factorial}
+    5 |> Math.factorial = {5 |> Math.factorial}
 
     Map:
     {map(1...10, fn (item) -> item ** 2)}

@@ -517,6 +517,7 @@ module Rules = struct
     | ( Token.KEYWORD_SITE
       | Token.KEYWORD_PAGE
       | Token.KEYWORD_COMPONENT
+      | Token.KEYWORD_LIBRARY
       | Token.KEYWORD_STORE ) as typ ->
       next t;
       let identifier = Helpers.expect_identifier ~typ:`Upper t in
@@ -546,6 +547,8 @@ module Rules = struct
         | Token.KEYWORD_COMPONENT ->
           Some (identifier, Ast.ComponentDeclaration (attributes, body))
         | Token.KEYWORD_STORE -> Some (identifier, Ast.StoreDeclaration (attributes, body))
+        | Token.KEYWORD_LIBRARY ->
+          Some (identifier, Ast.LibraryDeclaration (attributes, body))
         | _ -> assert false))
     | Token.END_OF_INPUT -> None
     | _ -> assert false

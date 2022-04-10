@@ -96,8 +96,8 @@ module Value = struct
     | `Float _ -> true
     | `HtmlTemplateNode _ -> true
     | `ComponentTemplateNode _ -> true
-    | `DefinitionInfo (_name, `Exists, _negated) -> true
-    | `DefinitionInfo (_name, `DoesntExist, _negated) -> false
+    | `DefinitionInfo (_name, Some _, _negated) -> true
+    | `DefinitionInfo (_name, None, _negated) -> false
     | `Function _ -> true
     | `Array [||] -> false
     | `Array _ -> true
@@ -302,12 +302,24 @@ and eval_expression ~state = function
   | Ast.FunctionCall (left, arguments) -> eval_function_call ~state ~arguments left
   | Ast.UppercaseIdentifierExpression (Uppercase_Id id) ->
     let value = state.declarations |> StringMap.find_opt id in
-    let exists =
+    let typ =
       match value with
-      | None -> `DoesntExist
-      | Some _ -> `Exists
+      | None -> None
+      | Some (Ast.ComponentDeclaration _) -> Some `Component
+      | Some (Ast.PageDeclaration _) -> Some `Page
+      | Some (Ast.SiteDeclaration _) -> Some `Site
+      | Some (Ast.StoreDeclaration _) -> Some `Store
+      | Some (Ast.LibraryDeclaration _ as declaration) ->
+        (* 
+          NOTE: Do we really want to evaluate the library with the current state?
+                Or do we maybe want to create a fresh state?
+         *)
+        let top_level_bindings =
+          eval_declaration ~state declaration |> State.get_bindings
+        in
+        Some (`Library top_level_bindings)
     in
-    state |> State.add_output ~output:(`DefinitionInfo (id, exists, `NotNegated))
+    state |> State.add_output ~output:(`DefinitionInfo (id, typ, `NotNegated))
   | Ast.LowercaseIdentifierExpression (Lowercase_Id id) ->
     eval_lowercase_identifier ~state id
   | Ast.TagExpression tag -> eval_tag ~state tag
@@ -628,8 +640,15 @@ and eval_binary_dot_access ~state left right =
   | `Record _, _ ->
     failwith "Expected right hand side of record access to be a lowercase identifier."
   | `Null, _ -> state |> State.add_output ~output:`Null
+  | ( `DefinitionInfo (_name, Some (`Library top_level_bindings), _negated)
+    , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) ->
+    (match top_level_bindings |> List.assoc_opt b with
+    | None -> state |> State.add_output ~output:`Null
+    | Some binding -> state |> State.add_output ~output:binding.value)
+  | `DefinitionInfo (_name, None, _negated), _ ->
+    failwith "Trying to access a property on a non existant library."
   | _, Ast.LowercaseIdentifierExpression _ ->
-    failwith "Trying to access a property on a non record or template value."
+    failwith "Trying to access a property on a non record, library or template value."
   | _ -> failwith "I am really not sure what you are trying to do here..."
 
 and eval_binary_bracket_access ~state left right =
@@ -686,13 +705,13 @@ and eval_binary_merge ~state left right =
 
 and eval_unary_not ~state expression =
   match eval_expression ~state expression |> State.get_output with
-  | `DefinitionInfo (name, exists, negated) ->
+  | `DefinitionInfo (name, typ, negated) ->
     let negated =
       match negated with
       | `Negated -> `NotNegated
       | `NotNegated -> `Negated
     in
-    state |> State.add_output ~output:(`DefinitionInfo (name, exists, negated))
+    state |> State.add_output ~output:(`DefinitionInfo (name, typ, negated))
   | v -> state |> State.add_output ~output:(`Bool (not (Value.is_true v)))
 
 and eval_unary_minus ~state expression =
@@ -950,6 +969,7 @@ and eval_template ~state template =
 and eval_declaration ~state declaration =
   match declaration with
   | Ast.ComponentDeclaration (_attrs, body)
+  | Ast.LibraryDeclaration (_attrs, body)
   | Ast.SiteDeclaration (_attrs, body)
   | Ast.PageDeclaration (_attrs, body)
   | Ast.StoreDeclaration (_attrs, body) -> eval_expression ~state body

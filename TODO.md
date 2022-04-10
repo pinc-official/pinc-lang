@@ -10,9 +10,8 @@
 
 - Portals
 
-- A `library` type, for which all top level declarations inside are exported.
-
-- A way to include libraries into the namespace of another library. (See below for an example)
+- A way to include libraries into the namespace of another library. (See below for an example) (Multi-Level access,
+  include keyword)
 
 ## TODOs after feature completion:
 

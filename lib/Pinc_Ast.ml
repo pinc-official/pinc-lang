@@ -78,6 +78,7 @@ and statement =
 
 and declaration =
   | ComponentDeclaration of attributes option * expression
+  | LibraryDeclaration of attributes option * expression
   | SiteDeclaration of attributes option * expression
   | PageDeclaration of attributes option * expression
   | StoreDeclaration of attributes option * expression

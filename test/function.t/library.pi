@@ -1,0 +1,17 @@
+library Math {
+  let fibonacci = fn (n) -> {
+      if (n <= 1) {
+        n
+      } else {
+        fibonacci(n - 1) + fibonacci(n - 2)
+      }
+  };
+
+  let factorial = fn (n) -> {
+    if (n <= 1) {
+      1
+    } else {
+      n * factorial(n - 1)
+    }
+  };
+}

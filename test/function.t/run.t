@@ -3,14 +3,14 @@
       max(1, 5) = 5
       min(1, 5) = 1
       add_curry(1)(5) = 6
-      fibonacci(9) = 34
-      factorial(5) = 120
+      Math.fibonacci(9) = 34
+      Math.factorial(5) = 120
       is_even(10) = true
       is_odd(10) = false
   
-      1 |> max(5) |> factorial = 120
+      1 |> max(5) |> Math.factorial = 120
       1 |> add_curry(5)() = 6
-      5 |> factorial = 120
+      5 |> Math.factorial = 120
   
       Map:
       1

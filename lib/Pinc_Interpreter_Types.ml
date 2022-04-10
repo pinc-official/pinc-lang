@@ -13,7 +13,10 @@ type value =
   | `ComponentTemplateNode of (value StringMap.t -> value) * string * value StringMap.t
   ]
 
-and definition_info = string * [ `Exists | `DoesntExist ] * [ `Negated | `NotNegated ]
+and definition_info =
+  string
+  * [ `Component | `Site | `Page | `Store | `Library of (string * binding) list ] option
+  * [ `Negated | `NotNegated ]
 
 and function_info =
   { parameters : string list

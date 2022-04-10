@@ -61,6 +61,7 @@ type token_type =
   | KEYWORD_BREAK
   | KEYWORD_CONTINUE
   | KEYWORD_COMPONENT
+  | KEYWORD_LIBRARY
   | KEYWORD_SITE
   | KEYWORD_PAGE
   | KEYWORD_STORE
@@ -142,6 +143,7 @@ let to_string = function
   | KEYWORD_BREAK -> "break"
   | KEYWORD_CONTINUE -> "continue"
   | KEYWORD_COMPONENT -> "component"
+  | KEYWORD_LIBRARY -> "library"
   | KEYWORD_SITE -> "site"
   | KEYWORD_PAGE -> "page"
   | KEYWORD_STORE -> "store"
@@ -170,6 +172,7 @@ let is_keyword = function
   | KEYWORD_BREAK
   | KEYWORD_CONTINUE
   | KEYWORD_COMPONENT
+  | KEYWORD_LIBRARY
   | KEYWORD_SITE
   | KEYWORD_PAGE
   | KEYWORD_STORE -> true
@@ -246,6 +249,7 @@ let keyword_of_string = function
   | "break" -> Some KEYWORD_BREAK
   | "continue" -> Some KEYWORD_CONTINUE
   | "component" -> Some KEYWORD_COMPONENT
+  | "library" -> Some KEYWORD_LIBRARY
   | "site" -> Some KEYWORD_SITE
   | "page" -> Some KEYWORD_PAGE
   | "store" -> Some KEYWORD_STORE
