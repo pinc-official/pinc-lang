@@ -1,17 +1,16 @@
 type value =
-  [ `Null
-  | `String of string
-  | `Int of int
-  | `Float of float
-  | `Bool of bool
-  | `Array of value array
-  | `Record of value StringMap.t
-  | `Function of function_info
-  | `DefinitionInfo of definition_info
-  | `TagInfo of tag_info
-  | `HtmlTemplateNode of string * value StringMap.t * value list * bool
-  | `ComponentTemplateNode of (value StringMap.t -> value) * string * value StringMap.t
-  ]
+  | Null
+  | String of string
+  | Int of int
+  | Float of float
+  | Bool of bool
+  | Array of value array
+  | Record of value StringMap.t
+  | Function of function_info
+  | DefinitionInfo of definition_info
+  | TagInfo of tag_info
+  | HtmlTemplateNode of string * value StringMap.t * value list * bool
+  | ComponentTemplateNode of (value StringMap.t -> value) * string * value StringMap.t
 
 and definition_info =
   string

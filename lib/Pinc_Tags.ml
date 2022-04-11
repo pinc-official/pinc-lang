@@ -11,21 +11,21 @@ module Default = struct
   let string =
     let validate _info value =
       match value with
-      | `TagInfo _ ->
+      | TagInfo _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Int _ -> Result.error "tried to assign integer value to a string tag."
-      | `Float _ -> Result.error "tried to assign float value to a string tag."
-      | `Bool _ -> Result.error "tried to assign boolean value to a string tag."
-      | `Array _ -> Result.error "tried to assign array value to a string tag."
-      | `Record _ -> Result.error "tried to assign record value to a string tag."
-      | `HtmlTemplateNode _ ->
+      | Int _ -> Result.error "tried to assign integer value to a string tag."
+      | Float _ -> Result.error "tried to assign float value to a string tag."
+      | Bool _ -> Result.error "tried to assign boolean value to a string tag."
+      | Array _ -> Result.error "tried to assign array value to a string tag."
+      | Record _ -> Result.error "tried to assign record value to a string tag."
+      | HtmlTemplateNode _ ->
         Result.error "tried to assign template node to a string tag."
-      | `ComponentTemplateNode _ ->
+      | ComponentTemplateNode _ ->
         Result.error "tried to assign template node to a string tag."
-      | `DefinitionInfo _ ->
+      | DefinitionInfo _ ->
         Result.error "tried to assign definition info to a string tag."
-      | `Function _ -> Result.error "tried to assign function to a string tag."
-      | (`Null | `String _) as v -> Result.ok v
+      | Function _ -> Result.error "tried to assign function to a string tag."
+      | (Null | String _) as v -> Result.ok v
     in
     let get_value state key =
       match state.parent_component with
@@ -39,16 +39,16 @@ module Default = struct
         StringMap.find_opt "key" attributes
         |> function
         | None -> failwith "Expected attribute `key` to exist on #String"
-        | Some (`String s) -> s
+        | Some (String s) -> s
         | Some _ -> failwith "Expected attribute `key` #String to be of type string"
       in
       let default = StringMap.find_opt "default" attributes in
       key
       |> self.get_value state
       |> (function
-           | None | Some `Null -> default
+           | None | Some Null -> default
            | Some v -> Some v)
-      |> Option.value ~default:`Null
+      |> Option.value ~default:Null
       |> self.validate info
       |> Result.map (self.transform info)
     in
@@ -58,19 +58,19 @@ module Default = struct
   let int =
     let validate _info value =
       match value with
-      | `TagInfo _ ->
+      | TagInfo _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Float _ -> Result.error "tried to assign float value to a int tag."
-      | `Bool _ -> Result.error "tried to assign boolean value to a int tag."
-      | `Array _ -> Result.error "tried to assign array value to a int tag."
-      | `String _ -> Result.error "tried to assign string value to a int tag."
-      | `Record _ -> Result.error "tried to assign record value to a int tag."
-      | `HtmlTemplateNode _ -> Result.error "tried to assign template node to a int tag."
-      | `ComponentTemplateNode _ ->
+      | Float _ -> Result.error "tried to assign float value to a int tag."
+      | Bool _ -> Result.error "tried to assign boolean value to a int tag."
+      | Array _ -> Result.error "tried to assign array value to a int tag."
+      | String _ -> Result.error "tried to assign string value to a int tag."
+      | Record _ -> Result.error "tried to assign record value to a int tag."
+      | HtmlTemplateNode _ -> Result.error "tried to assign template node to a int tag."
+      | ComponentTemplateNode _ ->
         Result.error "tried to assign template node to a int tag."
-      | `DefinitionInfo _ -> Result.error "tried to assign definition info to a int tag."
-      | `Function _ -> Result.error "tried to assign function to a int tag."
-      | (`Null | `Int _) as v -> Result.ok v
+      | DefinitionInfo _ -> Result.error "tried to assign definition info to a int tag."
+      | Function _ -> Result.error "tried to assign function to a int tag."
+      | (Null | Int _) as v -> Result.ok v
     in
     let get_value state key =
       match state.parent_component with
@@ -84,16 +84,16 @@ module Default = struct
         StringMap.find_opt "key" attributes
         |> function
         | None -> failwith "Expected attribute `key` to exist on #Int"
-        | Some (`String s) -> s
+        | Some (String s) -> s
         | Some _ -> failwith "Expected attribute `key` #Int to be of type string"
       in
       let default = StringMap.find_opt "default" attributes in
       key
       |> self.get_value state
       |> (function
-           | None | Some `Null -> default
+           | None | Some Null -> default
            | Some v -> Some v)
-      |> Option.value ~default:`Null
+      |> Option.value ~default:Null
       |> self.validate info
       |> Result.map (self.transform info)
     in
@@ -103,21 +103,19 @@ module Default = struct
   let float =
     let validate _info value =
       match value with
-      | `TagInfo _ ->
+      | TagInfo _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Bool _ -> Result.error "tried to assign boolean value to a float tag."
-      | `Array _ -> Result.error "tried to assign array value to a float tag."
-      | `String _ -> Result.error "tried to assign string value to a float tag."
-      | `Int _ -> Result.error "tried to assign int value to a float tag."
-      | `Record _ -> Result.error "tried to assign record value to a float tag."
-      | `HtmlTemplateNode _ ->
+      | Bool _ -> Result.error "tried to assign boolean value to a float tag."
+      | Array _ -> Result.error "tried to assign array value to a float tag."
+      | String _ -> Result.error "tried to assign string value to a float tag."
+      | Int _ -> Result.error "tried to assign int value to a float tag."
+      | Record _ -> Result.error "tried to assign record value to a float tag."
+      | HtmlTemplateNode _ -> Result.error "tried to assign template node to a float tag."
+      | ComponentTemplateNode _ ->
         Result.error "tried to assign template node to a float tag."
-      | `ComponentTemplateNode _ ->
-        Result.error "tried to assign template node to a float tag."
-      | `DefinitionInfo _ ->
-        Result.error "tried to assign definition info to a float tag."
-      | `Function _ -> Result.error "tried to assign function to a float tag."
-      | (`Null | `Float _) as v -> Result.ok v
+      | DefinitionInfo _ -> Result.error "tried to assign definition info to a float tag."
+      | Function _ -> Result.error "tried to assign function to a float tag."
+      | (Null | Float _) as v -> Result.ok v
     in
     let get_value state key =
       match state.parent_component with
@@ -131,16 +129,16 @@ module Default = struct
         StringMap.find_opt "key" attributes
         |> function
         | None -> failwith "Expected attribute `key` to exist on #Float"
-        | Some (`String s) -> s
+        | Some (String s) -> s
         | Some _ -> failwith "Expected attribute `key` #Float to be of type string"
       in
       let default = StringMap.find_opt "default" attributes in
       key
       |> self.get_value state
       |> (function
-           | None | Some `Null -> default
+           | None | Some Null -> default
            | Some v -> Some v)
-      |> Option.value ~default:`Null
+      |> Option.value ~default:Null
       |> self.validate info
       |> Result.map (self.transform info)
     in
@@ -150,21 +148,21 @@ module Default = struct
   let boolean =
     let validate _info value =
       match value with
-      | `TagInfo _ ->
+      | TagInfo _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Array _ -> Result.error "tried to assign array value to a boolean tag."
-      | `String _ -> Result.error "tried to assign string value to a boolean tag."
-      | `Int _ -> Result.error "tried to assign int value to a boolean tag."
-      | `Float _ -> Result.error "tried to assign float value to a boolean tag."
-      | `Record _ -> Result.error "tried to assign record value to a boolean tag."
-      | `HtmlTemplateNode _ ->
+      | Array _ -> Result.error "tried to assign array value to a boolean tag."
+      | String _ -> Result.error "tried to assign string value to a boolean tag."
+      | Int _ -> Result.error "tried to assign int value to a boolean tag."
+      | Float _ -> Result.error "tried to assign float value to a boolean tag."
+      | Record _ -> Result.error "tried to assign record value to a boolean tag."
+      | HtmlTemplateNode _ ->
         Result.error "tried to assign template node to a boolean tag."
-      | `ComponentTemplateNode _ ->
+      | ComponentTemplateNode _ ->
         Result.error "tried to assign template node to a boolean tag."
-      | `DefinitionInfo _ ->
+      | DefinitionInfo _ ->
         Result.error "tried to assign definition info to a boolean tag."
-      | `Function _ -> Result.error "tried to assign function to a boolean tag."
-      | (`Null | `Bool _) as v -> Result.ok v
+      | Function _ -> Result.error "tried to assign function to a boolean tag."
+      | (Null | Bool _) as v -> Result.ok v
     in
     let get_value state key =
       match state.parent_component with
@@ -178,16 +176,16 @@ module Default = struct
         StringMap.find_opt "key" attributes
         |> function
         | None -> failwith "Expected attribute `key` to exist on #Boolean"
-        | Some (`String s) -> s
+        | Some (String s) -> s
         | Some _ -> failwith "Expected attribute `key` #Boolean to be of type string"
       in
       let default = StringMap.find_opt "default" attributes in
       key
       |> self.get_value state
       |> (function
-           | None | Some `Null -> default
+           | None | Some Null -> default
            | Some v -> Some v)
-      |> Option.value ~default:`Null
+      |> Option.value ~default:Null
       |> self.validate info
       |> Result.map (self.transform info)
     in
@@ -197,21 +195,19 @@ module Default = struct
   let array =
     let validate _info value =
       match value with
-      | `TagInfo _ ->
+      | TagInfo _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Bool _ -> Result.error "tried to assign boolean value to a array tag."
-      | `String _ -> Result.error "tried to assign string value to a array tag."
-      | `Int _ -> Result.error "tried to assign int value to a array tag."
-      | `Float _ -> Result.error "tried to assign float value to a array tag."
-      | `Record _ -> Result.error "tried to assign record value to a array tag."
-      | `HtmlTemplateNode _ ->
+      | Bool _ -> Result.error "tried to assign boolean value to a array tag."
+      | String _ -> Result.error "tried to assign string value to a array tag."
+      | Int _ -> Result.error "tried to assign int value to a array tag."
+      | Float _ -> Result.error "tried to assign float value to a array tag."
+      | Record _ -> Result.error "tried to assign record value to a array tag."
+      | HtmlTemplateNode _ -> Result.error "tried to assign template node to a array tag."
+      | ComponentTemplateNode _ ->
         Result.error "tried to assign template node to a array tag."
-      | `ComponentTemplateNode _ ->
-        Result.error "tried to assign template node to a array tag."
-      | `DefinitionInfo _ ->
-        Result.error "tried to assign definition info to a array tag."
-      | `Function _ -> Result.error "tried to assign function to a array tag."
-      | (`Null | `Array _) as v -> Result.ok v
+      | DefinitionInfo _ -> Result.error "tried to assign definition info to a array tag."
+      | Function _ -> Result.error "tried to assign function to a array tag."
+      | (Null | Array _) as v -> Result.ok v
     in
     let get_value state key =
       match state.parent_component with
@@ -225,14 +221,14 @@ module Default = struct
         StringMap.find_opt "key" attributes
         |> function
         | None -> failwith "Expected attribute `key` to exist on #Array"
-        | Some (`String s) -> s
+        | Some (String s) -> s
         | Some _ -> failwith "Expected attribute `key` #Array to be of type string"
       in
       let of_info =
         StringMap.find_opt "of" attributes
         |> function
         | None -> failwith "Expected attribute `of` to exist on #Array"
-        | Some (`TagInfo i) -> i
+        | Some (TagInfo i) -> i
         | Some _ ->
           failwith
             "Expected attribute `of` #Array to be a tag describing the type of the items \
@@ -252,13 +248,13 @@ module Default = struct
         key
         |> self.get_value state
         |> (function
-             | None | Some `Null -> default
+             | None | Some Null -> default
              | Some v -> Some v)
-        |> Option.value ~default:`Null
+        |> Option.value ~default:Null
         |> self.validate info
       in
       Result.bind validated_data (function
-          | `Array a ->
+          | Array a ->
             let rec loop acc list =
               match acc, list with
               | Error e, _ -> Result.error e
@@ -279,8 +275,8 @@ module Default = struct
             |> loop (Result.ok [])
             |> Result.map List.rev
             |> Result.map Array.of_list
-            |> Result.map (fun a -> `Array a)
-          | `Null -> Result.ok `Null
+            |> Result.map (fun a -> Array a)
+          | Null -> Result.ok Null
           | _ -> failwith "tried to assign non array value to array tag.")
       |> Result.map (self.transform info)
     in
@@ -290,21 +286,21 @@ module Default = struct
   let record =
     let validate _info value =
       match value with
-      | `TagInfo _ ->
+      | TagInfo _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Bool _ -> Result.error "tried to assign boolean value to a record tag."
-      | `String _ -> Result.error "tried to assign string value to a record tag."
-      | `Int _ -> Result.error "tried to assign int value to a record tag."
-      | `Float _ -> Result.error "tried to assign float value to a record tag."
-      | `Array _ -> Result.error "tried to assign array value to a record tag."
-      | `HtmlTemplateNode _ ->
+      | Bool _ -> Result.error "tried to assign boolean value to a record tag."
+      | String _ -> Result.error "tried to assign string value to a record tag."
+      | Int _ -> Result.error "tried to assign int value to a record tag."
+      | Float _ -> Result.error "tried to assign float value to a record tag."
+      | Array _ -> Result.error "tried to assign array value to a record tag."
+      | HtmlTemplateNode _ ->
         Result.error "tried to assign template node to a record tag."
-      | `ComponentTemplateNode _ ->
+      | ComponentTemplateNode _ ->
         Result.error "tried to assign template node to a record tag."
-      | `DefinitionInfo _ ->
+      | DefinitionInfo _ ->
         Result.error "tried to assign definition info to a record tag."
-      | `Function _ -> Result.error "tried to assign function to a record tag."
-      | (`Null | `Record _) as v -> Result.ok v
+      | Function _ -> Result.error "tried to assign function to a record tag."
+      | (Null | Record _) as v -> Result.ok v
     in
     let get_value state key =
       match state.parent_component with
@@ -318,17 +314,17 @@ module Default = struct
         StringMap.find_opt "key" attributes
         |> function
         | None -> failwith "Expected attribute `key` to exist on #Record"
-        | Some (`String s) -> s
+        | Some (String s) -> s
         | Some _ -> failwith "Expected attribute `key` #Record to be of type string"
       in
       let of' =
         StringMap.find_opt "of" attributes
         |> function
         | None -> failwith "Expected attribute `of` to exist on #Record"
-        | Some (`Record r) ->
+        | Some (Record r) ->
           r
           |> StringMap.filter_map (fun _key -> function
-               | `TagInfo i -> Some i
+               | TagInfo i -> Some i
                | _ -> None)
         | Some _ ->
           failwith
@@ -339,13 +335,13 @@ module Default = struct
       key
       |> self.get_value state
       |> (function
-           | None | Some `Null -> default
+           | None | Some Null -> default
            | Some v -> Some v)
-      |> Option.value ~default:`Null
+      |> Option.value ~default:Null
       |> self.validate info
       |> Result.map (function
-             | `Record r ->
-               `Record
+             | Record r ->
+               Record
                  (r
                  |> StringMap.mapi (fun key value ->
                         of'
@@ -369,7 +365,7 @@ module Default = struct
                           | Error e -> failwith e
                           | Ok value -> value |> of_handler.transform of_info)
                         | None -> value))
-             | `Null -> `Null
+             | Null -> Null
              | _ -> failwith "Tried to assign non record value to a record tag.")
       |> Result.map (self.transform info)
     in
@@ -382,9 +378,9 @@ module Default = struct
       let min =
         attributes
         |> StringMap.find_opt "min"
-        |> Option.value ~default:(`Int 0)
+        |> Option.value ~default:(Int 0)
         |> function
-        | `Int i -> i
+        | Int i -> i
         | _ -> failwith "Expected attribute `min` on #Slot to be of type int."
       in
       let max =
@@ -392,7 +388,7 @@ module Default = struct
         |> StringMap.find_opt "max"
         |> function
         | None -> Int.max_int
-        | Some (`Int i) -> i
+        | Some (Int i) -> i
         | _ -> failwith "Expected attribute `max` on #Slot to be of type int."
       in
       let instanceOf =
@@ -400,11 +396,11 @@ module Default = struct
         |> StringMap.find_opt "instanceOf"
         |> function
         | None -> None
-        | Some (`Array l) ->
+        | Some (Array l) ->
           Some
             (l
             |> Array.map (function
-                   | `DefinitionInfo info -> info
+                   | DefinitionInfo info -> info
                    | _ ->
                      failwith
                        "Expected attribute `instanceOf` on #Slot to be an array of \
@@ -412,34 +408,34 @@ module Default = struct
         | _ -> failwith "Expected attribute `instanceOf` on #Slot to be an array."
       in
       match value with
-      | `TagInfo _ ->
+      | TagInfo _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Bool _ -> Result.error "tried to assign boolean value to slot."
-      | `String _ -> Result.error "tried to assign string value to slot."
-      | `Int _ -> Result.error "tried to assign int value to slot."
-      | `Float _ -> Result.error "tried to assign float value to slot."
-      | `Record _ -> Result.error "tried to assign record value to slot."
-      | `HtmlTemplateNode _ -> Result.error "tried to assign template node to slot."
-      | `ComponentTemplateNode _ -> Result.error "tried to assign template node to slot."
-      | `DefinitionInfo _ -> Result.error "tried to assign definition info to slot."
-      | `Function _ -> Result.error "tried to assign function to slot."
-      | `Null as v -> Result.ok v
-      | `Array a when Array.length a < min ->
+      | Bool _ -> Result.error "tried to assign boolean value to slot."
+      | String _ -> Result.error "tried to assign string value to slot."
+      | Int _ -> Result.error "tried to assign int value to slot."
+      | Float _ -> Result.error "tried to assign float value to slot."
+      | Record _ -> Result.error "tried to assign record value to slot."
+      | HtmlTemplateNode _ -> Result.error "tried to assign template node to slot."
+      | ComponentTemplateNode _ -> Result.error "tried to assign template node to slot."
+      | DefinitionInfo _ -> Result.error "tried to assign definition info to slot."
+      | Function _ -> Result.error "tried to assign function to slot."
+      | Null as v -> Result.ok v
+      | Array a when Array.length a < min ->
         Result.error
           ("#Slot did not reach the minimum amount of nodes (specified as "
           ^ string_of_int min
           ^ ").")
-      | `Array a when Array.length a < min ->
+      | Array a when Array.length a < min ->
         Result.error
           ("#Slot did not reach the minimum amount of nodes (specified as "
           ^ string_of_int min
           ^ ").")
-      | `Array a when Array.length a > max ->
+      | Array a when Array.length a > max ->
         Result.error
           ("#Slot includes more than the maximum amount of nodes (specified as "
           ^ string_of_int max
           ^ ").")
-      | `Array a ->
+      | Array a ->
         let check_instance_restriction tag =
           match instanceOf with
           | None -> Result.ok ()
@@ -483,7 +479,7 @@ module Default = struct
           a
           |> Array.to_list
           |> List.partition_map (function
-                 | (`HtmlTemplateNode (tag, _, _, _) | `ComponentTemplateNode (_, tag, _))
+                 | (HtmlTemplateNode (tag, _, _, _) | ComponentTemplateNode (_, tag, _))
                    as v ->
                    (match check_instance_restriction tag with
                    | Ok () -> Either.left v
@@ -495,29 +491,29 @@ module Default = struct
                       (like a string) into a slot, you have to wrap it in some node.")
         in
         (match failed with
-        | [] -> `Array (passed |> Array.of_list) |> Result.ok
+        | [] -> Array (passed |> Array.of_list) |> Result.ok
         | hd :: _tl -> Result.error hd)
     in
     let get_value state key =
       let find_slot_key attributes =
         attributes
         |> StringMap.find_opt "slot"
-        |> Option.value ~default:(`String "")
+        |> Option.value ~default:(String "")
         |> function
-        | `String s -> s
+        | String s -> s
         | _ -> failwith "Expected slot attribute to be of type string"
       in
       let rec keep_slotted acc = function
-        | `HtmlTemplateNode (tag, attributes, children, self_closing) ->
+        | HtmlTemplateNode (tag, attributes, children, self_closing) ->
           if find_slot_key attributes = key
-          then `HtmlTemplateNode (tag, attributes, children, self_closing) :: acc
+          then HtmlTemplateNode (tag, attributes, children, self_closing) :: acc
           else acc
-        | `ComponentTemplateNode (fn, tag, attributes) ->
+        | ComponentTemplateNode (fn, tag, attributes) ->
           if find_slot_key attributes = key
-          then `ComponentTemplateNode (fn, tag, attributes) :: acc
+          then ComponentTemplateNode (fn, tag, attributes) :: acc
           else acc
-        | `Array l -> l |> Array.fold_left keep_slotted acc
-        | `String s when String.trim s = "" -> acc
+        | Array l -> l |> Array.fold_left keep_slotted acc
+        | String s when String.trim s = "" -> acc
         | _ ->
           failwith
             "Only nodes may be placed into slots. If you want to put a plain text into a \
@@ -530,21 +526,21 @@ module Default = struct
         |> List.fold_left keep_slotted []
         |> (function
         | [] -> None
-        | list -> Some (`Array (list |> List.rev |> Array.of_list)))
+        | list -> Some (Array (list |> List.rev |> Array.of_list)))
     in
     let eval ~self state info =
       let _name, _optional, attributes, _transformer = info in
       let slot_name =
         attributes
         |> StringMap.find_opt "name"
-        |> Option.value ~default:(`String "")
+        |> Option.value ~default:(String "")
         |> function
-        | `String s -> s
+        | String s -> s
         | _ -> failwith "Expected attribute `name` on #Slot to be of type string."
       in
       slot_name
       |> self.get_value state
-      |> Option.value ~default:(`Array [||])
+      |> Option.value ~default:(Array [||])
       |> self.validate info
       |> Result.map (self.transform info)
     in
@@ -554,38 +550,38 @@ module Default = struct
   let set_context =
     let validate _info value =
       match value with
-      | `TagInfo _ ->
+      | TagInfo _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Bool _ ->
+      | Bool _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `String _ ->
+      | String _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Int _ ->
+      | Int _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Float _ ->
+      | Float _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Array _ ->
+      | Array _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `HtmlTemplateNode _ ->
+      | HtmlTemplateNode _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `ComponentTemplateNode _ ->
+      | ComponentTemplateNode _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `DefinitionInfo _ ->
+      | DefinitionInfo _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Function _ ->
+      | Function _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Record _ ->
+      | Record _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | `Null -> Result.ok `Null
+      | Null -> Result.ok Null
     in
-    let get_value _state _key = Some `Null in
+    let get_value _state _key = Some Null in
     let eval ~self state info =
       let _name, _optional, attributes, _transformer = info in
       let name =
         attributes
         |> StringMap.find_opt "name"
         |> function
-        | Some (`String s) -> s
+        | Some (String s) -> s
         | None -> failwith "attribute name is required when setting a context."
         | Some _ ->
           failwith "Expected attribute `name` on #SetContext to be of type string."
@@ -600,7 +596,7 @@ module Default = struct
       Hashtbl.add state.context name value;
       name
       |> self.get_value state
-      |> Option.value ~default:`Null
+      |> Option.value ~default:Null
       |> self.validate info
       |> Result.map (self.transform info)
     in
@@ -610,19 +606,19 @@ module Default = struct
   let get_context =
     let validate _info value =
       match value with
-      | `TagInfo _ ->
+      | TagInfo _ ->
         Result.error "Something unexpected happened...this is my fault, not yours"
-      | ( `Bool _
-        | `String _
-        | `Int _
-        | `Float _
-        | `Array _
-        | `HtmlTemplateNode _
-        | `ComponentTemplateNode _
-        | `DefinitionInfo _
-        | `Function _
-        | `Record _
-        | `Null ) as v -> Result.ok v
+      | ( Bool _
+        | String _
+        | Int _
+        | Float _
+        | Array _
+        | HtmlTemplateNode _
+        | ComponentTemplateNode _
+        | DefinitionInfo _
+        | Function _
+        | Record _
+        | Null ) as v -> Result.ok v
     in
     let get_value state key = Hashtbl.find_opt state.context key in
     let eval ~self state info =
@@ -631,7 +627,7 @@ module Default = struct
         attributes
         |> StringMap.find_opt "name"
         |> function
-        | Some (`String s) -> s
+        | Some (String s) -> s
         | None -> failwith "attribute name is required when getting a context."
         | Some _ ->
           failwith "Expected attribute `name` on #GetContext to be of type string."
@@ -640,9 +636,9 @@ module Default = struct
       name
       |> self.get_value state
       |> (function
-           | None | Some `Null -> default
+           | None | Some Null -> default
            | Some v -> Some v)
-      |> Option.value ~default:`Null
+      |> Option.value ~default:Null
       |> self.validate info
       |> Result.map (self.transform info)
     in

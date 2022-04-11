@@ -11,40 +11,41 @@ let should_never_happen () =
 ;;
 
 module Value = struct
-  let null () = `Null
-  let of_string s = `String s
-  let of_bool b = `Bool b
-  let of_int i = `Int i
-  let of_float f = `Float f
-  let of_list l = `Array (Array.of_list l)
-  let of_string_map m = `Record m
+  let null () = Null
+  let of_string s = String s
+  let of_bool b = Bool b
+  let of_int i = Int i
+  let of_float f = Float f
+  let of_array l = Array l
+  let of_list l = Array (Array.of_list l)
+  let of_string_map m = Record m
 
   let make_component ~render ~tag ~attributes =
-    `ComponentTemplateNode (render, tag, attributes)
+    ComponentTemplateNode (render, tag, attributes)
   ;;
 
   let rec to_string = function
-    | `Null -> ""
-    | `String s -> s
-    | `Int i -> string_of_int i
-    | `Float f when Float.is_integer f -> string_of_int (int_of_float f)
-    | `Float f -> string_of_float f
-    | `Bool b -> if b then "true" else "false"
-    | `Array l ->
+    | Null -> ""
+    | String s -> s
+    | Int i -> string_of_int i
+    | Float f when Float.is_integer f -> string_of_int (int_of_float f)
+    | Float f -> string_of_float f
+    | Bool b -> if b then "true" else "false"
+    | Array l ->
       let buf = Buffer.create 200 in
       l
       |> Array.iteri (fun i it ->
              if i <> 0 then Buffer.add_char buf '\n';
              Buffer.add_string buf (to_string it));
       Buffer.contents buf
-    | `Record m ->
+    | Record m ->
       let b = Buffer.create 1024 in
       m
       |> StringMap.iter (fun _key value ->
              Buffer.add_string b (to_string value);
              Buffer.add_char b '\n');
       Buffer.contents b
-    | `HtmlTemplateNode (tag, attributes, children, self_closing) ->
+    | HtmlTemplateNode (tag, attributes, children, self_closing) ->
       let buf = Buffer.create 128 in
       Buffer.add_char buf '<';
       Buffer.add_string buf tag;
@@ -53,24 +54,24 @@ module Value = struct
         attributes
         |> StringMap.iter (fun key value ->
                match value with
-               | `Null -> ()
-               | `Function _
-               | `String _
-               | `Int _
-               | `Float _
-               | `Bool _
-               | `Array _
-               | `Record _
-               | `HtmlTemplateNode _
-               | `ComponentTemplateNode _
-               | `DefinitionInfo _ ->
+               | Null -> ()
+               | Function _
+               | String _
+               | Int _
+               | Float _
+               | Bool _
+               | Array _
+               | Record _
+               | HtmlTemplateNode _
+               | ComponentTemplateNode _
+               | DefinitionInfo _ ->
                  Buffer.add_char buf ' ';
                  Buffer.add_string buf key;
                  Buffer.add_char buf '=';
                  Buffer.add_char buf '"';
                  Buffer.add_string buf (value |> to_string);
                  Buffer.add_char buf '"'
-               | `TagInfo _ -> assert false);
+               | TagInfo _ -> assert false);
       if self_closing && Pinc_HTML.is_void_el tag
       then Buffer.add_string buf " />"
       else (
@@ -81,74 +82,74 @@ module Value = struct
         Buffer.add_string buf tag;
         Buffer.add_char buf '>');
       Buffer.contents buf
-    | `ComponentTemplateNode (render_fn, _tag, attributes) ->
+    | ComponentTemplateNode (render_fn, _tag, attributes) ->
       attributes |> render_fn |> to_string
-    | `Function _ -> ""
-    | `DefinitionInfo _ -> ""
-    | `TagInfo _ -> assert false
+    | Function _ -> ""
+    | DefinitionInfo _ -> ""
+    | TagInfo _ -> assert false
   ;;
 
   let is_true = function
-    | `Null -> false
-    | `Bool b -> b
-    | `String s -> s |> String.trim |> String.length > 0
-    | `Int _ -> true
-    | `Float _ -> true
-    | `HtmlTemplateNode _ -> true
-    | `ComponentTemplateNode _ -> true
-    | `DefinitionInfo (_name, Some _, _negated) -> true
-    | `DefinitionInfo (_name, None, _negated) -> false
-    | `Function _ -> true
-    | `Array [||] -> false
-    | `Array _ -> true
-    | `Record m -> not (StringMap.is_empty m)
-    | `TagInfo _ -> assert false
+    | Null -> false
+    | Bool b -> b
+    | String s -> s |> String.trim |> String.length > 0
+    | Int _ -> true
+    | Float _ -> true
+    | HtmlTemplateNode _ -> true
+    | ComponentTemplateNode _ -> true
+    | DefinitionInfo (_name, Some _, _negated) -> true
+    | DefinitionInfo (_name, None, _negated) -> false
+    | Function _ -> true
+    | Array [||] -> false
+    | Array _ -> true
+    | Record m -> not (StringMap.is_empty m)
+    | TagInfo _ -> assert false
   ;;
 
   let rec equal a b =
     match a, b with
-    | `String a, `String b -> String.equal a b
-    | `Int a, `Int b -> a = b
-    | `Float a, `Float b -> a = b
-    | `Float a, `Int b -> a = float_of_int b
-    | `Int a, `Float b -> float_of_int a = b
-    | `Bool a, `Bool b -> a = b
-    | `Array a, `Array b -> a = b
-    | `Record a, `Record b -> StringMap.equal equal a b
-    | `Function _, `Function _ -> false
-    | `DefinitionInfo (a, _, _), `DefinitionInfo (b, _, _) -> String.equal a b
-    | ( `HtmlTemplateNode (a_tag, a_attrs, a_children, a_self_closing)
-      , `HtmlTemplateNode (b_tag, b_attrs, b_children, b_self_closing) ) ->
+    | String a, String b -> String.equal a b
+    | Int a, Int b -> a = b
+    | Float a, Float b -> a = b
+    | Float a, Int b -> a = float_of_int b
+    | Int a, Float b -> float_of_int a = b
+    | Bool a, Bool b -> a = b
+    | Array a, Array b -> a = b
+    | Record a, Record b -> StringMap.equal equal a b
+    | Function _, Function _ -> false
+    | DefinitionInfo (a, _, _), DefinitionInfo (b, _, _) -> String.equal a b
+    | ( HtmlTemplateNode (a_tag, a_attrs, a_children, a_self_closing)
+      , HtmlTemplateNode (b_tag, b_attrs, b_children, b_self_closing) ) ->
       a_tag = b_tag
       && a_self_closing = b_self_closing
       && StringMap.equal equal a_attrs b_attrs
       && a_children = b_children
-    | ( `ComponentTemplateNode (_, a_tag, a_attributes)
-      , `ComponentTemplateNode (_, b_tag, b_attributes) ) ->
+    | ( ComponentTemplateNode (_, a_tag, a_attributes)
+      , ComponentTemplateNode (_, b_tag, b_attributes) ) ->
       a_tag = b_tag && StringMap.equal equal a_attributes b_attributes
-    | `Null, `Null -> true
-    | `TagInfo _, _ -> assert false
-    | _, `TagInfo _ -> assert false
+    | Null, Null -> true
+    | TagInfo _, _ -> assert false
+    | _, TagInfo _ -> assert false
     | _ -> false
   ;;
 
   let rec compare a b =
     match a, b with
-    | `String a, `String b -> String.compare a b
-    | `Int a, `Int b -> Int.compare a b
-    | `Float a, `Float b -> Float.compare a b
-    | `Float a, `Int b -> Float.compare a (float_of_int b)
-    | `Int a, `Float b -> Float.compare (float_of_int a) b
-    | `Bool a, `Bool b -> Bool.compare a b
-    | `Array a, `Array b -> Int.compare (Array.length a) (Array.length b)
-    | `Record a, `Record b -> StringMap.compare compare a b
-    | `Null, `Null -> 0
-    | `ComponentTemplateNode _, `ComponentTemplateNode _ -> 0
-    | `HtmlTemplateNode _, `HtmlTemplateNode _ -> 0
-    | `DefinitionInfo _, `DefinitionInfo _ -> 0
-    | `Function _, `Function _ -> 0
-    | `TagInfo _, _ -> assert false
-    | _, `TagInfo _ -> assert false
+    | String a, String b -> String.compare a b
+    | Int a, Int b -> Int.compare a b
+    | Float a, Float b -> Float.compare a b
+    | Float a, Int b -> Float.compare a (float_of_int b)
+    | Int a, Float b -> Float.compare (float_of_int a) b
+    | Bool a, Bool b -> Bool.compare a b
+    | Array a, Array b -> Int.compare (Array.length a) (Array.length b)
+    | Record a, Record b -> StringMap.compare compare a b
+    | Null, Null -> 0
+    | ComponentTemplateNode _, ComponentTemplateNode _ -> 0
+    | HtmlTemplateNode _, HtmlTemplateNode _ -> 0
+    | DefinitionInfo _, DefinitionInfo _ -> 0
+    | Function _, Function _ -> 0
+    | TagInfo _, _ -> assert false
+    | _, TagInfo _ -> assert false
     | _ -> assert false
   ;;
 end
@@ -162,7 +163,7 @@ module State = struct
     =
     { binding_identifier = None
     ; declarations
-    ; output = `Null
+    ; output = Null
     ; environment = { scope = [] }
     ; tag_listeners
     ; tag_info = false
@@ -197,13 +198,13 @@ module State = struct
                   updated := true;
                   key, { binding with value }
                 | ( key
-                  , ({ value = `Function { state = fn_state; parameters; exec }; _ } as
+                  , ({ value = Function { state = fn_state; parameters; exec }; _ } as
                     binding) )
                   when not !updated ->
                   fn_state.environment.scope <- update_scope fn_state;
                   ( key
                   , { binding with
-                      value = `Function { state = fn_state; parameters; exec }
+                      value = Function { state = fn_state; parameters; exec }
                     } )
                 | v -> v))
               scope
@@ -217,12 +218,12 @@ module State = struct
     let update_scope state =
       List.map
         (List.map (function
-            | key, ({ value = `Function { state; parameters; exec }; _ } as binding) ->
+            | key, ({ value = Function { state; parameters; exec }; _ } as binding) ->
               let new_state =
                 add_value_to_scope ~ident ~value ~is_optional ~is_mutable state
               in
               ( key
-              , { binding with value = `Function { state = new_state; parameters; exec } }
+              , { binding with value = Function { state = new_state; parameters; exec } }
               )
             | v -> v))
         state.environment.scope
@@ -240,7 +241,7 @@ module State = struct
 
   let call_tag_listener ~key ~tag t =
     match t.tag_listeners |> StringMap.find_opt key with
-    | None -> `Null
+    | None -> Null
     | Some listener ->
       tag
       |> listener.eval ~self:listener t
@@ -268,35 +269,36 @@ let rec eval_statement ~state = function
   | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
 
 and eval_expression ~state = function
-  | Ast.Int i -> state |> State.add_output ~output:(`Int i)
+  | Ast.Int i -> state |> State.add_output ~output:(Value.of_int i)
   | Ast.Float f when Float.is_integer f ->
-    state |> State.add_output ~output:(`Int (int_of_float f))
-  | Ast.Float f -> state |> State.add_output ~output:(`Float f)
-  | Ast.Bool b -> state |> State.add_output ~output:(`Bool b)
+    state |> State.add_output ~output:(Value.of_int (int_of_float f))
+  | Ast.Float f -> state |> State.add_output ~output:(Value.of_float f)
+  | Ast.Bool b -> state |> State.add_output ~output:(Value.of_bool b)
   | Ast.Array l ->
     state
     |> State.add_output
          ~output:
-           (`Array
-             (l |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)))
+           (l
+           |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)
+           |> Value.of_array)
   | Ast.Record map ->
     state
     |> State.add_output
          ~output:
-           (`Record
-             (map
-             |> StringMap.mapi (fun ident (optional, expression) ->
-                    expression
-                    |> eval_expression
-                         ~state:{ state with binding_identifier = Some (optional, ident) }
-                    |> State.get_output
-                    |> function
-                    | `Null when not optional ->
-                      failwith
-                        ("identifier "
-                        ^ ident
-                        ^ " is not marked as nullable, but was given a null value.")
-                    | value -> value)))
+           (map
+           |> StringMap.mapi (fun ident (optional, expression) ->
+                  expression
+                  |> eval_expression
+                       ~state:{ state with binding_identifier = Some (optional, ident) }
+                  |> State.get_output
+                  |> function
+                  | Null when not optional ->
+                    failwith
+                      ("identifier "
+                      ^ ident
+                      ^ " is not marked as nullable, but was given a null value.")
+                  | value -> value)
+           |> Value.of_string_map)
   | Ast.String template -> eval_string_template ~state template
   | Ast.Function (parameters, body) -> eval_function_declaration ~state ~parameters body
   | Ast.FunctionCall (left, arguments) -> eval_function_call ~state ~arguments left
@@ -319,7 +321,7 @@ and eval_expression ~state = function
         in
         Some (`Library top_level_bindings)
     in
-    state |> State.add_output ~output:(`DefinitionInfo (id, typ, `NotNegated))
+    state |> State.add_output ~output:(DefinitionInfo (id, typ, `NotNegated))
   | Ast.LowercaseIdentifierExpression (Lowercase_Id id) ->
     eval_lowercase_identifier ~state id
   | Ast.TagExpression tag -> eval_tag ~state tag
@@ -329,10 +331,9 @@ and eval_expression ~state = function
     state
     |> State.add_output
          ~output:
-           (`Array
-             (nodes
-             |> List.map (fun it -> it |> eval_template ~state |> State.get_output)
-             |> Array.of_list))
+           (nodes
+           |> List.map (fun it -> it |> eval_template ~state |> State.get_output)
+           |> Value.of_list)
   | Ast.BlockExpression e -> eval_block ~state e
   | Ast.ConditionalExpression { condition; consequent; alternate } ->
     eval_if ~state ~condition ~alternate ~consequent
@@ -391,17 +392,17 @@ and eval_string_template ~state template =
   state
   |> State.add_output
        ~output:
-         (`String
-           (template
-           |> List.map (function
-                  | Ast.StringText s -> s
-                  | Ast.StringInterpolation e ->
-                    eval_expression ~state e |> State.get_output |> Value.to_string)
-           |> String.concat ""))
+         (template
+         |> List.map (function
+                | Ast.StringText s -> s
+                | Ast.StringInterpolation e ->
+                  eval_expression ~state e |> State.get_output |> Value.to_string)
+         |> String.concat ""
+         |> Value.of_string)
 
 and eval_function_declaration ~state ~parameters body =
   let ident = state.binding_identifier in
-  let self = ref `Null in
+  let self = ref Null in
   let exec ~arguments ~state () =
     let state =
       match ident with
@@ -424,7 +425,7 @@ and eval_function_declaration ~state ~parameters body =
     in
     eval_expression ~state body |> State.get_output
   in
-  let fn = `Function { parameters; state; exec } in
+  let fn = Function { parameters; state; exec } in
   ident
   |> Option.iter (fun (_, ident) ->
          state
@@ -439,7 +440,7 @@ and eval_function_declaration ~state ~parameters body =
 and eval_function_call ~state ~arguments left =
   let maybe_fn = eval_expression ~state left |> State.get_output in
   match maybe_fn with
-  | `Function { parameters; state = fn_state; exec }
+  | Function { parameters; state = fn_state; exec }
     when List.compare_lengths parameters arguments = 0 ->
     let arguments =
       List.combine parameters arguments
@@ -450,7 +451,7 @@ and eval_function_call ~state ~arguments left =
            StringMap.empty
     in
     state |> State.add_output ~output:(exec ~arguments ~state:fn_state ())
-  | `Function { parameters; state = _; exec = _ } ->
+  | Function { parameters; state = _; exec = _ } ->
     if List.compare_lengths parameters arguments > 0
     then (
       let arguments_len = List.length arguments in
@@ -485,30 +486,30 @@ and eval_binary_plus ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
   match a, b with
-  | `Int a, `Int b -> state |> State.add_output ~output:(`Int (a + b))
-  | `Float a, `Float b -> state |> State.add_output ~output:(`Float (a +. b))
-  | `Float a, `Int b -> state |> State.add_output ~output:(`Float (a +. float_of_int b))
-  | `Int a, `Float b -> state |> State.add_output ~output:(`Float (float_of_int a +. b))
+  | Int a, Int b -> state |> State.add_output ~output:(Int (a + b))
+  | Float a, Float b -> state |> State.add_output ~output:(Float (a +. b))
+  | Float a, Int b -> state |> State.add_output ~output:(Float (a +. float_of_int b))
+  | Int a, Float b -> state |> State.add_output ~output:(Float (float_of_int a +. b))
   | _ -> failwith "Trying to add non numeric literals."
 
 and eval_binary_minus ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
   match a, b with
-  | `Int a, `Int b -> state |> State.add_output ~output:(`Int (a - b))
-  | `Float a, `Float b -> state |> State.add_output ~output:(`Float (a -. b))
-  | `Float a, `Int b -> state |> State.add_output ~output:(`Float (a -. float_of_int b))
-  | `Int a, `Float b -> state |> State.add_output ~output:(`Float (float_of_int a -. b))
+  | Int a, Int b -> state |> State.add_output ~output:(Int (a - b))
+  | Float a, Float b -> state |> State.add_output ~output:(Float (a -. b))
+  | Float a, Int b -> state |> State.add_output ~output:(Float (a -. float_of_int b))
+  | Int a, Float b -> state |> State.add_output ~output:(Float (float_of_int a -. b))
   | _ -> failwith "Trying to subtract non numeric literals."
 
 and eval_binary_times ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
   match a, b with
-  | `Int a, `Int b -> state |> State.add_output ~output:(`Int (a * b))
-  | `Float a, `Float b -> state |> State.add_output ~output:(`Float (a *. b))
-  | `Float a, `Int b -> state |> State.add_output ~output:(`Float (a *. float_of_int b))
-  | `Int a, `Float b -> state |> State.add_output ~output:(`Float (float_of_int a *. b))
+  | Int a, Int b -> state |> State.add_output ~output:(Int (a * b))
+  | Float a, Float b -> state |> State.add_output ~output:(Float (a *. b))
+  | Float a, Int b -> state |> State.add_output ~output:(Float (a *. float_of_int b))
+  | Int a, Float b -> state |> State.add_output ~output:(Float (float_of_int a *. b))
   | _ -> failwith "Trying to multiply non numeric literals."
 
 and eval_binary_div ~state left right =
@@ -516,34 +517,34 @@ and eval_binary_div ~state left right =
   let b = right |> eval_expression ~state |> State.get_output in
   let r =
     match a, b with
-    | `Int _, `Int 0 -> failwith "Trying to divide by 0"
-    | `Float _, `Float 0. -> failwith "Trying to divide by 0"
-    | `Float _, `Int 0 -> failwith "Trying to divide by 0"
-    | `Int _, `Float 0. -> failwith "Trying to divide by 0"
-    | `Int a, `Int b -> float_of_int a /. float_of_int b
-    | `Float a, `Float b -> a /. b
-    | `Float a, `Int b -> a /. float_of_int b
-    | `Int a, `Float b -> float_of_int a /. b
+    | Int _, Int 0 -> failwith "Trying to divide by 0"
+    | Float _, Float 0. -> failwith "Trying to divide by 0"
+    | Float _, Int 0 -> failwith "Trying to divide by 0"
+    | Int _, Float 0. -> failwith "Trying to divide by 0"
+    | Int a, Int b -> float_of_int a /. float_of_int b
+    | Float a, Float b -> a /. b
+    | Float a, Int b -> a /. float_of_int b
+    | Int a, Float b -> float_of_int a /. b
     | _ -> failwith "Trying to divide non numeric literals."
   in
   if Float.is_integer r
-  then state |> State.add_output ~output:(`Int (int_of_float r))
-  else state |> State.add_output ~output:(`Float r)
+  then state |> State.add_output ~output:(Int (int_of_float r))
+  else state |> State.add_output ~output:(Float r)
 
 and eval_binary_pow ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
   let r =
     match a, b with
-    | `Int a, `Int b -> float_of_int a ** float_of_int b
-    | `Float a, `Float b -> a ** b
-    | `Float a, `Int b -> a ** float_of_int b
-    | `Int a, `Float b -> float_of_int a ** b
+    | Int a, Int b -> float_of_int a ** float_of_int b
+    | Float a, Float b -> a ** b
+    | Float a, Int b -> a ** float_of_int b
+    | Int a, Float b -> float_of_int a ** b
     | _ -> failwith "Trying to raise non numeric literals."
   in
   if Float.is_integer r
-  then state |> State.add_output ~output:(`Int (int_of_float r))
-  else state |> State.add_output ~output:(`Float r)
+  then state |> State.add_output ~output:(Int (int_of_float r))
+  else state |> State.add_output ~output:(Float r)
 
 and eval_binary_modulo ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -552,100 +553,100 @@ and eval_binary_modulo ~state left right =
   let ( % ) = ( mod ) in
   let r =
     match a, b with
-    | `Int _, `Int 0 -> failwith "Trying to modulo with 0 on right hand side."
-    | `Int _, `Float 0. -> failwith "Trying to modulo with 0 on right hand side."
-    | `Float _, `Float 0. -> failwith "Trying to modulo with 0 on right hand side."
-    | `Float _, `Int 0 -> failwith "Trying to modulo with 0 on right hand side."
-    | `Int a, `Int b -> a % b
-    | `Float a, `Float b -> int_of_float (a %. b)
-    | `Float a, `Int b -> int_of_float a % b
-    | `Int a, `Float b -> a % int_of_float b
+    | Int _, Int 0 -> failwith "Trying to modulo with 0 on right hand side."
+    | Int _, Float 0. -> failwith "Trying to modulo with 0 on right hand side."
+    | Float _, Float 0. -> failwith "Trying to modulo with 0 on right hand side."
+    | Float _, Int 0 -> failwith "Trying to modulo with 0 on right hand side."
+    | Int a, Int b -> a % b
+    | Float a, Float b -> int_of_float (a %. b)
+    | Float a, Int b -> int_of_float a % b
+    | Int a, Float b -> a % int_of_float b
     | _ -> failwith "Trying to modulo non numeric literals."
   in
-  state |> State.add_output ~output:(`Int r)
+  state |> State.add_output ~output:(Int r)
 
 and eval_binary_and ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
-  state |> State.add_output ~output:(`Bool (Value.is_true a && Value.is_true b))
+  state |> State.add_output ~output:(Bool (Value.is_true a && Value.is_true b))
 
 and eval_binary_or ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
-  state |> State.add_output ~output:(`Bool (Value.is_true a || Value.is_true b))
+  state |> State.add_output ~output:(Bool (Value.is_true a || Value.is_true b))
 
 and eval_binary_less ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
-  state |> State.add_output ~output:(`Bool (Value.compare a b < 0))
+  state |> State.add_output ~output:(Bool (Value.compare a b < 0))
 
 and eval_binary_less_equal ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
-  state |> State.add_output ~output:(`Bool (Value.compare a b <= 0))
+  state |> State.add_output ~output:(Bool (Value.compare a b <= 0))
 
 and eval_binary_greater ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
-  state |> State.add_output ~output:(`Bool (Value.compare a b > 0))
+  state |> State.add_output ~output:(Bool (Value.compare a b > 0))
 
 and eval_binary_greater_equal ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
-  state |> State.add_output ~output:(`Bool (Value.compare a b >= 0))
+  state |> State.add_output ~output:(Bool (Value.compare a b >= 0))
 
 and eval_binary_equal ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
-  state |> State.add_output ~output:(`Bool (Value.equal a b))
+  state |> State.add_output ~output:(Bool (Value.equal a b))
 
 and eval_binary_not_equal ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
-  state |> State.add_output ~output:(`Bool (not (Value.equal a b)))
+  state |> State.add_output ~output:(Bool (not (Value.equal a b)))
 
 and eval_binary_concat ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
   match a, b with
-  | `String a, `String b -> state |> State.add_output ~output:(`String (a ^ b))
+  | String a, String b -> state |> State.add_output ~output:(String (a ^ b))
   | _ -> failwith "Trying to concat non string literals."
 
 and eval_binary_dot_access ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
   match left, right with
-  | `Record left, Ast.LowercaseIdentifierExpression (Lowercase_Id b) ->
-    let output = left |> StringMap.find_opt b |> Option.value ~default:`Null in
+  | Record left, Ast.LowercaseIdentifierExpression (Lowercase_Id b) ->
+    let output = left |> StringMap.find_opt b |> Option.value ~default:Null in
     state |> State.add_output ~output
-  | ( `HtmlTemplateNode (tag, attributes, _children, _self_closing)
+  | ( HtmlTemplateNode (tag, attributes, _children, _self_closing)
     , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) ->
     (match b with
-    | "tag" -> state |> State.add_output ~output:(`String tag)
-    | "attributes" -> state |> State.add_output ~output:(`Record attributes)
+    | "tag" -> state |> State.add_output ~output:(String tag)
+    | "attributes" -> state |> State.add_output ~output:(Record attributes)
     | s ->
       failwith
         ("Unknown property "
         ^ s
         ^ " on template node. Known properties are: `tag` and `attributes`."))
-  | ( `ComponentTemplateNode (_, tag, attributes)
+  | ( ComponentTemplateNode (_, tag, attributes)
     , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) ->
     (match b with
-    | "tag" -> state |> State.add_output ~output:(`String tag)
-    | "attributes" -> state |> State.add_output ~output:(`Record attributes)
+    | "tag" -> state |> State.add_output ~output:(String tag)
+    | "attributes" -> state |> State.add_output ~output:(Record attributes)
     | s ->
       failwith
         ("Unknown property "
         ^ s
         ^ " on component. Known properties are: `tag` and`attributes`."))
-  | `Record _, _ ->
+  | Record _, _ ->
     failwith "Expected right hand side of record access to be a lowercase identifier."
-  | `Null, _ -> state |> State.add_output ~output:`Null
-  | ( `DefinitionInfo (_name, Some (`Library top_level_bindings), _negated)
+  | Null, _ -> state |> State.add_output ~output:Null
+  | ( DefinitionInfo (_name, Some (`Library top_level_bindings), _negated)
     , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) ->
     (match top_level_bindings |> List.assoc_opt b with
-    | None -> state |> State.add_output ~output:`Null
+    | None -> state |> State.add_output ~output:Null
     | Some binding -> state |> State.add_output ~output:binding.value)
-  | `DefinitionInfo (_name, None, _negated), _ ->
+  | DefinitionInfo (_name, None, _negated), _ ->
     failwith "Trying to access a property on a non existant library."
   | _, Ast.LowercaseIdentifierExpression _ ->
     failwith "Trying to access a property on a non record, library or template value."
@@ -655,69 +656,69 @@ and eval_binary_bracket_access ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
   let right = right |> eval_expression ~state |> State.get_output in
   match left, right with
-  | `Array left, `Int right ->
+  | Array left, Int right ->
     let output =
       try left.(right) with
-      | Invalid_argument _ -> `Null
+      | Invalid_argument _ -> Null
     in
     state |> State.add_output ~output
-  | `Record left, `String right ->
-    let output = left |> StringMap.find_opt right |> Option.value ~default:`Null in
+  | Record left, String right ->
+    let output = left |> StringMap.find_opt right |> Option.value ~default:Null in
     state |> State.add_output ~output
-  | `Null, _ -> state |> State.add_output ~output:`Null
-  | `Array _, _ -> failwith "Cannot access array with a non integer value."
-  | `Record _, _ -> failwith "Cannot access record with a non string value."
+  | Null, _ -> state |> State.add_output ~output:Null
+  | Array _, _ -> failwith "Cannot access array with a non integer value."
+  | Record _, _ -> failwith "Cannot access record with a non string value."
   | _ -> failwith "Trying to access a property on a non record or array value."
 
 and eval_binary_array_add ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
   let right = right |> eval_expression ~state |> State.get_output in
   match left, right with
-  | `Array left, value ->
-    state |> State.add_output ~output:(`Array (Array.append left [| value |]))
+  | Array left, value ->
+    state |> State.add_output ~output:(Array (Array.append left [| value |]))
   | _ -> failwith "Trying to add an element on a non array value."
 
 and eval_binary_merge ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
   let right = right |> eval_expression ~state |> State.get_output in
   match left, right with
-  | `Array left, `Array right ->
-    state |> State.add_output ~output:(`Array (Array.append left right))
-  | `Record left, `Record right ->
+  | Array left, Array right ->
+    state |> State.add_output ~output:(Array (Array.append left right))
+  | Record left, Record right ->
     state
     |> State.add_output
-         ~output:(`Record (StringMap.union (fun _key _x y -> Some y) left right))
-  | `HtmlTemplateNode (tag, attributes, children, self_closing), `Record right ->
+         ~output:(Record (StringMap.union (fun _key _x y -> Some y) left right))
+  | HtmlTemplateNode (tag, attributes, children, self_closing), Record right ->
     let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
     state
     |> State.add_output
-         ~output:(`HtmlTemplateNode (tag, attributes, children, self_closing))
-  | `HtmlTemplateNode _, _ ->
+         ~output:(HtmlTemplateNode (tag, attributes, children, self_closing))
+  | HtmlTemplateNode _, _ ->
     failwith "Trying to merge a non record value onto tag attributes."
-  | `ComponentTemplateNode (fn, tag, attributes), `Record right ->
+  | ComponentTemplateNode (fn, tag, attributes), Record right ->
     let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
-    state |> State.add_output ~output:(`ComponentTemplateNode (fn, tag, attributes))
-  | `ComponentTemplateNode _, _ ->
+    state |> State.add_output ~output:(ComponentTemplateNode (fn, tag, attributes))
+  | ComponentTemplateNode _, _ ->
     failwith "Trying to merge a non record value onto tag attributes."
-  | `Array _, _ -> failwith "Trying to merge a non array value onto an array."
-  | _, `Array _ -> failwith "Trying to merge an array value onto a non array."
+  | Array _, _ -> failwith "Trying to merge a non array value onto an array."
+  | _, Array _ -> failwith "Trying to merge an array value onto a non array."
   | _ -> failwith "Trying to merge two non array values."
 
 and eval_unary_not ~state expression =
   match eval_expression ~state expression |> State.get_output with
-  | `DefinitionInfo (name, typ, negated) ->
+  | DefinitionInfo (name, typ, negated) ->
     let negated =
       match negated with
       | `Negated -> `NotNegated
       | `NotNegated -> `Negated
     in
-    state |> State.add_output ~output:(`DefinitionInfo (name, typ, negated))
-  | v -> state |> State.add_output ~output:(`Bool (not (Value.is_true v)))
+    state |> State.add_output ~output:(DefinitionInfo (name, typ, negated))
+  | v -> state |> State.add_output ~output:(Bool (not (Value.is_true v)))
 
 and eval_unary_minus ~state expression =
   match eval_expression ~state expression |> State.get_output with
-  | `Int i -> state |> State.add_output ~output:(`Int (Int.neg i))
-  | `Float f -> state |> State.add_output ~output:(`Float (Float.neg f))
+  | Int i -> state |> State.add_output ~output:(Int (Int.neg i))
+  | Float f -> state |> State.add_output ~output:(Float (Float.neg f))
   | _ ->
     failwith
       "Invalid usage of unary `-` operator. You are only able to negate integers or \
@@ -738,13 +739,13 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
          ~state:{ state with binding_identifier = Some (is_optional, ident) }
   in
   match State.get_output state with
-  | `Null when not is_optional ->
+  | Null when not is_optional ->
     failwith
       ("identifier " ^ ident ^ " is not marked as nullable, but was given a null value.")
   | value ->
     state
     |> State.add_value_to_scope ~ident ~value ~is_mutable ~is_optional
-    |> State.add_output ~output:`Null
+    |> State.add_output ~output:Null
 
 and eval_mutation ~state ~ident expression =
   let current_binding = State.get_value_from_scope ~ident state in
@@ -762,14 +763,14 @@ and eval_mutation ~state ~ident expression =
       output
       |> State.get_output
       |> function
-      | `Null when not is_optional ->
+      | Null when not is_optional ->
         failwith
           ("identifier "
           ^ ident
           ^ " is not marked as nullable, but was tried to be updated with a null value.")
       | value -> state |> State.update_value_in_scope ~ident ~value
     in
-    state |> State.add_output ~output:`Null
+    state |> State.add_output ~output:Null
 
 and eval_if ~state ~condition ~alternate ~consequent =
   let condition_matches =
@@ -778,7 +779,7 @@ and eval_if ~state ~condition ~alternate ~consequent =
   match condition_matches, alternate with
   | true, _ -> consequent |> eval_statement ~state
   | false, Some alt -> alt |> eval_statement ~state
-  | false, None -> state |> State.add_output ~output:`Null
+  | false, None -> state |> State.add_output ~output:Null
 
 and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
   let make_rev array =
@@ -802,7 +803,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
           state
           |> State.add_value_to_scope
                ~ident
-               ~value:(`Int !index)
+               ~value:(Int !index)
                ~is_mutable:false
                ~is_optional:false
         | None -> state
@@ -813,42 +814,42 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       | v -> loop (State.get_output v :: acc) tl)
   in
   match iterable with
-  | `Array l ->
-    let res = l |> maybe_rev |> Array.to_list |> loop [] |> Array.of_list in
-    state |> State.add_output ~output:(`Array res)
-  | `String s ->
+  | Array l ->
+    let res = l |> maybe_rev |> Array.to_list |> loop [] |> Value.of_list in
+    state |> State.add_output ~output:res
+  | String s ->
     let res =
       s
       |> String.to_seq
       |> Array.of_seq
       |> maybe_rev
-      |> Array.map (fun c -> `String (String.make 1 c))
+      |> Array.map (fun c -> String (String.make 1 c))
       |> Array.to_list
       |> loop []
-      |> Array.of_list
+      |> Value.of_list
     in
-    state |> State.add_output ~output:(`Array res)
-  | `Null -> state |> State.add_output ~output:`Null
-  | `HtmlTemplateNode _ -> failwith "Cannot iterate over template node"
-  | `ComponentTemplateNode _ -> failwith "Cannot iterate over template node"
-  | `Record _ -> failwith "Cannot iterate over record value"
-  | `Int _ -> failwith "Cannot iterate over int value"
-  | `Float _ -> failwith "Cannot iterate over float value"
-  | `Bool _ -> failwith "Cannot iterate over boolean value"
-  | `DefinitionInfo _ -> failwith "Cannot iterate over definition info"
-  | `Function _ -> failwith "Cannot iterate over function"
-  | `TagInfo _ -> should_never_happen ()
+    state |> State.add_output ~output:res
+  | Null -> state |> State.add_output ~output:Null
+  | HtmlTemplateNode _ -> failwith "Cannot iterate over template node"
+  | ComponentTemplateNode _ -> failwith "Cannot iterate over template node"
+  | Record _ -> failwith "Cannot iterate over record value"
+  | Int _ -> failwith "Cannot iterate over int value"
+  | Float _ -> failwith "Cannot iterate over float value"
+  | Bool _ -> failwith "Cannot iterate over boolean value"
+  | DefinitionInfo _ -> failwith "Cannot iterate over definition info"
+  | Function _ -> failwith "Cannot iterate over function"
+  | TagInfo _ -> should_never_happen ()
 
 and eval_range ~state ~inclusive from upto =
   let from = from |> eval_expression ~state |> State.get_output in
   let upto = upto |> eval_expression ~state |> State.get_output in
   let from, upto =
     match from, upto with
-    | `Int from, `Int upto -> from, upto
-    | `Int _, _ ->
+    | Int from, Int upto -> from, upto
+    | Int _, _ ->
       failwith
         "Can't construct range in for loop. The end of your range is not of type int."
-    | _, `Int _ ->
+    | _, Int _ ->
       failwith
         "Can't construct range in for loop. The start of your range is not of type int."
     | _, _ ->
@@ -862,9 +863,9 @@ and eval_range ~state ~inclusive from upto =
     else (
       let start = from in
       let stop = if not inclusive then upto else upto + 1 in
-      Array.init (stop - start) (fun i -> `Int (i + start)))
+      Array.init (stop - start) (fun i -> Int (i + start)))
   in
-  state |> State.add_output ~output:(`Array iter)
+  state |> State.add_output ~output:(Array iter)
 
 and eval_block ~state statements =
   let state = state |> State.add_scope in
@@ -893,8 +894,8 @@ and eval_tag ~state tag =
   in
   let attributes =
     match StringMap.find_opt "key" attributes, state.binding_identifier with
-    | None, Some ident -> attributes |> StringMap.add "key" (`String (snd ident))
-    | Some (`String _), _ -> attributes
+    | None, Some ident -> attributes |> StringMap.add "key" (String (snd ident))
+    | Some (String _), _ -> attributes
     | Some _, _ -> failwith "Expected attribute `key` on tag to be of type string"
     | None, None -> attributes
   in
@@ -902,13 +903,13 @@ and eval_tag ~state tag =
   let value =
     match state.tag_info with
     | false -> state |> State.call_tag_listener ~key:("#" ^ tag_name) ~tag
-    | true -> `TagInfo tag
+    | true -> TagInfo tag
   in
   state |> State.add_output ~output:value
 
 and eval_template ~state template =
   match template with
-  | Ast.TextTemplateNode text -> state |> State.add_output ~output:(`String text)
+  | Ast.TextTemplateNode text -> state |> State.add_output ~output:(String text)
   | Ast.HtmlTemplateNode { tag; attributes; children; self_closing } ->
     let attributes =
       attributes
@@ -920,7 +921,7 @@ and eval_template ~state template =
     in
     state
     |> State.add_output
-         ~output:(`HtmlTemplateNode (tag, attributes, children, self_closing))
+         ~output:(HtmlTemplateNode (tag, attributes, children, self_closing))
   | Ast.ExpressionTemplateNode expr -> eval_expression ~state expr
   | Ast.ComponentTemplateNode { identifier = Uppercase_Id tag; attributes; children } ->
     let attributes =
@@ -963,8 +964,7 @@ and eval_template ~state template =
            | None -> failwith ("Declaration with name `" ^ tag ^ "` was not found."))
       |> State.get_output
     in
-    state
-    |> State.add_output ~output:(`ComponentTemplateNode (render_fn, tag, attributes))
+    state |> State.add_output ~output:(ComponentTemplateNode (render_fn, tag, attributes))
 
 and eval_declaration ~state declaration =
   match declaration with
