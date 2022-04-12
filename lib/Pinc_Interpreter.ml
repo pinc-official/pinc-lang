@@ -164,7 +164,7 @@ module State = struct
     { binding_identifier = None
     ; declarations
     ; output = Null
-    ; environment = { scope = [] }
+    ; environment = { scope = []; use_scope = [] }
     ; tag_listeners
     ; tag_info = false
     ; parent_component
@@ -173,7 +173,7 @@ module State = struct
   ;;
 
   let add_scope t =
-    let environment = { scope = [] :: t.environment.scope } in
+    let environment = { t.environment with scope = [] :: t.environment.scope } in
     { t with environment }
   ;;
 
@@ -183,7 +183,13 @@ module State = struct
       | [] -> assert false
       | scope :: rest -> ((ident, { is_mutable; is_optional; value }) :: scope) :: rest
     in
-    let environment = { scope = update_scope t } in
+    let environment = { t.environment with scope = update_scope t } in
+    { t with environment }
+  ;;
+
+  let add_value_to_use_scope ~ident ~value t =
+    let use_scope = (ident, value) :: t.environment.use_scope in
+    let environment = { t.environment with use_scope } in
     { t with environment }
   ;;
 
@@ -238,6 +244,7 @@ module State = struct
   let get_output t = t.output
   let add_output ~output t = { t with output }
   let get_bindings t = t.environment.scope |> List.hd
+  let get_used_values t = t.environment.use_scope
 
   let call_tag_listener ~key ~tag t =
     match t.tag_listeners |> StringMap.find_opt key with
@@ -264,6 +271,7 @@ let rec eval_statement ~state = function
     eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
   | Ast.MutationStatement (Lowercase_Id ident, expression) ->
     eval_mutation ~state ~ident expression
+  | Ast.UseStatement (Uppercase_Id ident, expression) -> eval_use ~state ~ident expression
   | Ast.BreakStatement -> raise_notrace Loop_Break
   | Ast.ContinueStatement -> raise_notrace Loop_Continue
   | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
@@ -316,10 +324,10 @@ and eval_expression ~state = function
           NOTE: Do we really want to evaluate the library with the current state?
                 Or do we maybe want to create a fresh state?
          *)
-        let top_level_bindings =
-          eval_declaration ~state declaration |> State.get_bindings
-        in
-        Some (`Library top_level_bindings)
+        let declaration = eval_declaration ~state declaration in
+        let top_level_bindings = declaration |> State.get_bindings in
+        let used_values = declaration |> State.get_used_values in
+        Some (`Library (top_level_bindings, used_values))
     in
     state |> State.add_output ~output:(DefinitionInfo (id, typ, `NotNegated))
   | Ast.LowercaseIdentifierExpression (Lowercase_Id id) ->
@@ -641,11 +649,16 @@ and eval_binary_dot_access ~state left right =
   | Record _, _ ->
     failwith "Expected right hand side of record access to be a lowercase identifier."
   | Null, _ -> state |> State.add_output ~output:Null
-  | ( DefinitionInfo (_name, Some (`Library top_level_bindings), _negated)
+  | ( DefinitionInfo (_name, Some (`Library (top_level_bindings, _)), _negated)
     , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) ->
     (match top_level_bindings |> List.assoc_opt b with
     | None -> state |> State.add_output ~output:Null
     | Some binding -> state |> State.add_output ~output:binding.value)
+  | ( DefinitionInfo (_name, Some (`Library (_, use_scope)), _negated)
+    , Ast.UppercaseIdentifierExpression (Uppercase_Id b) ) ->
+    (match use_scope |> List.assoc_opt b with
+    | None -> state |> State.add_output ~output:Null
+    | Some value -> state |> State.add_output ~output:value)
   | DefinitionInfo (_name, None, _negated), _ ->
     failwith "Trying to access a property on a non existant library."
   | _, Ast.LowercaseIdentifierExpression _ ->
@@ -746,6 +759,12 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
     state
     |> State.add_value_to_scope ~ident ~value ~is_mutable ~is_optional
     |> State.add_output ~output:Null
+
+and eval_use ~state ~ident expression =
+  let value = expression |> eval_expression ~state |> State.get_output in
+  match value with
+  | value ->
+    state |> State.add_value_to_use_scope ~ident ~value |> State.add_output ~output:Null
 
 and eval_mutation ~state ~ident expression =
   let current_binding = State.get_value_from_scope ~ident state in

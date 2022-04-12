@@ -60,6 +60,8 @@ component Component {
     1 |> add_curry(5)() = {1 |> add_curry(5)()}
     5 |> Math.factorial = {5 |> Math.factorial}
 
+    Math.Constants.pi = {Math.Constants.pi}
+
     Map:
     {map(1...10, fn (item) -> item ** 2)}
     

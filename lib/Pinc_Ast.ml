@@ -69,6 +69,7 @@ and attributes = expression StringMap.t
 and statement =
   | BreakStatement
   | ContinueStatement
+  | UseStatement of uppercase_identifier * expression
   | OptionalMutableLetStatement of lowercase_identifier * expression
   | OptionalLetStatement of lowercase_identifier * expression
   | MutableLetStatement of lowercase_identifier * expression

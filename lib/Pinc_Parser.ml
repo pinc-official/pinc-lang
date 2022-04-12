@@ -303,6 +303,22 @@ module Rules = struct
       in
       let _ = optional Token.SEMICOLON t in
       Some (Ast.MutationStatement (Lowercase_Id identifier, expression))
+    (* PARSING USE STATEMENT *)
+    | Token.KEYWORD_USE ->
+      next t;
+      let identifier = Helpers.expect_identifier ~typ:`Upper t in
+      t |> expect Token.EQUAL;
+      let expression =
+        match parse_expression t with
+        | Some expression -> expression
+        | None ->
+          Diagnostics.report
+            ~start_pos:t.token.start_pos
+            ~end_pos:t.token.end_pos
+            (Diagnostics.Message "Expected expression as right hand side of use statement")
+      in
+      let _ = optional Token.SEMICOLON t in
+      Some (Ast.UseStatement (Uppercase_Id identifier, expression))
     | _ ->
       let expr = parse_expression t in
       let _ = optional Token.SEMICOLON t in

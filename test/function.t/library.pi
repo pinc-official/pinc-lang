@@ -1,4 +1,6 @@
 library Math {
+  use Constants = Math__Constants;
+
   let fibonacci = fn (n) -> {
       if (n <= 1) {
         n
@@ -14,4 +16,8 @@ library Math {
       n * factorial(n - 1)
     }
   };
+}
+
+library Math__Constants {
+  let pi = 3.1415;
 }

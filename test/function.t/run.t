@@ -12,6 +12,8 @@
       1 |> add_curry(5)() = 6
       5 |> Math.factorial = 120
   
+      Math.Constants.pi = 3.1415
+  
       Map:
       1
   4

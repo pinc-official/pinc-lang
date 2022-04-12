@@ -14,7 +14,13 @@ type value =
 
 and definition_info =
   string
-  * [ `Component | `Site | `Page | `Store | `Library of (string * binding) list ] option
+  * [ `Component
+    | `Site
+    | `Page
+    | `Store
+    | `Library of (string * binding) list * (string * value) list
+    ]
+    option
   * [ `Negated | `NotNegated ]
 
 and function_info =
@@ -43,7 +49,10 @@ and state =
   ; context : (string, value) Hashtbl.t
   }
 
-and environment = { mutable scope : (string * binding) list list }
+and environment =
+  { mutable scope : (string * binding) list list
+  ; mutable use_scope : (string * value) list
+  }
 
 and binding =
   { is_mutable : bool

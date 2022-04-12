@@ -48,6 +48,7 @@ type token_type =
   | GREATER_EQUAL
   | LESS_EQUAL
   | PLUSPLUS
+  | KEYWORD_USE
   | KEYWORD_FN
   | KEYWORD_LET
   | KEYWORD_MUTABLE
