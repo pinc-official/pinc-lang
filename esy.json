@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@opam/ocaml-lsp-server": "1.10.6",
-    "@opam/ocamlformat": "0.20.1"
+    "@opam/ocamlformat": "0.21.0"
   },
   "resolutions": {
     "ocaml": {
