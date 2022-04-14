@@ -623,6 +623,7 @@ and eval_binary_concat ~state left right =
 and eval_binary_dot_access ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
   match left, right with
+  | Null, _ -> state |> State.add_output ~output:Null
   | Record left, Ast.LowercaseIdentifierExpression (Lowercase_Id b) ->
     let output = left |> StringMap.find_opt b |> Option.value ~default:Null in
     state |> State.add_output ~output
@@ -648,19 +649,34 @@ and eval_binary_dot_access ~state left right =
         ^ " on component. Known properties are: `tag` and`attributes`."))
   | Record _, _ ->
     failwith "Expected right hand side of record access to be a lowercase identifier."
-  | Null, _ -> state |> State.add_output ~output:Null
-  | ( DefinitionInfo (_name, Some (`Library (top_level_bindings, _)), _negated)
+  | ( DefinitionInfo (name, maybe_library, _)
     , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) ->
-    (match top_level_bindings |> List.assoc_opt b with
-    | None -> state |> State.add_output ~output:Null
-    | Some binding -> state |> State.add_output ~output:binding.value)
-  | ( DefinitionInfo (_name, Some (`Library (_, use_scope)), _negated)
+    (match state |> State.get_used_values |> List.assoc_opt name, maybe_library with
+    | None, Some (`Library (top_level_bindings, _))
+    | Some (DefinitionInfo (_, Some (`Library (top_level_bindings, _)), _)), _ ->
+      state
+      |> State.add_output
+           ~output:
+             (top_level_bindings
+             |> List.assoc_opt b
+             |> Option.map (fun b -> b.value)
+             |> Option.value ~default:Null)
+    | None, None -> state |> State.add_output ~output:Null
+    | _ ->
+      failwith "Trying to access a property on a non record, library or template value.")
+  | ( DefinitionInfo (name, maybe_library, _)
     , Ast.UppercaseIdentifierExpression (Uppercase_Id b) ) ->
-    (match use_scope |> List.assoc_opt b with
-    | None -> state |> State.add_output ~output:Null
-    | Some value -> state |> State.add_output ~output:value)
-  | DefinitionInfo (_name, None, _negated), _ ->
-    failwith "Trying to access a property on a non existant library."
+    (match state |> State.get_used_values |> List.assoc_opt name, maybe_library with
+    | None, Some (`Library (_, use_scope))
+    | Some (DefinitionInfo (_, Some (`Library (_, use_scope)), _)), _ ->
+      state
+      |> State.add_output
+           ~output:(use_scope |> List.assoc_opt b |> Option.value ~default:Null)
+    | None, None -> state |> State.add_output ~output:Null
+    | _ ->
+      failwith "Trying to access a property on a non record, library or template value.")
+  | DefinitionInfo (name, None, _), _ ->
+    failwith ("Trying to access a property on a non existant library `" ^ name ^ "` .")
   | _, Ast.LowercaseIdentifierExpression _ ->
     failwith "Trying to access a property on a non record, library or template value."
   | _ -> failwith "I am really not sure what you are trying to do here..."

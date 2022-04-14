@@ -1,4 +1,5 @@
 component Component {
+  use C = Math.Constants;
 
   let max = fn (a, b) -> {
     if (a > b) {
@@ -61,6 +62,7 @@ component Component {
     5 |> Math.factorial = {5 |> Math.factorial}
 
     Math.Constants.pi = {Math.Constants.pi}
+    C.pi = {C.pi}
 
     Map:
     {map(1...10, fn (item) -> item ** 2)}

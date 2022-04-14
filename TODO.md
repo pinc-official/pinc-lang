@@ -10,9 +10,6 @@
 
 - Portals
 
-- A way to include libraries into the namespace of another library. (See below for an example) (Multi-Level access,
-  include keyword)
-
 ## TODOs after feature completion:
 
 - Generate better error messages
@@ -25,8 +22,8 @@
 
   ```
     library Std {
-      include Array = Std__Array;
-      include String = Std__String;
+      use Array = Std__Array;
+      use String = Std__String;
 
       let default = fn (t, default) -> if (!t) default else t;
     }
