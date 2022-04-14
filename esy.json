@@ -19,16 +19,16 @@
     "tu": "esy x dune promote"
   },
   "dependencies": {
-    "@opam/dune": "3.0.2",
-    "ocaml": "4.13.1000"
+    "@opam/dune": "3.0.3",
+    "ocaml": "4.14.0"
   },
   "devDependencies": {
-    "@opam/ocaml-lsp-server": "1.10.3",
+    "@opam/ocaml-lsp-server": "1.10.6",
     "@opam/ocamlformat": "0.20.1"
   },
   "resolutions": {
     "ocaml": {
-      "version": "4.13.1000",
+      "version": "4.14.0",
       "override": {
         "build": ["./esy-configure --enable-flambda --prefix $cur__install", "./esy-build"]
       }
