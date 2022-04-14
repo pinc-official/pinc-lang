@@ -375,7 +375,7 @@ and eval_expression ~state = function
       eval_function_declaration ~state ~parameters body
   | Ast.FunctionCall (left, arguments) ->
       eval_function_call ~state ~arguments left
-  | Ast.UppercaseIdentifierExpression (Uppercase_Id id) ->
+  | Ast.UppercaseIdentifierExpression id ->
       let value = state.declarations |> StringMap.find_opt id in
       let typ =
         match value with
@@ -400,7 +400,7 @@ and eval_expression ~state = function
             Some (`Library (top_level_bindings, used_values))
       in
       state |> State.add_output ~output:(DefinitionInfo (id, typ, `NotNegated))
-  | Ast.LowercaseIdentifierExpression (Lowercase_Id id) ->
+  | Ast.LowercaseIdentifierExpression id ->
       eval_lowercase_identifier ~state id
   | Ast.TagExpression tag ->
       eval_tag ~state tag
@@ -736,11 +736,11 @@ and eval_binary_dot_access ~state left right =
   match (left, right) with
   | Null, _ ->
       state |> State.add_output ~output:Null
-  | Record left, Ast.LowercaseIdentifierExpression (Lowercase_Id b) ->
+  | Record left, Ast.LowercaseIdentifierExpression b ->
       let output = left |> StringMap.find_opt b |> Option.value ~default:Null in
       state |> State.add_output ~output
-  | ( HtmlTemplateNode (tag, attributes, _children, _self_closing)
-    , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) -> (
+  | ( HtmlTemplateNode (tag, attributes, _, _)
+    , Ast.LowercaseIdentifierExpression b ) -> (
     match b with
     | "tag" ->
         state |> State.add_output ~output:(String tag)
@@ -752,7 +752,7 @@ and eval_binary_dot_access ~state left right =
           ^ " on template node. Known properties are: `tag` and `attributes`."
           ) )
   | ( ComponentTemplateNode (_, tag, attributes)
-    , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) -> (
+    , Ast.LowercaseIdentifierExpression b ) -> (
     match b with
     | "tag" ->
         state |> State.add_output ~output:(String tag)
@@ -766,8 +766,8 @@ and eval_binary_dot_access ~state left right =
       failwith
         "Expected right hand side of record access to be a lowercase \
          identifier."
-  | ( DefinitionInfo (name, maybe_library, _)
-    , Ast.LowercaseIdentifierExpression (Lowercase_Id b) ) -> (
+  | DefinitionInfo (name, maybe_library, _), Ast.LowercaseIdentifierExpression b
+    -> (
     match
       (state |> State.get_used_values |> List.assoc_opt name, maybe_library)
     with
@@ -786,8 +786,8 @@ and eval_binary_dot_access ~state left right =
         failwith
           "Trying to access a property on a non record, library or template \
            value." )
-  | ( DefinitionInfo (name, maybe_library, _)
-    , Ast.UppercaseIdentifierExpression (Uppercase_Id b) ) -> (
+  | DefinitionInfo (name, maybe_library, _), Ast.UppercaseIdentifierExpression b
+    -> (
     match
       (state |> State.get_used_values |> List.assoc_opt name, maybe_library)
     with
@@ -1148,7 +1148,6 @@ and eval_template ~state template =
       let children =
         children |> List.map (eval_template ~state) |> List.map State.get_output
       in
-      (* TODO: Remove this, as we are not really changing anything anymore... *)
       let component_tag_listeners =
         StringMap.empty
         |> StringMap.add "#String" Pinc_Tags.Default.string

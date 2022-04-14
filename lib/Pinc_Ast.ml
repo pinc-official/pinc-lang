@@ -40,8 +40,8 @@ and expression =
   | Record of (bool * expression) StringMap.t
   | Function of string list * expression
   | FunctionCall of expression * expression list
-  | UppercaseIdentifierExpression of uppercase_identifier
-  | LowercaseIdentifierExpression of lowercase_identifier
+  | UppercaseIdentifierExpression of string
+  | LowercaseIdentifierExpression of string
   | TagExpression of tag
   | ForInExpression of
       { index: lowercase_identifier option

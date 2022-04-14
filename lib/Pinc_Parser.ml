@@ -409,11 +409,9 @@ module Rules = struct
         Some (Ast.UnaryExpression (Ast.Operators.Unary.MINUS, argument))
     (* PARSING IDENTIFIER EXPRESSION *)
     | Token.IDENT_LOWER identifier ->
-        next t ;
-        Some (Ast.LowercaseIdentifierExpression (Lowercase_Id identifier))
+        next t ; Some (Ast.LowercaseIdentifierExpression identifier)
     | Token.IDENT_UPPER identifier ->
-        next t ;
-        Some (Ast.UppercaseIdentifierExpression (Uppercase_Id identifier))
+        next t ; Some (Ast.UppercaseIdentifierExpression identifier)
     (* PARSING VALUE EXPRESSION *)
     | Token.DOUBLE_QUOTE ->
         next t ;
