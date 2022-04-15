@@ -1,4 +1,4 @@
-  component HeadlineSecondary {
+component HeadlineSecondary {
   let class? = #String(default: "");
 
   let tag? = #String(default: "h3");

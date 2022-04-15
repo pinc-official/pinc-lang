@@ -84,7 +84,7 @@ module Value = struct
                      Buffer.add_string buf (value |> to_string) ;
                      Buffer.add_char buf '"'
                  | TagInfo _ ->
-                     assert false ) ;
+                     should_never_happen () ) ;
         if self_closing && Pinc_HTML.is_void_el tag then
           Buffer.add_string buf " />"
         else (
@@ -103,7 +103,7 @@ module Value = struct
     | DefinitionInfo _ ->
         ""
     | TagInfo _ ->
-        assert false
+        should_never_happen ()
 
   let is_true = function
     | Null ->
@@ -133,7 +133,7 @@ module Value = struct
     | Record m ->
         not (StringMap.is_empty m)
     | TagInfo _ ->
-        assert false
+        should_never_happen ()
 
   let rec equal a b =
     match (a, b) with
@@ -169,9 +169,9 @@ module Value = struct
     | Null, Null ->
         true
     | TagInfo _, _ ->
-        assert false
+        should_never_happen ()
     | _, TagInfo _ ->
-        assert false
+        should_never_happen ()
     | _ ->
         false
 
@@ -204,11 +204,11 @@ module Value = struct
     | Function _, Function _ ->
         0
     | TagInfo _, _ ->
-        assert false
+        should_never_happen ()
     | _, TagInfo _ ->
-        assert false
+        should_never_happen ()
     | _ ->
-        assert false
+        should_never_happen ()
 end
 
 module State = struct
@@ -231,7 +231,7 @@ module State = struct
     let update_scope t =
       match t.environment.scope with
       | [] ->
-          assert false
+          should_never_happen ()
       | scope :: rest ->
           ((ident, {is_mutable; is_optional; value}) :: scope) :: rest
     in
