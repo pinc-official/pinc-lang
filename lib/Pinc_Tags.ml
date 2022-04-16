@@ -687,6 +687,8 @@ module Default = struct
       let value =
         attributes |> StringMap.find_opt "value"
         |> function
+        | Some (Function _) ->
+            failwith "a function can not be put into a context."
         | Some value ->
             value
         | None ->
