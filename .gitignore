@@ -17,6 +17,6 @@ node_modules
 
 # Melange Specifics
 .bsb.lock
-dune.bsb
+dune.mel
 .melange.eobjs
 /dune

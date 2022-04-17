@@ -2,20 +2,21 @@
   "name": "pinc-lang-js",
   "esy": {
     "buildsInSource": "unsafe",
-    "build": ["ln -sfn #{melange.install} node_modules/bs-platform", "bsb -make-world"]
+    "build": ["ln -sfn #{melange.install} node_modules/bs-platform", "mel build"]
   },
   "installConfig": {
     "pnp": false
   },
   "dependencies": {
-    "ocaml": "4.12.x",
-    "melange": "melange-re/melange#a175fc07893de23ecc18106904d9dd1eb1dfacce"
+    "@opam/dune": "*",
+    "ocaml": "4.14.0",
+    "melange": "melange-re/melange#36ebb6a52d10f6ba97aa474a806759e8fac6b548"
   },
   "devDependencies": {
     "@opam/ocaml-lsp-server": "*"
   },
   "resolutions": {
-    "@opam/cmdliner": "1.0.4",
-    "@opam/reason": "3.7.0"
+    "@opam/dune": "ocaml/dune:dune.opam#9bf3da86f1de33a9884eb91610a6dd9c875ebcbe",
+    "@opam/reason": "reasonml/reason:reason.opam#4f6ff7616bfa699059d642a3d16d8905d83555f6"
   }
 }

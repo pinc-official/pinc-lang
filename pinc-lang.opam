@@ -2,12 +2,12 @@
 opam-version: "2.0"
 synopsis: "The PiNC Language as Syntax an Interpreter"
 maintainer: ["torben@ewert-online.com"]
-authors: ["Torben EWert"]
+authors: ["Torben Ewert"]
 license: "MIT"
 homepage: "https://github.com/pinc-lang/pinc-lang"
 bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
 depends: [
-  "dune" {>= "2.9"}
+  "dune" {>= "3.1"}
   "ocaml" {>= "4.12.0" & < "5.0.0"}
   "odoc" {with-doc}
 ]
@@ -20,11 +20,9 @@ build: [
     name
     "-j"
     jobs
-    "--promote-install-files=false"
     "@install"
     "@runtest" {with-test}
     "@doc" {with-doc}
   ]
-  ["dune" "install" "-p" name "--create-install-files" name]
 ]
 dev-repo: "git+https://github.com/pinc-lang/pinc-lang.git"

@@ -1,4 +1,4 @@
-(lang dune 2.9)
+(lang dune 3.1)
 
 (using action-plugin 0.1)
 
@@ -11,7 +11,7 @@
 
 (license MIT)
 
-(authors "Torben EWert")
+(authors "Torben Ewert")
 
 (maintainers "torben@ewert-online.com")
 
