@@ -36,6 +36,10 @@
 
 - Type inference
 
+- Unicode support for identifiers
+
+- Rewrite strings to be an array of chars and make chars a separate value type
+
 - Implement a "Std" library
 
   ```
