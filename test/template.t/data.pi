@@ -1,0 +1,29 @@
+component Component(
+  label: "Section",
+  icon: "/images/icons/group.svg",
+  group: "Structure",
+) {
+
+  let name = "String Template";
+  let intro = true;
+  let content = "Hello, {| if (intro) name else "World" |}!";
+
+  <section class="Section">
+    <div />
+    {if (intro) {
+      let foobar = "foo";
+      if (foobar) {
+        <div />
+      } else {
+        let barfoo = "3";
+        <span />
+      }
+    }}
+    <div class="Section-content">
+      {content}
+    </div>
+    <div class="Section-footer">
+      Lorem Ipsum dolor sit amet!!
+    </div>
+  </section>
+}

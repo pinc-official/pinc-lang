@@ -1,0 +1,30 @@
+component Component(
+  label: "Section",
+  icon: "/images/icons/group.svg",
+  group: "Structure",
+) {
+  let array = for (i in 0..10) { i };
+  let record = { a: 10, c: "Something" };
+
+  <SlotProvider>
+    <div>Hello Default</div>
+
+    <div slot="nope">I am not rendered!</div>
+
+    <SubComponent
+      slot="restricted"
+      content="Hello, SubComponent!"
+      num={3}
+      array_things={array}
+      record={record}
+    ></SubComponent>
+
+    {if (record.a > 9) {
+      <span slot="nope">Yaaay!</span>
+    }}
+
+    {for (i in 0..record.a) {
+      <span slot="multi">Yaaay! {i}</span>
+    }}
+  </SlotProvider>
+}

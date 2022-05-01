@@ -1,0 +1,32 @@
+component C {
+  let array = 0...3;
+  let new_array = array <- 4;
+  let new_array_2 = array <- 4 <- 5 <- 6;
+  
+  let merged_array = new_array @@ 5...7;
+  let merged_array_2 = new_array @@ 5...7 @@ [8, 9];
+  
+  let merged_record = { a: 1, b: 2 } @@ { c: 3 };
+  let merged_record_2 = { a: 1, b: 2 } @@ { b: 3 }  @@ { y: 8 };
+
+  let nested_array = new_array <- (merged_array <- merged_record_2);
+  let index = 8;
+
+  <section>
+    {array}
+
+    {new_array}
+
+    {new_array_2}
+
+    {merged_array}
+    
+    {merged_array_2}
+
+    {merged_record}
+    {merged_record_2}
+
+    {nested_array[2 + 3 * 1][index]["y"]}
+    {nested_array[2 + 3 * 1][index].y}
+  </section>
+}

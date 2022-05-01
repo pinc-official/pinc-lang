@@ -1,0 +1,73 @@
+component Component {
+  use C = Math.Constants;
+
+  let max = fn (a, b) -> {
+    if (a > b) {
+      a
+    } else {
+      b
+    }
+  };
+
+  let min = fn (a, b) -> {
+    if (a < b) {
+      a
+    } else {
+      b
+    }
+  };
+
+  let until = 5;
+  let map = fn (array, f) -> {
+    for (el in array) {
+      if (min(el, until) == until) continue;
+
+      f(el)
+    }
+  };
+
+  let add_curry = fn (a) -> {
+    fn (b) -> {
+      a + b
+    }
+  };
+
+  let is_even = fn (i) -> {
+    if(i == 0) {
+      true
+    } else {
+      is_odd(i - 1)
+    }
+  };
+
+  let is_odd = fn (i) -> {
+    if (i == 0) {
+      false
+    } else {
+      is_even(i - 1)
+    }
+  };
+
+  <section>
+    max(1, 5) = {max(1, 5)}
+    min(1, 5) = {min(1, 5)}
+    add_curry(1)(5) = {add_curry(1)(5)}
+    Math.fibonacci(9) = {Math.fibonacci(9)}
+    Math.factorial(5) = {Math.factorial(5)}
+    is_even(10) = {is_even(10)}
+    is_odd(10) = {is_odd(10)}
+
+    1 |> max(5) |> Math.factorial = {1 |> max(5) |> Math.factorial}
+    1 |> add_curry(5)() = {1 |> add_curry(5)()}
+    5 |> Math.factorial = {5 |> Math.factorial}
+
+    Math.Constants.pi = {Math.Constants.pi}
+    C.pi = {C.pi}
+
+    Map:
+    {map(1...10, fn (item) -> item ** 2)}
+    
+    Map Pipe:
+    {1...10 |> map(fn (item) -> item ** 2)}
+  </section>
+}

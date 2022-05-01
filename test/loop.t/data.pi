@@ -1,0 +1,136 @@
+component Component {
+
+  let max = 10;
+
+  let array = 0..max;
+
+  let string_array = ["one", "two", "three", "!"];
+
+  let null_value? = if(false) "something";
+
+  <section>
+    <h1>EXCLUSIVE RANGES</h1>
+
+    0..10
+    {for (i in 0..10) {
+      <div class="item">{i}</div>
+    }}
+
+    0..0
+    {for (i in 0..0) {
+      <div class="item">{i}</div>
+    }}
+
+    0..1
+    {for (i in 0..1) {
+      <div class="item">{i}</div>
+    }}
+
+    0..-1
+    {for (i in 0..-1) {
+      <div class="item">{i}</div>
+    }}
+
+    -10..10
+    {for (i in -10..10) {
+      <div class="item">{i}</div>
+    }}
+
+    10..0
+    {for (i in 10..0) {
+      <div class="item">{i}</div>
+    }}
+
+    0..10 reverse
+    {for (i in reverse 0..10) {
+      <div class="item">{i}</div>
+    }}
+
+
+    <h1>INCLUSIVE RANGES</h1>
+
+    0...10
+    {for (i in 0...10) {
+      <div class="item">{i}</div>
+    }}
+
+    0...0
+    {for (i in 0...0) {
+      <div class="item">{i}</div>
+    }}
+
+    0...1
+    {for (i in 0...1) {
+      <div class="item">{i}</div>
+    }}
+
+    0...-1
+    {for (i in 0...-1) {
+      <div class="item">{i}</div>
+    }}
+
+    -10...10
+    {for (i in -10...10) {
+      <div class="item">{i}</div>
+    }}
+
+    10...0
+    {for (i in 10...0) {
+      <div class="item">{i}</div>
+    }}
+
+    0...10 reverse
+    {for (i in reverse 0...10) {
+      <div class="item">{i}</div>
+    }}
+
+
+    <h1>ITERABLES</h1>
+
+    array
+    {for (i in array) {
+      <div class="item">{i}</div>
+    }}
+
+    array reverse
+    {for (i in reverse array) {
+      <div class="item">{i}</div>
+    }}
+
+    string
+    {for (c in "String!") {
+      <div class="item">{c}</div>
+    }}
+
+    string reverse
+    {for (c in reverse "String!") {
+      <div class="item">{c}</div>
+    }}
+
+    string array
+    {for (index, s in string_array) {
+      <div class="item">{index} {s}</div>
+    }}
+
+    null value
+    {for (s in null_value) {
+      <div class="item">{s}</div>
+    }}
+
+
+    <h1>BREAK / CONTINUE</h1>
+
+    {for (c in "String!") {
+      if (c == "i") continue;
+
+      c
+    }}
+
+    {for (i in 0..5) {
+      if (i == 3) break;
+
+      i
+    }}
+
+  </section>
+}

@@ -1,29 +1,37 @@
 {
-  "name": "fennek",
+  "name": "pinc-lang",
   "version": "0.0.1",
-  "description": "A CMS with its own language built in",
+  "description": "",
   "license": "NONE",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ewert-online/fennek"
+    "url": "https://github.com/pinc-lang/pinc-lang"
   },
   "author": { "name": "Torben Ewert", "email": "torben@ewert-online.com" },
-  "bugs": { "url": "https://github.com/ewert-online/fennek/issues" },
+  "bugs": { "url": "https://github.com/pinc-lang/pinc-lang/issues" },
   "keywords": [],
   "esy": {
     "build": "dune build -p #{self.name}",
     "buildDev": "dune build --promote-install-files --root . --only-package #{self.name}"
   },
   "scripts": {
-    "test": "esy x dune runtest",
-    "test:u": "esy x dune promote"
+    "t": "esy x dune runtest",
+    "tu": "esy x dune promote"
   },
   "dependencies": {
-    "@opam/ppx_deriving": "*"
+    "@opam/dune": "*",
+    "ocaml": "4.14.0"
   },
   "devDependencies": {
-    "@opam/dune": "< 3.0.0",
-    "@opam/ocaml-lsp-server": "1.9.1",
-    "ocaml": "4.13.1000"
+    "@opam/ocaml-lsp-server": "*",
+    "@opam/ocamlformat": "*"
+  },
+  "resolutions": {
+    "ocaml": {
+      "version": "4.14.0",
+      "override": {
+        "build": ["./esy-configure --enable-flambda --prefix $cur__install", "./esy-build"]
+      }
+    }
   }
 }

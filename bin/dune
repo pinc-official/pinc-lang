@@ -1,20 +1,26 @@
 (executable
- (name print_tokens)
- (public_name print_tokens)
- (modules print_tokens)
- (libraries fennek_lib unix))
-
-(executable
- (name print_ast)
- (public_name print_ast)
- (modules print_ast)
- (libraries fennek_lib unix))
-
-(executable
  (name print)
  (public_name print)
  (modules print)
- (libraries fennek_lib unix))
+ (modes native)
+ (ocamlopt_flags -O3)
+ (libraries pinc))
+
+(executable
+ (name print_debug)
+ (public_name print_debug)
+ (modules print_debug)
+ (modes native)
+ (ocamlopt_flags -O3)
+ (libraries pinc unix))
+
+(executable
+ (name print_tokens)
+ (public_name print_tokens)
+ (modules print_tokens)
+ (modes native)
+ (ocamlopt_flags -O3)
+ (libraries pinc unix))
 
 (cram
- (deps %{bin:print_tokens} %{bin:print_ast} %{bin:print}))
+ (deps %{bin:print}))
