@@ -28,9 +28,12 @@ module Value = struct
   let of_string_map m = Record m
 
   let make_component ~render ~tag ~attributes =
-    ComponentTemplateNode (render, tag, attributes)
+    let result = render attributes in
+    ComponentTemplateNode (render, tag, attributes, result)
 
   let rec to_string = function
+    | Portal p ->
+        to_string p
     | Null ->
         ""
     | String s ->
@@ -65,8 +68,11 @@ module Value = struct
           attributes
           |> StringMap.iter (fun key value ->
                  match value with
+                 | Portal Null ->
+                     ()
                  | Null ->
                      ()
+                 | Portal _
                  | Function _
                  | String _
                  | Int _
@@ -96,8 +102,8 @@ module Value = struct
           Buffer.add_string buf tag ;
           Buffer.add_char buf '>' ) ;
         Buffer.contents buf
-    | ComponentTemplateNode (render_fn, _tag, attributes) ->
-        attributes |> render_fn |> to_string
+    | ComponentTemplateNode (_render_fn, _tag, _attributes, result) ->
+        result |> to_string
     | Function _ ->
         ""
     | DefinitionInfo _ ->
@@ -132,6 +138,8 @@ module Value = struct
         true
     | Record m ->
         not (StringMap.is_empty m)
+    | Portal _ ->
+        failwith "Portals may not be used inside conditional checks"
     | TagInfo _ ->
         should_never_happen ()
 
@@ -163,8 +171,8 @@ module Value = struct
         && a_self_closing = b_self_closing
         && StringMap.equal equal a_attrs b_attrs
         && a_children = b_children
-    | ( ComponentTemplateNode (_, a_tag, a_attributes)
-      , ComponentTemplateNode (_, b_tag, b_attributes) ) ->
+    | ( ComponentTemplateNode (_, a_tag, a_attributes, _)
+      , ComponentTemplateNode (_, b_tag, b_attributes, _) ) ->
         a_tag = b_tag && StringMap.equal equal a_attributes b_attributes
     | Null, Null ->
         true
@@ -172,6 +180,10 @@ module Value = struct
         should_never_happen ()
     | _, TagInfo _ ->
         should_never_happen ()
+    | Portal _, _ ->
+        failwith "Portals may not be used inside conditional checks"
+    | _, Portal _ ->
+        failwith "Portals may not be used inside conditional checks"
     | _ ->
         false
 
@@ -207,21 +219,28 @@ module Value = struct
         should_never_happen ()
     | _, TagInfo _ ->
         should_never_happen ()
+    | Portal _, _ ->
+        failwith "Portals may not be used inside conditional checks"
+    | _, Portal _ ->
+        failwith "Portals may not be used inside conditional checks"
     | _ ->
         should_never_happen ()
 end
 
 module State = struct
   let make ?(tag_listeners = StringMap.empty) ?parent_component
-      ?(context = Hashtbl.create 10) declarations =
-    { binding_identifier= None
+      ?(context = Hashtbl.create 10) ?(portals = Hashtbl.create 10) ~mode
+      declarations =
+    { mode
+    ; binding_identifier= None
     ; declarations
     ; output= Null
     ; environment= {scope= []; use_scope= []}
     ; tag_listeners
     ; tag_info= false
     ; parent_component
-    ; context }
+    ; context
+    ; portals }
 
   let add_scope t =
     let environment = {t.environment with scope= [] :: t.environment.scope} in
@@ -389,12 +408,12 @@ and eval_expression ~state = function
             Some `Site
         | Some (Ast.StoreDeclaration _) ->
             Some `Store
-        | Some (Ast.LibraryDeclaration _ as declaration) ->
+        | Some (Ast.LibraryDeclaration _) ->
             (*
                NOTE: Do we really want to evaluate the library with the current state?
                      Or do we maybe want to create a fresh state?
             *)
-            let declaration = eval_declaration ~state declaration in
+            let declaration = eval_declaration ~state id in
             let top_level_bindings = declaration |> State.get_bindings in
             let used_values = declaration |> State.get_used_values in
             Some (`Library (top_level_bindings, used_values))
@@ -751,7 +770,7 @@ and eval_binary_dot_access ~state left right =
           ( "Unknown property " ^ s
           ^ " on template node. Known properties are: `tag` and `attributes`."
           ) )
-  | ( ComponentTemplateNode (_, tag, attributes)
+  | ( ComponentTemplateNode (_, tag, attributes, _)
     , Ast.LowercaseIdentifierExpression b ) -> (
     match b with
     | "tag" ->
@@ -838,46 +857,67 @@ and eval_binary_bracket_access ~state left right =
 and eval_binary_array_add ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
   let right = right |> eval_expression ~state |> State.get_output in
-  match (left, right) with
-  | Array left, value ->
-      state |> State.add_output ~output:(Array (Array.append left [|value|]))
-  | _ ->
-      failwith "Trying to add an element on a non array value."
+  let rec add left right =
+    match (left, right) with
+    | Portal left, value ->
+        let res = add left value |> State.get_output in
+        state |> State.add_output ~output:(Portal res)
+    | Array left, value ->
+        state |> State.add_output ~output:(Array (Array.append left [|value|]))
+    | _ ->
+        failwith "Trying to add an element on a non array value."
+  in
+  add left right
 
 and eval_binary_merge ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
   let right = right |> eval_expression ~state |> State.get_output in
-  match (left, right) with
-  | Array left, Array right ->
-      state |> State.add_output ~output:(Array (Array.append left right))
-  | Record left, Record right ->
-      state
-      |> State.add_output
-           ~output:
-             (Record (StringMap.union (fun _key _x y -> Some y) left right))
-  | HtmlTemplateNode (tag, attributes, children, self_closing), Record right ->
-      let attributes =
-        StringMap.union (fun _key _x y -> Some y) attributes right
-      in
-      state
-      |> State.add_output
-           ~output:(HtmlTemplateNode (tag, attributes, children, self_closing))
-  | HtmlTemplateNode _, _ ->
-      failwith "Trying to merge a non record value onto tag attributes."
-  | ComponentTemplateNode (fn, tag, attributes), Record right ->
-      let attributes =
-        StringMap.union (fun _key _x y -> Some y) attributes right
-      in
-      state
-      |> State.add_output ~output:(ComponentTemplateNode (fn, tag, attributes))
-  | ComponentTemplateNode _, _ ->
-      failwith "Trying to merge a non record value onto tag attributes."
-  | Array _, _ ->
-      failwith "Trying to merge a non array value onto an array."
-  | _, Array _ ->
-      failwith "Trying to merge an array value onto a non array."
-  | _ ->
-      failwith "Trying to merge two non array values."
+  let rec merge left right =
+    match (left, right) with
+    | Portal left, Portal right ->
+        let res = merge left right |> State.get_output in
+        state |> State.add_output ~output:(Portal res)
+    | Portal left, right ->
+        let res = merge left right |> State.get_output in
+        state |> State.add_output ~output:(Portal res)
+    | left, Portal right ->
+        let res = merge left right |> State.get_output in
+        state |> State.add_output ~output:(Portal res)
+    | Array left, Array right ->
+        state |> State.add_output ~output:(Array (Array.append left right))
+    | Record left, Record right ->
+        state
+        |> State.add_output
+             ~output:
+               (Record (StringMap.union (fun _key _x y -> Some y) left right))
+    | HtmlTemplateNode (tag, attributes, children, self_closing), Record right
+      ->
+        let attributes =
+          StringMap.union (fun _key _x y -> Some y) attributes right
+        in
+        state
+        |> State.add_output
+             ~output:(HtmlTemplateNode (tag, attributes, children, self_closing))
+    | HtmlTemplateNode _, _ ->
+        failwith "Trying to merge a non record value onto tag attributes."
+    | ComponentTemplateNode (fn, tag, attributes, _), Record right ->
+        let attributes =
+          StringMap.union (fun _key _x y -> Some y) attributes right
+        in
+        let result = fn attributes in
+        state
+        |> State.add_output
+             ~output:(ComponentTemplateNode (fn, tag, attributes, result))
+    | ComponentTemplateNode _, _ ->
+        failwith "Trying to merge a non record value onto tag attributes."
+    | Array _, _ ->
+        failwith "Trying to merge a non array value onto an array."
+    | _, Array _ ->
+        failwith "Trying to merge an array value onto a non array."
+    | _ ->
+        failwith "Trying to merge two non array values."
+  in
+  merge left right
 
 and eval_unary_not ~state expression =
   match eval_expression ~state expression |> State.get_output with
@@ -891,6 +931,10 @@ and eval_unary_not ~state expression =
 
 and eval_unary_minus ~state expression =
   match eval_expression ~state expression |> State.get_output with
+  | Portal (Int i) ->
+      state |> State.add_output ~output:(Portal (Int (Int.neg i)))
+  | Portal (Float f) ->
+      state |> State.add_output ~output:(Portal (Float (Float.neg f)))
   | Int i ->
       state |> State.add_output ~output:(Int (Int.neg i))
   | Float f ->
@@ -1008,43 +1052,52 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
         | v ->
             loop (State.get_output v :: acc) tl )
   in
-  match iterable with
-  | Array l ->
-      let res = l |> maybe_rev |> Array.to_list |> loop [] |> Value.of_list in
-      state |> State.add_output ~output:res
-  | String s ->
-      let res =
-        s |> String.to_seq |> Array.of_seq |> maybe_rev
-        |> Array.map (fun c -> String (String.make 1 c))
-        |> Array.to_list |> loop [] |> Value.of_list
-      in
-      state |> State.add_output ~output:res
-  | Null ->
-      state |> State.add_output ~output:Null
-  | HtmlTemplateNode _ ->
-      failwith "Cannot iterate over template node"
-  | ComponentTemplateNode _ ->
-      failwith "Cannot iterate over template node"
-  | Record _ ->
-      failwith "Cannot iterate over record value"
-  | Int _ ->
-      failwith "Cannot iterate over int value"
-  | Float _ ->
-      failwith "Cannot iterate over float value"
-  | Bool _ ->
-      failwith "Cannot iterate over boolean value"
-  | DefinitionInfo _ ->
-      failwith "Cannot iterate over definition info"
-  | Function _ ->
-      failwith "Cannot iterate over function"
-  | TagInfo _ ->
-      should_never_happen ()
+  let rec iter = function
+    | Portal p ->
+        let res = iter p |> State.get_output in
+        state |> State.add_output ~output:(Portal res)
+    | Array l ->
+        let res = l |> maybe_rev |> Array.to_list |> loop [] |> Value.of_list in
+        state |> State.add_output ~output:res
+    | String s ->
+        let res =
+          s |> String.to_seq |> Array.of_seq |> maybe_rev
+          |> Array.map (fun c -> String (String.make 1 c))
+          |> Array.to_list |> loop [] |> Value.of_list
+        in
+        state |> State.add_output ~output:res
+    | Null ->
+        state |> State.add_output ~output:Null
+    | HtmlTemplateNode _ ->
+        failwith "Cannot iterate over template node"
+    | ComponentTemplateNode _ ->
+        failwith "Cannot iterate over template node"
+    | Record _ ->
+        failwith "Cannot iterate over record value"
+    | Int _ ->
+        failwith "Cannot iterate over int value"
+    | Float _ ->
+        failwith "Cannot iterate over float value"
+    | Bool _ ->
+        failwith "Cannot iterate over boolean value"
+    | DefinitionInfo _ ->
+        failwith "Cannot iterate over definition info"
+    | Function _ ->
+        failwith "Cannot iterate over function"
+    | TagInfo _ ->
+        should_never_happen ()
+  in
+  iter iterable
 
 and eval_range ~state ~inclusive from upto =
   let from = from |> eval_expression ~state |> State.get_output in
   let upto = upto |> eval_expression ~state |> State.get_output in
-  let from, upto =
+  let rec get_range from upto =
     match (from, upto) with
+    | Portal from, upto ->
+        get_range from upto
+    | from, Portal upto ->
+        get_range from upto
     | Int from, Int upto ->
         (from, upto)
     | Int _, _ ->
@@ -1060,6 +1113,7 @@ and eval_range ~state ~inclusive from upto =
           "Can't construct range in for loop. The start and end of your range \
            are not of type int."
   in
+  let from, upto = get_range from upto in
   let iter =
     if from > upto then [||]
     else
@@ -1167,29 +1221,28 @@ and eval_template ~state template =
         let state =
           State.make
             ~parent_component:(tag, attributes, children)
-            ~tag_listeners ~context:state.context state.declarations
+            ~tag_listeners ~context:state.context ~portals:state.portals
+            ~mode:state.mode state.declarations
         in
-        state.declarations |> StringMap.find_opt tag
-        |> (function
-             | Some declaration ->
-                 eval_declaration ~state declaration
-             | None ->
-                 failwith ("Declaration with name `" ^ tag ^ "` was not found.")
-             )
-        |> State.get_output
+        eval_declaration ~state tag |> State.get_output
       in
+      let result = render_fn attributes in
       state
       |> State.add_output
-           ~output:(ComponentTemplateNode (render_fn, tag, attributes))
+           ~output:(ComponentTemplateNode (render_fn, tag, attributes, result))
 
 and eval_declaration ~state declaration =
-  match declaration with
-  | Ast.ComponentDeclaration (_attrs, body)
-  | Ast.LibraryDeclaration (_attrs, body)
-  | Ast.SiteDeclaration (_attrs, body)
-  | Ast.PageDeclaration (_attrs, body)
-  | Ast.StoreDeclaration (_attrs, body) ->
+  state.declarations
+  |> StringMap.find_opt declaration
+  |> function
+  | Some (Ast.ComponentDeclaration (_attrs, body))
+  | Some (Ast.LibraryDeclaration (_attrs, body))
+  | Some (Ast.SiteDeclaration (_attrs, body))
+  | Some (Ast.PageDeclaration (_attrs, body))
+  | Some (Ast.StoreDeclaration (_attrs, body)) ->
       eval_expression ~state body
+  | None ->
+      failwith ("Declaration with name `" ^ declaration ^ "` was not found.")
 
 let eval ?tag_listeners ~root declarations =
   let tag_listeners =
@@ -1197,6 +1250,8 @@ let eval ?tag_listeners ~root declarations =
       StringMap.empty
       |> StringMap.add "#SetContext" Pinc_Tags.Default.set_context
       |> StringMap.add "#GetContext" Pinc_Tags.Default.get_context
+      |> StringMap.add "#CreatePortal" Pinc_Tags.Default.create_portal
+      |> StringMap.add "#Portal" Pinc_Tags.Default.push_portal
     in
     match tag_listeners with
     | None ->
@@ -1206,13 +1261,20 @@ let eval ?tag_listeners ~root declarations =
           (fun _key _x y -> Some y)
           listeners default_tag_listeners
   in
-  let state = State.make ~tag_listeners declarations in
-  declarations |> StringMap.find_opt root
-  |> function
-  | Some declaration ->
-      eval_declaration ~state declaration
-  | None ->
-      failwith ("Declaration with name `" ^ root ^ "` was not found.")
+  let state = State.make ~tag_listeners declarations ~mode:Portal_Collection in
+  let state = eval_declaration ~state root in
+  let collected_portal_values =
+    Hashtbl.fold
+      (fun _key value -> function
+        | true ->
+            true
+        | false ->
+            value <> Portal (Array [||]) )
+      state.portals false
+  in
+  if collected_portal_values then
+    eval_declaration ~state:{state with mode= Render} root
+  else state
 
 let from_source ?(filename = "") ~source root =
   let declarations = Parser.parse ~filename source in

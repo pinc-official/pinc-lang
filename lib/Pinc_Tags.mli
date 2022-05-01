@@ -25,4 +25,8 @@ module Default : sig
   val set_context : tag_handler
 
   val get_context : tag_handler
+
+  val create_portal : tag_handler
+
+  val push_portal : tag_handler
 end

@@ -1,0 +1,5 @@
+component Section {
+  #Portal(name: "stylesheets", push: "path/to/section.css");
+
+  <section></section>
+}
