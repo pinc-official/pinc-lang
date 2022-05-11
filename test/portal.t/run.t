@@ -7,8 +7,3 @@
         <section></section>
       </body>
     </html>
-
-  $ esy x print . MainIf
-  Fatal error: exception Failure("Portals may not be used inside conditional checks")
-  [2]
-

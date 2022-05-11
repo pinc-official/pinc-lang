@@ -32,8 +32,8 @@ module Value = struct
     ComponentTemplateNode (render, tag, attributes, result)
 
   let rec to_string = function
-    | Portal p ->
-        to_string p
+    | Portal list ->
+        list |> List.rev_map to_string |> String.concat "\n"
     | Null ->
         ""
     | String s ->
@@ -68,8 +68,6 @@ module Value = struct
           attributes
           |> StringMap.iter (fun key value ->
                  match value with
-                 | Portal Null ->
-                     ()
                  | Null ->
                      ()
                  | Portal _
@@ -126,6 +124,8 @@ module Value = struct
         true
     | ComponentTemplateNode _ ->
         true
+    | Portal _ ->
+        false
     | DefinitionInfo (_name, Some _, _negated) ->
         true
     | DefinitionInfo (_name, None, _negated) ->
@@ -138,8 +138,6 @@ module Value = struct
         true
     | Record m ->
         not (StringMap.is_empty m)
-    | Portal _ ->
-        failwith "Portals may not be used inside conditional checks"
     | TagInfo _ ->
         should_never_happen ()
 
@@ -180,10 +178,6 @@ module Value = struct
         should_never_happen ()
     | _, TagInfo _ ->
         should_never_happen ()
-    | Portal _, _ ->
-        failwith "Portals may not be used inside conditional checks"
-    | _, Portal _ ->
-        failwith "Portals may not be used inside conditional checks"
     | _ ->
         false
 
@@ -220,11 +214,11 @@ module Value = struct
     | _, TagInfo _ ->
         should_never_happen ()
     | Portal _, _ ->
-        failwith "Portals may not be used inside conditional checks"
+        0
     | _, Portal _ ->
-        failwith "Portals may not be used inside conditional checks"
+        0
     | _ ->
-        should_never_happen ()
+        0
 end
 
 module State = struct
@@ -857,11 +851,8 @@ and eval_binary_bracket_access ~state left right =
 and eval_binary_array_add ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
   let right = right |> eval_expression ~state |> State.get_output in
-  let rec add left right =
+  let add left right =
     match (left, right) with
-    | Portal left, value ->
-        let res = add left value |> State.get_output in
-        state |> State.add_output ~output:(Portal res)
     | Array left, value ->
         state |> State.add_output ~output:(Array (Array.append left [|value|]))
     | _ ->
@@ -872,17 +863,8 @@ and eval_binary_array_add ~state left right =
 and eval_binary_merge ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
   let right = right |> eval_expression ~state |> State.get_output in
-  let rec merge left right =
+  let merge left right =
     match (left, right) with
-    | Portal left, Portal right ->
-        let res = merge left right |> State.get_output in
-        state |> State.add_output ~output:(Portal res)
-    | Portal left, right ->
-        let res = merge left right |> State.get_output in
-        state |> State.add_output ~output:(Portal res)
-    | left, Portal right ->
-        let res = merge left right |> State.get_output in
-        state |> State.add_output ~output:(Portal res)
     | Array left, Array right ->
         state |> State.add_output ~output:(Array (Array.append left right))
     | Record left, Record right ->
@@ -931,10 +913,6 @@ and eval_unary_not ~state expression =
 
 and eval_unary_minus ~state expression =
   match eval_expression ~state expression |> State.get_output with
-  | Portal (Int i) ->
-      state |> State.add_output ~output:(Portal (Int (Int.neg i)))
-  | Portal (Float f) ->
-      state |> State.add_output ~output:(Portal (Float (Float.neg f)))
   | Int i ->
       state |> State.add_output ~output:(Int (Int.neg i))
   | Float f ->
@@ -1052,10 +1030,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
         | v ->
             loop (State.get_output v :: acc) tl )
   in
-  let rec iter = function
-    | Portal p ->
-        let res = iter p |> State.get_output in
-        state |> State.add_output ~output:(Portal res)
+  let iter = function
     | Array l ->
         let res = l |> maybe_rev |> Array.to_list |> loop [] |> Value.of_list in
         state |> State.add_output ~output:res
@@ -1072,6 +1047,8 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
         failwith "Cannot iterate over template node"
     | ComponentTemplateNode _ ->
         failwith "Cannot iterate over template node"
+    | Portal _ ->
+        failwith "Cannot iterate over portal value"
     | Record _ ->
         failwith "Cannot iterate over record value"
     | Int _ ->
@@ -1092,12 +1069,8 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
 and eval_range ~state ~inclusive from upto =
   let from = from |> eval_expression ~state |> State.get_output in
   let upto = upto |> eval_expression ~state |> State.get_output in
-  let rec get_range from upto =
+  let get_range from upto =
     match (from, upto) with
-    | Portal from, upto ->
-        get_range from upto
-    | from, Portal upto ->
-        get_range from upto
     | Int from, Int upto ->
         (from, upto)
     | Int _, _ ->
@@ -1263,16 +1236,7 @@ let eval ?tag_listeners ~root declarations =
   in
   let state = State.make ~tag_listeners declarations ~mode:Portal_Collection in
   let state = eval_declaration ~state root in
-  let collected_portal_values =
-    Hashtbl.fold
-      (fun _key value -> function
-        | true ->
-            true
-        | false ->
-            value <> Portal (Array [||]) )
-      state.portals false
-  in
-  if collected_portal_values then
+  if state.portals |> Hashtbl.length > 0 then
     eval_declaration ~state:{state with mode= Render} root
   else state
 

@@ -1,7 +1,5 @@
 component Main {
-  let stylesheets = #CreatePortal(name: "stylesheets") :: values -> for (value in values) {
-    <link rel="stylesheet" href={value} />
-  };
+  let stylesheets = #CreatePortal(name: "stylesheets");
 
   <html>
     <head>
@@ -9,23 +7,6 @@ component Main {
     </head>
     <body>
       <Section />
-    </body>
-  </html>
-}
-
-component MainIf {
-  let stylesheets = #CreatePortal(name: "stylesheets") :: values -> for (value in values) {
-    <link rel="stylesheet" href={value} />
-  };
-
-  let stylesheets = stylesheets <- "foo!"
-
-  <html>
-    <body>
-      <Section />
-      {if(stylesheets != []) {
-        <div>NOOOOOOOO!!!! I SHOULD NOT RENDER!</div>
-      }}
     </body>
   </html>
 }

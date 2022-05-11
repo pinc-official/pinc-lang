@@ -1,6 +1,6 @@
 type value =
   | Null
-  | Portal of value
+  | Portal of value list
   | String of string
   | Int of int
   | Float of float

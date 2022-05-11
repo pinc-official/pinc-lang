@@ -809,7 +809,9 @@ module Default = struct
           Result.error
             "Something unexpected happened...this is my fault, not yours"
     in
-    let get_value state key = Hashtbl.find_opt state.portals key in
+    let get_value state key =
+      Some (Portal (Hashtbl.find_all state.portals key))
+    in
     let eval ~self state info =
       let _name, _optional, attributes, _transformer = info in
       let name =
@@ -823,17 +825,8 @@ module Default = struct
             failwith
               "Expected attribute `name` on #CreatePortal to be of type string."
       in
-      let () =
-        match state.mode with
-        | Portal_Collection when Hashtbl.mem state.portals name ->
-            ()
-        | Portal_Collection ->
-            Hashtbl.add state.portals name (Portal (Array [||]))
-        | Render ->
-            ()
-      in
       name |> self.get_value state
-      |> Option.value ~default:(Portal (Array [||]))
+      |> Option.value ~default:(Portal [])
       |> self.validate info
       |> Result.map (self.transform info)
     in
@@ -911,15 +904,8 @@ module Default = struct
         match state.mode with
         | Render ->
             ()
-        | Portal_Collection -> (
-          match Hashtbl.find_opt state.portals name with
-          | None ->
-              Hashtbl.add state.portals name (Portal (Array [|push|]))
-          | Some (Portal (Array array)) ->
-              Hashtbl.replace state.portals name
-                (Portal (Array (Array.append array [|push|])))
-          | Some _ ->
-              assert false )
+        | Portal_Collection ->
+            Hashtbl.add state.portals name push
       in
       name |> self.get_value state |> Option.value ~default:Null
       |> self.validate info
