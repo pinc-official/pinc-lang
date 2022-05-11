@@ -1,0 +1,12 @@
+component Main {
+  let stylesheets = #CreatePortal(name: "stylesheets");
+
+  <html>
+    <head>
+      {stylesheets}
+    </head>
+    <body>
+      <Section />
+    </body>
+  </html>
+}

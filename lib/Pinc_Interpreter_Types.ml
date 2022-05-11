@@ -1,5 +1,6 @@
 type value =
   | Null
+  | Portal of value list
   | String of string
   | Int of int
   | Float of float
@@ -11,7 +12,7 @@ type value =
   | TagInfo of tag_info
   | HtmlTemplateNode of string * value StringMap.t * value list * bool
   | ComponentTemplateNode of
-      (value StringMap.t -> value) * string * value StringMap.t
+      (value StringMap.t -> value) * string * value StringMap.t * value
 
 and definition_info =
   string
@@ -37,17 +38,21 @@ and tag_handler =
   ; eval: self:tag_handler -> state -> tag_info -> (value, string) Result.t }
 
 and state =
-  { binding_identifier: (bool * string) option
+  { mode: mode
+  ; binding_identifier: (bool * string) option
   ; declarations: Pinc_Ast.declaration StringMap.t
   ; output: value
   ; environment: environment
   ; tag_listeners: tag_handler StringMap.t
   ; tag_info: bool
   ; parent_component: (string * value StringMap.t * value list) option
-  ; context: (string, value) Hashtbl.t }
+  ; context: (string, value) Hashtbl.t
+  ; portals: (string, value) Hashtbl.t }
 
 and environment =
   { mutable scope: (string * binding) list list
   ; mutable use_scope: (string * value) list }
 
 and binding = {is_mutable: bool; is_optional: bool; value: value}
+
+and mode = Portal_Collection | Render

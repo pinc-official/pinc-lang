@@ -14,6 +14,9 @@ module Default = struct
       | TagInfo _ ->
           Result.error
             "Something unexpected happened...this is my fault, not yours"
+      | Portal _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
       | Int _ ->
           Result.error "tried to assign integer value to a string tag."
       | Float _ ->
@@ -66,6 +69,9 @@ module Default = struct
     let validate _info value =
       match value with
       | TagInfo _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Portal _ ->
           Result.error
             "Something unexpected happened...this is my fault, not yours"
       | Float _ ->
@@ -122,6 +128,9 @@ module Default = struct
       | TagInfo _ ->
           Result.error
             "Something unexpected happened...this is my fault, not yours"
+      | Portal _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
       | Bool _ ->
           Result.error "tried to assign boolean value to a float tag."
       | Array _ ->
@@ -176,6 +185,9 @@ module Default = struct
       | TagInfo _ ->
           Result.error
             "Something unexpected happened...this is my fault, not yours"
+      | Portal _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
       | Array _ ->
           Result.error "tried to assign array value to a boolean tag."
       | String _ ->
@@ -228,6 +240,9 @@ module Default = struct
     let validate _info value =
       match value with
       | TagInfo _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Portal _ ->
           Result.error
             "Something unexpected happened...this is my fault, not yours"
       | Bool _ ->
@@ -334,6 +349,9 @@ module Default = struct
     let validate _info value =
       match value with
       | TagInfo _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Portal _ ->
           Result.error
             "Something unexpected happened...this is my fault, not yours"
       | Bool _ ->
@@ -476,6 +494,9 @@ module Default = struct
       | TagInfo _ ->
           Result.error
             "Something unexpected happened...this is my fault, not yours"
+      | Portal _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
       | Bool _ ->
           Result.error "tried to assign boolean value to slot."
       | String _ ->
@@ -555,7 +576,7 @@ module Default = struct
             a |> Array.to_list
             |> List.partition_map (function
                  | ( HtmlTemplateNode (tag, _, _, _)
-                   | ComponentTemplateNode (_, tag, _) ) as v -> (
+                   | ComponentTemplateNode (_, tag, _, _) ) as v -> (
                    match check_instance_restriction tag with
                    | Ok () ->
                        Either.left v
@@ -589,9 +610,9 @@ module Default = struct
             if find_slot_key attributes = key then
               HtmlTemplateNode (tag, attributes, children, self_closing) :: acc
             else acc
-        | ComponentTemplateNode (fn, tag, attributes) ->
+        | ComponentTemplateNode (fn, tag, attributes, result) ->
             if find_slot_key attributes = key then
-              ComponentTemplateNode (fn, tag, attributes) :: acc
+              ComponentTemplateNode (fn, tag, attributes, result) :: acc
             else acc
         | Array l ->
             l |> Array.fold_left keep_slotted acc
@@ -635,6 +656,9 @@ module Default = struct
     let validate _info value =
       match value with
       | TagInfo _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Portal _ ->
           Result.error
             "Something unexpected happened...this is my fault, not yours"
       | Bool _ ->
@@ -707,7 +731,8 @@ module Default = struct
       | TagInfo _ ->
           Result.error
             "Something unexpected happened...this is my fault, not yours"
-      | ( Bool _
+      | ( Portal _
+        | Bool _
         | String _
         | Int _
         | Float _
@@ -738,6 +763,152 @@ module Default = struct
       name |> self.get_value state
       |> (function None | Some Null -> default | Some v -> Some v)
       |> Option.value ~default:Null |> self.validate info
+      |> Result.map (self.transform info)
+    in
+    {validate; transform; eval; get_value}
+
+  let create_portal =
+    let validate _info value =
+      match value with
+      | TagInfo _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Bool _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | String _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Int _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Float _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Array _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Portal _ as p ->
+          Result.ok p
+      | HtmlTemplateNode _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | ComponentTemplateNode _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | DefinitionInfo _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Function _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Record _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Null ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+    in
+    let get_value state key =
+      Some (Portal (Hashtbl.find_all state.portals key))
+    in
+    let eval ~self state info =
+      let _name, _optional, attributes, _transformer = info in
+      let name =
+        attributes |> StringMap.find_opt "name"
+        |> function
+        | Some (String s) ->
+            s
+        | None ->
+            failwith "attribute name is required when creating a portal."
+        | Some _ ->
+            failwith
+              "Expected attribute `name` on #CreatePortal to be of type string."
+      in
+      name |> self.get_value state
+      |> Option.value ~default:(Portal [])
+      |> self.validate info
+      |> Result.map (self.transform info)
+    in
+    {validate; transform; eval; get_value}
+
+  let push_portal =
+    let validate _info value =
+      match value with
+      | Portal _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | TagInfo _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Bool _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | String _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Int _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Float _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Array _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | HtmlTemplateNode _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | ComponentTemplateNode _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | DefinitionInfo _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Function _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Record _ ->
+          Result.error
+            "Something unexpected happened...this is my fault, not yours"
+      | Null ->
+          Result.ok Null
+    in
+    let get_value _state _key = Some Null in
+    let eval ~self state info =
+      let _name, _optional, attributes, _transformer = info in
+      let name =
+        attributes |> StringMap.find_opt "name"
+        |> function
+        | Some (String s) ->
+            s
+        | None ->
+            failwith
+              "attribute name is required when pushing a value into a portal."
+        | Some _ ->
+            failwith
+              "Expected attribute `name` on #Portal to be of type string."
+      in
+      let push =
+        attributes |> StringMap.find_opt "push"
+        |> function
+        | Some (Function _) ->
+            failwith "a function can not be put into a portal."
+        | Some push ->
+            push
+        | None ->
+            failwith
+              "attribute push is required when pushing a value into a portal."
+      in
+      let () =
+        match state.mode with
+        | Render ->
+            ()
+        | Portal_Collection ->
+            Hashtbl.add state.portals name push
+      in
+      name |> self.get_value state |> Option.value ~default:Null
+      |> self.validate info
       |> Result.map (self.transform info)
     in
     {validate; transform; eval; get_value}
