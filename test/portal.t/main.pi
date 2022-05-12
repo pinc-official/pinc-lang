@@ -6,7 +6,7 @@ component Main {
       {stylesheets}
     </head>
     <body>
-      <Section />
+      <Section foo="Ah" />
     </body>
   </html>
 }

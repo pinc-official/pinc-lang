@@ -4,6 +4,6 @@
         <link href="path/to/section.css" rel="stylesheet" />
       </head>
       <body>
-        <section></section>
+        <section>Ah</section>
       </body>
     </html>

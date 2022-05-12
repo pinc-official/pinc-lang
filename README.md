@@ -10,11 +10,9 @@
 
 ## TODOs till feature completion
 
-- Remove catchall cases in switch stmts
-
-- Cache tag values in Portal_Collection mode
-
 ## TODOs after feature completion:
+
+- Remove catchall cases in switch stmts
 
 - Generate better error messages
 

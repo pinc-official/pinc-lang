@@ -44,6 +44,7 @@ and state =
   ; output: value
   ; environment: environment
   ; tag_listeners: tag_handler StringMap.t
+  ; tag_cache: (string, value Queue.t) Hashtbl.t
   ; tag_info: bool
   ; parent_component: (string * value StringMap.t * value list) option
   ; context: (string, value) Hashtbl.t

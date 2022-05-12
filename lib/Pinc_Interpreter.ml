@@ -223,8 +223,8 @@ end
 
 module State = struct
   let make ?(tag_listeners = StringMap.empty) ?parent_component
-      ?(context = Hashtbl.create 10) ?(portals = Hashtbl.create 10) ~mode
-      declarations =
+      ?(context = Hashtbl.create 10) ?(portals = Hashtbl.create 10)
+      ?(tag_cache = Hashtbl.create 10) ~mode declarations =
     { mode
     ; binding_identifier= None
     ; declarations
@@ -232,6 +232,7 @@ module State = struct
     ; environment= {scope= []; use_scope= []}
     ; tag_listeners
     ; tag_info= false
+    ; tag_cache
     ; parent_component
     ; context
     ; portals }
@@ -313,7 +314,8 @@ module State = struct
   let get_used_values t = t.environment.use_scope
 
   let call_tag_listener ~key ~tag t =
-    match t.tag_listeners |> StringMap.find_opt key with
+    let listener = t.tag_listeners |> StringMap.find_opt key in
+    match listener with
     | None ->
         Null
     | Some listener -> (
@@ -1107,9 +1109,9 @@ and eval_tag ~state tag =
   in
   let attributes =
     attributes
-    |> StringMap.map (fun it ->
+    |> StringMap.mapi (fun key it ->
            it
-           |> eval_expression ~state:{state with tag_info= true}
+           |> eval_expression ~state:{state with tag_info= key = "of"}
            |> State.get_output )
   in
   let apply_transformer ~transformer value =
@@ -1124,27 +1126,42 @@ and eval_tag ~state tag =
     | _ ->
         value
   in
-  let attributes =
+  let attributes, key =
     match (StringMap.find_opt "key" attributes, state.binding_identifier) with
     | None, Some ident ->
-        attributes |> StringMap.add "key" (String (snd ident))
-    | Some (String _), _ ->
-        attributes
+        let key = snd ident in
+        (attributes |> StringMap.add "key" (String key), key)
+    | Some (String key), _ ->
+        (attributes, key)
     | Some _, _ ->
         failwith "Expected attribute `key` on tag to be of type string"
     | None, None ->
-        attributes
+        (attributes, "")
   in
   let tag =
     (tag_name, is_optional, attributes, apply_transformer ~transformer)
   in
   let value =
     match state.tag_info with
-    | false ->
-        state |> State.call_tag_listener ~key:("#" ^ tag_name) ~tag
+    | false -> (
+      match state.mode with
+      | Render when tag_name <> "CreatePortal" ->
+          Option.bind (Hashtbl.find_opt state.tag_cache key) Queue.take_opt
+          |> Option.value ~default:Null
+      | _ ->
+          state |> State.call_tag_listener ~key:("#" ^ tag_name) ~tag )
     | true ->
         TagInfo tag
   in
+  (* TODO: Cleanup! Ideally the tag_cache would be a Hashtable of unique keys per tag! *)
+  ( if state.mode = Portal_Collection then
+    match Hashtbl.find_opt state.tag_cache key with
+    | None ->
+        let q = Queue.create () in
+        Queue.add value q ;
+        Hashtbl.add state.tag_cache key q
+    | Some q ->
+        Queue.add value q ) ;
   state |> State.add_output ~output:value
 
 and eval_template ~state template =
@@ -1195,7 +1212,7 @@ and eval_template ~state template =
           State.make
             ~parent_component:(tag, attributes, children)
             ~tag_listeners ~context:state.context ~portals:state.portals
-            ~mode:state.mode state.declarations
+            ~tag_cache:state.tag_cache ~mode:state.mode state.declarations
         in
         eval_declaration ~state tag |> State.get_output
       in
