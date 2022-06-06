@@ -1234,23 +1234,43 @@ and eval_declaration ~state declaration =
   | None ->
       failwith ("Declaration with name `" ^ declaration ^ "` was not found.")
 
-let eval ?tag_listeners ~root declarations =
-  let tag_listeners =
-    let default_tag_listeners =
-      StringMap.empty
-      |> StringMap.add "#SetContext" Pinc_Tags.Default.set_context
-      |> StringMap.add "#GetContext" Pinc_Tags.Default.get_context
-      |> StringMap.add "#CreatePortal" Pinc_Tags.Default.create_portal
-      |> StringMap.add "#Portal" Pinc_Tags.Default.push_portal
-    in
-    match tag_listeners with
-    | None ->
-        default_tag_listeners
-    | Some listeners ->
-        StringMap.union
-          (fun _key _x y -> Some y)
-          listeners default_tag_listeners
+let get_tag_listeners l =
+  let default_tag_listeners =
+    StringMap.empty
+    |> StringMap.add "#SetContext" Pinc_Tags.Default.set_context
+    |> StringMap.add "#GetContext" Pinc_Tags.Default.get_context
+    |> StringMap.add "#CreatePortal" Pinc_Tags.Default.create_portal
+    |> StringMap.add "#Portal" Pinc_Tags.Default.push_portal
   in
+  match l with
+  | None ->
+      default_tag_listeners
+  | Some listeners ->
+      StringMap.union (fun _key _x y -> Some y) listeners default_tag_listeners
+
+let eval_meta ?tag_listeners declarations =
+  let tag_listeners = get_tag_listeners tag_listeners in
+  let state = State.make ~tag_listeners declarations ~mode:Render in
+  let eval attrs =
+    attrs
+    |> Option.value ~default:StringMap.empty
+    |> StringMap.map (fun e -> eval_expression ~state e |> State.get_output)
+  in
+  declarations
+  |> StringMap.map (function
+       | Ast.ComponentDeclaration (attrs, _body) ->
+           `Component (eval attrs)
+       | Ast.SiteDeclaration (attrs, _body) ->
+           `Site (eval attrs)
+       | Ast.PageDeclaration (attrs, _body) ->
+           `Page (eval attrs)
+       | Ast.StoreDeclaration (attrs, _body) ->
+           `Store (eval attrs)
+       | Ast.LibraryDeclaration (attrs, _body) ->
+           `Library (eval attrs) )
+
+let eval ?tag_listeners ~root declarations =
+  let tag_listeners = get_tag_listeners tag_listeners in
   let state = State.make ~tag_listeners declarations ~mode:Portal_Collection in
   let state = eval_declaration ~state root in
   if state.portals |> Hashtbl.length > 0 then

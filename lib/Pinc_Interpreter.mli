@@ -34,6 +34,16 @@ and State : sig
     state -> (string * value StringMap.t * value list) option
 end
 
+val eval_meta :
+     ?tag_listeners:Pinc_Interpreter_Types.tag_handler StringMap.t
+  -> Ast.declaration StringMap.t
+  -> [> `Component of value StringMap.t
+     | `Library of value StringMap.t
+     | `Page of value StringMap.t
+     | `Site of value StringMap.t
+     | `Store of value StringMap.t ]
+     StringMap.t
+
 val eval :
      ?tag_listeners:Pinc_Interpreter_Types.tag_handler StringMap.t
   -> root:StringMap.key
