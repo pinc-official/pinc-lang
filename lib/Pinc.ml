@@ -1,3 +1,7 @@
+module Ast = struct
+  include Pinc_Ast
+end
+
 module Tags = struct
   include Pinc_Tags
 end

@@ -77,3 +77,11 @@ and declaration =
   | StoreDeclaration of attributes option * expression
 
 and t = declaration StringMap.t
+
+module Declaration = struct
+  let marshal (d : declaration) = Marshal.to_string d []
+
+  let unmarshal s =
+    let result : declaration = Marshal.from_string s 0 in
+    result
+end
