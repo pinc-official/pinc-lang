@@ -8,7 +8,6 @@ homepage: "https://github.com/pinc-lang/pinc-lang"
 bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
 depends: [
   "ocaml" {>= "4.14.0" & < "5.0.0"}
-  "melange"
   "dune" {>= "3.1"}
   "ocaml-lsp-server"
   "ocamlformat"
@@ -29,8 +28,3 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/pinc-lang/pinc-lang.git"
-pin-depends: [
-  [ "melange-compiler-libs.dev" "git+https://github.com/melange-re/melange-compiler-libs.git"]
-  [ "melange.dev" "git+https://github.com/melange-re/melange.git#fork" ]
-  [ "reason.dev" "git+https://github.com/reasonml/reason.git" ]
-]
