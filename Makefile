@@ -4,7 +4,7 @@
 all: build
 
 build:
-	opam exec -- dune build @install
+	opam exec -- dune build @all
 
 install:
 	if ! [ -e _opam ]; then \
