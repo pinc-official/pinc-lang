@@ -2,6 +2,8 @@
 
 (using action-plugin 0.1)
 
+(name pinc-lang)
+
 (cram enable)
 
 (generate_opam_files true)
