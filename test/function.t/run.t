@@ -1,4 +1,4 @@
-  $ esy x print . Component
+  $ print . Component
   <section>
       max(1, 5) = 5
       min(1, 5) = 1

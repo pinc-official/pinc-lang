@@ -1,4 +1,4 @@
-  $ esy x print . Component
+  $ print . Component
   <div>
       ![1] = false
       ![] = true

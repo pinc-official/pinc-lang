@@ -1,4 +1,4 @@
-  $ esy x print . Main
+  $ print . Main
   <html>
       <head>
         <link href="path/to/section.css" rel="stylesheet" />

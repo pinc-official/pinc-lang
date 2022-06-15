@@ -1,4 +1,4 @@
-  $ esy x print . C
+  $ print . C
   <section>
       0
   1

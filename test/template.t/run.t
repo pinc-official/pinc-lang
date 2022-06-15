@@ -1,4 +1,4 @@
-  $ esy x print . Component
+  $ print . Component
   <section class="Section">
       <div></div>
       <div></div>

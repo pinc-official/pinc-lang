@@ -1,4 +1,4 @@
-  $ esy x print . Component
+  $ print . Component
   <section>
       a: mutated
       b: mutated

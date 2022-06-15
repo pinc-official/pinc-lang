@@ -17,10 +17,13 @@
 
 (package
  (name pinc-lang)
- (synopsis "The PiNC Language as Syntax an Interpreter")
+ (synopsis "The PiNC Language as Syntax and Interpreter")
  (depends
-  dune
   (ocaml
    (and
-    (>= 4.12.0)
-    (< 5.0.0)))))
+    (>= 4.14.0)
+    (< 5.0.0)))
+  melange
+  dune
+  ocaml-lsp-server
+  ocamlformat))

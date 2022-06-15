@@ -1,4 +1,4 @@
-  $ esy x print . Component
+  $ print . Component
   <section>
       <h1>EXCLUSIVE RANGES</h1>
   

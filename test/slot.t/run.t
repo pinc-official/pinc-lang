@@ -1,4 +1,4 @@
-  $ esy x print . Component
+  $ print . Component
   <div class="SlotProvider">
       <area class="slot_default"><div>Hello Default</div></area>
       <area class="slot_restricted"><div class="SubComponent" data-foo="9">

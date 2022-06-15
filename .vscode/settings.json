@@ -1,6 +1,6 @@
 {
   "ocaml.sandbox": {
-    "kind": "esy",
-    "root": "${workspaceFolder:pinc-lang}"
+    "kind": "opam",
+    "switch": "${workspaceFolder:pinc-lang}"
   }
 }

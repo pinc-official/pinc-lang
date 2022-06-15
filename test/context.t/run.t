@@ -1,4 +1,4 @@
-  $ esy x print . Component
+  $ print . Component
   <section class="Section">
       <h3 class="HeadlineSecondary ">
   Hello, Headline Secondary!</h3>

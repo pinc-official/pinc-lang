@@ -1,3 +1,3 @@
-  $ esy x print . Docs
+  $ print . Docs
   1000.462
 
