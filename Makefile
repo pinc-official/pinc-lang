@@ -4,28 +4,30 @@
 all: build
 
 build:
-	opam exec -- dune build @all
+	mel build
+	dune build -p pinc-lang --profile=release
 
 install:
 	if ! [ -e _opam ]; then \
-	   opam switch create . --empty && \
-	   opam install ocaml.4.14.0 ; \
+		opam switch create . --empty && \
+		opam install ocaml.4.14.0 ; \
 	fi
 	opam install ./*.opam --deps-only --with-test \
 
 fmt:
-	opam exec -- dune build @fmt --auto-promote
+	dune build @fmt --auto-promote
 
 fmt-check:
-	opam exec -- dune build @fmt
+	dune build @fmt
 
 test:
-	opam exec -- dune build @runtest
+	dune build @runtest
 
 test-update:
-	opam exec -- dune build @runtest --auto-promote
+	dune build @runtest --auto-promote
 
 clean:
+	mel clean
 	rm -rf _build
 
 clear: clean

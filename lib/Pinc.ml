@@ -29,3 +29,7 @@ end
 module StringMap = struct
   include StringMap
 end
+
+module Typer = struct
+  include Pinc_Typer
+end
