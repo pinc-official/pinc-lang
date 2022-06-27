@@ -10,16 +10,16 @@ let main =
   let lexer = Lexer.make ~filename src in
   let rec loop lexer =
     match Lexer.scan lexer with
-    | {typ= Token.END_OF_INPUT; _} ->
-        ()
+    | { typ = Token.END_OF_INPUT; _ } -> ()
     | _t ->
-        print_endline (Token.to_string _t.Token.typ) ;
-        loop lexer
+      print_endline (Token.to_string _t.Token.typ);
+      loop lexer
   in
   let () = loop lexer in
   let end_time = Unix.gettimeofday () in
   let seconds = end_time -. start_time in
-  Printf.printf "%fms" (seconds *. 1000.) ;
+  Printf.printf "%fms" (seconds *. 1000.);
   close_in chan
+;;
 
 let () = main

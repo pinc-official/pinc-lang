@@ -6,30 +6,34 @@ module SourceLocation = struct
 end
 
 type uppercase_identifier = Uppercase_Id of string
-
 and lowercase_identifier = Lowercase_Id of string
 
-and string_template = StringInterpolation of expression | StringText of string
+and string_template =
+  | StringInterpolation of expression
+  | StringText of string
 
 and component_slot = uppercase_identifier * template_node list
 
 and template_node =
   | HtmlTemplateNode of
-      { tag: string
-      ; attributes: attributes
-      ; children: template_node list
-      ; self_closing: bool }
+      { tag : string
+      ; attributes : attributes
+      ; children : template_node list
+      ; self_closing : bool
+      }
   | ComponentTemplateNode of
-      { identifier: uppercase_identifier
-      ; attributes: attributes
-      ; children: template_node list }
+      { identifier : uppercase_identifier
+      ; attributes : attributes
+      ; children : template_node list
+      }
   | ExpressionTemplateNode of expression
   | TextTemplateNode of string
 
 and tag =
-  { tag_name: string
-  ; attributes: attributes
-  ; transformer: (lowercase_identifier * expression) option }
+  { tag_name : string
+  ; attributes : attributes
+  ; transformer : (lowercase_identifier * expression) option
+  }
 
 and expression =
   | String of string_template list
@@ -44,15 +48,19 @@ and expression =
   | LowercaseIdentifierExpression of string
   | TagExpression of tag
   | ForInExpression of
-      { index: lowercase_identifier option
-      ; iterator: lowercase_identifier
-      ; reverse: bool
-      ; iterable: expression
-      ; body: statement }
+      { index : lowercase_identifier option
+      ; iterator : lowercase_identifier
+      ; reverse : bool
+      ; iterable : expression
+      ; body : statement
+      }
   | TemplateExpression of template_node list
   | BlockExpression of statement list
   | ConditionalExpression of
-      {condition: expression; consequent: statement; alternate: statement option}
+      { condition : expression
+      ; consequent : statement
+      ; alternate : statement option
+      }
   | UnaryExpression of Operators.Unary.typ * expression
   | BinaryExpression of expression * Operators.Binary.typ * expression
 
@@ -84,4 +92,5 @@ module Declaration = struct
   let unmarshal s =
     let result : declaration = Marshal.from_string s 0 in
     result
+  ;;
 end

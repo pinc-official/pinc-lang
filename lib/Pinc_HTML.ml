@@ -12,6 +12,8 @@ let void_elements =
    ; "param"
    ; "source"
    ; "track"
-   ; "wbr" |]
+   ; "wbr"
+  |]
+;;
 
 let is_void_el s = Array.mem s void_elements
