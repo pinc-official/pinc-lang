@@ -43,6 +43,40 @@ module Expect = struct
       failwith "expected int, got component template node"
   ;;
 
+  let float = function
+    | Null -> None
+    | Portal _ -> failwith "expected float, got portal value"
+    | String _ -> failwith "expected float, got string"
+    | Int _ -> failwith "expected float, got int"
+    | Float f -> Some f
+    | Bool _ -> failwith "expected float, got bool"
+    | Array _ -> failwith "expected float, got array"
+    | Record _ -> failwith "expected float, got record"
+    | Function _ -> failwith "expected float, got function definition"
+    | DefinitionInfo _ -> failwith "expected float, got definition info"
+    | TagInfo _ -> failwith "expected float, got tag"
+    | HtmlTemplateNode (_, _, _, _) -> failwith "expected float, got HTML template node"
+    | ComponentTemplateNode (_, _, _, _) ->
+      failwith "expected float, got component template node"
+  ;;
+
+  let bool = function
+    | Null -> None
+    | Portal _ -> failwith "expected bool, got portal value"
+    | String _ -> failwith "expected bool, got string"
+    | Int _ -> failwith "expected bool, got int"
+    | Float _ -> failwith "expected bool, got float"
+    | Bool b -> Some b
+    | Array _ -> failwith "expected bool, got array"
+    | Record _ -> failwith "expected bool, got record"
+    | Function _ -> failwith "expected bool, got function definition"
+    | DefinitionInfo _ -> failwith "expected bool, got definition info"
+    | TagInfo _ -> failwith "expected bool, got tag"
+    | HtmlTemplateNode (_, _, _, _) -> failwith "expected bool, got HTML template node"
+    | ComponentTemplateNode (_, _, _, _) ->
+      failwith "expected bool, got component template node"
+  ;;
+
   let array fn = function
     | Null -> None
     | Portal _ -> failwith "expected array, got portal value"
@@ -75,5 +109,38 @@ module Expect = struct
     | HtmlTemplateNode (_, _, _, _) -> failwith "expected record, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
       failwith "expected record, got component template node"
+  ;;
+
+  let definition_info ?(typ = `All) = function
+    | Null -> None
+    | Portal _ -> failwith "expected definition info, got portal value"
+    | String _ -> failwith "expected definition info, got string"
+    | Int _ -> failwith "expected definition info, got int"
+    | Float _ -> failwith "expected definition info, got float"
+    | Bool _ -> failwith "expected definition info, got bool"
+    | Array _ -> failwith "expected definition info, got array"
+    | Record _ -> failwith "expected definition info, got record"
+    | Function _ -> failwith "expected definition info, got function definition"
+    | DefinitionInfo (name, def_typ, negated) ->
+      let typ =
+        match typ, def_typ with
+        | (`Component | `All), Some `Component -> `Component
+        | (`Page | `All), Some `Page -> `Page
+        | (`Site | `All), Some `Site -> `Site
+        | (`Library | `All), Some (`Library _) -> `Library
+        | (`Store | `All), Some `Store -> `Store
+        | _, None -> failwith ("definition \"" ^ name ^ "\" does not exist")
+        | `Component, _ -> failwith "expected a component definition"
+        | `Page, _ -> failwith "expected a page definition"
+        | `Site, _ -> failwith "expected a site definition"
+        | `Library, _ -> failwith "expected a library definition"
+        | `Store, _ -> failwith "expected a store definition"
+      in
+      Some (typ, name, negated = `NotNegated)
+    | TagInfo _ -> failwith "expected definition info, got tag"
+    | HtmlTemplateNode (_, _, _, _) ->
+      failwith "expected definition info, got HTML template node"
+    | ComponentTemplateNode (_, _, _, _) ->
+      failwith "expected definition info, got component template node"
   ;;
 end
