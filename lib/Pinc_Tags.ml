@@ -403,9 +403,9 @@ module Default = struct
         | Some (Int i) -> i
         | _ -> failwith "Expected attribute `max` on #Slot to be of type int."
       in
-      let instanceOf =
+      let constraints =
         attributes
-        |> StringMap.find_opt "instanceOf"
+        |> StringMap.find_opt "constraints"
         |> function
         | None -> None
         | Some (Array l) ->
@@ -415,9 +415,9 @@ module Default = struct
                    | DefinitionInfo info -> info
                    | _ ->
                      failwith
-                       "Expected attribute `instanceOf` on #Slot to be an array of \
+                       "Expected attribute `constraints` on #Slot to be an array of \
                         uppercase identifiers."))
-        | _ -> failwith "Expected attribute `instanceOf` on #Slot to be an array."
+        | _ -> failwith "Expected attribute `constraints` on #Slot to be an array."
       in
       match value with
       | TagInfo _ ->
@@ -451,7 +451,7 @@ module Default = struct
           ^ ").")
       | Array a ->
         let check_instance_restriction tag =
-          match instanceOf with
+          match constraints with
           | None -> Result.ok ()
           | Some restrictions ->
             let is_in_list = ref false in
@@ -478,7 +478,7 @@ module Default = struct
                 ^ tag
                 ^ "` may not be used inside this #Slot . The following restrictions are \
                    set: [ "
-                ^ (instanceOf
+                ^ (constraints
                   |> Option.value ~default:[||]
                   |> Array.to_list
                   |> List.map (fun (name, _typ, negated) ->
