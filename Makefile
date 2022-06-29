@@ -1,5 +1,5 @@
-.PHONY: all build install fmt fmt-check test test-update clean clear
-.SILENT: all build install fmt fmt-check test test-update clean clear
+.PHONY: all build install update fmt fmt-check test test-update clean clear
+.SILENT: all build install update fmt fmt-check test test-update clean clear
 
 all: build
 
@@ -10,9 +10,13 @@ build:
 install:
 	if ! [ -e _opam ]; then \
 		opam switch create . --empty && \
-		opam install ocaml.4.14.0 ; \
+		opam install ocaml.4.14.0 --yes ; \
 	fi
-	opam install ./*.opam --deps-only --with-test \
+	opam install ./*.opam --deps-only --with-test --yes \
+
+update:
+	opam update
+	opam upgrade
 
 fmt:
 	dune build @fmt --auto-promote

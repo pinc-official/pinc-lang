@@ -4,5 +4,4 @@ build: [
 pin-depends: [
   [ "melange-compiler-libs.dev" "git+https://github.com/melange-re/melange-compiler-libs.git"]
   [ "melange.dev" "git+https://github.com/melange-re/melange.git#fork" ]
-  [ "reason.dev" "git+https://github.com/reasonml/reason.git" ]
 ]
