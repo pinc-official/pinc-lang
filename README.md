@@ -10,6 +10,31 @@
 
 ## TODOs till feature completion
 
+- Rewrite strings to be an array of chars and make chars a separate value type
+
+- Add named parameters to function application
+
+  ```
+    let add = fn (a, b) -> {
+      a + b
+    };
+
+    // The following two would be the same:
+    add(1, 3);
+    add(b=3, a=1);
+  ```
+
+- Add default parameters to function declatation
+
+  ```
+    let add = fn (a, b=10) -> {
+      a + b
+    };
+
+    add(1, 3); // 4
+    add(1); // 11
+  ```
+
 ## TODOs after feature completion:
 
 - Remove catchall cases in switch stmts
@@ -23,8 +48,6 @@
 - Type inference
 
 - Unicode support for identifiers
-
-- Rewrite strings to be an array of chars and make chars a separate value type
 
 - Implement a "Std" library
 
