@@ -31,14 +31,74 @@ and function_info =
   ; exec : arguments:value StringMap.t -> state:state -> unit -> value
   }
 
-and tag_info = string * bool * value StringMap.t * (value -> value)
+and external_tag =
+  [ `String
+  | `Int
+  | `Float
+  | `Boolean
+  | `Array
+  | `Record
+  | `Slot
+  | `Custom of string
+  ]
+
+and tag_info =
+  { tag : external_tag
+  ; key : string
+  ; path : string list
+  ; required : bool
+  ; attributes : value StringMap.t
+  ; transformer : value -> value
+  }
 
 and tag_handler =
-  { validate : tag_info -> value -> (value, string) Result.t
-  ; transform : tag_info -> value -> value
-  ; get_value : state -> string -> value option
-  ; eval : self:tag_handler -> state -> tag_info -> (value, string) Result.t
-  }
+  [ `String of
+    required:bool
+    -> attributes:value StringMap.t
+    -> path:string list
+    -> (value, string) Result.t
+  | `Int of
+    required:bool
+    -> attributes:value StringMap.t
+    -> path:string list
+    -> (value, string) Result.t
+  | `Float of
+    required:bool
+    -> attributes:value StringMap.t
+    -> path:string list
+    -> (value, string) Result.t
+  | `Boolean of
+    required:bool
+    -> attributes:value StringMap.t
+    -> path:string list
+    -> (value, string) Result.t
+  | `Array of
+    required:bool
+    -> attributes:value StringMap.t
+    -> child:tag_info
+    -> path:string list
+    -> (value, string) Result.t
+  | `Record of
+    required:bool
+    -> attributes:value StringMap.t
+    -> children:tag_info StringMap.t
+    -> path:string list
+    -> (value, string) Result.t
+  | `Slot of
+    required:bool
+    -> attributes:value StringMap.t
+    -> key:string
+    -> (value, string) Result.t
+  | `Custom of
+    tag:string
+    -> required:bool
+    -> attributes:value StringMap.t
+    -> parent_value:value StringMap.t option
+    -> path:string list
+    -> (value, string) Result.t
+  ]
+
+and tag_listeners = (external_tag, tag_handler) Hashtbl.t
 
 and state =
   { mode : mode
@@ -46,9 +106,9 @@ and state =
   ; declarations : Pinc_Ast.declaration StringMap.t
   ; output : value
   ; environment : environment
-  ; tag_listeners : tag_handler StringMap.t
+  ; tag_listeners : tag_listeners
   ; tag_cache : (string, value Queue.t) Hashtbl.t
-  ; tag_info : bool
+  ; parent_tag : string list option
   ; parent_component : (string * value StringMap.t * value list) option
   ; context : (string, value) Hashtbl.t
   ; portals : (string, value) Hashtbl.t

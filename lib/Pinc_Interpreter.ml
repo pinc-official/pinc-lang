@@ -5,11 +5,6 @@ open Pinc_Interpreter_Types
 exception Loop_Break
 exception Loop_Continue
 
-let should_never_happen () =
-  let exception Internal_Error in
-  raise Internal_Error
-;;
-
 module Value = struct
   let null () = Null
   let of_string s = String s
@@ -74,7 +69,7 @@ module Value = struct
                  Buffer.add_char buf '"';
                  Buffer.add_string buf (value |> to_string);
                  Buffer.add_char buf '"'
-               | TagInfo _ -> should_never_happen ());
+               | TagInfo _ -> assert false);
       if self_closing && Pinc_HTML.is_void_el tag
       then Buffer.add_string buf " />"
       else (
@@ -88,7 +83,7 @@ module Value = struct
     | ComponentTemplateNode (_render_fn, _tag, _attributes, result) -> result |> to_string
     | Function _ -> ""
     | DefinitionInfo _ -> ""
-    | TagInfo _ -> should_never_happen ()
+    | TagInfo _ -> assert false
   ;;
 
   let is_true = function
@@ -106,7 +101,7 @@ module Value = struct
     | Array [||] -> false
     | Array _ -> true
     | Record m -> not (StringMap.is_empty m)
-    | TagInfo _ -> should_never_happen ()
+    | TagInfo _ -> assert false
   ;;
 
   let rec equal a b =
@@ -131,8 +126,8 @@ module Value = struct
       , ComponentTemplateNode (_, b_tag, b_attributes, _) ) ->
       a_tag = b_tag && StringMap.equal equal a_attributes b_attributes
     | Null, Null -> true
-    | TagInfo _, _ -> should_never_happen ()
-    | _, TagInfo _ -> should_never_happen ()
+    | TagInfo _, _ -> assert false
+    | _, TagInfo _ -> assert false
     | _ -> false
   ;;
 
@@ -151,17 +146,38 @@ module Value = struct
     | HtmlTemplateNode _, HtmlTemplateNode _ -> 0
     | DefinitionInfo _, DefinitionInfo _ -> 0
     | Function _, Function _ -> 0
-    | TagInfo _, _ -> should_never_happen ()
-    | _, TagInfo _ -> should_never_happen ()
+    | TagInfo _, _ -> assert false
+    | _, TagInfo _ -> assert false
     | Portal _, _ -> 0
     | _, Portal _ -> 0
     | _ -> 0
+  ;;
+
+  let merge left right =
+    match left, right with
+    | Array left, Array right -> Array (Array.append left right)
+    | Record left, Record right ->
+      Record (StringMap.union (fun _key _x y -> Some y) left right)
+    | HtmlTemplateNode (tag, attributes, children, self_closing), Record right ->
+      let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
+      HtmlTemplateNode (tag, attributes, children, self_closing)
+    | HtmlTemplateNode _, _ ->
+      failwith "Trying to merge a non record value onto tag attributes."
+    | ComponentTemplateNode (fn, tag, attributes, _), Record right ->
+      let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
+      let result = fn attributes in
+      ComponentTemplateNode (fn, tag, attributes, result)
+    | ComponentTemplateNode _, _ ->
+      failwith "Trying to merge a non record value onto tag attributes."
+    | Array _, _ -> failwith "Trying to merge a non array value onto an array."
+    | _, Array _ -> failwith "Trying to merge an array value onto a non array."
+    | _ -> failwith "Trying to merge two non array values."
   ;;
 end
 
 module State = struct
   let make
-      ?(tag_listeners = StringMap.empty)
+      ?(tag_listeners = Hashtbl.create 10)
       ?parent_component
       ?(context = Hashtbl.create 10)
       ?(portals = Hashtbl.create 10)
@@ -175,7 +191,7 @@ module State = struct
     ; output = Null
     ; environment = { scope = []; use_scope = [] }
     ; tag_listeners
-    ; tag_info = false
+    ; parent_tag = None
     ; tag_cache
     ; parent_component
     ; context
@@ -191,7 +207,7 @@ module State = struct
   let add_value_to_scope ~ident ~value ~is_optional ~is_mutable t =
     let update_scope t =
       match t.environment.scope with
-      | [] -> should_never_happen ()
+      | [] -> assert false
       | scope :: rest -> ((ident, { is_mutable; is_optional; value }) :: scope) :: rest
     in
     let environment = { t.environment with scope = update_scope t } in
@@ -256,19 +272,6 @@ module State = struct
   let add_output ~output t = { t with output }
   let get_bindings t = t.environment.scope |> List.hd
   let get_used_values t = t.environment.use_scope
-
-  let call_tag_listener ~key ~tag t =
-    let listener = t.tag_listeners |> StringMap.find_opt key in
-    match listener with
-    | None -> Null
-    | Some listener ->
-      tag
-      |> listener.eval ~self:listener t
-      |> (function
-      | Ok v -> v
-      | Error e -> failwith e)
-  ;;
-
   let get_parent_component t = t.parent_component
 end
 
@@ -694,8 +697,8 @@ and eval_binary_bracket_access ~state left right =
   match left, right with
   | Array left, Int right ->
     let output =
-      try left.(right) with
-      | Invalid_argument _ -> Null
+      try Array.unsafe_get left right with
+      | _ -> Null
     in
     state |> State.add_output ~output
   | Record left, String right ->
@@ -720,33 +723,7 @@ and eval_binary_array_add ~state left right =
 and eval_binary_merge ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
   let right = right |> eval_expression ~state |> State.get_output in
-  let merge left right =
-    match left, right with
-    | Array left, Array right ->
-      state |> State.add_output ~output:(Array (Array.append left right))
-    | Record left, Record right ->
-      state
-      |> State.add_output
-           ~output:(Record (StringMap.union (fun _key _x y -> Some y) left right))
-    | HtmlTemplateNode (tag, attributes, children, self_closing), Record right ->
-      let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
-      state
-      |> State.add_output
-           ~output:(HtmlTemplateNode (tag, attributes, children, self_closing))
-    | HtmlTemplateNode _, _ ->
-      failwith "Trying to merge a non record value onto tag attributes."
-    | ComponentTemplateNode (fn, tag, attributes, _), Record right ->
-      let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
-      let result = fn attributes in
-      state
-      |> State.add_output ~output:(ComponentTemplateNode (fn, tag, attributes, result))
-    | ComponentTemplateNode _, _ ->
-      failwith "Trying to merge a non record value onto tag attributes."
-    | Array _, _ -> failwith "Trying to merge a non array value onto an array."
-    | _, Array _ -> failwith "Trying to merge an array value onto a non array."
-    | _ -> failwith "Trying to merge two non array values."
-  in
-  merge left right
+  state |> State.add_output ~output:(Value.merge left right)
 
 and eval_unary_not ~state expression =
   match eval_expression ~state expression |> State.get_output with
@@ -832,12 +809,7 @@ and eval_if ~state ~condition ~alternate ~consequent =
   | false, None -> state |> State.add_output ~output:Null
 
 and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
-  let make_rev array =
-    array |> Array.stable_sort (fun _ _ -> 1);
-    array
-  in
   let iterable = iterable |> eval_expression ~state |> State.get_output in
-  let maybe_rev = if reverse then make_rev else fun arr -> arr in
   let index = ref (-1) in
   let rec loop acc = function
     | [] -> List.rev acc
@@ -865,18 +837,23 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
   in
   let iter = function
     | Array l ->
-      let res = l |> maybe_rev |> Array.to_list |> loop [] |> Value.of_list in
+      let to_seq array =
+        if reverse
+        then (
+          array |> Array.stable_sort (fun _ _ -> 1);
+          array |> Array.to_seq)
+        else Array.to_seq array
+      in
+      let res = l |> to_seq |> List.of_seq |> loop [] |> Value.of_list in
       state |> State.add_output ~output:res
     | String s ->
       let res =
-        s
-        |> String.to_seq
-        |> Array.of_seq
-        |> maybe_rev
-        |> Array.map (fun c -> String (String.make 1 c))
-        |> Array.to_list
-        |> loop []
-        |> Value.of_list
+        let map =
+          if reverse
+          then List.rev_map (fun c -> String (String.make 1 c))
+          else List.map (fun c -> String (String.make 1 c))
+        in
+        s |> String.to_seq |> List.of_seq |> map |> loop [] |> Value.of_list
       in
       state |> State.add_output ~output:res
     | Null -> state |> State.add_output ~output:Null
@@ -889,7 +866,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
     | Bool _ -> failwith "Cannot iterate over boolean value"
     | DefinitionInfo _ -> failwith "Cannot iterate over definition info"
     | Function _ -> failwith "Cannot iterate over function"
-    | TagInfo _ -> should_never_happen ()
+    | TagInfo _ -> assert false
   in
   iter iterable
 
@@ -925,17 +902,235 @@ and eval_block ~state statements =
   let state = state |> State.add_scope in
   statements |> List.fold_left (fun state -> eval_statement ~state) state
 
-and eval_tag ~state tag =
-  let Ast.{ tag_name; attributes; transformer } = tag in
-  let is_optional =
-    state.binding_identifier |> Option.map fst |> Option.value ~default:false
-  in
-  let attributes =
+and eval_slot ~attributes ~slotted_elements key =
+  let find_slot_key attributes =
     attributes
-    |> StringMap.mapi (fun key it ->
-           it
-           |> eval_expression ~state:{ state with tag_info = key = "of" }
-           |> State.get_output)
+    |> StringMap.find_opt "slot"
+    |> Option.value ~default:(String "")
+    |> function
+    | String s -> s
+    | _ -> failwith "Expected slot attribute to be of type string"
+  in
+  let rec keep_slotted acc = function
+    | HtmlTemplateNode (tag, attributes, children, self_closing) ->
+      if find_slot_key attributes = key
+      then HtmlTemplateNode (tag, attributes, children, self_closing) :: acc
+      else acc
+    | ComponentTemplateNode (fn, tag, attributes, result) ->
+      if find_slot_key attributes = key
+      then ComponentTemplateNode (fn, tag, attributes, result) :: acc
+      else acc
+    | Array l -> l |> Array.fold_left keep_slotted acc
+    | String s when String.trim s = "" -> acc
+    | _ ->
+      failwith
+        "Only nodes may be placed into slots. If you want to put a plain text into a \
+         slot, you have to wrap it in a <p></p> tag for example."
+  in
+  let slotted_elements = slotted_elements |> List.fold_left keep_slotted [] |> List.rev in
+  let min =
+    attributes
+    |> Pinc_Typer.Expect.(maybe (attribute "min" int))
+    |> Option.value ~default:0
+  in
+  let max =
+    attributes
+    |> Pinc_Typer.Expect.(maybe (attribute "max" int))
+    |> Option.value ~default:Int.max_int
+  in
+  let constraints =
+    attributes
+    |> Pinc_Typer.Expect.(
+         maybe
+           (attribute "constraints" (array (required (definition_info ~typ:`Component)))))
+  in
+  let check_instance_restriction tag =
+    match constraints with
+    | None -> Result.ok ()
+    | Some restrictions ->
+      let is_in_list = ref false in
+      let allowed, disallowed =
+        restrictions
+        |> List.partition_map (fun (_typ, name, negated) ->
+               if name = tag then is_in_list := true;
+               if negated then Either.right name else Either.left name)
+      in
+      let is_in_list = !is_in_list in
+      let is_allowed =
+        match allowed, disallowed with
+        | [], _disallowed -> not is_in_list
+        | _allowed, [] -> is_in_list
+        | allowed, _disallowed -> List.mem tag allowed
+      in
+      if not is_allowed
+      then
+        Result.error
+          ("Child with tag `"
+          ^ tag
+          ^ "` may not be used inside this #Slot . The following restrictions are set: [ "
+          ^ (constraints
+            |> Option.value ~default:[]
+            |> List.map (fun (_typ, name, negated) ->
+                   if negated then "!" ^ name else name)
+            |> String.concat ",")
+          ^ " ]")
+      else Result.ok ()
+  in
+  let num_slotted_elements = List.length slotted_elements in
+  if num_slotted_elements < min
+  then
+    failwith
+      ("#Slot did not reach the minimum amount of nodes (specified as "
+      ^ string_of_int min
+      ^ ").")
+  else if num_slotted_elements > max
+  then
+    failwith
+      ("#Slot includes more than the maximum amount of nodes (specified as "
+      ^ string_of_int max
+      ^ ").")
+  else (
+    let passed, failed =
+      slotted_elements
+      |> List.partition_map (function
+             | (HtmlTemplateNode (tag, _, _, _) | ComponentTemplateNode (_, tag, _, _)) as
+               v ->
+               (match check_instance_restriction tag with
+               | Ok () -> Either.left v
+               | Error e -> Either.right e)
+             | _ ->
+               Either.right
+                 "Tried to assign a non node value to a #Slot. Only nodes template nodes \
+                  are allowed inside slots. If you want to put another value (like a \
+                  string) into a slot, you have to wrap it in some node.")
+    in
+    match failed with
+    | [] -> Array (passed |> Array.of_list)
+    | hd :: _tl -> failwith hd)
+
+and eval_internal_tag ~state ~key ~attributes ~value_bag tag_name =
+  match tag_name with
+  | `String ->
+    value_bag
+    |> Pinc_Typer.Expect.(attribute key string)
+    |> Option.map Value.of_string
+    |> Option.value ~default:Null
+  | `Int ->
+    value_bag
+    |> Pinc_Typer.Expect.(attribute key int)
+    |> Option.map Value.of_int
+    |> Option.value ~default:Null
+  | `Float ->
+    value_bag
+    |> Pinc_Typer.Expect.(attribute key float)
+    |> Option.map Value.of_float
+    |> Option.value ~default:Null
+  | `Boolean ->
+    value_bag
+    |> Pinc_Typer.Expect.(attribute key bool)
+    |> Option.map Value.of_bool
+    |> Option.value ~default:Null
+  | `Record ->
+    let of' = attributes |> Pinc_Typer.Expect.(required (attribute "of" record)) in
+    value_bag
+    |> Pinc_Typer.Expect.(attribute key record)
+    |> Option.map (fun record ->
+           StringMap.merge
+             (fun _key x y ->
+               match x, y with
+               | Some _, Some (TagInfo i) ->
+                 Some (i |> eval_internal_or_external_tag ~state ~value:record)
+               | None, Some (TagInfo _) -> Some Null
+               | (None | Some _), Some value -> Some value
+               | (None | Some _), None -> None)
+             record
+             of'
+           |> Value.of_string_map)
+    |> Option.value ~default:Null
+  | `Array ->
+    let of' = attributes |> Pinc_Typer.Expect.(required (attribute "of" tag_info)) in
+    value_bag
+    |> Pinc_Typer.Expect.(attribute key (array any_value))
+    |> Option.map (fun array ->
+           array
+           |> List.mapi (fun index item ->
+                  let key = string_of_int index in
+                  { of' with key }
+                  |> eval_internal_or_external_tag
+                       ~state
+                       ~value:(StringMap.singleton key item))
+           |> Value.of_list)
+    |> Option.value ~default:Null
+
+and eval_internal_or_external_tag ~state ?value tag_info =
+  let { tag; key; path = _; required = _; attributes; transformer } = tag_info in
+  match value, state.parent_component with
+  | None, Some (_, value_bag, slotted_elements)
+  | Some value_bag, Some (_, _, slotted_elements) ->
+    (match tag with
+    | (`Array | `Boolean | `Float | `Int | `Record | `String) as tag ->
+      tag |> eval_internal_tag ~state ~key ~attributes ~value_bag |> transformer
+    | `Slot -> key |> eval_slot ~attributes ~slotted_elements |> transformer
+    | `Custom _ -> tag_info |> call_tag_listener ~state ?value)
+  | _ -> tag_info |> call_tag_listener ~state ?value:None
+
+and call_tag_listener ~state ?value t =
+  let { tag; key; path; required; attributes; transformer } = t in
+  let listener = Hashtbl.find_opt state.tag_listeners tag in
+  (match tag, listener with
+  | `String, Some (`String fn) -> fn ~required ~attributes ~path
+  | `Int, Some (`Int fn) -> fn ~required ~attributes ~path
+  | `Float, Some (`Float fn) -> fn ~required ~attributes ~path
+  | `Boolean, Some (`Boolean fn) -> fn ~required ~attributes ~path
+  | `Array, Some (`Array fn) ->
+    let child = attributes |> Pinc_Typer.Expect.(required (attribute "of" tag_info)) in
+    fn ~required ~attributes ~child ~path
+  | `Record, Some (`Record fn) ->
+    let children =
+      attributes
+      |> Pinc_Typer.Expect.(required (attribute "of" record))
+      |> StringMap.filter_map (fun _key value ->
+             value |> Pinc_Typer.Expect.(maybe tag_info))
+    in
+    fn ~required ~attributes ~children ~path
+  | `Slot, Some (`Slot fn) -> fn ~required ~attributes ~key
+  | `Custom tag, Some (`Custom fn) ->
+    fn ~tag ~required ~attributes ~parent_value:value ~path
+  | _ -> Result.ok Null)
+  |> function
+  | Ok v -> v |> transformer
+  | Error e -> failwith e
+
+and eval_tag ~state tag =
+  let Ast.{ tag; attributes; transformer } = tag in
+  let required =
+    not (state.binding_identifier |> Option.map fst |> Option.value ~default:false)
+  in
+  let of_attribute = attributes |> StringMap.find_opt "of" in
+  let tag_attributes =
+    attributes
+    |> StringMap.remove "of"
+    |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+  in
+  let key, state =
+    match StringMap.find_opt "key" tag_attributes, state.binding_identifier with
+    | None, Some (_optional, ident) -> ident, { state with binding_identifier = None }
+    | Some (String key), _ -> key, state
+    | Some _, _ -> failwith "Expected attribute `key` on tag to be of type string"
+    | None, None -> "", state
+  in
+  let path = (state.parent_tag |> Option.value ~default:[]) @ [ key ] in
+  let tag_attributes =
+    tag_attributes
+    |> StringMap.remove "key"
+    |> StringMap.add
+         "of"
+         (of_attribute
+         |> Option.map (fun it ->
+                it
+                |> eval_expression ~state:{ state with parent_tag = Some path }
+                |> State.get_output)
+         |> Option.value ~default:Null)
   in
   let apply_transformer ~transformer value =
     match transformer with
@@ -948,25 +1143,50 @@ and eval_tag ~state tag =
       eval_expression ~state expr |> State.get_output
     | _ -> value
   in
-  let attributes, key =
-    match StringMap.find_opt "key" attributes, state.binding_identifier with
-    | None, Some ident ->
-      let key = snd ident in
-      attributes |> StringMap.add "key" (String key), key
-    | Some (String key), _ -> attributes, key
-    | Some _, _ -> failwith "Expected attribute `key` on tag to be of type string"
-    | None, None -> attributes, ""
-  in
-  let tag = tag_name, is_optional, attributes, apply_transformer ~transformer in
   let value =
-    match state.tag_info with
-    | false ->
-      (match state.mode with
-      | Render when tag_name <> "CreatePortal" ->
-        Option.bind (Hashtbl.find_opt state.tag_cache key) Queue.take_opt
-        |> Option.value ~default:Null
-      | _ -> state |> State.call_tag_listener ~key:("#" ^ tag_name) ~tag)
-    | true -> TagInfo tag
+    match state.mode, tag with
+    | _, `CreatePortal -> Portal (Hashtbl.find_all state.portals key)
+    | _, `SetContext ->
+      let value =
+        tag_attributes
+        |> StringMap.find_opt "value"
+        |> function
+        | None -> failwith "attribute value is required when setting a context."
+        | Some (Function _) -> failwith "a function can not be put into a context."
+        | Some value -> value
+      in
+      Hashtbl.add state.context key value;
+      Null
+    | _, `GetContext -> Hashtbl.find_opt state.context key |> Option.value ~default:Null
+    | Portal_Collection, `Portal ->
+      let push =
+        match tag_attributes |> StringMap.find_opt "push" with
+        | None ->
+          failwith "attribute push is required when pushing a value into a portal."
+        | Some (Function _) -> failwith "a function can not be put into a portal."
+        | Some value -> value
+      in
+      Hashtbl.add state.portals key push;
+      Null
+    | Render, `Portal -> Null
+    | ( Portal_Collection
+      , ((`Array | `Boolean | `Custom _ | `Float | `Int | `Record | `Slot | `String) as
+        tag) ) ->
+      let tag_info =
+        { tag
+        ; key
+        ; path
+        ; required
+        ; attributes = tag_attributes
+        ; transformer = apply_transformer ~transformer
+        }
+      in
+      (match state.parent_tag with
+      | None -> tag_info |> eval_internal_or_external_tag ~state
+      | Some _ -> TagInfo tag_info)
+    | Render, _ ->
+      Option.bind (Hashtbl.find_opt state.tag_cache key) Queue.take_opt
+      |> Option.value ~default:Null
   in
   (* TODO: Cleanup! Ideally the tag_cache would be a Hashtable of unique keys per tag! *)
   if state.mode = Portal_Collection
@@ -1004,27 +1224,11 @@ and eval_template ~state template =
     let children =
       children |> List.map (eval_template ~state) |> List.map State.get_output
     in
-    let component_tag_listeners =
-      StringMap.empty
-      |> StringMap.add "#String" Pinc_Tags.Default.string
-      |> StringMap.add "#Int" Pinc_Tags.Default.int
-      |> StringMap.add "#Float" Pinc_Tags.Default.float
-      |> StringMap.add "#Boolean" Pinc_Tags.Default.boolean
-      |> StringMap.add "#Array" Pinc_Tags.Default.array
-      |> StringMap.add "#Record" Pinc_Tags.Default.record
-      |> StringMap.add "#Slot" Pinc_Tags.Default.slot
-    in
-    let tag_listeners =
-      StringMap.union
-        (fun _key _x y -> Some y)
-        state.tag_listeners
-        component_tag_listeners
-    in
     let render_fn attributes =
       let state =
         State.make
           ~parent_component:(tag, attributes, children)
-          ~tag_listeners
+          ~tag_listeners:state.tag_listeners
           ~context:state.context
           ~portals:state.portals
           ~tag_cache:state.tag_cache
@@ -1050,23 +1254,8 @@ and eval_declaration ~state declaration =
   | None -> failwith ("Declaration with name `" ^ declaration ^ "` was not found.")
 ;;
 
-let get_tag_listeners l =
-  let default_tag_listeners =
-    StringMap.empty
-    |> StringMap.add "#SetContext" Pinc_Tags.Default.set_context
-    |> StringMap.add "#GetContext" Pinc_Tags.Default.get_context
-    |> StringMap.add "#CreatePortal" Pinc_Tags.Default.create_portal
-    |> StringMap.add "#Portal" Pinc_Tags.Default.push_portal
-  in
-  match l with
-  | None -> default_tag_listeners
-  | Some listeners ->
-    StringMap.union (fun _key _x y -> Some y) listeners default_tag_listeners
-;;
-
 let eval_meta ?tag_listeners declarations =
-  let tag_listeners = get_tag_listeners tag_listeners in
-  let state = State.make ~tag_listeners declarations ~mode:Render in
+  let state = State.make ?tag_listeners declarations ~mode:Render in
   let eval attrs =
     attrs
     |> Option.value ~default:StringMap.empty
@@ -1082,8 +1271,7 @@ let eval_meta ?tag_listeners declarations =
 ;;
 
 let eval ?tag_listeners ~root declarations =
-  let tag_listeners = get_tag_listeners tag_listeners in
-  let state = State.make ~tag_listeners declarations ~mode:Portal_Collection in
+  let state = State.make ?tag_listeners declarations ~mode:Portal_Collection in
   let state = eval_declaration ~state root in
   if state.portals |> Hashtbl.length > 0
   then eval_declaration ~state:{ state with mode = Render } root

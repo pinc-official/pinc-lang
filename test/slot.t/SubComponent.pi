@@ -1,7 +1,7 @@
 component SubComponent {
   let content = #String;
 
-  let shouter = #String(default: "NOTHING!") :: val -> val ++ "!!";
+  let shouter = #String :: val -> if(val) val ++ "!!" else "NOTHING!!!";
   
   let num = #Int :: val -> val ** 2;
   
@@ -11,6 +11,7 @@ component SubComponent {
     a: #Int(default: 12) :: val -> if (val == 12) "NEEEEIN" else "JAP",
     b?: #Boolean,
     c: #String,
+    d: "Some Constant",
   });
 
   <div class="SubComponent" data-foo={num}>
@@ -21,6 +22,7 @@ component SubComponent {
     {record.a}
     {record.b}
     {record.c}
+    {record.d}
     
     {shouter}
   </div>

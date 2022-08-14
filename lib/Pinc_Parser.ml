@@ -192,7 +192,22 @@ module Rules = struct
         Some (Ast.Lowercase_Id bind, body))
       else None
     in
-    Some (Ast.TagExpression { tag_name = name; attributes; transformer })
+    let tag =
+      match name with
+      | "String" -> `String
+      | "Int" -> `Int
+      | "Float" -> `Float
+      | "Boolean" -> `Boolean
+      | "Array" -> `Array
+      | "Record" -> `Record
+      | "Slot" -> `Slot
+      | "SetContext" -> `SetContext
+      | "GetContext" -> `GetContext
+      | "CreatePortal" -> `CreatePortal
+      | "Portal" -> `Portal
+      | other -> `Custom other
+    in
+    Some (Ast.TagExpression { tag; attributes; transformer })
 
   and parse_template_node t =
     match t.token.typ with

@@ -8,7 +8,7 @@
 - Selection / Enum ... can be defined in "userland" by the cms / playground. Do we want to move it into the core
   language?
 
-## TODOs till feature completion
+## TODOs
 
 - Rewrite strings to be an array of chars and make chars a separate value type
 
@@ -34,8 +34,6 @@
     add(1, 3); // 4
     add(1); // 11
   ```
-
-## TODOs after feature completion:
 
 - Remove catchall cases in switch stmts
 

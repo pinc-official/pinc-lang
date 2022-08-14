@@ -1,5 +1,5 @@
 component Main {
-  let stylesheets = #CreatePortal(name: "stylesheets");
+  let stylesheets = #CreatePortal;
 
   <html>
     <head>

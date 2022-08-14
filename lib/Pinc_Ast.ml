@@ -30,7 +30,20 @@ and template_node =
   | TextTemplateNode of string
 
 and tag =
-  { tag_name : string
+  { tag :
+      [ `String
+      | `Int
+      | `Float
+      | `Boolean
+      | `Array
+      | `Record
+      | `Slot
+      | `SetContext
+      | `GetContext
+      | `CreatePortal
+      | `Portal
+      | `Custom of string
+      ]
   ; attributes : attributes
   ; transformer : (lowercase_identifier * expression) option
   }

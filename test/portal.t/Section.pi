@@ -1,5 +1,5 @@
 component Section {
-  #Portal(name: "stylesheets", push: <link rel="stylesheet" href="path/to/section.css" />);
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/section.css" />);
 
   let foo = #String;
 

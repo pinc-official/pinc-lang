@@ -7,7 +7,15 @@ module Expect = struct
     | Some v -> v
   ;;
 
+  let maybe fn value =
+    match fn value with
+    | exception _ -> None
+    | None -> None
+    | Some _ as v -> v
+  ;;
+
   let attribute key fn value = Option.bind (StringMap.find_opt key value) fn
+  let any_value v = v
 
   let string = function
     | Null -> None
@@ -136,11 +144,28 @@ module Expect = struct
         | `Library, _ -> failwith "expected a library definition"
         | `Store, _ -> failwith "expected a store definition"
       in
-      Some (typ, name, negated = `NotNegated)
+      Some (typ, name, negated = `Negated)
     | TagInfo _ -> failwith "expected definition info, got tag"
     | HtmlTemplateNode (_, _, _, _) ->
       failwith "expected definition info, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
       failwith "expected definition info, got component template node"
+  ;;
+
+  let tag_info = function
+    | Null -> None
+    | Portal _ -> failwith "expected tag, got portal value"
+    | String _ -> failwith "expected tag, got string"
+    | Int _ -> failwith "expected tag, got int"
+    | Float _ -> failwith "expected tag, got float"
+    | Bool _ -> failwith "expected tag, got bool"
+    | Array _ -> failwith "expected tag, got array"
+    | Record _ -> failwith "expected tag, got record"
+    | Function _ -> failwith "expected tag, got function definition"
+    | DefinitionInfo _ -> failwith "expected tag, got definition info"
+    | TagInfo i -> Some i
+    | HtmlTemplateNode (_, _, _, _) -> failwith "expected tag, got HTML template node"
+    | ComponentTemplateNode (_, _, _, _) ->
+      failwith "expected tag, got component template node"
   ;;
 end
