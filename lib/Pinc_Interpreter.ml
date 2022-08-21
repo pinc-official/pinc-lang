@@ -1063,7 +1063,7 @@ and eval_internal_tag ~state ~key ~attributes ~value_bag tag_name =
     |> Option.value ~default:Null
 
 and eval_internal_or_external_tag ~state ?value tag_info =
-  let { tag; key; path = _; required = _; attributes; transformer } = tag_info in
+  let { tag; key; required = _; attributes; transformer } = tag_info in
   match value, state.parent_component with
   | None, Some (_, value_bag, slotted_elements)
   | Some value_bag, Some (_, _, slotted_elements) ->
@@ -1075,16 +1075,16 @@ and eval_internal_or_external_tag ~state ?value tag_info =
   | _ -> tag_info |> call_tag_listener ~state ?value:None
 
 and call_tag_listener ~state ?value t =
-  let { tag; key; path; required; attributes; transformer } = t in
+  let { tag; key; required; attributes; transformer } = t in
   let listener = Hashtbl.find_opt state.tag_listeners tag in
   (match tag, listener with
-  | `String, Some (`String fn) -> fn ~required ~attributes ~path
-  | `Int, Some (`Int fn) -> fn ~required ~attributes ~path
-  | `Float, Some (`Float fn) -> fn ~required ~attributes ~path
-  | `Boolean, Some (`Boolean fn) -> fn ~required ~attributes ~path
+  | `String, Some (`String fn) -> fn ~required ~attributes ~key
+  | `Int, Some (`Int fn) -> fn ~required ~attributes ~key
+  | `Float, Some (`Float fn) -> fn ~required ~attributes ~key
+  | `Boolean, Some (`Boolean fn) -> fn ~required ~attributes ~key
   | `Array, Some (`Array fn) ->
     let child = attributes |> Pinc_Typer.Expect.(required (attribute "of" tag_info)) in
-    fn ~required ~attributes ~child ~path
+    fn ~required ~attributes ~child ~key
   | `Record, Some (`Record fn) ->
     let children =
       attributes
@@ -1092,10 +1092,10 @@ and call_tag_listener ~state ?value t =
       |> StringMap.filter_map (fun _key value ->
              value |> Pinc_Typer.Expect.(maybe tag_info))
     in
-    fn ~required ~attributes ~children ~path
+    fn ~required ~attributes ~children ~key
   | `Slot, Some (`Slot fn) -> fn ~required ~attributes ~key
   | `Custom tag, Some (`Custom fn) ->
-    fn ~tag ~required ~attributes ~parent_value:value ~path
+    fn ~tag ~required ~attributes ~parent_value:value ~key
   | _ -> Result.ok Null)
   |> function
   | Ok v -> v |> transformer
@@ -1175,7 +1175,6 @@ and eval_tag ~state tag =
       let tag_info =
         { tag
         ; key
-        ; path
         ; required
         ; attributes = tag_attributes
         ; transformer = apply_transformer ~transformer

@@ -45,7 +45,6 @@ and external_tag =
 and tag_info =
   { tag : external_tag
   ; key : string
-  ; path : string list
   ; required : bool
   ; attributes : value StringMap.t
   ; transformer : value -> value
@@ -55,34 +54,34 @@ and tag_handler =
   [ `String of
     required:bool
     -> attributes:value StringMap.t
-    -> path:string list
+    -> key:string
     -> (value, string) Result.t
   | `Int of
     required:bool
     -> attributes:value StringMap.t
-    -> path:string list
+    -> key:string
     -> (value, string) Result.t
   | `Float of
     required:bool
     -> attributes:value StringMap.t
-    -> path:string list
+    -> key:string
     -> (value, string) Result.t
   | `Boolean of
     required:bool
     -> attributes:value StringMap.t
-    -> path:string list
+    -> key:string
     -> (value, string) Result.t
   | `Array of
     required:bool
     -> attributes:value StringMap.t
     -> child:tag_info
-    -> path:string list
+    -> key:string
     -> (value, string) Result.t
   | `Record of
     required:bool
     -> attributes:value StringMap.t
     -> children:tag_info StringMap.t
-    -> path:string list
+    -> key:string
     -> (value, string) Result.t
   | `Slot of
     required:bool
@@ -94,7 +93,7 @@ and tag_handler =
     -> required:bool
     -> attributes:value StringMap.t
     -> parent_value:value StringMap.t option
-    -> path:string list
+    -> key:string
     -> (value, string) Result.t
   ]
 
