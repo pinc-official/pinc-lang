@@ -1077,15 +1077,15 @@ and eval_internal_or_external_tag ~state ?value tag_info =
 and call_tag_listener ~state ?value t =
   let { tag; key; required; attributes; transformer } = t in
   let listener = Hashtbl.find_opt state.tag_listeners tag in
-  (match tag, listener with
-  | `String, Some (`String fn) -> fn ~required ~attributes ~key
-  | `Int, Some (`Int fn) -> fn ~required ~attributes ~key
-  | `Float, Some (`Float fn) -> fn ~required ~attributes ~key
-  | `Boolean, Some (`Boolean fn) -> fn ~required ~attributes ~key
-  | `Array, Some (`Array fn) ->
+  (match listener with
+  | Some (`String fn) -> fn ~required ~attributes ~key
+  | Some (`Int fn) -> fn ~required ~attributes ~key
+  | Some (`Float fn) -> fn ~required ~attributes ~key
+  | Some (`Boolean fn) -> fn ~required ~attributes ~key
+  | Some (`Array fn) ->
     let child = attributes |> Pinc_Typer.Expect.(required (attribute "of" tag_info)) in
     fn ~required ~attributes ~child ~key
-  | `Record, Some (`Record fn) ->
+  | Some (`Record fn) ->
     let children =
       attributes
       |> Pinc_Typer.Expect.(required (attribute "of" record))
@@ -1093,10 +1093,9 @@ and call_tag_listener ~state ?value t =
              value |> Pinc_Typer.Expect.(maybe tag_info))
     in
     fn ~required ~attributes ~children ~key
-  | `Slot, Some (`Slot fn) -> fn ~required ~attributes ~key
-  | `Custom tag, Some (`Custom fn) ->
-    fn ~tag ~required ~attributes ~parent_value:value ~key
-  | _ -> Result.ok Null)
+  | Some (`Slot fn) -> fn ~required ~attributes ~key
+  | Some (`Custom fn) -> fn ~required ~attributes ~parent_value:value ~key
+  | None -> Result.ok Null)
   |> function
   | Ok v -> v |> transformer
   | Error e -> failwith e

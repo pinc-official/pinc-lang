@@ -89,8 +89,7 @@ and tag_handler =
     -> key:string
     -> (value, string) Result.t
   | `Custom of
-    tag:string
-    -> required:bool
+    required:bool
     -> attributes:value StringMap.t
     -> parent_value:value StringMap.t option
     -> key:string
