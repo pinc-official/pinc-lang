@@ -1071,10 +1071,12 @@ and eval_internal_or_external_tag ~state ?value tag_info =
     | (`Array | `Boolean | `Float | `Int | `Record | `String) as tag ->
       tag |> eval_internal_tag ~state ~key ~attributes ~value_bag |> transformer
     | `Slot -> key |> eval_slot ~attributes ~slotted_elements |> transformer
-    | `Custom _ -> tag_info |> call_tag_listener ~state ?value)
-  | _ -> tag_info |> call_tag_listener ~state ?value:None
+    | `Custom _ -> tag_info |> call_tag_listener ~state ~value_bag:(Some value_bag))
+  | Some value_bag, None ->
+    tag_info |> call_tag_listener ~state ~value_bag:(Some value_bag)
+  | _ -> tag_info |> call_tag_listener ~state ~value_bag:None
 
-and call_tag_listener ~state ?value t =
+and call_tag_listener ~state ~value_bag t =
   let { tag; key; required; attributes; transformer } = t in
   let listener = Hashtbl.find_opt state.tag_listeners tag in
   (match listener with
@@ -1089,12 +1091,11 @@ and call_tag_listener ~state ?value t =
     let children =
       attributes
       |> Pinc_Typer.Expect.(required (attribute "of" record))
-      |> StringMap.filter_map (fun _key value ->
-             value |> Pinc_Typer.Expect.(maybe tag_info))
+      |> StringMap.filter_map (fun _key -> Pinc_Typer.Expect.(maybe tag_info))
     in
     fn ~required ~attributes ~children ~key
   | Some (`Slot fn) -> fn ~required ~attributes ~key
-  | Some (`Custom fn) -> fn ~required ~attributes ~parent_value:value ~key
+  | Some (`Custom fn) -> fn ~required ~attributes ~parent_value:value_bag ~key
   | None -> Result.ok Null)
   |> function
   | Ok v -> v |> transformer
