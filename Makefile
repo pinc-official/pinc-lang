@@ -4,15 +4,15 @@
 all: build
 
 build:
-	mel build
-	dune build -p pinc-lang --profile=release
+	opam exec -- dune build @default
 
 install:
 	if ! [ -e _opam ]; then \
-		opam switch create . --empty && \
-		opam install ocaml.4.14.0 --yes ; \
+		opam switch create . --empty ; \
 	fi
-	opam install ./*.opam --deps-only --with-test --yes \
+	opam install . --locked --working-dir --yes
+	opam install -y ocaml-lsp-server ocamlformat
+	opam lock .
 
 update:
 	opam update

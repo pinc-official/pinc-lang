@@ -7,10 +7,8 @@ license: "MIT"
 homepage: "https://github.com/pinc-lang/pinc-lang"
 bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
 depends: [
-  "ocaml" {>= "4.14.0" & < "5.0.0"}
-  "dune" {>= "3.1"}
-  "ocaml-lsp-server"
-  "ocamlformat"
+  "ocaml"
+  "dune" {>= "3.6"}
   "odoc" {with-doc}
 ]
 build: [

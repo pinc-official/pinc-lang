@@ -1,7 +1,6 @@
 (executable
  (name print)
  (public_name print)
- (package pinc-lang)
  (modules print)
  (modes native)
  (ocamlopt_flags -O3)
@@ -10,7 +9,6 @@
 (executable
  (name print_debug)
  (public_name print_debug)
- (package pinc-lang)
  (modules print_debug)
  (modes native)
  (ocamlopt_flags -O3)
@@ -19,7 +17,6 @@
 (executable
  (name print_tokens)
  (public_name print_tokens)
- (package pinc-lang)
  (modules print_tokens)
  (modes native)
  (ocamlopt_flags -O3)

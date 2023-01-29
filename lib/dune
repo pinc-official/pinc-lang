@@ -1,5 +1,3 @@
 (library
  (name pinc)
- (public_name pinc-lang)
- (flags :standard)
- (ocamlopt_flags -O3))
+ (public_name pinc-lang))
