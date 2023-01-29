@@ -5,7 +5,7 @@ module Token = Pinc_Token
 module Lexer = Pinc_Lexer
 
 type t =
-  { mutable lexer : Lexer.t
+  { lexer : Lexer.t
   ; mutable token : Token.t
   ; next : Token.t Queue.t
   }
