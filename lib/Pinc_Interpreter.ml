@@ -941,8 +941,7 @@ and eval_slot ~attributes ~slotted_elements key =
   let constraints =
     attributes
     |> Pinc_Typer.Expect.(
-         maybe
-           (attribute "constraints" (array (required (definition_info ~typ:`Component)))))
+         attribute "constraints" (array (required (definition_info ~typ:`Component))))
   in
   let check_instance_restriction tag =
     match constraints with
@@ -955,11 +954,10 @@ and eval_slot ~attributes ~slotted_elements key =
                if name = tag then is_in_list := true;
                if negated then Either.right name else Either.left name)
       in
-      let is_in_list = !is_in_list in
       let is_allowed =
         match allowed, disallowed with
-        | [], _disallowed -> not is_in_list
-        | _allowed, [] -> is_in_list
+        | [], _disallowed -> not !is_in_list
+        | _allowed, [] -> !is_in_list
         | allowed, _disallowed -> List.mem tag allowed
       in
       if not is_allowed
