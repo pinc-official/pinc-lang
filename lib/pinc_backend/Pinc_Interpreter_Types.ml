@@ -1,3 +1,5 @@
+module Ast = Pinc_Frontend.Ast
+
 type value =
   | Null
   | Portal of value list
@@ -101,7 +103,7 @@ and tag_listeners = (external_tag, tag_handler) Hashtbl.t
 and state =
   { mode : mode
   ; binding_identifier : (bool * string) option
-  ; declarations : Pinc_Ast.declaration StringMap.t
+  ; declarations : Ast.declaration StringMap.t
   ; output : value
   ; environment : environment
   ; tag_listeners : tag_listeners

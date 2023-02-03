@@ -1,4 +1,4 @@
-module Position = Pinc_Position
+module Position = Pinc_Diagnostics.Position
 
 type token_type =
   | COMMENT
@@ -265,6 +265,6 @@ let lookup_keyword str =
   | Some t -> t
   | None ->
     (match str.[0] with
-    | 'A' .. 'Z' -> IDENT_UPPER str
-    | _ -> IDENT_LOWER str)
+     | 'A' .. 'Z' -> IDENT_UPPER str
+     | _ -> IDENT_LOWER str)
 ;;

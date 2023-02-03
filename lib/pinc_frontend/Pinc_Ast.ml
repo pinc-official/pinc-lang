@@ -1,4 +1,4 @@
-module Position = Pinc_Position
+module Position = Pinc_Diagnostics.Position
 module Operators = Pinc_Operators
 
 module SourceLocation = struct

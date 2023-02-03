@@ -1,5 +1,5 @@
 module Diagnostics = Pinc_Diagnostics
-module Position = Pinc_Position
+module Position = Diagnostics.Position
 module Token = Pinc_Token
 
 type mode =
@@ -27,8 +27,8 @@ type t =
   ; mutable mode : mode list
   }
 
-let make_position a =
-  Position.make ~filename:a.filename ~line:a.line ~column:(a.column + 1)
+let make_position t =
+  Position.make ~filename:t.filename ~line:t.line ~column:(t.column + 1)
 ;;
 
 (* let show_mode = function
@@ -149,55 +149,55 @@ let scan_string ~start_pos t =
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedString
+        "This string is not terminated. Please add a double-quote (\") at the end."
     | `Chr '\\' ->
       (match peek t with
-      | `Chr ' ' ->
-        next_n ~n:2 t;
-        Buffer.add_char buf '\\';
-        loop t
-      | `Chr '"' ->
-        next_n ~n:2 t;
-        Buffer.add_char buf '"';
-        loop t
-      | `Chr '\'' ->
-        next_n ~n:2 t;
-        Buffer.add_char buf '\'';
-        loop t
-      | `Chr 'b' ->
-        next_n ~n:2 t;
-        Buffer.add_char buf '\b';
-        loop t
-      | `Chr 'f' ->
-        next_n ~n:2 t;
-        Buffer.add_char buf '\012';
-        loop t
-      | `Chr 'n' ->
-        next_n ~n:2 t;
-        Buffer.add_char buf '\n';
-        loop t
-      | `Chr 'r' ->
-        next_n ~n:2 t;
-        Buffer.add_char buf '\r';
-        loop t
-      | `Chr 't' ->
-        next_n ~n:2 t;
-        Buffer.add_char buf '\t';
-        loop t
-      | `Chr '\\' ->
-        next_n ~n:2 t;
-        Buffer.add_char buf '\\';
-        loop t
-      | `Chr _ ->
-        Diagnostics.report
-          ~start_pos:(make_position t)
-          ~end_pos:(make_position t)
-          (Diagnostics.Message "Unknown escape sequence in string.")
-      | `EOF ->
-        Diagnostics.report
-          ~start_pos
-          ~end_pos:(make_position t)
-          Diagnostics.NonTerminatedString)
+       | `Chr ' ' ->
+         next_n ~n:2 t;
+         Buffer.add_char buf '\\';
+         loop t
+       | `Chr '"' ->
+         next_n ~n:2 t;
+         Buffer.add_char buf '"';
+         loop t
+       | `Chr '\'' ->
+         next_n ~n:2 t;
+         Buffer.add_char buf '\'';
+         loop t
+       | `Chr 'b' ->
+         next_n ~n:2 t;
+         Buffer.add_char buf '\b';
+         loop t
+       | `Chr 'f' ->
+         next_n ~n:2 t;
+         Buffer.add_char buf '\012';
+         loop t
+       | `Chr 'n' ->
+         next_n ~n:2 t;
+         Buffer.add_char buf '\n';
+         loop t
+       | `Chr 'r' ->
+         next_n ~n:2 t;
+         Buffer.add_char buf '\r';
+         loop t
+       | `Chr 't' ->
+         next_n ~n:2 t;
+         Buffer.add_char buf '\t';
+         loop t
+       | `Chr '\\' ->
+         next_n ~n:2 t;
+         Buffer.add_char buf '\\';
+         loop t
+       | `Chr _ ->
+         Diagnostics.report
+           ~start_pos:(make_position t)
+           ~end_pos:(make_position t)
+           "Unknown escape sequence in string."
+       | `EOF ->
+         Diagnostics.report
+           ~start_pos
+           ~end_pos:(make_position t)
+           "This string is not terminated. Please add a double-quote (\") at the end.")
     | `Chr '{' when peek t = `Chr '|' -> ()
     | `Chr '"' -> ()
     | `Chr c ->
@@ -232,11 +232,11 @@ let scan_tag t =
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
-      (Diagnostics.Message
-         ("Invalid Tag! Tags have to start with an uppercase character. Did you mean to \
-           write #"
-         ^ String.capitalize_ascii found
-         ^ "?"))
+      ("Invalid Tag! Tags have to start with an uppercase character. Did you mean to \
+        write #"
+      ^ String.capitalize_ascii found
+      ^ "?");
+    exit 1
 ;;
 
 let get_html_tag_ident t =
@@ -258,10 +258,9 @@ let get_html_tag_ident t =
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
-      (Diagnostics.Message
-         ("Invalid HTML tag! HTML tags have to start with a lowercase letter. Instead \
-           saw: "
-         ^ ident))
+      ("Invalid HTML tag! HTML tags have to start with a lowercase letter. Instead saw: "
+      ^ ident);
+    exit 1
 ;;
 
 let get_uppercase_ident t =
@@ -291,15 +290,17 @@ let scan_component_open_tag t =
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
-      (Diagnostics.Message
-         ("Invalid Component tag! Component tags have to start with an uppercase letter. \
-           Instead saw: "
-         ^ String.make 1 c))
+      ("Invalid Component tag! Component tags have to start with an uppercase letter. \
+        Instead saw: "
+      ^ String.make 1 c);
+    exit 1
   | `EOF ->
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
-      Diagnostics.NonTerminatedTemplate
+      "Your Template was not closed correctly. You probably mismatched or forgot a \
+       closing tag.";
+    exit 1
 ;;
 
 let scan_open_tag t =
@@ -312,15 +313,17 @@ let scan_open_tag t =
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
-      (Diagnostics.Message
-         ("Invalid Template tag! Template tags have to start with a lowercase letter. \
-           Instead saw: "
-         ^ String.make 1 c))
+      ("Invalid Template tag! Template tags have to start with a lowercase letter. \
+        Instead saw: "
+      ^ String.make 1 c);
+    exit 1
   | `EOF ->
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
-      Diagnostics.NonTerminatedTemplate
+      "Your Template was not closed correctly. You probably mismatched or forgot a \
+       closing tag.";
+    exit 1
 ;;
 
 let scan_component_close_tag t =
@@ -334,22 +337,28 @@ let scan_component_close_tag t =
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        (Diagnostics.Message
-           ("Invalid Component tag! Component tags have to start with an uppercase \
-             letter. Instead saw: "
-           ^ String.make 1 c))
+        ("Invalid Component tag! Component tags have to start with an uppercase letter. \
+          Instead saw: "
+        ^ String.make 1 c);
+      exit 1
     | `EOF ->
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedTemplate
+        "Your Template was not closed correctly. You probably mismatched or forgot a \
+         closing tag.";
+      exit 1
   in
   match t.current with
   | `Chr '>' ->
     next t;
     Token.COMPONENT_CLOSE_TAG close_tag
   | _ ->
-    Diagnostics.report ~start_pos ~end_pos:(make_position t) (ExpectedToken Token.GREATER)
+    Diagnostics.report
+      ~start_pos
+      ~end_pos:(make_position t)
+      ("Expected token " ^ Token.to_string Token.GREATER ^ " at this point.");
+    exit 1
 ;;
 
 let scan_close_tag t =
@@ -363,22 +372,28 @@ let scan_close_tag t =
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        (Diagnostics.Message
-           ("Invalid Template tag! Template tags have to start with a lowercase letter. \
-             Instead saw: "
-           ^ String.make 1 c))
+        ("Invalid Template tag! Template tags have to start with a lowercase letter. \
+          Instead saw: "
+        ^ String.make 1 c);
+      exit 1
     | `EOF ->
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedTemplate
+        "Your Template was not closed correctly. You probably mismatched or forgot a \
+         closing tag.";
+      exit 1
   in
   match t.current with
   | `Chr '>' ->
     next t;
     close_tag
   | _ ->
-    Diagnostics.report ~start_pos ~end_pos:(make_position t) (ExpectedToken Token.GREATER)
+    Diagnostics.report
+      ~start_pos
+      ~end_pos:(make_position t)
+      ("Expected token " ^ Token.to_string Token.GREATER ^ " at this point.");
+    exit 1
 ;;
 
 let scan_template_text t =
@@ -389,16 +404,18 @@ let scan_template_text t =
       Diagnostics.report
         ~start_pos
         ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedTemplate
+        "Your Template was not closed correctly. You probably mismatched or forgot a \
+         closing tag.";
+      exit 1
     | `Chr '{' -> Buffer.contents buf
     | `Chr '<' ->
       (match peek t with
-      | `Chr '/' -> Buffer.contents buf
-      | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' -> Buffer.contents buf
-      | _ ->
-        next t;
-        Buffer.add_char buf '<';
-        loop buf t)
+       | `Chr '/' -> Buffer.contents buf
+       | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' -> Buffer.contents buf
+       | _ ->
+         next t;
+         Buffer.add_char buf '<';
+         loop buf t)
     | `Chr c ->
       next t;
       Buffer.add_char buf c;
@@ -446,12 +463,12 @@ let scan_number t =
     match t.current with
     | `Chr '.' ->
       (match peek t with
-      | `Chr '.' -> false (* Two Dots in a row mean that this is a range operator *)
-      | _ ->
-        Buffer.add_char result '.';
-        next t;
-        scan_digits t;
-        true)
+       | `Chr '.' -> false (* Two Dots in a row mean that this is a range operator *)
+       | _ ->
+         Buffer.add_char result '.';
+         next t;
+         scan_digits t;
+         true)
     | _ -> false
   in
   (* exponent part *)
@@ -504,56 +521,61 @@ let rec scan_template_token ~start_pos t =
     Token.RIGHT_BRACE
   | `Chr '<' ->
     (match peek t with
-    | `Chr '>' ->
-      next_n ~n:2 t;
-      setMode Template t;
-      Token.HTML_OPEN_FRAGMENT
-    | `Chr 'a' .. 'z' ->
-      setMode Template t;
-      setMode TemplateAttributes t;
-      scan_open_tag t
-    | `Chr 'A' .. 'Z' ->
-      setMode Template t;
-      setMode ComponentAttributes t;
-      scan_component_open_tag t
-    | `Chr '/' ->
-      popMode Template t;
-      (match peek ~n:2 t with
-      | `Chr 'a' .. 'z' -> scan_close_tag t
-      | `Chr 'A' .. 'Z' -> scan_component_close_tag t
-      | `Chr '>' ->
-        next_n ~n:3 t;
-        Token.HTML_CLOSE_FRAGMENT
-      | `Chr c ->
-        Diagnostics.report
-          ~start_pos
-          ~end_pos:(make_position t)
-          (Diagnostics.Message
-             ("Invalid Template tag! Template tags have to start with an uppercase or \
-               lowercase letter. Instead saw: "
-             ^ String.make 1 c))
-      | `EOF ->
-        Diagnostics.report
-          ~start_pos
-          ~end_pos:(make_position t)
-          Diagnostics.NonTerminatedTemplate)
-    | _ -> scan_template_text t)
+     | `Chr '>' ->
+       next_n ~n:2 t;
+       setMode Template t;
+       Token.HTML_OPEN_FRAGMENT
+     | `Chr 'a' .. 'z' ->
+       setMode Template t;
+       setMode TemplateAttributes t;
+       scan_open_tag t
+     | `Chr 'A' .. 'Z' ->
+       setMode Template t;
+       setMode ComponentAttributes t;
+       scan_component_open_tag t
+     | `Chr '/' ->
+       popMode Template t;
+       (match peek ~n:2 t with
+        | `Chr 'a' .. 'z' -> scan_close_tag t
+        | `Chr 'A' .. 'Z' -> scan_component_close_tag t
+        | `Chr '>' ->
+          next_n ~n:3 t;
+          Token.HTML_CLOSE_FRAGMENT
+        | `Chr c ->
+          Diagnostics.report
+            ~start_pos
+            ~end_pos:(make_position t)
+            ("Invalid Template tag! Template tags have to start with an uppercase or \
+              lowercase letter. Instead saw: "
+            ^ String.make 1 c);
+          exit 1
+        | `EOF ->
+          Diagnostics.report
+            ~start_pos
+            ~end_pos:(make_position t)
+            "Your Template was not closed correctly. You probably mismatched or forgot a \
+             closing tag.";
+          exit 1)
+     | _ -> scan_template_text t)
   | `Chr '/' ->
     (match peek t with
-    | `Chr '>' ->
-      popMode Template t;
-      next_n ~n:2 t;
-      Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING
-    | `Chr c ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter c)
-    | `EOF ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedTemplate)
+     | `Chr '>' ->
+       popMode Template t;
+       next_n ~n:2 t;
+       Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING
+     | `Chr c ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.");
+       exit 1
+     | `EOF ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         "Your Template was not closed correctly. You probably mismatched or forgot a \
+          closing tag.";
+       exit 1)
   | `Chr '>' ->
     next t;
     Token.HTML_OR_COMPONENT_TAG_END
@@ -561,7 +583,9 @@ let rec scan_template_token ~start_pos t =
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
-      Diagnostics.NonTerminatedTemplate
+      "Your Template was not closed correctly. You probably mismatched or forgot a \
+       closing tag.";
+    exit 1
   | _ -> scan_template_text t
 
 and scan_string_token ~start_pos t =
@@ -600,19 +624,22 @@ and scan_component_attributes_token ~start_pos t =
     Token.RIGHT_BRACE
   | `Chr '/' ->
     (match peek t with
-    | `Chr '>' ->
-      popMode ComponentAttributes t;
-      scan_template_token ~start_pos t
-    | `Chr c ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter c)
-    | `EOF ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedTemplate)
+     | `Chr '>' ->
+       popMode ComponentAttributes t;
+       scan_template_token ~start_pos t
+     | `Chr c ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.");
+       exit 1
+     | `EOF ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         "Your Template was not closed correctly. You probably mismatched or forgot a \
+          closing tag.";
+       exit 1)
   | `Chr '>' ->
     popMode ComponentAttributes t;
     scan_template_token ~start_pos t
@@ -620,7 +647,9 @@ and scan_component_attributes_token ~start_pos t =
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
-      Diagnostics.NonTerminatedTemplate
+      "Your Template was not closed correctly. You probably mismatched or forgot a \
+       closing tag.";
+    exit 1
   | _ -> scan_template_text t
 
 and scan_template_attributes_token ~start_pos t =
@@ -643,19 +672,22 @@ and scan_template_attributes_token ~start_pos t =
     Token.RIGHT_BRACE
   | `Chr '/' ->
     (match peek t with
-    | `Chr '>' ->
-      popMode TemplateAttributes t;
-      scan_template_token ~start_pos t
-    | `Chr c ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter c)
-    | `EOF ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        Diagnostics.NonTerminatedTemplate)
+     | `Chr '>' ->
+       popMode TemplateAttributes t;
+       scan_template_token ~start_pos t
+     | `Chr c ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.");
+       exit 1
+     | `EOF ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         "Your Template was not closed correctly. You probably mismatched or forgot a \
+          closing tag.";
+       exit 1)
   | `Chr '>' ->
     popMode TemplateAttributes t;
     scan_template_token ~start_pos t
@@ -663,7 +695,9 @@ and scan_template_attributes_token ~start_pos t =
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
-      Diagnostics.NonTerminatedTemplate
+      "Your Template was not closed correctly. You probably mismatched or forgot a \
+       closing tag.";
+    exit 1
   | _ -> scan_template_text t
 
 and scan_normal_token ~start_pos t =
@@ -696,15 +730,15 @@ and scan_normal_token ~start_pos t =
     Token.RIGHT_BRACE
   | `Chr ':' ->
     (match peek t with
-    | `Chr ':' ->
-      next_n ~n:2 t;
-      Token.DOUBLE_COLON
-    | `Chr '=' ->
-      next_n ~n:2 t;
-      Token.COLON_EQUAL
-    | _ ->
-      next t;
-      Token.COLON)
+     | `Chr ':' ->
+       next_n ~n:2 t;
+       Token.DOUBLE_COLON
+     | `Chr '=' ->
+       next_n ~n:2 t;
+       Token.COLON_EQUAL
+     | _ ->
+       next t;
+       Token.COLON)
   | `Chr ',' ->
     next t;
     Token.COMMA
@@ -726,12 +760,12 @@ and scan_normal_token ~start_pos t =
         Token.UNARY_MINUS)
   | `Chr '+' ->
     (match peek t with
-    | `Chr '+' ->
-      next_n ~n:2 t;
-      Token.PLUSPLUS
-    | _ ->
-      next t;
-      Token.PLUS)
+     | `Chr '+' ->
+       next_n ~n:2 t;
+       Token.PLUSPLUS
+     | _ ->
+       next t;
+       Token.PLUS)
   | `Chr '%' ->
     next t;
     Token.PERCENT
@@ -740,159 +774,167 @@ and scan_normal_token ~start_pos t =
     Token.QUESTIONMARK
   | `Chr '/' ->
     (match peek t with
-    | `Chr '/' ->
-      skip_comment t;
-      Token.COMMENT
-    | _ ->
-      next t;
-      Token.SLASH)
+     | `Chr '/' ->
+       skip_comment t;
+       Token.COMMENT
+     | _ ->
+       next t;
+       Token.SLASH)
   | `Chr '.' ->
     (match peek t with
-    | `Chr '0' .. '9' -> scan_number t
-    | `Chr '.' ->
-      (match peek ~n:2 t with
-      | `Chr '.' ->
-        next_n ~n:3 t;
-        Token.DOTDOTDOT
-      | _ ->
-        next_n ~n:2 t;
-        Token.DOTDOT)
-    | _ ->
-      next t;
-      Token.DOT)
+     | `Chr '0' .. '9' -> scan_number t
+     | `Chr '.' ->
+       (match peek ~n:2 t with
+        | `Chr '.' ->
+          next_n ~n:3 t;
+          Token.DOTDOTDOT
+        | _ ->
+          next_n ~n:2 t;
+          Token.DOTDOT)
+     | _ ->
+       next t;
+       Token.DOT)
   | `Chr '@' ->
     (match peek t with
-    | `Chr '@' ->
-      next_n ~n:2 t;
-      Token.ATAT
-    | _ ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter '@'))
+     | `Chr '@' ->
+       next_n ~n:2 t;
+       Token.ATAT
+     | _ ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         "The character @ is unknown. You should remove it.";
+       exit 1)
   | `Chr '#' ->
     (match peek t with
-    | `Chr 'A' .. 'Z' ->
-      next t;
-      Token.TAG (scan_tag t)
-    | _ ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter '#'))
+     | `Chr 'A' .. 'Z' ->
+       next t;
+       Token.TAG (scan_tag t)
+     | _ ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         "The character # is unknown. You should remove it.";
+       exit 1)
   | `Chr '&' ->
     (match peek t with
-    | `Chr '&' ->
-      next_n ~n:2 t;
-      Token.LOGICAL_AND
-    | _ ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter '&'))
+     | `Chr '&' ->
+       next_n ~n:2 t;
+       Token.LOGICAL_AND
+     | _ ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         "The character & is unknown. You should remove it.";
+       exit 1)
   | `Chr '|' ->
     (match peek t with
-    | `Chr '|' ->
-      next_n ~n:2 t;
-      Token.LOGICAL_OR
-    | `Chr '}' ->
-      popMode Normal t;
-      next_n ~n:2 t;
-      Token.RIGHT_PIPE_BRACE
-    | `Chr '>' ->
-      next_n ~n:2 t;
-      Token.PIPE
-    | _ ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter '|'))
+     | `Chr '|' ->
+       next_n ~n:2 t;
+       Token.LOGICAL_OR
+     | `Chr '}' ->
+       popMode Normal t;
+       next_n ~n:2 t;
+       Token.RIGHT_PIPE_BRACE
+     | `Chr '>' ->
+       next_n ~n:2 t;
+       Token.PIPE
+     | _ ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         "The character | is unknown. You should remove it.";
+       exit 1)
   | `Chr '!' ->
     (match peek t with
-    | `Chr '=' ->
-      next_n ~n:2 t;
-      Token.NOT_EQUAL
-    | _ ->
-      next t;
-      Token.NOT)
+     | `Chr '=' ->
+       next_n ~n:2 t;
+       Token.NOT_EQUAL
+     | _ ->
+       next t;
+       Token.NOT)
   | `Chr '=' ->
     (match peek t with
-    | `Chr '=' ->
-      next_n ~n:2 t;
-      Token.EQUAL_EQUAL
-    | _ ->
-      next t;
-      Token.EQUAL)
+     | `Chr '=' ->
+       next_n ~n:2 t;
+       Token.EQUAL_EQUAL
+     | _ ->
+       next t;
+       Token.EQUAL)
   | `Chr '>' ->
     (match peek t with
-    | `Chr '=' ->
-      next_n ~n:2 t;
-      Token.GREATER_EQUAL
-    | _ ->
-      next t;
-      Token.GREATER)
+     | `Chr '=' ->
+       next_n ~n:2 t;
+       Token.GREATER_EQUAL
+     | _ ->
+       next t;
+       Token.GREATER)
   | `Chr '*' ->
     (match peek t with
-    | `Chr '*' ->
-      next_n ~n:2 t;
-      Token.STAR_STAR
-    | _ ->
-      next t;
-      Token.STAR)
+     | `Chr '*' ->
+       next_n ~n:2 t;
+       Token.STAR_STAR
+     | _ ->
+       next t;
+       Token.STAR)
   | `Chr '<' ->
     (match peek t with
-    | `Chr '>' ->
-      next_n ~n:2 t;
-      Token.HTML_OPEN_FRAGMENT
-    | `Chr '-' ->
-      next_n ~n:2 t;
-      Token.ARROW_LEFT
-    | `Chr '=' ->
-      next_n ~n:2 t;
-      Token.LESS_EQUAL
-    | `Chr 'a' .. 'z' ->
-      setMode Template t;
-      setMode TemplateAttributes t;
-      scan_open_tag t
-    | `Chr 'A' .. 'Z' ->
-      setMode Template t;
-      setMode ComponentAttributes t;
-      scan_component_open_tag t
-    | c when is_whitespace t.prev && is_whitespace c ->
-      next t;
-      Token.LESS
-    | `Chr '/' ->
-      popMode Template t;
-      (match peek ~n:2 t with
-      | `Chr '>' ->
-        next_n ~n:3 t;
-        Token.HTML_CLOSE_FRAGMENT
-      | `Chr 'a' .. 'z' -> scan_close_tag t
-      | `Chr 'A' .. 'Z' -> scan_component_close_tag t
-      | `Chr c ->
-        Diagnostics.report
-          ~start_pos
-          ~end_pos:(make_position t)
-          (Diagnostics.Message
-             ("Invalid Template tag! Template tags have to start with an uppercase or \
-               lowercase letter. Instead saw: "
-             ^ String.make 1 c))
-      | `EOF ->
-        Diagnostics.report
-          ~start_pos
-          ~end_pos:(make_position t)
-          Diagnostics.NonTerminatedTemplate)
-    | _ ->
-      Diagnostics.report
-        ~start_pos
-        ~end_pos:(make_position t)
-        (Diagnostics.UnknownCharacter '<'))
+     | `Chr '>' ->
+       next_n ~n:2 t;
+       Token.HTML_OPEN_FRAGMENT
+     | `Chr '-' ->
+       next_n ~n:2 t;
+       Token.ARROW_LEFT
+     | `Chr '=' ->
+       next_n ~n:2 t;
+       Token.LESS_EQUAL
+     | `Chr 'a' .. 'z' ->
+       setMode Template t;
+       setMode TemplateAttributes t;
+       scan_open_tag t
+     | `Chr 'A' .. 'Z' ->
+       setMode Template t;
+       setMode ComponentAttributes t;
+       scan_component_open_tag t
+     | c when is_whitespace t.prev && is_whitespace c ->
+       next t;
+       Token.LESS
+     | `Chr '/' ->
+       popMode Template t;
+       (match peek ~n:2 t with
+        | `Chr '>' ->
+          next_n ~n:3 t;
+          Token.HTML_CLOSE_FRAGMENT
+        | `Chr 'a' .. 'z' -> scan_close_tag t
+        | `Chr 'A' .. 'Z' -> scan_component_close_tag t
+        | `Chr c ->
+          Diagnostics.report
+            ~start_pos
+            ~end_pos:(make_position t)
+            ("Invalid Template tag! Template tags have to start with an uppercase or \
+              lowercase letter. Instead saw: "
+            ^ String.make 1 c);
+          exit 1
+        | `EOF ->
+          Diagnostics.report
+            ~start_pos
+            ~end_pos:(make_position t)
+            "Your Template was not closed correctly. You probably mismatched or forgot a \
+             closing tag.";
+          exit 1)
+     | _ ->
+       Diagnostics.report
+         ~start_pos
+         ~end_pos:(make_position t)
+         "The character < is unknown. You should remove it.";
+       exit 1)
   | `EOF -> Token.END_OF_INPUT
   | `Chr c ->
     Diagnostics.report
       ~start_pos
       ~end_pos:(make_position t)
-      (Diagnostics.UnknownCharacter c)
+      ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.");
+    exit 1
 (* NOTE: Maybe we can ignore this and continue scanning... *)
 (* next t;
     scan_token ~start_pos t *)

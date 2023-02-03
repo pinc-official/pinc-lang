@@ -14,13 +14,5 @@
  (ocamlopt_flags -O3)
  (libraries pinc unix))
 
-(executable
- (name print_tokens)
- (public_name print_tokens)
- (modules print_tokens)
- (modes native)
- (ocamlopt_flags -O3)
- (libraries pinc unix))
-
 (cram
  (deps %{bin:print}))

@@ -1,0 +1,3 @@
+(library
+ (name Pinc_Backend)
+ (libraries Pinc_Diagnostics Pinc_Frontend))

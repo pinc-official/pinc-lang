@@ -1,4 +1,4 @@
-module Position = Pinc_Position
+open Pinc_Diagnostics
 
 type token_type =
   | COMMENT

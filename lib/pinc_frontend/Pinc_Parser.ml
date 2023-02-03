@@ -1,6 +1,6 @@
 module Ast = Pinc_Ast
-module Position = Pinc_Position
 module Diagnostics = Pinc_Diagnostics
+module Position = Diagnostics.Position
 module Token = Pinc_Token
 module Lexer = Pinc_Lexer
 
@@ -48,12 +48,11 @@ let expect token t =
     Diagnostics.report
       ~start_pos:t.token.start_pos
       ~end_pos:t.token.end_pos
-      (Diagnostics.Message
-         ("Expected: `"
-         ^ Token.to_string token
-         ^ "`, got `"
-         ^ Token.to_string t.token.typ
-         ^ "`"))
+      ("Expected: `"
+      ^ Token.to_string token
+      ^ "`, got `"
+      ^ Token.to_string t.token.typ
+      ^ "`")
 ;;
 
 let make ~filename src =
@@ -69,7 +68,7 @@ let make ~filename src =
 
 module Helpers = struct
   let expect_identifier ?(typ = `All) t =
-    let start_pos = Lexer.make_position t.lexer in
+    let start_pos = t.token.start_pos in
     match t.token.typ with
     | Token.IDENT_UPPER i when typ = `Upper || typ = `All ->
       next t;
@@ -80,18 +79,42 @@ module Helpers = struct
     | token when typ = `Lower ->
       Diagnostics.report
         ~start_pos
-        ~end_pos:(Lexer.make_position t.lexer)
-        (Diagnostics.ExpectedLowerIdent token)
+        ~end_pos:t.token.end_pos
+        (match token with
+         | Token.IDENT_UPPER i ->
+           "Expected to see a lowercase identifier at this point. Did you mean "
+           ^ String.lowercase_ascii i
+           ^ " instead of "
+           ^ i
+           ^ "?"
+         | t when Token.is_keyword t ->
+           "`" ^ Token.to_string t ^ "` is a keyword. Please choose another name."
+         | t ->
+           "Expected to see a lowercase identifier at this point. Instead saw "
+           ^ Token.to_string t);
+      exit 1
     | token when typ = `Upper ->
       Diagnostics.report
         ~start_pos
-        ~end_pos:(Lexer.make_position t.lexer)
-        (Diagnostics.ExpectedUpperIdent token)
+        ~end_pos:t.token.end_pos
+        (match token with
+         | Token.IDENT_LOWER i ->
+           "Expected to see an uppercase identifier at this point. Did you mean "
+           ^ String.capitalize_ascii i
+           ^ " instead of "
+           ^ i
+           ^ "?"
+         | _ -> "Expected to see an uppercase identifier at this point.");
+      exit 1
     | token ->
       Diagnostics.report
         ~start_pos
-        ~end_pos:(Lexer.make_position t.lexer)
-        (Diagnostics.ExpectedIdent token)
+        ~end_pos:t.token.end_pos
+        (match token with
+         | t when Token.is_keyword t ->
+           "\"" ^ Token.to_string t ^ "\" is a keyword. Please choose another name."
+         | _ -> "Expected to see an identifier at this point.");
+      exit 1
   ;;
 
   let separated_list ~sep ~fn t =
@@ -101,12 +124,12 @@ module Helpers = struct
       | Some r ->
         if has_sep || acc = []
         then loop (r :: acc)
-        else
+        else (
           Diagnostics.report
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
-            (Diagnostics.Message
-               ("Expected list to be separated by `" ^ Token.to_string sep ^ "`"))
+            ("Expected list to be separated by `" ^ Token.to_string sep ^ "`");
+          exit 1)
       | None -> List.rev acc
     in
     loop []
@@ -186,7 +209,8 @@ module Rules = struct
             Diagnostics.report
               ~start_pos:t.token.start_pos
               ~end_pos:t.token.end_pos
-              (Diagnostics.Message "Expected expression as transformer of tag")
+              "Expected expression as transformer of tag";
+            exit 1
           | Some expr -> expr
         in
         Some (Ast.Lowercase_Id bind, body))
@@ -289,19 +313,20 @@ module Rules = struct
       let expression = parse_expression t in
       let _ = optional Token.SEMICOLON t in
       (match is_mutable, is_nullable, expression with
-      | false, true, Some expression ->
-        Some (Ast.OptionalLetStatement (Lowercase_Id identifier, expression))
-      | true, true, Some expression ->
-        Some (Ast.OptionalMutableLetStatement (Lowercase_Id identifier, expression))
-      | false, false, Some expression ->
-        Some (Ast.LetStatement (Lowercase_Id identifier, expression))
-      | true, false, Some expression ->
-        Some (Ast.MutableLetStatement (Lowercase_Id identifier, expression))
-      | _, _, None ->
-        Diagnostics.report
-          ~start_pos:t.token.start_pos
-          ~end_pos:t.token.end_pos
-          (Diagnostics.Message "Expected expression as right hand side of let declaration"))
+       | false, true, Some expression ->
+         Some (Ast.OptionalLetStatement (Lowercase_Id identifier, expression))
+       | true, true, Some expression ->
+         Some (Ast.OptionalMutableLetStatement (Lowercase_Id identifier, expression))
+       | false, false, Some expression ->
+         Some (Ast.LetStatement (Lowercase_Id identifier, expression))
+       | true, false, Some expression ->
+         Some (Ast.MutableLetStatement (Lowercase_Id identifier, expression))
+       | _, _, None ->
+         Diagnostics.report
+           ~start_pos:t.token.start_pos
+           ~end_pos:t.token.end_pos
+           "Expected expression as right hand side of let declaration";
+         exit 1)
     (* PARSING MUTATION STATEMENT *)
     | Token.IDENT_LOWER identifier when peek t = Token.COLON_EQUAL ->
       next t;
@@ -313,8 +338,8 @@ module Rules = struct
           Diagnostics.report
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
-            (Diagnostics.Message
-               "Expected expression as right hand side of mutation statement")
+            "Expected expression as right hand side of mutation statement";
+          exit 1
       in
       let _ = optional Token.SEMICOLON t in
       Some (Ast.MutationStatement (Lowercase_Id identifier, expression))
@@ -330,7 +355,8 @@ module Rules = struct
           Diagnostics.report
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
-            (Diagnostics.Message "Expected expression as right hand side of use statement")
+            "Expected expression as right hand side of use statement";
+          exit 1
       in
       let _ = optional Token.SEMICOLON t in
       Some (Ast.UseStatement (Uppercase_Id identifier, expression))
@@ -390,13 +416,14 @@ module Rules = struct
       expect Token.RIGHT_PAREN t;
       let body = parse_statement t in
       (match body with
-      | None ->
-        Diagnostics.report
-          ~start_pos:t.token.start_pos
-          ~end_pos:t.token.end_pos
-          (Diagnostics.Message "Expected statement as body of for loop")
-      | Some body ->
-        Some (Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }))
+       | None ->
+         Diagnostics.report
+           ~start_pos:t.token.start_pos
+           ~end_pos:t.token.end_pos
+           "Expected statement as body of for loop";
+         exit 1
+       | Some body ->
+         Some (Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }))
     (* PARSING FN EXPRESSION *)
     | Token.KEYWORD_FN ->
       next t;
@@ -526,19 +553,19 @@ module Rules = struct
           | Right -> precedence
         in
         (match parse_expression ~prio:new_prio t with
-        | None ->
-          Diagnostics.report
-            ~start_pos:t.token.start_pos
-            ~end_pos:t.token.end_pos
-            (Diagnostics.Message
-               ("Expected expression on right hand side of `"
-               ^ Ast.Operators.Binary.to_string operator
-               ^ "`"))
-        | Some right ->
-          let left = Ast.BinaryExpression (left, operator, right) in
-          let expect_close token = expect token t in
-          let () = Option.iter expect_close closing_token in
-          loop ~left ~prio t)
+         | None ->
+           Diagnostics.report
+             ~start_pos:t.token.start_pos
+             ~end_pos:t.token.end_pos
+             ("Expected expression on right hand side of `"
+             ^ Ast.Operators.Binary.to_string operator
+             ^ "`");
+           exit 1
+         | Some right ->
+           let left = Ast.BinaryExpression (left, operator, right) in
+           let expect_close token = expect token t in
+           let () = Option.iter expect_close closing_token in
+           loop ~left ~prio t)
     in
     let* left = parse_expression_part t in
     Some (loop ~prio ~left t)
@@ -566,21 +593,23 @@ module Rules = struct
       in
       let body = t |> parse_expression in
       (match body with
-      | None ->
-        Diagnostics.report
-          ~start_pos:t.token.start_pos
-          ~end_pos:t.token.end_pos
-          (Diagnostics.Message "Expected declaration to have a body")
-      | Some body ->
-        (match typ with
-        | Token.KEYWORD_SITE -> Some (identifier, Ast.SiteDeclaration (attributes, body))
-        | Token.KEYWORD_PAGE -> Some (identifier, Ast.PageDeclaration (attributes, body))
-        | Token.KEYWORD_COMPONENT ->
-          Some (identifier, Ast.ComponentDeclaration (attributes, body))
-        | Token.KEYWORD_STORE -> Some (identifier, Ast.StoreDeclaration (attributes, body))
-        | Token.KEYWORD_LIBRARY ->
-          Some (identifier, Ast.LibraryDeclaration (attributes, body))
-        | _ -> assert false))
+       | None ->
+         Diagnostics.report
+           ~start_pos:t.token.start_pos
+           ~end_pos:t.token.end_pos
+           "Expected declaration to have a body";
+         exit 1
+       | Some body ->
+         (match typ with
+          | Token.KEYWORD_SITE -> Some (identifier, Ast.SiteDeclaration (attributes, body))
+          | Token.KEYWORD_PAGE -> Some (identifier, Ast.PageDeclaration (attributes, body))
+          | Token.KEYWORD_COMPONENT ->
+            Some (identifier, Ast.ComponentDeclaration (attributes, body))
+          | Token.KEYWORD_STORE ->
+            Some (identifier, Ast.StoreDeclaration (attributes, body))
+          | Token.KEYWORD_LIBRARY ->
+            Some (identifier, Ast.LibraryDeclaration (attributes, body))
+          | _ -> assert false))
     | Token.END_OF_INPUT -> None
     | _ -> assert false
   ;;

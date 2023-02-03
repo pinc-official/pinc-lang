@@ -1,5 +1,5 @@
 open Pinc_Interpreter_Types
-module Ast = Pinc_Ast
+module Ast = Pinc_Frontend.Ast
 
 module rec Value : sig
   val to_string : value -> string
