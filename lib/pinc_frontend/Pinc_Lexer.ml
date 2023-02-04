@@ -27,6 +27,8 @@ type t =
   ; mutable mode : mode list
   }
 
+let report t = Diagnostics.report ~src:t.src
+
 let make_position t =
   Position.make ~filename:t.filename ~line:t.line ~column:(t.column + 1)
 ;;
@@ -146,7 +148,8 @@ let scan_string ~start_pos t =
   let rec loop t =
     match t.current with
     | `EOF ->
-      Diagnostics.report
+      report
+        t
         ~start_pos
         ~end_pos:(make_position t)
         "This string is not terminated. Please add a double-quote (\") at the end."
@@ -189,12 +192,14 @@ let scan_string ~start_pos t =
          Buffer.add_char buf '\\';
          loop t
        | `Chr _ ->
-         Diagnostics.report
+         report
+           t
            ~start_pos:(make_position t)
            ~end_pos:(make_position t)
            "Unknown escape sequence in string."
        | `EOF ->
-         Diagnostics.report
+         report
+           t
            ~start_pos
            ~end_pos:(make_position t)
            "This string is not terminated. Please add a double-quote (\") at the end.")
@@ -229,14 +234,14 @@ let scan_tag t =
   match found.[0] with
   | 'A' .. 'Z' -> found
   | _ ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
       ("Invalid Tag! Tags have to start with an uppercase character. Did you mean to \
         write #"
       ^ String.capitalize_ascii found
-      ^ "?");
-    exit 1
+      ^ "?")
 ;;
 
 let get_html_tag_ident t =
@@ -255,12 +260,12 @@ let get_html_tag_ident t =
   match ident.[0] with
   | 'a' .. 'z' -> ident
   | _ ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
       ("Invalid HTML tag! HTML tags have to start with a lowercase letter. Instead saw: "
-      ^ ident);
-    exit 1
+      ^ ident)
 ;;
 
 let get_uppercase_ident t =
@@ -287,20 +292,20 @@ let scan_component_open_tag t =
   match t.current with
   | `Chr 'A' .. 'Z' -> Token.COMPONENT_OPEN_TAG (get_uppercase_ident t)
   | `Chr c ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
       ("Invalid Component tag! Component tags have to start with an uppercase letter. \
         Instead saw: "
-      ^ String.make 1 c);
-    exit 1
+      ^ String.make 1 c)
   | `EOF ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
       "Your Template was not closed correctly. You probably mismatched or forgot a \
-       closing tag.";
-    exit 1
+       closing tag."
 ;;
 
 let scan_open_tag t =
@@ -310,20 +315,20 @@ let scan_open_tag t =
   match t.current with
   | `Chr 'a' .. 'z' -> Token.HTML_OPEN_TAG (get_html_tag_ident t)
   | `Chr c ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
       ("Invalid Template tag! Template tags have to start with a lowercase letter. \
         Instead saw: "
-      ^ String.make 1 c);
-    exit 1
+      ^ String.make 1 c)
   | `EOF ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
       "Your Template was not closed correctly. You probably mismatched or forgot a \
-       closing tag.";
-    exit 1
+       closing tag."
 ;;
 
 let scan_component_close_tag t =
@@ -334,31 +339,31 @@ let scan_component_close_tag t =
     match t.current with
     | `Chr 'A' .. 'Z' -> get_uppercase_ident t
     | `Chr c ->
-      Diagnostics.report
+      report
+        t
         ~start_pos
         ~end_pos:(make_position t)
         ("Invalid Component tag! Component tags have to start with an uppercase letter. \
           Instead saw: "
-        ^ String.make 1 c);
-      exit 1
+        ^ String.make 1 c)
     | `EOF ->
-      Diagnostics.report
+      report
+        t
         ~start_pos
         ~end_pos:(make_position t)
         "Your Template was not closed correctly. You probably mismatched or forgot a \
-         closing tag.";
-      exit 1
+         closing tag."
   in
   match t.current with
   | `Chr '>' ->
     next t;
     Token.COMPONENT_CLOSE_TAG close_tag
   | _ ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
-      ("Expected token " ^ Token.to_string Token.GREATER ^ " at this point.");
-    exit 1
+      ("Expected token " ^ Token.to_string Token.GREATER ^ " at this point.")
 ;;
 
 let scan_close_tag t =
@@ -369,31 +374,31 @@ let scan_close_tag t =
     match t.current with
     | `Chr 'a' .. 'z' -> Token.HTML_CLOSE_TAG (get_html_tag_ident t)
     | `Chr c ->
-      Diagnostics.report
+      report
+        t
         ~start_pos
         ~end_pos:(make_position t)
         ("Invalid Template tag! Template tags have to start with a lowercase letter. \
           Instead saw: "
-        ^ String.make 1 c);
-      exit 1
+        ^ String.make 1 c)
     | `EOF ->
-      Diagnostics.report
+      report
+        t
         ~start_pos
         ~end_pos:(make_position t)
         "Your Template was not closed correctly. You probably mismatched or forgot a \
-         closing tag.";
-      exit 1
+         closing tag."
   in
   match t.current with
   | `Chr '>' ->
     next t;
     close_tag
   | _ ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
-      ("Expected token " ^ Token.to_string Token.GREATER ^ " at this point.");
-    exit 1
+      ("Expected token " ^ Token.to_string Token.GREATER ^ " at this point.")
 ;;
 
 let scan_template_text t =
@@ -401,12 +406,12 @@ let scan_template_text t =
   let rec loop buf t =
     match t.current with
     | `EOF ->
-      Diagnostics.report
+      report
+        t
         ~start_pos
         ~end_pos:(make_position t)
         "Your Template was not closed correctly. You probably mismatched or forgot a \
-         closing tag.";
-      exit 1
+         closing tag."
     | `Chr '{' -> Buffer.contents buf
     | `Chr '<' ->
       (match peek t with
@@ -542,20 +547,20 @@ let rec scan_template_token ~start_pos t =
           next_n ~n:3 t;
           Token.HTML_CLOSE_FRAGMENT
         | `Chr c ->
-          Diagnostics.report
+          report
+            t
             ~start_pos
             ~end_pos:(make_position t)
             ("Invalid Template tag! Template tags have to start with an uppercase or \
               lowercase letter. Instead saw: "
-            ^ String.make 1 c);
-          exit 1
+            ^ String.make 1 c)
         | `EOF ->
-          Diagnostics.report
+          report
+            t
             ~start_pos
             ~end_pos:(make_position t)
             "Your Template was not closed correctly. You probably mismatched or forgot a \
-             closing tag.";
-          exit 1)
+             closing tag.")
      | _ -> scan_template_text t)
   | `Chr '/' ->
     (match peek t with
@@ -564,28 +569,28 @@ let rec scan_template_token ~start_pos t =
        next_n ~n:2 t;
        Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING
      | `Chr c ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
-         ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.");
-       exit 1
+         ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.")
      | `EOF ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
          "Your Template was not closed correctly. You probably mismatched or forgot a \
-          closing tag.";
-       exit 1)
+          closing tag.")
   | `Chr '>' ->
     next t;
     Token.HTML_OR_COMPONENT_TAG_END
   | `EOF ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
       "Your Template was not closed correctly. You probably mismatched or forgot a \
-       closing tag.";
-    exit 1
+       closing tag."
   | _ -> scan_template_text t
 
 and scan_string_token ~start_pos t =
@@ -628,28 +633,28 @@ and scan_component_attributes_token ~start_pos t =
        popMode ComponentAttributes t;
        scan_template_token ~start_pos t
      | `Chr c ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
-         ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.");
-       exit 1
+         ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.")
      | `EOF ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
          "Your Template was not closed correctly. You probably mismatched or forgot a \
-          closing tag.";
-       exit 1)
+          closing tag.")
   | `Chr '>' ->
     popMode ComponentAttributes t;
     scan_template_token ~start_pos t
   | `EOF ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
       "Your Template was not closed correctly. You probably mismatched or forgot a \
-       closing tag.";
-    exit 1
+       closing tag."
   | _ -> scan_template_text t
 
 and scan_template_attributes_token ~start_pos t =
@@ -676,28 +681,28 @@ and scan_template_attributes_token ~start_pos t =
        popMode TemplateAttributes t;
        scan_template_token ~start_pos t
      | `Chr c ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
-         ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.");
-       exit 1
+         ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.")
      | `EOF ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
          "Your Template was not closed correctly. You probably mismatched or forgot a \
-          closing tag.";
-       exit 1)
+          closing tag.")
   | `Chr '>' ->
     popMode TemplateAttributes t;
     scan_template_token ~start_pos t
   | `EOF ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
       "Your Template was not closed correctly. You probably mismatched or forgot a \
-       closing tag.";
-    exit 1
+       closing tag."
   | _ -> scan_template_text t
 
 and scan_normal_token ~start_pos t =
@@ -800,33 +805,33 @@ and scan_normal_token ~start_pos t =
        next_n ~n:2 t;
        Token.ATAT
      | _ ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
-         "The character @ is unknown. You should remove it.";
-       exit 1)
+         "The character @ is unknown. You should remove it.")
   | `Chr '#' ->
     (match peek t with
      | `Chr 'A' .. 'Z' ->
        next t;
        Token.TAG (scan_tag t)
      | _ ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
-         "The character # is unknown. You should remove it.";
-       exit 1)
+         "The character # is unknown. You should remove it.")
   | `Chr '&' ->
     (match peek t with
      | `Chr '&' ->
        next_n ~n:2 t;
        Token.LOGICAL_AND
      | _ ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
-         "The character & is unknown. You should remove it.";
-       exit 1)
+         "The character & is unknown. You should remove it.")
   | `Chr '|' ->
     (match peek t with
      | `Chr '|' ->
@@ -840,11 +845,11 @@ and scan_normal_token ~start_pos t =
        next_n ~n:2 t;
        Token.PIPE
      | _ ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
-         "The character | is unknown. You should remove it.";
-       exit 1)
+         "The character | is unknown. You should remove it.")
   | `Chr '!' ->
     (match peek t with
      | `Chr '=' ->
@@ -908,33 +913,33 @@ and scan_normal_token ~start_pos t =
         | `Chr 'a' .. 'z' -> scan_close_tag t
         | `Chr 'A' .. 'Z' -> scan_component_close_tag t
         | `Chr c ->
-          Diagnostics.report
+          report
+            t
             ~start_pos
             ~end_pos:(make_position t)
             ("Invalid Template tag! Template tags have to start with an uppercase or \
               lowercase letter. Instead saw: "
-            ^ String.make 1 c);
-          exit 1
+            ^ String.make 1 c)
         | `EOF ->
-          Diagnostics.report
+          report
+            t
             ~start_pos
             ~end_pos:(make_position t)
             "Your Template was not closed correctly. You probably mismatched or forgot a \
-             closing tag.";
-          exit 1)
+             closing tag.")
      | _ ->
-       Diagnostics.report
+       report
+         t
          ~start_pos
          ~end_pos:(make_position t)
-         "The character < is unknown. You should remove it.";
-       exit 1)
+         "The character < is unknown. You should remove it.")
   | `EOF -> Token.END_OF_INPUT
   | `Chr c ->
-    Diagnostics.report
+    report
+      t
       ~start_pos
       ~end_pos:(make_position t)
-      ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.");
-    exit 1
+      ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.")
 (* NOTE: Maybe we can ignore this and continue scanning... *)
 (* next t;
     scan_token ~start_pos t *)

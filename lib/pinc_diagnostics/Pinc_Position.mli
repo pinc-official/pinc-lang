@@ -1,6 +1,7 @@
 type t =
   { filename : string
   ; line : int
+  ; beginning_of_line : int
   ; column : int
   }
 

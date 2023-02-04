@@ -11,6 +11,7 @@ type t =
   }
 
 let ( let* ) = Option.bind
+let report t = Lexer.report t.lexer
 
 let get_next_token t =
   match Queue.take_opt t.next with
@@ -45,7 +46,8 @@ let expect token t =
   if test
   then next t
   else
-    Diagnostics.report
+    report
+      t
       ~start_pos:t.token.start_pos
       ~end_pos:t.token.end_pos
       ("Expected: `"
@@ -77,7 +79,8 @@ module Helpers = struct
       next t;
       i
     | token when typ = `Lower ->
-      Diagnostics.report
+      report
+        t
         ~start_pos
         ~end_pos:t.token.end_pos
         (match token with
@@ -91,10 +94,10 @@ module Helpers = struct
            "`" ^ Token.to_string t ^ "` is a keyword. Please choose another name."
          | t ->
            "Expected to see a lowercase identifier at this point. Instead saw "
-           ^ Token.to_string t);
-      exit 1
+           ^ Token.to_string t)
     | token when typ = `Upper ->
-      Diagnostics.report
+      report
+        t
         ~start_pos
         ~end_pos:t.token.end_pos
         (match token with
@@ -104,17 +107,16 @@ module Helpers = struct
            ^ " instead of "
            ^ i
            ^ "?"
-         | _ -> "Expected to see an uppercase identifier at this point.");
-      exit 1
+         | _ -> "Expected to see an uppercase identifier at this point.")
     | token ->
-      Diagnostics.report
+      report
+        t
         ~start_pos
         ~end_pos:t.token.end_pos
         (match token with
          | t when Token.is_keyword t ->
            "\"" ^ Token.to_string t ^ "\" is a keyword. Please choose another name."
-         | _ -> "Expected to see an identifier at this point.");
-      exit 1
+         | _ -> "Expected to see an identifier at this point.")
   ;;
 
   let separated_list ~sep ~fn t =
@@ -124,12 +126,12 @@ module Helpers = struct
       | Some r ->
         if has_sep || acc = []
         then loop (r :: acc)
-        else (
-          Diagnostics.report
+        else
+          report
+            t
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
-            ("Expected list to be separated by `" ^ Token.to_string sep ^ "`");
-          exit 1)
+            ("Expected list to be separated by `" ^ Token.to_string sep ^ "`")
       | None -> List.rev acc
     in
     loop []
@@ -206,11 +208,11 @@ module Rules = struct
         let body =
           match parse_expression t with
           | None ->
-            Diagnostics.report
+            report
+              t
               ~start_pos:t.token.start_pos
               ~end_pos:t.token.end_pos
-              "Expected expression as transformer of tag";
-            exit 1
+              "Expected expression as transformer of tag"
           | Some expr -> expr
         in
         Some (Ast.Lowercase_Id bind, body))
@@ -322,11 +324,11 @@ module Rules = struct
        | true, false, Some expression ->
          Some (Ast.MutableLetStatement (Lowercase_Id identifier, expression))
        | _, _, None ->
-         Diagnostics.report
+         report
+           t
            ~start_pos:t.token.start_pos
            ~end_pos:t.token.end_pos
-           "Expected expression as right hand side of let declaration";
-         exit 1)
+           "Expected expression as right hand side of let declaration")
     (* PARSING MUTATION STATEMENT *)
     | Token.IDENT_LOWER identifier when peek t = Token.COLON_EQUAL ->
       next t;
@@ -335,11 +337,11 @@ module Rules = struct
         match parse_expression t with
         | Some expression -> expression
         | None ->
-          Diagnostics.report
+          report
+            t
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
-            "Expected expression as right hand side of mutation statement";
-          exit 1
+            "Expected expression as right hand side of mutation statement"
       in
       let _ = optional Token.SEMICOLON t in
       Some (Ast.MutationStatement (Lowercase_Id identifier, expression))
@@ -352,11 +354,11 @@ module Rules = struct
         match parse_expression t with
         | Some expression -> expression
         | None ->
-          Diagnostics.report
+          report
+            t
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
-            "Expected expression as right hand side of use statement";
-          exit 1
+            "Expected expression as right hand side of use statement"
       in
       let _ = optional Token.SEMICOLON t in
       Some (Ast.UseStatement (Uppercase_Id identifier, expression))
@@ -417,11 +419,11 @@ module Rules = struct
       let body = parse_statement t in
       (match body with
        | None ->
-         Diagnostics.report
+         report
+           t
            ~start_pos:t.token.start_pos
            ~end_pos:t.token.end_pos
-           "Expected statement as body of for loop";
-         exit 1
+           "Expected statement as body of for loop"
        | Some body ->
          Some (Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }))
     (* PARSING FN EXPRESSION *)
@@ -554,13 +556,13 @@ module Rules = struct
         in
         (match parse_expression ~prio:new_prio t with
          | None ->
-           Diagnostics.report
+           report
+             t
              ~start_pos:t.token.start_pos
              ~end_pos:t.token.end_pos
              ("Expected expression on right hand side of `"
              ^ Ast.Operators.Binary.to_string operator
-             ^ "`");
-           exit 1
+             ^ "`")
          | Some right ->
            let left = Ast.BinaryExpression (left, operator, right) in
            let expect_close token = expect token t in
@@ -594,11 +596,11 @@ module Rules = struct
       let body = t |> parse_expression in
       (match body with
        | None ->
-         Diagnostics.report
+         report
+           t
            ~start_pos:t.token.start_pos
            ~end_pos:t.token.end_pos
-           "Expected declaration to have a body";
-         exit 1
+           "Expected declaration to have a body"
        | Some body ->
          (match typ with
           | Token.KEYWORD_SITE -> Some (identifier, Ast.SiteDeclaration (attributes, body))
