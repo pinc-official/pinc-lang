@@ -1,14 +1,17 @@
 module Location = Pinc_Location
 module Position = Pinc_Position
 
-let report ~src ~start_pos ~end_pos message =
+let error ~start_pos ~end_pos message =
   let location = Location.make start_pos end_pos in
-  Format.fprintf Format.err_formatter "@[<v>";
-  Pinc_Printer.Super_location.super_error_reporter
-    Format.err_formatter
-    src
-    location
-    message;
-  Format.fprintf Format.err_formatter "@]@.";
+  let ppf = Format.err_formatter in
+  Fmt.set_style_renderer ppf `Ansi_tty;
+  Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (Pinc_Printer.print ~kind:`error) location message;
   exit 1
+;;
+
+let warn ~start_pos ~end_pos message =
+  let location = Location.make start_pos end_pos in
+  let ppf = Format.err_formatter in
+  Fmt.set_style_renderer ppf `Ansi_tty;
+  Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (Pinc_Printer.print ~kind:`error) location message
 ;;

@@ -1,0 +1,41 @@
+opam-version: "2.0"
+name: "pinc-lang"
+version: "~dev"
+synopsis: "The PiNC Language as Syntax and Interpreter"
+maintainer: "torben@ewert-online.com"
+authors: "Torben Ewert"
+license: "MIT"
+homepage: "https://github.com/pinc-lang/pinc-lang"
+bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
+depends: [
+  "base-bigarray" {= "base"}
+  "base-domains" {= "base"}
+  "base-nnp" {= "base"}
+  "base-threads" {= "base"}
+  "base-unix" {= "base"}
+  "cmdliner" {= "1.1.1"}
+  "dune" {= "3.6.1"}
+  "fmt" {= "0.9.0"}
+  "ocaml" {= "5.0.0"}
+  "ocaml-base-compiler" {= "5.0.0"}
+  "ocaml-config" {= "3"}
+  "ocaml-options-vanilla" {= "1"}
+  "ocamlbuild" {= "0.14.2"}
+  "ocamlfind" {= "1.9.5"}
+  "topkg" {= "1.0.6"}
+]
+build: [
+  ["dune" "subst"] {dev}
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "@install"
+    "@runtest" {with-test}
+    "@doc" {with-doc}
+  ]
+]
+dev-repo: "git+https://github.com/pinc-lang/pinc-lang.git"

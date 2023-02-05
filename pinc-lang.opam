@@ -8,6 +8,7 @@ homepage: "https://github.com/pinc-lang/pinc-lang"
 bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
 depends: [
   "ocaml"
+  "fmt"
   "dune" {>= "3.6"}
   "odoc" {with-doc}
 ]

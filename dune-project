@@ -20,6 +20,4 @@
 (package
  (name pinc-lang)
  (synopsis "The PiNC Language as Syntax and Interpreter")
- (depends
-  ocaml
-  dune))
+ (depends ocaml fmt dune))

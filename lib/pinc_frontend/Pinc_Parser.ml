@@ -11,7 +11,6 @@ type t =
   }
 
 let ( let* ) = Option.bind
-let report t = Lexer.report t.lexer
 
 let get_next_token t =
   match Queue.take_opt t.next with
@@ -46,8 +45,7 @@ let expect token t =
   if test
   then next t
   else
-    report
-      t
+    Diagnostics.error
       ~start_pos:t.token.start_pos
       ~end_pos:t.token.end_pos
       ("Expected: `"
@@ -79,8 +77,7 @@ module Helpers = struct
       next t;
       i
     | token when typ = `Lower ->
-      report
-        t
+      Diagnostics.error
         ~start_pos
         ~end_pos:t.token.end_pos
         (match token with
@@ -96,8 +93,7 @@ module Helpers = struct
            "Expected to see a lowercase identifier at this point. Instead saw "
            ^ Token.to_string t)
     | token when typ = `Upper ->
-      report
-        t
+      Diagnostics.error
         ~start_pos
         ~end_pos:t.token.end_pos
         (match token with
@@ -109,8 +105,7 @@ module Helpers = struct
            ^ "?"
          | _ -> "Expected to see an uppercase identifier at this point.")
     | token ->
-      report
-        t
+      Diagnostics.error
         ~start_pos
         ~end_pos:t.token.end_pos
         (match token with
@@ -127,8 +122,7 @@ module Helpers = struct
         if has_sep || acc = []
         then loop (r :: acc)
         else
-          report
-            t
+          Diagnostics.error
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
             ("Expected list to be separated by `" ^ Token.to_string sep ^ "`")
@@ -208,8 +202,7 @@ module Rules = struct
         let body =
           match parse_expression t with
           | None ->
-            report
-              t
+            Diagnostics.error
               ~start_pos:t.token.start_pos
               ~end_pos:t.token.end_pos
               "Expected expression as transformer of tag"
@@ -324,8 +317,7 @@ module Rules = struct
        | true, false, Some expression ->
          Some (Ast.MutableLetStatement (Lowercase_Id identifier, expression))
        | _, _, None ->
-         report
-           t
+         Diagnostics.error
            ~start_pos:t.token.start_pos
            ~end_pos:t.token.end_pos
            "Expected expression as right hand side of let declaration")
@@ -337,8 +329,7 @@ module Rules = struct
         match parse_expression t with
         | Some expression -> expression
         | None ->
-          report
-            t
+          Diagnostics.error
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
             "Expected expression as right hand side of mutation statement"
@@ -354,8 +345,7 @@ module Rules = struct
         match parse_expression t with
         | Some expression -> expression
         | None ->
-          report
-            t
+          Diagnostics.error
             ~start_pos:t.token.start_pos
             ~end_pos:t.token.end_pos
             "Expected expression as right hand side of use statement"
@@ -419,8 +409,7 @@ module Rules = struct
       let body = parse_statement t in
       (match body with
        | None ->
-         report
-           t
+         Diagnostics.error
            ~start_pos:t.token.start_pos
            ~end_pos:t.token.end_pos
            "Expected statement as body of for loop"
@@ -556,8 +545,7 @@ module Rules = struct
         in
         (match parse_expression ~prio:new_prio t with
          | None ->
-           report
-             t
+           Diagnostics.error
              ~start_pos:t.token.start_pos
              ~end_pos:t.token.end_pos
              ("Expected expression on right hand side of `"
@@ -596,8 +584,7 @@ module Rules = struct
       let body = t |> parse_expression in
       (match body with
        | None ->
-         report
-           t
+         Diagnostics.error
            ~start_pos:t.token.start_pos
            ~end_pos:t.token.end_pos
            "Expected declaration to have a body"

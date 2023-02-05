@@ -1,2 +1,3 @@
 (library
- (name Pinc_Diagnostics))
+ (name Pinc_Diagnostics)
+ (libraries fmt))
