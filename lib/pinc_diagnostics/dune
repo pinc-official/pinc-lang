@@ -1,3 +1,4 @@
 (library
  (name Pinc_Diagnostics)
+ (public_name pinc-lang.diagnostics)
  (libraries fmt))

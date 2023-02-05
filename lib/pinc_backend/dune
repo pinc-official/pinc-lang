@@ -1,3 +1,4 @@
 (library
  (name Pinc_Backend)
+ (public_name pinc-lang.backend)
  (libraries Pinc_Diagnostics Pinc_Frontend))
