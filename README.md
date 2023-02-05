@@ -10,6 +10,8 @@
 
 ## TODOs
 
+- Replace `failwith` calls with Diagnostics.error
+
 - Rewrite strings to be an array of chars and make chars a separate value type
 
 - Add named parameters to function application
@@ -36,8 +38,6 @@
   ```
 
 - Remove catchall cases in switch stmts
-
-- Generate better error messages
 
 - Incremental
 
