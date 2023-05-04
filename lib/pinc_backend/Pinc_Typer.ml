@@ -110,6 +110,23 @@ module Expect = struct
     | Float _ -> failwith "expected record, got float"
     | Bool _ -> failwith "expected record, got bool"
     | Array _ -> failwith "expected record, got array"
+    | Record r -> Some (r |> StringMap.map snd)
+    | Function _ -> failwith "expected record, got function definition"
+    | DefinitionInfo _ -> failwith "expected record, got definition info"
+    | TagInfo _ -> failwith "expected record, got tag"
+    | HtmlTemplateNode (_, _, _, _) -> failwith "expected record, got HTML template node"
+    | ComponentTemplateNode (_, _, _, _) ->
+      failwith "expected record, got component template node"
+  ;;
+
+  let record_with_order = function
+    | Null -> None
+    | Portal _ -> failwith "expected record, got portal value"
+    | String _ -> failwith "expected record, got string"
+    | Int _ -> failwith "expected record, got int"
+    | Float _ -> failwith "expected record, got float"
+    | Bool _ -> failwith "expected record, got bool"
+    | Array _ -> failwith "expected record, got array"
     | Record r -> Some r
     | Function _ -> failwith "expected record, got function definition"
     | DefinitionInfo _ -> failwith "expected record, got definition info"

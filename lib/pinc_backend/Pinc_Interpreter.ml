@@ -1074,24 +1074,22 @@ and eval_internal_tag ~state ~key ~attributes ~value_bag tag_name =
          |> Value.of_list)
     |> Option.value ~default:Null
   | `Record ->
-    let of' = attributes |> Pinc_Typer.Expect.(required (attribute "of" record)) in
+    let of' =
+      attributes |> Pinc_Typer.Expect.(required (attribute "of" record_with_order))
+    in
     value_bag
     |> Pinc_Typer.Expect.(attribute key record)
     |> Option.map (fun record ->
-         let record = record |> StringMap.map snd in
          StringMap.merge
            (fun _key x y ->
              match x, y with
-             | Some _, Some (_, TagInfo info) ->
-               Some (0, info |> eval_internal_or_external_tag ~state ~value:record)
-             | None, Some (_, TagInfo _) -> Some (0, Null)
-             | (None | Some _), Some (_, value) -> Some (0, value)
+             | Some _, Some (idx, TagInfo info) ->
+               Some (idx, info |> eval_internal_or_external_tag ~state ~value:record)
+             | None, Some (idx, TagInfo _) -> Some (idx, Null)
+             | (None | Some _), Some (idx, value) -> Some (idx, value)
              | (None | Some _), None -> None)
            record
            of'
-         |> StringMap.to_seq
-         |> Seq.mapi (fun index (key, (_index, value)) -> key, (index, value))
-         |> StringMap.of_seq
          |> Value.of_string_map)
     |> Option.value ~default:Null
 
@@ -1121,7 +1119,7 @@ and call_tag_listener ~state ~value_bag t =
    | Some (`Record fn) ->
      let children =
        attributes
-       |> Pinc_Typer.Expect.(required (attribute "of" record))
+       |> Pinc_Typer.Expect.(required (attribute "of" record_with_order))
        |> StringMap.filter_map (fun _key (index, value) ->
             value
             |> Pinc_Typer.Expect.(maybe tag_info)
