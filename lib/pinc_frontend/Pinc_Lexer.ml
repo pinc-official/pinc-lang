@@ -81,8 +81,8 @@ let next t =
   t.prev <- t.current;
   t.current
     <- (if next_offset < t.src_length
-       then `Chr (String.unsafe_get t.src next_offset)
-       else `EOF)
+        then `Chr (String.unsafe_get t.src next_offset)
+        else `EOF)
 ;;
 
 let next_n ~n t =
@@ -234,8 +234,8 @@ let scan_tag t =
       ~end_pos:(make_position t)
       ("Invalid Tag! Tags have to start with an uppercase character. Did you mean to \
         write #"
-      ^ String.capitalize_ascii found
-      ^ "?")
+       ^ String.capitalize_ascii found
+       ^ "?")
 ;;
 
 let get_html_tag_ident t =
@@ -258,7 +258,7 @@ let get_html_tag_ident t =
       ~start_pos
       ~end_pos:(make_position t)
       ("Invalid HTML tag! HTML tags have to start with a lowercase letter. Instead saw: "
-      ^ ident)
+       ^ ident)
 ;;
 
 let get_uppercase_ident t =
@@ -290,7 +290,7 @@ let scan_component_open_tag t =
       ~end_pos:(make_position t)
       ("Invalid Component tag! Component tags have to start with an uppercase letter. \
         Instead saw: "
-      ^ String.make 1 c)
+       ^ String.make 1 c)
   | `EOF ->
     Diagnostics.error
       ~start_pos
@@ -311,7 +311,7 @@ let scan_open_tag t =
       ~end_pos:(make_position t)
       ("Invalid Template tag! Template tags have to start with a lowercase letter. \
         Instead saw: "
-      ^ String.make 1 c)
+       ^ String.make 1 c)
   | `EOF ->
     Diagnostics.error
       ~start_pos
@@ -333,7 +333,7 @@ let scan_component_close_tag t =
         ~end_pos:(make_position t)
         ("Invalid Component tag! Component tags have to start with an uppercase letter. \
           Instead saw: "
-        ^ String.make 1 c)
+         ^ String.make 1 c)
     | `EOF ->
       Diagnostics.error
         ~start_pos
@@ -365,7 +365,7 @@ let scan_close_tag t =
         ~end_pos:(make_position t)
         ("Invalid Template tag! Template tags have to start with a lowercase letter. \
           Instead saw: "
-        ^ String.make 1 c)
+         ^ String.make 1 c)
     | `EOF ->
       Diagnostics.error
         ~start_pos
@@ -534,7 +534,7 @@ let rec scan_template_token ~start_pos t =
             ~end_pos:(make_position t)
             ("Invalid Template tag! Template tags have to start with an uppercase or \
               lowercase letter. Instead saw: "
-            ^ String.make 1 c)
+             ^ String.make 1 c)
         | `EOF ->
           Diagnostics.error
             ~start_pos
@@ -885,7 +885,7 @@ and scan_normal_token ~start_pos t =
             ~end_pos:(make_position t)
             ("Invalid Template tag! Template tags have to start with an uppercase or \
               lowercase letter. Instead saw: "
-            ^ String.make 1 c)
+             ^ String.make 1 c)
         | `EOF ->
           Diagnostics.error
             ~start_pos

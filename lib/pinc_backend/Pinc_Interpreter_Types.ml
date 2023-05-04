@@ -8,7 +8,7 @@ type value =
   | Float of float
   | Bool of bool
   | Array of value array
-  | Record of value StringMap.t
+  | Record of (int * value) StringMap.t
   | Function of function_info
   | DefinitionInfo of definition_info
   | TagInfo of tag_info
@@ -82,7 +82,7 @@ and tag_handler =
   | `Record of
     required:bool
     -> attributes:value StringMap.t
-    -> children:tag_info StringMap.t
+    -> children:(string * tag_info) list
     -> key:string
     -> (value, string) Result.t
   | `Slot of

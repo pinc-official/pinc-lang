@@ -49,10 +49,10 @@ let expect token t =
       ~start_pos:t.token.start_pos
       ~end_pos:t.token.end_pos
       ("Expected: `"
-      ^ Token.to_string token
-      ^ "`, got `"
-      ^ Token.to_string t.token.typ
-      ^ "`")
+       ^ Token.to_string token
+       ^ "`, got `"
+       ^ Token.to_string t.token.typ
+       ^ "`")
 ;;
 
 let make ~filename src =
@@ -381,6 +381,8 @@ module Rules = struct
           t
           |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field
           |> List.to_seq
+          |> Seq.mapi (fun index (key, (optional, value)) ->
+               key, (index, optional, value))
           |> StringMap.of_seq
         in
         t |> expect Token.RIGHT_BRACE;
@@ -549,8 +551,8 @@ module Rules = struct
              ~start_pos:t.token.start_pos
              ~end_pos:t.token.end_pos
              ("Expected expression on right hand side of `"
-             ^ Ast.Operators.Binary.to_string operator
-             ^ "`")
+              ^ Ast.Operators.Binary.to_string operator
+              ^ "`")
          | Some right ->
            let left = Ast.BinaryExpression (left, operator, right) in
            let expect_close token = expect token t in

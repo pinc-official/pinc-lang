@@ -9,7 +9,7 @@ module rec Value : sig
   val of_int : int -> value
   val of_float : float -> value
   val of_list : value list -> value
-  val of_string_map : value StringMap.t -> value
+  val of_string_map : (int * value) StringMap.t -> value
 
   val make_component
     :  render:(value StringMap.t -> value)

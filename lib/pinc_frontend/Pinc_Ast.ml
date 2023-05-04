@@ -54,7 +54,7 @@ and expression =
   | Float of float
   | Bool of bool
   | Array of expression array
-  | Record of (bool * expression) StringMap.t
+  | Record of (int * bool * expression) StringMap.t
   | Function of string list * expression
   | FunctionCall of expression * expression list
   | UppercaseIdentifierExpression of string

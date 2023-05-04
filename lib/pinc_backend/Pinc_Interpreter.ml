@@ -38,7 +38,11 @@ module Value = struct
     | Record m ->
       let b = Buffer.create 1024 in
       m
-      |> StringMap.iter (fun _key value ->
+      |> StringMap.to_seq
+      |> List.of_seq
+      |> List.fast_sort (fun (_key, (index_a, _value)) (_key, (index_b, _value)) ->
+           index_a - index_b)
+      |> List.iter (fun (_key, (_index, value)) ->
            Buffer.add_string b (to_string value);
            Buffer.add_char b '\n');
       Buffer.contents b
@@ -113,7 +117,7 @@ module Value = struct
     | Int a, Float b -> float_of_int a = b
     | Bool a, Bool b -> a = b
     | Array a, Array b -> a = b
-    | Record a, Record b -> StringMap.equal equal a b
+    | Record a, Record b -> StringMap.equal (fun (_, a) (_, b) -> equal a b) a b
     | Function _, Function _ -> false
     | DefinitionInfo (a, _, _), DefinitionInfo (b, _, _) -> String.equal a b
     | ( HtmlTemplateNode (a_tag, a_attrs, a_children, a_self_closing)
@@ -131,7 +135,7 @@ module Value = struct
     | _ -> false
   ;;
 
-  let rec compare a b =
+  let compare a b =
     match a, b with
     | String a, String b -> String.compare a b
     | Int a, Int b -> Int.compare a b
@@ -157,14 +161,22 @@ module Value = struct
     match left, right with
     | Array left, Array right -> Array (Array.append left right)
     | Record left, Record right ->
-      Record (StringMap.union (fun _key _x y -> Some y) left right)
+      Record
+        (StringMap.union (fun _key _x y -> Some y) left right
+         |> StringMap.to_seq
+         |> Seq.mapi (fun index (key, (_, value)) -> key, (index, value))
+         |> StringMap.of_seq)
     | HtmlTemplateNode (tag, attributes, children, self_closing), Record right ->
-      let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
+      let attributes =
+        StringMap.union (fun _key _x y -> Some y) attributes (StringMap.map snd right)
+      in
       HtmlTemplateNode (tag, attributes, children, self_closing)
     | HtmlTemplateNode _, _ ->
       failwith "Trying to merge a non record value onto tag attributes."
     | ComponentTemplateNode (fn, tag, attributes, _), Record right ->
-      let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
+      let attributes =
+        StringMap.union (fun _key _x y -> Some y) attributes (StringMap.map snd right)
+      in
       let result = fn attributes in
       ComponentTemplateNode (fn, tag, attributes, result)
     | ComponentTemplateNode _, _ ->
@@ -299,26 +311,26 @@ and eval_expression ~state = function
     |> State.add_output
          ~output:
            (l
-           |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)
-           |> Value.of_array)
+            |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)
+            |> Value.of_array)
   | Ast.Record map ->
     state
     |> State.add_output
          ~output:
            (map
-           |> StringMap.mapi (fun ident (optional, expression) ->
-                expression
-                |> eval_expression
-                     ~state:{ state with binding_identifier = Some (optional, ident) }
-                |> State.get_output
-                |> function
-                | Null when not optional ->
-                  failwith
-                    ("identifier "
-                    ^ ident
-                    ^ " is not marked as nullable, but was given a null value.")
-                | value -> value)
-           |> Value.of_string_map)
+            |> StringMap.mapi (fun ident (index, optional, expression) ->
+                 expression
+                 |> eval_expression
+                      ~state:{ state with binding_identifier = Some (optional, ident) }
+                 |> State.get_output
+                 |> function
+                 | Null when not optional ->
+                   failwith
+                     ("identifier "
+                      ^ ident
+                      ^ " is not marked as nullable, but was given a null value.")
+                 | value -> index, value)
+            |> Value.of_string_map)
   | Ast.String template -> eval_string_template ~state template
   | Ast.Function (parameters, body) -> eval_function_declaration ~state ~parameters body
   | Ast.FunctionCall (left, arguments) -> eval_function_call ~state ~arguments left
@@ -351,8 +363,8 @@ and eval_expression ~state = function
     |> State.add_output
          ~output:
            (nodes
-           |> List.map (fun it -> it |> eval_template ~state |> State.get_output)
-           |> Value.of_list)
+            |> List.map (fun it -> it |> eval_template ~state |> State.get_output)
+            |> Value.of_list)
   | Ast.BlockExpression e -> eval_block ~state e
   | Ast.ConditionalExpression { condition; consequent; alternate } ->
     eval_if ~state ~condition ~alternate ~consequent
@@ -412,12 +424,12 @@ and eval_string_template ~state template =
   |> State.add_output
        ~output:
          (template
-         |> List.map (function
-              | Ast.StringText s -> s
-              | Ast.StringInterpolation e ->
-                eval_expression ~state e |> State.get_output |> Value.to_string)
-         |> String.concat ""
-         |> Value.of_string)
+          |> List.map (function
+               | Ast.StringText s -> s
+               | Ast.StringInterpolation e ->
+                 eval_expression ~state e |> State.get_output |> Value.to_string)
+          |> String.concat ""
+          |> Value.of_string)
 
 and eval_function_declaration ~state ~parameters body =
   let ident = state.binding_identifier in
@@ -483,14 +495,14 @@ and eval_function_call ~state ~arguments left =
       failwith
         ("This function was provided too few arguments. The following parameters are \
           missing: "
-        ^ missing))
+         ^ missing))
     else
       failwith
         ("This function only accepts "
-        ^ string_of_int (List.length parameters)
-        ^ " arguments, but was provided "
-        ^ string_of_int (List.length arguments)
-        ^ " here.")
+         ^ string_of_int (List.length parameters)
+         ^ " arguments, but was provided "
+         ^ string_of_int (List.length arguments)
+         ^ " here.")
   | _ -> failwith "Trying to call a non function value"
 
 and eval_binary_pipe ~state left right =
@@ -636,26 +648,44 @@ and eval_binary_dot_access ~state left right =
   match left, right with
   | Null, _ -> state |> State.add_output ~output:Null
   | Record left, Ast.LowercaseIdentifierExpression b ->
-    let output = left |> StringMap.find_opt b |> Option.value ~default:Null in
+    let output =
+      left |> StringMap.find_opt b |> Option.map snd |> Option.value ~default:Null
+    in
     state |> State.add_output ~output
   | HtmlTemplateNode (tag, attributes, _, _), Ast.LowercaseIdentifierExpression b ->
     (match b with
      | "tag" -> state |> State.add_output ~output:(String tag)
-     | "attributes" -> state |> State.add_output ~output:(Record attributes)
+     | "attributes" ->
+       state
+       |> State.add_output
+            ~output:
+              (Record
+                 (attributes
+                  |> StringMap.to_seq
+                  |> Seq.mapi (fun index (key, value) -> key, (index, value))
+                  |> StringMap.of_seq))
      | s ->
        failwith
          ("Unknown property "
-         ^ s
-         ^ " on template node. Known properties are: `tag` and `attributes`."))
+          ^ s
+          ^ " on template node. Known properties are: `tag` and `attributes`."))
   | ComponentTemplateNode (_, tag, attributes, _), Ast.LowercaseIdentifierExpression b ->
     (match b with
      | "tag" -> state |> State.add_output ~output:(String tag)
-     | "attributes" -> state |> State.add_output ~output:(Record attributes)
+     | "attributes" ->
+       state
+       |> State.add_output
+            ~output:
+              (Record
+                 (attributes
+                  |> StringMap.to_seq
+                  |> Seq.mapi (fun index (key, value) -> key, (index, value))
+                  |> StringMap.of_seq))
      | s ->
        failwith
          ("Unknown property "
-         ^ s
-         ^ " on component. Known properties are: `tag` and`attributes`."))
+          ^ s
+          ^ " on component. Known properties are: `tag` and`attributes`."))
   | Record _, _ ->
     failwith "Expected right hand side of record access to be a lowercase identifier."
   | DefinitionInfo (name, maybe_library, _), Ast.LowercaseIdentifierExpression b ->
@@ -666,9 +696,9 @@ and eval_binary_dot_access ~state left right =
        |> State.add_output
             ~output:
               (top_level_bindings
-              |> List.assoc_opt b
-              |> Option.map (fun b -> b.value)
-              |> Option.value ~default:Null)
+               |> List.assoc_opt b
+               |> Option.map (fun b -> b.value)
+               |> Option.value ~default:Null)
      | None, None -> state |> State.add_output ~output:Null
      | _ ->
        failwith "Trying to access a property on a non record, library or template value.")
@@ -699,7 +729,9 @@ and eval_binary_bracket_access ~state left right =
     in
     state |> State.add_output ~output
   | Record left, String right ->
-    let output = left |> StringMap.find_opt right |> Option.value ~default:Null in
+    let output =
+      left |> StringMap.find_opt right |> Option.map snd |> Option.value ~default:Null
+    in
     state |> State.add_output ~output
   | Null, _ -> state |> State.add_output ~output:Null
   | Array _, _ -> failwith "Cannot access array with a non integer value."
@@ -790,8 +822,9 @@ and eval_mutation ~state ~ident expression =
       | Null when not is_optional ->
         failwith
           ("identifier "
-          ^ ident
-          ^ " is not marked as nullable, but was tried to be updated with a null value.")
+           ^ ident
+           ^ " is not marked as nullable, but was tried to be updated with a null value."
+          )
       | value -> state |> State.update_value_in_scope ~ident ~value
     in
     state |> State.add_output ~output:Null
@@ -961,14 +994,15 @@ and eval_slot ~attributes ~slotted_elements key =
       then
         Result.error
           ("Child with tag `"
-          ^ tag
-          ^ "` may not be used inside this #Slot . The following restrictions are set: [ "
-          ^ (constraints
-            |> Option.value ~default:[]
-            |> List.map (fun (_typ, name, negated) ->
-                 if negated then "!" ^ name else name)
-            |> String.concat ",")
-          ^ " ]")
+           ^ tag
+           ^ "` may not be used inside this #Slot . The following restrictions are set: \
+              [ "
+           ^ (constraints
+              |> Option.value ~default:[]
+              |> List.map (fun (_typ, name, negated) ->
+                   if negated then "!" ^ name else name)
+              |> String.concat ",")
+           ^ " ]")
       else Result.ok ()
   in
   let num_slotted_elements = List.length slotted_elements in
@@ -976,14 +1010,14 @@ and eval_slot ~attributes ~slotted_elements key =
   then
     failwith
       ("#Slot did not reach the minimum amount of nodes (specified as "
-      ^ string_of_int min
-      ^ ").")
+       ^ string_of_int min
+       ^ ").")
   else if num_slotted_elements > max
   then
     failwith
       ("#Slot includes more than the maximum amount of nodes (specified as "
-      ^ string_of_int max
-      ^ ").")
+       ^ string_of_int max
+       ^ ").")
   else (
     let passed, failed =
       slotted_elements
@@ -1025,23 +1059,6 @@ and eval_internal_tag ~state ~key ~attributes ~value_bag tag_name =
     |> Pinc_Typer.Expect.(attribute key bool)
     |> Option.map Value.of_bool
     |> Option.value ~default:Null
-  | `Record ->
-    let of' = attributes |> Pinc_Typer.Expect.(required (attribute "of" record)) in
-    value_bag
-    |> Pinc_Typer.Expect.(attribute key record)
-    |> Option.map (fun record ->
-         StringMap.merge
-           (fun _key x y ->
-             match x, y with
-             | Some _, Some (TagInfo i) ->
-               Some (i |> eval_internal_or_external_tag ~state ~value:record)
-             | None, Some (TagInfo _) -> Some Null
-             | (None | Some _), Some value -> Some value
-             | (None | Some _), None -> None)
-           record
-           of'
-         |> Value.of_string_map)
-    |> Option.value ~default:Null
   | `Array ->
     let of' = attributes |> Pinc_Typer.Expect.(required (attribute "of" tag_info)) in
     value_bag
@@ -1056,6 +1073,27 @@ and eval_internal_tag ~state ~key ~attributes ~value_bag tag_name =
                    ~value:(StringMap.singleton key item))
          |> Value.of_list)
     |> Option.value ~default:Null
+  | `Record ->
+    let of' = attributes |> Pinc_Typer.Expect.(required (attribute "of" record)) in
+    value_bag
+    |> Pinc_Typer.Expect.(attribute key record)
+    |> Option.map (fun record ->
+         let record = record |> StringMap.map snd in
+         StringMap.merge
+           (fun _key x y ->
+             match x, y with
+             | Some _, Some (_, TagInfo info) ->
+               Some (0, info |> eval_internal_or_external_tag ~state ~value:record)
+             | None, Some (_, TagInfo _) -> Some (0, Null)
+             | (None | Some _), Some (_, value) -> Some (0, value)
+             | (None | Some _), None -> None)
+           record
+           of'
+         |> StringMap.to_seq
+         |> Seq.mapi (fun index (key, (_index, value)) -> key, (index, value))
+         |> StringMap.of_seq
+         |> Value.of_string_map)
+    |> Option.value ~default:Null
 
 and eval_internal_or_external_tag ~state ?value tag_info =
   let { tag; key; required = _; attributes; transformer } = tag_info in
@@ -1067,9 +1105,7 @@ and eval_internal_or_external_tag ~state ?value tag_info =
        tag |> eval_internal_tag ~state ~key ~attributes ~value_bag |> transformer
      | `Slot -> key |> eval_slot ~attributes ~slotted_elements |> transformer
      | `Custom _ -> tag_info |> call_tag_listener ~state ~value_bag:(Some value_bag))
-  | Some value_bag, None ->
-    tag_info |> call_tag_listener ~state ~value_bag:(Some value_bag)
-  | _ -> tag_info |> call_tag_listener ~state ~value_bag:None
+  | value_bag, _ -> tag_info |> call_tag_listener ~state ~value_bag
 
 and call_tag_listener ~state ~value_bag t =
   let { tag; key; required; attributes; transformer } = t in
@@ -1086,7 +1122,15 @@ and call_tag_listener ~state ~value_bag t =
      let children =
        attributes
        |> Pinc_Typer.Expect.(required (attribute "of" record))
-       |> StringMap.filter_map (fun _key -> Pinc_Typer.Expect.(maybe tag_info))
+       |> StringMap.filter_map (fun _key (index, value) ->
+            value
+            |> Pinc_Typer.Expect.(maybe tag_info)
+            |> Option.map (fun tag_info -> index, tag_info))
+       |> StringMap.to_seq
+       |> List.of_seq
+       |> List.fast_sort (fun (_key, (index_a, _value)) (_key, (index_b, _value)) ->
+            index_a - index_b)
+       |> List.map (fun (key, (_index, value)) -> key, value)
      in
      fn ~required ~attributes ~children ~key
    | Some (`Slot fn) -> fn ~required ~attributes ~key
@@ -1121,11 +1165,11 @@ and eval_tag ~state tag =
     |> StringMap.add
          "of"
          (of_attribute
-         |> Option.map (fun it ->
-              it
-              |> eval_expression ~state:{ state with parent_tag = Some path }
-              |> State.get_output)
-         |> Option.value ~default:Null)
+          |> Option.map (fun it ->
+               it
+               |> eval_expression ~state:{ state with parent_tag = Some path }
+               |> State.get_output)
+          |> Option.value ~default:Null)
   in
   let apply_transformer ~transformer value =
     match transformer with
