@@ -12,6 +12,19 @@
 
 - Replace `failwith` calls with Diagnostics.error
 
+- Comments inside html are currently evaluated
+
+  ```
+  <html lang="de">
+    <body>
+      // <footer> {config} </footer>
+
+      <script src="/js/main.bundle.js" />
+      {#CreatePortal(key: "javascripts")}
+    </body>
+  </html>
+  ```
+
 - Rewrite strings to be an array of chars and make chars a separate value type
 
 - Add named parameters to function application
