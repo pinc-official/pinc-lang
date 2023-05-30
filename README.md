@@ -82,3 +82,21 @@
 
     let result = arr |> Std.default([1, 2, 3]) |> Std.Array.map(fn (item) -> item + 2);
   ```
+
+- Implement `store` as a collection of tags:
+  ```
+  store Products(
+    label: "Products",
+    icon: "/images/icons/package.svg",
+  ) {
+    foo: #String(label: "Foo"),
+
+    products: #Array(label: "Products", of: #Record(label: "Product", of: {
+      name: #String(label: "Name"),
+      image: #Image(label: "Image"),
+      code: #String(label: "Product Code"),
+      supply: #String(label: "Scope of delivery", rows: 3),
+      tags: #Array(label: "Tags", of: #String(label: "Tag")),
+    }));
+  }
+  ```
