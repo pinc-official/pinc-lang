@@ -11,11 +11,11 @@ module rec Value : sig
   val of_list : value list -> value
   val of_string_map : (int * value) StringMap.t -> value
 
-  val make_component
-    :  render:(value StringMap.t -> value)
-    -> tag:string
-    -> attributes:value StringMap.t
-    -> value
+  val make_component :
+    render:(value StringMap.t -> value) ->
+    tag:string ->
+    attributes:value StringMap.t ->
+    value
 end
 
 and State : sig
@@ -24,21 +24,21 @@ and State : sig
   val get_parent_component : state -> (string * value StringMap.t * value list) option
 end
 
-val eval_meta
-  :  ?tag_listeners:Pinc_Interpreter_Types.tag_listeners
-  -> Ast.declaration StringMap.t
-  -> [> `Component of value StringMap.t
-     | `Library of value StringMap.t
-     | `Page of value StringMap.t
-     | `Site of value StringMap.t
-     | `Store of value StringMap.t
-     ]
-     StringMap.t
+val eval_meta :
+  ?tag_listeners:Pinc_Interpreter_Types.tag_listeners ->
+  Ast.declaration StringMap.t ->
+  [> `Component of value StringMap.t
+  | `Library of value StringMap.t
+  | `Page of value StringMap.t
+  | `Site of value StringMap.t
+  | `Store of value StringMap.t
+  ]
+  StringMap.t
 
-val eval
-  :  ?tag_listeners:Pinc_Interpreter_Types.tag_listeners
-  -> root:StringMap.key
-  -> Ast.declaration StringMap.t
-  -> state
+val eval :
+  ?tag_listeners:Pinc_Interpreter_Types.tag_listeners ->
+  root:StringMap.key ->
+  Ast.declaration StringMap.t ->
+  state
 
 val from_source : ?filename:string -> source:string -> string -> state

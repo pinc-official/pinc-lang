@@ -15,38 +15,38 @@ and string_template =
 and component_slot = uppercase_identifier * template_node list
 
 and template_node =
-  | HtmlTemplateNode of
-      { tag : string
-      ; attributes : attributes
-      ; children : template_node list
-      ; self_closing : bool
-      }
-  | ComponentTemplateNode of
-      { identifier : uppercase_identifier
-      ; attributes : attributes
-      ; children : template_node list
-      }
+  | HtmlTemplateNode of {
+      tag : string;
+      attributes : attributes;
+      children : template_node list;
+      self_closing : bool;
+    }
+  | ComponentTemplateNode of {
+      identifier : uppercase_identifier;
+      attributes : attributes;
+      children : template_node list;
+    }
   | ExpressionTemplateNode of expression
   | TextTemplateNode of string
 
-and tag =
-  { tag :
-      [ `String
-      | `Int
-      | `Float
-      | `Boolean
-      | `Array
-      | `Record
-      | `Slot
-      | `SetContext
-      | `GetContext
-      | `CreatePortal
-      | `Portal
-      | `Custom of string
-      ]
-  ; attributes : attributes
-  ; transformer : (lowercase_identifier * expression) option
-  }
+and tag = {
+  tag :
+    [ `String
+    | `Int
+    | `Float
+    | `Boolean
+    | `Array
+    | `Record
+    | `Slot
+    | `SetContext
+    | `GetContext
+    | `CreatePortal
+    | `Portal
+    | `Custom of string
+    ];
+  attributes : attributes;
+  transformer : (lowercase_identifier * expression) option;
+}
 
 and expression =
   | String of string_template list
@@ -60,20 +60,20 @@ and expression =
   | UppercaseIdentifierExpression of string
   | LowercaseIdentifierExpression of string
   | TagExpression of tag
-  | ForInExpression of
-      { index : lowercase_identifier option
-      ; iterator : lowercase_identifier
-      ; reverse : bool
-      ; iterable : expression
-      ; body : statement
-      }
+  | ForInExpression of {
+      index : lowercase_identifier option;
+      iterator : lowercase_identifier;
+      reverse : bool;
+      iterable : expression;
+      body : statement;
+    }
   | TemplateExpression of template_node list
   | BlockExpression of statement list
-  | ConditionalExpression of
-      { condition : expression
-      ; consequent : statement
-      ; alternate : statement option
-      }
+  | ConditionalExpression of {
+      condition : expression;
+      consequent : statement;
+      alternate : statement option;
+    }
   | UnaryExpression of Operators.Unary.typ * expression
   | BinaryExpression of expression * Operators.Binary.typ * expression
 

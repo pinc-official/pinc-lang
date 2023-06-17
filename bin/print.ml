@@ -11,11 +11,11 @@ let get_source filename =
 let get_files_with_ext ~ext dir =
   let rec loop result = function
     | file :: rest when Sys.is_directory file ->
-      Sys.readdir file
-      |> Array.to_list
-      |> List.map (Filename.concat file)
-      |> List.append rest
-      |> loop result
+        Sys.readdir file
+        |> Array.to_list
+        |> List.map (Filename.concat file)
+        |> List.append rest
+        |> loop result
     | file :: rest when Filename.extension file = ext -> loop (file :: result) rest
     | _file :: rest -> loop result rest
     | [] -> result
@@ -31,12 +31,12 @@ let get_declarations_from ~directory () =
        (fun acc filename ->
          let decls = filename |> get_source |> Parser.parse ~filename in
          let f key x y =
-           match x, y with
+           match (x, y) with
            | None, Some y -> Some y
            | Some x, None -> Some x
            | Some _, Some _ ->
-             failwith
-               (Printf.sprintf "Found multiple declarations with identifier %s" key)
+               failwith
+                 (Printf.sprintf "Found multiple declarations with identifier %s" key)
            | None, None -> None
          in
          StringMap.merge f acc decls)

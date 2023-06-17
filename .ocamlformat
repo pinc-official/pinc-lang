@@ -1,1 +1,12 @@
-profile = janestreet
+profile=default
+break-infix=fit-or-vertical
+break-cases=fit-or-vertical
+break-fun-decl=fit-or-vertical
+break-fun-sig=fit-or-vertical
+if-then-else=vertical
+let-and=sparse
+let-binding-spacing=double-semicolon
+margin=90
+parens-ite=true
+type-decl=sparse
+wrap-fun-args=false

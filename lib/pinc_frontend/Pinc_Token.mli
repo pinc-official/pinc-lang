@@ -76,11 +76,11 @@ type token_type =
   | HTML_OR_COMPONENT_TAG_END
   | END_OF_INPUT
 
-type t =
-  { typ : token_type
-  ; start_pos : Position.t
-  ; end_pos : Position.t
-  }
+type t = {
+  typ : token_type;
+  start_pos : Position.t;
+  end_pos : Position.t;
+}
 
 val make : start_pos:Position.t -> end_pos:Position.t -> token_type -> t
 val to_string : token_type -> string

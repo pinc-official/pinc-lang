@@ -76,11 +76,11 @@ type token_type =
   | HTML_OR_COMPONENT_TAG_END
   | END_OF_INPUT
 
-type t =
-  { typ : token_type
-  ; start_pos : Position.t
-  ; end_pos : Position.t
-  }
+type t = {
+  typ : token_type;
+  start_pos : Position.t;
+  end_pos : Position.t;
+}
 
 let make ~start_pos ~end_pos typ = { typ; start_pos; end_pos }
 
@@ -263,8 +263,8 @@ let keyword_of_string = function
 let lookup_keyword str =
   match keyword_of_string str with
   | Some t -> t
-  | None ->
-    (match str.[0] with
-     | 'A' .. 'Z' -> IDENT_UPPER str
-     | _ -> IDENT_LOWER str)
+  | None -> (
+      match str.[0] with
+      | 'A' .. 'Z' -> IDENT_UPPER str
+      | _ -> IDENT_LOWER str)
 ;;

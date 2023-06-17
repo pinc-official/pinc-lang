@@ -31,7 +31,7 @@ module Expect = struct
     | TagInfo _ -> failwith "expected string, got tag"
     | HtmlTemplateNode (_, _, _, _) -> failwith "expected string, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
-      failwith "expected string, got component template node"
+        failwith "expected string, got component template node"
   ;;
 
   let int = function
@@ -48,7 +48,7 @@ module Expect = struct
     | TagInfo _ -> failwith "expected int, got tag"
     | HtmlTemplateNode (_, _, _, _) -> failwith "expected int, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
-      failwith "expected int, got component template node"
+        failwith "expected int, got component template node"
   ;;
 
   let float = function
@@ -65,7 +65,7 @@ module Expect = struct
     | TagInfo _ -> failwith "expected float, got tag"
     | HtmlTemplateNode (_, _, _, _) -> failwith "expected float, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
-      failwith "expected float, got component template node"
+        failwith "expected float, got component template node"
   ;;
 
   let bool = function
@@ -82,7 +82,7 @@ module Expect = struct
     | TagInfo _ -> failwith "expected bool, got tag"
     | HtmlTemplateNode (_, _, _, _) -> failwith "expected bool, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
-      failwith "expected bool, got component template node"
+        failwith "expected bool, got component template node"
   ;;
 
   let array fn = function
@@ -99,7 +99,7 @@ module Expect = struct
     | TagInfo _ -> failwith "expected array, got tag"
     | HtmlTemplateNode (_, _, _, _) -> failwith "expected array, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
-      failwith "expected array, got component template node"
+        failwith "expected array, got component template node"
   ;;
 
   let record = function
@@ -116,7 +116,7 @@ module Expect = struct
     | TagInfo _ -> failwith "expected record, got tag"
     | HtmlTemplateNode (_, _, _, _) -> failwith "expected record, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
-      failwith "expected record, got component template node"
+        failwith "expected record, got component template node"
   ;;
 
   let record_with_order = function
@@ -133,7 +133,7 @@ module Expect = struct
     | TagInfo _ -> failwith "expected record, got tag"
     | HtmlTemplateNode (_, _, _, _) -> failwith "expected record, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
-      failwith "expected record, got component template node"
+        failwith "expected record, got component template node"
   ;;
 
   let definition_info ?(typ = `All) = function
@@ -147,26 +147,26 @@ module Expect = struct
     | Record _ -> failwith "expected definition info, got record"
     | Function _ -> failwith "expected definition info, got function definition"
     | DefinitionInfo (name, def_typ, negated) ->
-      let typ =
-        match typ, def_typ with
-        | (`Component | `All), Some `Component -> `Component
-        | (`Page | `All), Some `Page -> `Page
-        | (`Site | `All), Some `Site -> `Site
-        | (`Library | `All), Some (`Library _) -> `Library
-        | (`Store | `All), Some `Store -> `Store
-        | _, None -> failwith ("definition \"" ^ name ^ "\" does not exist")
-        | `Component, _ -> failwith "expected a component definition"
-        | `Page, _ -> failwith "expected a page definition"
-        | `Site, _ -> failwith "expected a site definition"
-        | `Library, _ -> failwith "expected a library definition"
-        | `Store, _ -> failwith "expected a store definition"
-      in
-      Some (typ, name, negated = `Negated)
+        let typ =
+          match (typ, def_typ) with
+          | (`Component | `All), Some `Component -> `Component
+          | (`Page | `All), Some `Page -> `Page
+          | (`Site | `All), Some `Site -> `Site
+          | (`Library | `All), Some (`Library _) -> `Library
+          | (`Store | `All), Some `Store -> `Store
+          | _, None -> failwith ("definition \"" ^ name ^ "\" does not exist")
+          | `Component, _ -> failwith "expected a component definition"
+          | `Page, _ -> failwith "expected a page definition"
+          | `Site, _ -> failwith "expected a site definition"
+          | `Library, _ -> failwith "expected a library definition"
+          | `Store, _ -> failwith "expected a store definition"
+        in
+        Some (typ, name, negated = `Negated)
     | TagInfo _ -> failwith "expected definition info, got tag"
     | HtmlTemplateNode (_, _, _, _) ->
-      failwith "expected definition info, got HTML template node"
+        failwith "expected definition info, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
-      failwith "expected definition info, got component template node"
+        failwith "expected definition info, got component template node"
   ;;
 
   let tag_info = function
@@ -183,6 +183,6 @@ module Expect = struct
     | TagInfo i -> Some i
     | HtmlTemplateNode (_, _, _, _) -> failwith "expected tag, got HTML template node"
     | ComponentTemplateNode (_, _, _, _) ->
-      failwith "expected tag, got component template node"
+        failwith "expected tag, got component template node"
   ;;
 end
