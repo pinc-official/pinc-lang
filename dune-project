@@ -20,4 +20,11 @@
 (package
  (name pinc-lang)
  (synopsis "The PiNC Language as Syntax and Interpreter")
- (depends ocaml fmt dune))
+ (depends
+  ocaml
+  fmt
+  dune
+  (bisect_ppx :with-test)
+  (ocaml-lsp-server :with-dev-setup)
+  (ocamlformat :with-dev-setup)
+  ))

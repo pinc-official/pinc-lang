@@ -1,5 +1,5 @@
-.PHONY: all build install update fmt fmt-check test test-update clean clear
-.SILENT: all build install update fmt fmt-check test test-update clean clear
+.PHONY: all build install update fmt fmt-check test test-update test-coverage clean clear
+.SILENT: all build install update fmt fmt-check test test-update test-coverage clean clear
 
 all: build
 
@@ -10,8 +10,7 @@ install:
 	if ! [ -e _opam ]; then \
 		opam switch create . --empty ; \
 	fi
-	opam install . --locked --deps-only --working-dir --yes
-	opam install -y ocaml-lsp-server ocamlformat
+	opam install . --deps-only --with-test --with-dev-setup --yes
 	opam lock .
 
 update:
@@ -30,8 +29,14 @@ test:
 test-update:
 	dune build @runtest --auto-promote
 
+test-coverage:
+	if [ -d /tmp/pinc-lang ]; then rm -r /tmp/pinc-lang; fi
+	mkdir -p /tmp/pinc-lang
+	BISECT_FILE=/tmp/pinc-lang/pinc-lang dune runtest --no-print-directory --instrument-with bisect_ppx --force
+	bisect-ppx-report html --coverage-path /tmp/pinc-lang
+	bisect-ppx-report summary --coverage-path /tmp/pinc-lang
+
 clean:
-	mel clean
 	rm -rf _build
 
 clear: clean

@@ -1,4 +1,6 @@
 (library
  (name Pinc_Diagnostics)
  (public_name pinc-lang.diagnostics)
- (libraries fmt))
+ (libraries fmt)
+ (instrumentation
+  (backend bisect_ppx)))

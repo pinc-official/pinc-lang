@@ -2,5 +2,6 @@
   "ocaml.sandbox": {
     "kind": "opam",
     "switch": "${workspaceFolder:pinc-lang}"
-  }
+  },
+  "liveServer.settings.port": 5501
 }

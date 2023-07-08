@@ -1,7 +1,6 @@
 _build
 _opam
-_release
-_esy
+_coverage
 
 .depend
 .merlin
@@ -14,9 +13,3 @@ _esy
 node_modules
 
 .DS_Store
-
-# Melange Specifics
-.bsb.lock
-dune.mel
-.melange.eobjs
-/dune
