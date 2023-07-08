@@ -35,9 +35,9 @@ jobs:
 
       - name: Build and test
         run: |
-          make
-          make test
-          make test-coverage
+          opam exec -- make
+          opam exec -- make test
+          opam exec -- make test-coverage
 
       - name: Send coverage
         run: |
