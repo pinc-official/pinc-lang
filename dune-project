@@ -25,6 +25,6 @@
   fmt
   dune
   (bisect_ppx :with-test)
-  (ocaml-lsp-server :with-dev-setup)
-  (ocamlformat :with-dev-setup)
+  ; (ocaml-lsp-server :with-dev-setup)
+  ; (ocamlformat :with-dev-setup)
   ))
