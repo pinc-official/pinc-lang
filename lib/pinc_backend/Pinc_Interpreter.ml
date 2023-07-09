@@ -1,6 +1,7 @@
 open Pinc_Interpreter_Types
 module Ast = Pinc_Frontend.Ast
 module Parser = Pinc_Frontend.Parser
+module Location = Pinc_Diagnostics.Location
 
 exception Loop_Break
 exception Loop_Continue
@@ -1158,15 +1159,23 @@ and call_tag_listener ~state ~value_bag t =
   | Error e -> failwith e
 
 and eval_tag ~state tag =
-  let Ast.{ tag; attributes; transformer } = tag in
+  let loc = Location.get tag in
+  let Ast.{ tag; attributes; transformer } = tag |> Location.get_data in
   let required =
     not (state.binding_identifier |> Option.map fst |> Option.value ~default:false)
   in
-  let of_attribute = attributes |> StringMap.find_opt "of" in
+  let of_attribute =
+    Option.bind attributes (fun attrs ->
+        attrs |> Location.get_data |> StringMap.find_opt "of")
+  in
   let tag_attributes =
-    attributes
-    |> StringMap.remove "of"
-    |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+    match attributes with
+    | Some attributes ->
+        attributes
+        |> Location.get_data
+        |> StringMap.remove "of"
+        |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+    | None -> StringMap.empty
   in
   let key, state =
     match (StringMap.find_opt "key" tag_attributes, state.binding_identifier) with
@@ -1190,7 +1199,8 @@ and eval_tag ~state tag =
   in
   let apply_transformer ~transformer value =
     match transformer with
-    | Some (Ast.Lowercase_Id ident, expr) ->
+    | Some transformer ->
+        let Ast.Lowercase_Id ident, expr = transformer |> Location.get_data in
         let state =
           state
           |> State.add_scope
@@ -1216,8 +1226,11 @@ and eval_tag ~state tag =
         let push =
           match tag_attributes |> StringMap.find_opt "push" with
           | None ->
-              failwith "attribute push is required when pushing a value into a portal."
-          | Some (Function _) -> failwith "a function can not be put into a portal."
+              Pinc_Diagnostics.error
+                loc
+                "The attribute `push` is required when pushing a value into a portal."
+          | Some (Function _) ->
+              Pinc_Diagnostics.error loc "A function can not be put into a portal."
           | Some value -> value
         in
         Hashtbl.add state.portals key push;

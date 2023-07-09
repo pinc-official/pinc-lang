@@ -1,9 +1,5 @@
-module Position = Pinc_Diagnostics.Position
+module Location = Pinc_Diagnostics.Location
 module Operators = Pinc_Operators
-
-module SourceLocation = struct
-  type t = string * Position.t * Position.t
-end
 
 type uppercase_identifier = Uppercase_Id of string
 and lowercase_identifier = Lowercase_Id of string
@@ -44,8 +40,8 @@ and tag = {
     | `Portal
     | `Custom of string
     ];
-  attributes : attributes;
-  transformer : (lowercase_identifier * expression) option;
+  attributes : attributes Location.with_location option;
+  transformer : (lowercase_identifier * expression) Location.with_location option;
 }
 
 and expression =
@@ -59,7 +55,7 @@ and expression =
   | FunctionCall of expression * expression list
   | UppercaseIdentifierExpression of string
   | LowercaseIdentifierExpression of string
-  | TagExpression of tag
+  | TagExpression of tag Location.with_location
   | ForInExpression of {
       index : lowercase_identifier option;
       iterator : lowercase_identifier;
