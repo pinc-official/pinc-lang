@@ -24,10 +24,10 @@ fmt-check:
 	dune build @fmt
 
 test:
-	dune build @runtest
+	dune runtest
 
 test-update:
-	dune build @runtest --auto-promote
+	dune runtest --auto-promote
 
 test-coverage:
 	if [ -d /tmp/pinc-lang ]; then rm -r /tmp/pinc-lang; fi

@@ -1,0 +1,8 @@
+component Component {
+  let mutable fail = "";
+  fail := ;
+
+  <div class="Section">
+    {fail}
+  </div>
+}

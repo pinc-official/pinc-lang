@@ -1,0 +1,7 @@
+component Component {
+  let fail = #String :: _ -> ;
+
+  <div class="Section">
+    {fail}
+  </div>
+}

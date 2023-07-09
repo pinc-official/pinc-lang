@@ -1,4 +1,4 @@
-module Position = Pinc_Position
+module Location = Pinc_Location
 
-val error : start_pos:Position.t -> end_pos:Position.t -> string -> 'a
-val warn : start_pos:Position.t -> end_pos:Position.t -> string -> unit
+val error : Location.t -> string -> 'a
+val warn : Location.t -> string -> unit

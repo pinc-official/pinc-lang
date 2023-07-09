@@ -35,8 +35,15 @@ let get_declarations_from ~directory () =
            | None, Some y -> Some y
            | Some x, None -> Some x
            | Some _, Some _ ->
-               failwith
-                 (Printf.sprintf "Found multiple declarations with identifier %s" key)
+               Pinc_Diagnostics.error
+                 (Pinc_Diagnostics.Location.make
+                    ~s:
+                      (Pinc_Diagnostics.Location.Position.make
+                         ~filename
+                         ~line:0
+                         ~column:0)
+                    ())
+                 ("Found multiple declarations with identifier " ^ key)
            | None, None -> None
          in
          StringMap.merge f acc decls)

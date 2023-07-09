@@ -1,0 +1,6 @@
+component Component {
+  // Test!
+  <div class="Section">
+    {}
+  </div>
+}

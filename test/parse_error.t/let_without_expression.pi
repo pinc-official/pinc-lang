@@ -1,0 +1,7 @@
+component Component {
+  let fail = ;
+
+  <div class="Section">
+    {fail}
+  </div>
+}

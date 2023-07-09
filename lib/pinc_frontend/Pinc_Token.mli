@@ -78,11 +78,10 @@ type token_type =
 
 type t = {
   typ : token_type;
-  start_pos : Position.t;
-  end_pos : Position.t;
+  location : Location.t;
 }
 
-val make : start_pos:Position.t -> end_pos:Position.t -> token_type -> t
+val make : loc:Location.t -> token_type -> t
 val to_string : token_type -> string
 val is_keyword : token_type -> bool
 val lookup_keyword : string -> token_type

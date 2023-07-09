@@ -1,6 +1,6 @@
 module Ast = Pinc_Ast
 module Diagnostics = Pinc_Diagnostics
-module Position = Diagnostics.Position
+module Location = Diagnostics.Location
 module Token = Pinc_Token
 module Lexer = Pinc_Lexer
 
@@ -47,21 +47,18 @@ let expect token t =
     next t
   else
     Diagnostics.error
-      ~start_pos:t.token.start_pos
-      ~end_pos:t.token.end_pos
-      ("Expected: `"
-      ^ Token.to_string token
-      ^ "`, got `"
-      ^ Token.to_string t.token.typ
-      ^ "`")
+      t.token.location
+      (Printf.sprintf
+         "Expected: `%s`, got `%s`"
+         (Token.to_string token)
+         (Token.to_string t.token.typ))
 ;;
 
 let make ~filename src =
   let lexer = Lexer.make ~filename src in
-  let initial_pos = Position.make ~filename ~line:0 ~column:0 in
-  let initial_token =
-    Token.make ~start_pos:initial_pos ~end_pos:initial_pos Token.END_OF_INPUT
-  in
+  let initial_pos = Location.Position.make ~filename ~line:0 ~column:0 in
+  let loc = Location.make ~s:initial_pos () in
+  let initial_token = Token.make ~loc Token.END_OF_INPUT in
   let t = { lexer; token = initial_token; next = Queue.create () } in
   next t;
   t
@@ -69,7 +66,7 @@ let make ~filename src =
 
 module Helpers = struct
   let expect_identifier ?(typ = `All) t =
-    let start_pos = t.token.start_pos in
+    let start_pos = t.token.location.loc_start in
     match t.token.typ with
     | Token.IDENT_UPPER i when typ = `Upper || typ = `All ->
         next t;
@@ -79,8 +76,7 @@ module Helpers = struct
         i
     | token when typ = `Lower ->
         Diagnostics.error
-          ~start_pos
-          ~end_pos:t.token.end_pos
+          (Location.make ~s:start_pos ~e:t.token.location.loc_end ())
           (match token with
           | Token.IDENT_UPPER i ->
               "Expected to see a lowercase identifier at this point. Did you mean "
@@ -95,8 +91,7 @@ module Helpers = struct
               ^ Token.to_string t)
     | token when typ = `Upper ->
         Diagnostics.error
-          ~start_pos
-          ~end_pos:t.token.end_pos
+          (Location.make ~s:start_pos ~e:t.token.location.loc_end ())
           (match token with
           | Token.IDENT_LOWER i ->
               "Expected to see an uppercase identifier at this point. Did you mean "
@@ -107,8 +102,7 @@ module Helpers = struct
           | _ -> "Expected to see an uppercase identifier at this point.")
     | token ->
         Diagnostics.error
-          ~start_pos
-          ~end_pos:t.token.end_pos
+          (Location.make ~s:start_pos ~e:t.token.location.loc_end ())
           (match token with
           | t when Token.is_keyword t ->
               "\"" ^ Token.to_string t ^ "\" is a keyword. Please choose another name."
@@ -124,8 +118,7 @@ module Helpers = struct
             loop (r :: acc)
           else
             Diagnostics.error
-              ~start_pos:t.token.start_pos
-              ~end_pos:t.token.end_pos
+              t.token.location
               ("Expected list to be separated by `" ^ Token.to_string sep ^ "`")
       | None -> List.rev acc
     in
@@ -182,8 +175,10 @@ module Rules = struct
     | _ -> None
 
   and parse_tag ~name t =
+    let start_token = t.token in
     let attributes =
       if t |> optional Token.LEFT_PAREN then (
+        let start_token = t.token in
         let res =
           t
           |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
@@ -191,11 +186,16 @@ module Rules = struct
           |> StringMap.of_seq
         in
         t |> expect Token.RIGHT_PAREN;
-        res)
+        let end_token = t.token in
+        let location =
+          Location.make ~s:start_token.location.loc_start ~e:end_token.location.loc_end ()
+        in
+        Some (res |> Location.add location))
       else
-        StringMap.empty
+        None
     in
     let transformer =
+      let start_token = t.token in
       if t |> optional Token.DOUBLE_COLON then (
         let bind = t |> Helpers.expect_identifier ~typ:`Lower in
         t |> expect Token.ARROW;
@@ -203,12 +203,17 @@ module Rules = struct
           match parse_expression t with
           | None ->
               Diagnostics.error
-                ~start_pos:t.token.start_pos
-                ~end_pos:t.token.end_pos
-                "Expected expression as transformer of tag"
+                (Location.make
+                   ~s:start_token.location.loc_start
+                   ~e:t.token.location.loc_end
+                   ())
+                "This tag transformer does not have a valid body."
           | Some expr -> expr
         in
-        Some (Ast.Lowercase_Id bind, body))
+        let location =
+          Location.make ~s:start_token.location.loc_start ~e:t.token.location.loc_end ()
+        in
+        Some ((Ast.Lowercase_Id bind, body) |> Location.add location))
       else
         None
     in
@@ -227,7 +232,11 @@ module Rules = struct
       | "Portal" -> `Portal
       | other -> `Custom other
     in
-    Some (Ast.TagExpression { tag; attributes; transformer })
+    let location =
+      Location.make ~s:start_token.location.loc_start ~e:t.token.location.loc_end ()
+    in
+    Some
+      (Ast.TagExpression (Ast.{ tag; attributes; transformer } |> Location.add location))
 
   and parse_template_node t =
     match t.token.typ with
@@ -235,12 +244,19 @@ module Rules = struct
         next t;
         Some (Ast.TextTemplateNode s)
     | Token.LEFT_BRACE ->
+        let start_token = t.token in
         next t;
         let expression =
           match parse_expression t with
           | Some e -> Ast.ExpressionTemplateNode e
           | None ->
-              (* TODO: This is `<div>{}</div>` ... Should this be an error? Probably yes... *)
+              Diagnostics.warn
+                (Location.make
+                   ~s:start_token.location.loc_start
+                   ~e:t.token.location.loc_end
+                   ())
+                "Expected to see an expression between these braces. \n\
+                 This is currently not doing anything, so you can safely remove it.";
               ExpressionTemplateNode (Ast.BlockExpression [])
         in
         t |> expect Token.RIGHT_BRACE;
@@ -301,11 +317,13 @@ module Rules = struct
         Some Ast.ContinueStatement
     (* PARSING LET STATEMENT *)
     | Token.KEYWORD_LET -> (
+        let start_token = t.token in
         next t;
         let is_mutable = t |> optional Token.KEYWORD_MUTABLE in
         let identifier = Helpers.expect_identifier ~typ:`Lower t in
         let is_nullable = t |> optional Token.QUESTIONMARK in
         t |> expect Token.EQUAL;
+        let end_token = t.token in
         let expression = parse_expression t in
         let _ = optional Token.SEMICOLON t in
         match (is_mutable, is_nullable, expression) with
@@ -319,20 +337,26 @@ module Rules = struct
             Some (Ast.MutableLetStatement (Lowercase_Id identifier, expression))
         | _, _, None ->
             Diagnostics.error
-              ~start_pos:t.token.start_pos
-              ~end_pos:t.token.end_pos
+              (Location.make
+                 ~s:start_token.location.loc_start
+                 ~e:end_token.location.loc_end
+                 ())
               "Expected expression as right hand side of let declaration")
     (* PARSING MUTATION STATEMENT *)
     | Token.IDENT_LOWER identifier when peek t = Token.COLON_EQUAL ->
+        let start_token = t.token in
         next t;
         next t;
+        let end_token = t.token in
         let expression =
           match parse_expression t with
           | Some expression -> expression
           | None ->
               Diagnostics.error
-                ~start_pos:t.token.start_pos
-                ~end_pos:t.token.end_pos
+                (Location.make
+                   ~s:start_token.location.loc_start
+                   ~e:end_token.location.loc_end
+                   ())
                 "Expected expression as right hand side of mutation statement"
         in
         let _ = optional Token.SEMICOLON t in
@@ -347,8 +371,7 @@ module Rules = struct
           | Some expression -> expression
           | None ->
               Diagnostics.error
-                ~start_pos:t.token.start_pos
-                ~end_pos:t.token.end_pos
+                t.token.location
                 "Expected expression as right hand side of use statement"
         in
         let _ = optional Token.SEMICOLON t in
@@ -411,10 +434,7 @@ module Rules = struct
         let body = parse_statement t in
         match body with
         | None ->
-            Diagnostics.error
-              ~start_pos:t.token.start_pos
-              ~end_pos:t.token.end_pos
-              "Expected statement as body of for loop"
+            Diagnostics.error t.token.location "Expected statement as body of for loop"
         | Some body ->
             Some
               (Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }))
@@ -554,8 +574,7 @@ module Rules = struct
           match parse_expression ~prio:new_prio t with
           | None ->
               Diagnostics.error
-                ~start_pos:t.token.start_pos
-                ~end_pos:t.token.end_pos
+                t.token.location
                 ("Expected expression on right hand side of `"
                 ^ Ast.Operators.Binary.to_string operator
                 ^ "`")
@@ -591,11 +610,7 @@ module Rules = struct
         in
         let body = t |> parse_expression in
         match body with
-        | None ->
-            Diagnostics.error
-              ~start_pos:t.token.start_pos
-              ~end_pos:t.token.end_pos
-              "Expected declaration to have a body"
+        | None -> Diagnostics.error t.token.location "Expected declaration to have a body"
         | Some body -> (
             match typ with
             | Token.KEYWORD_SITE ->

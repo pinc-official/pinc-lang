@@ -1,4 +1,4 @@
-module Position = Pinc_Diagnostics.Position
+module Location = Pinc_Diagnostics.Location
 
 type token_type =
   | COMMENT
@@ -78,11 +78,10 @@ type token_type =
 
 type t = {
   typ : token_type;
-  start_pos : Position.t;
-  end_pos : Position.t;
+  location : Location.t;
 }
 
-let make ~start_pos ~end_pos typ = { typ; start_pos; end_pos }
+let make ~loc typ = { typ; location = loc }
 
 let to_string = function
   | FLOAT f -> string_of_float f
