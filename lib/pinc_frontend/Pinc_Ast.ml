@@ -4,28 +4,32 @@ module Operators = Pinc_Operators
 type uppercase_identifier = Uppercase_Id of string
 and lowercase_identifier = Lowercase_Id of string
 
-and string_template =
-  | StringInterpolation of expression
-  | StringText of string
+and template_node = {
+  template_node_loc : Location.t;
+  template_node_desc : template_node_desc;
+}
 
-and component_slot = uppercase_identifier * template_node list
-
-and template_node =
+and template_node_desc =
   | HtmlTemplateNode of {
-      tag : string;
-      attributes : attributes;
-      children : template_node Location.with_location list;
-      self_closing : bool;
+      html_tag_identifier : string;
+      html_tag_attributes : expression StringMap.t;
+      html_tag_children : template_node list;
+      html_tag_self_closing : bool;
     }
   | ComponentTemplateNode of {
-      identifier : uppercase_identifier;
-      attributes : attributes;
-      children : template_node Location.with_location list;
+      component_tag_identifier : uppercase_identifier;
+      component_tag_attributes : expression StringMap.t;
+      component_tag_children : template_node list;
     }
   | ExpressionTemplateNode of expression
   | TextTemplateNode of string
 
 and tag = {
+  tag_loc : Location.t;
+  tag_desc : tag_desc;
+}
+
+and tag_desc = {
   tag :
     [ `String
     | `Int
@@ -40,23 +44,36 @@ and tag = {
     | `Portal
     | `Custom of string
     ];
-  attributes : attributes Location.with_location option;
-  transformer : (lowercase_identifier * expression) Location.with_location option;
+  attributes : expression StringMap.t option;
+  transformer : (lowercase_identifier * expression) option;
 }
 
-and expression =
-  | String of string_template Location.with_location list
+and string_template = {
+  string_template_loc : Location.t;
+  string_template_desc : string_template_desc;
+}
+
+and string_template_desc =
+  | StringInterpolation of expression
+  | StringText of string
+
+and expression = {
+  expression_loc : Location.t;
+  expression_desc : expression_desc;
+}
+
+and expression_desc =
+  | String of string_template list
   | Int of int
   | Float of float
   | Bool of bool
-  | Array of expression Location.with_location array
-  | Record of (int * bool * expression) Location.with_location StringMap.t
-  | Function of string Location.with_location list * expression
-  | FunctionCall of
-      expression Location.with_location * expression Location.with_location list
+  | Array of expression array
+  | Record of (int * bool * expression) StringMap.t
+  | Function of string list * expression
+  | FunctionCall of expression * expression list
   | UppercaseIdentifierExpression of string
   | LowercaseIdentifierExpression of string
-  | TagExpression of tag Location.with_location
+  | TagExpression of tag
   | ForInExpression of {
       index : lowercase_identifier option;
       iterator : lowercase_identifier;
@@ -64,8 +81,8 @@ and expression =
       iterable : expression;
       body : statement;
     }
-  | TemplateExpression of template_node Location.with_location list
-  | BlockExpression of statement Location.with_location list
+  | TemplateExpression of template_node list
+  | BlockExpression of statement list
   | ConditionalExpression of {
       condition : expression;
       consequent : statement;
@@ -74,11 +91,14 @@ and expression =
   | UnaryExpression of Operators.Unary.typ * expression
   | BinaryExpression of expression * Operators.Binary.typ * expression
 
-and attributes = expression Location.with_location StringMap.t
+and statement = {
+  statement_loc : Location.t;
+  statement_desc : statement_desc;
+}
 
-and statement =
-  | BreakStatement
-  | ContinueStatement
+and statement_desc =
+  | BreakStatement of int
+  | ContinueStatement of int
   | UseStatement of uppercase_identifier * expression
   | OptionalMutableLetStatement of lowercase_identifier * expression
   | OptionalLetStatement of lowercase_identifier * expression
@@ -87,14 +107,24 @@ and statement =
   | MutationStatement of lowercase_identifier * expression
   | ExpressionStatement of expression
 
-and declaration =
-  | ComponentDeclaration of attributes option * expression
-  | LibraryDeclaration of attributes option * expression
-  | SiteDeclaration of attributes option * expression
-  | PageDeclaration of attributes option * expression
-  | StoreDeclaration of attributes option * expression
+and declaration = {
+  declaration_loc : Location.t;
+  declaration_type : declaration_type;
+}
 
-and t = declaration Location.with_location StringMap.t
+and declaration_type =
+  | Declaration_Component of declaration_desc
+  | Declaration_Library of declaration_desc
+  | Declaration_Site of declaration_desc
+  | Declaration_Page of declaration_desc
+  | Declaration_Store of declaration_desc
+
+and declaration_desc = {
+  declaration_attributes : expression StringMap.t option;
+  declaration_body : expression;
+}
+
+and t = declaration StringMap.t
 
 module Declaration = struct
   let marshal (d : declaration) = Marshal.to_string d []
