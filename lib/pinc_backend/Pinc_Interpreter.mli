@@ -26,7 +26,7 @@ end
 
 val eval_meta :
   ?tag_listeners:Pinc_Interpreter_Types.tag_listeners ->
-  Ast.declaration StringMap.t ->
+  Ast.t ->
   [> `Component of value StringMap.t
   | `Library of value StringMap.t
   | `Page of value StringMap.t
@@ -38,7 +38,7 @@ val eval_meta :
 val eval :
   ?tag_listeners:Pinc_Interpreter_Types.tag_listeners ->
   root:StringMap.key ->
-  Ast.declaration StringMap.t ->
+  Ast.t ->
   state
 
 val from_source : ?filename:string -> source:string -> string -> state

@@ -14,13 +14,13 @@ and template_node =
   | HtmlTemplateNode of {
       tag : string;
       attributes : attributes;
-      children : template_node list;
+      children : template_node Location.with_location list;
       self_closing : bool;
     }
   | ComponentTemplateNode of {
       identifier : uppercase_identifier;
       attributes : attributes;
-      children : template_node list;
+      children : template_node Location.with_location list;
     }
   | ExpressionTemplateNode of expression
   | TextTemplateNode of string
@@ -45,14 +45,15 @@ and tag = {
 }
 
 and expression =
-  | String of string_template list
+  | String of string_template Location.with_location list
   | Int of int
   | Float of float
   | Bool of bool
-  | Array of expression array
-  | Record of (int * bool * expression) StringMap.t
-  | Function of string list * expression
-  | FunctionCall of expression * expression list
+  | Array of expression Location.with_location array
+  | Record of (int * bool * expression) Location.with_location StringMap.t
+  | Function of string Location.with_location list * expression
+  | FunctionCall of
+      expression Location.with_location * expression Location.with_location list
   | UppercaseIdentifierExpression of string
   | LowercaseIdentifierExpression of string
   | TagExpression of tag Location.with_location
@@ -63,8 +64,8 @@ and expression =
       iterable : expression;
       body : statement;
     }
-  | TemplateExpression of template_node list
-  | BlockExpression of statement list
+  | TemplateExpression of template_node Location.with_location list
+  | BlockExpression of statement Location.with_location list
   | ConditionalExpression of {
       condition : expression;
       consequent : statement;
@@ -73,7 +74,7 @@ and expression =
   | UnaryExpression of Operators.Unary.typ * expression
   | BinaryExpression of expression * Operators.Binary.typ * expression
 
-and attributes = expression StringMap.t
+and attributes = expression Location.with_location StringMap.t
 
 and statement =
   | BreakStatement
@@ -93,7 +94,7 @@ and declaration =
   | PageDeclaration of attributes option * expression
   | StoreDeclaration of attributes option * expression
 
-and t = declaration StringMap.t
+and t = declaration Location.with_location StringMap.t
 
 module Declaration = struct
   let marshal (d : declaration) = Marshal.to_string d []

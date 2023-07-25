@@ -103,7 +103,7 @@ and tag_listeners = (external_tag, tag_handler) Hashtbl.t
 and state = {
   mode : mode;
   binding_identifier : (bool * string) option;
-  declarations : Ast.declaration StringMap.t;
+  declarations : Ast.t;
   output : value;
   environment : environment;
   tag_listeners : tag_listeners;
