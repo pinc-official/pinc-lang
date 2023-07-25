@@ -112,10 +112,12 @@ module Helpers = struct
   let separated_list ~sep ~fn t =
     let rec loop acc =
       let has_sep = optional sep t in
+      let location = Location.make ~s:t.token.location.loc_start in
       match fn t with
       | Some r ->
+          let location = location ~e:t.token.location.loc_end in
           if has_sep || acc = [] then
-            loop (r :: acc)
+            loop ((r |> Location.add (location ())) :: acc)
           else
             Diagnostics.error
               t.token.location
@@ -127,8 +129,11 @@ module Helpers = struct
 
   let list ~fn t =
     let rec loop acc =
+      let location = Location.make ~s:t.token.location.loc_start in
       match fn t with
-      | Some r -> loop (r :: acc)
+      | Some r ->
+          let location = location ~e:t.token.location.loc_end in
+          loop ((r |> Location.add (location ())) :: acc)
       | None -> List.rev acc
     in
     loop []
@@ -183,6 +188,10 @@ module Rules = struct
           t
           |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
           |> List.to_seq
+          |> Seq.map (fun attr ->
+                 let location = attr |> Location.get in
+                 let key, value = attr |> Location.get_data in
+                 (key, value |> Location.add location))
           |> StringMap.of_seq
         in
         t |> expect Token.RIGHT_PAREN;
@@ -267,6 +276,10 @@ module Rules = struct
           t
           |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
           |> List.to_seq
+          |> Seq.map (fun attr ->
+                 let location = attr |> Location.get in
+                 let key, value = attr |> Location.get_data in
+                 (key, value |> Location.add location))
           |> StringMap.of_seq
         in
         let self_closing = t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING in
@@ -286,6 +299,10 @@ module Rules = struct
           t
           |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
           |> List.to_seq
+          |> Seq.map (fun attr ->
+                 let location = attr |> Location.get in
+                 let key, value = attr |> Location.get_data in
+                 (key, value |> Location.add location))
           |> StringMap.of_seq
         in
         let self_closing = t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING in
@@ -404,8 +421,10 @@ module Rules = struct
             t
             |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field
             |> List.to_seq
-            |> Seq.mapi (fun index (key, (optional, value)) ->
-                   (key, (index, optional, value)))
+            |> Seq.mapi (fun index attr ->
+                   let location = attr |> Location.get in
+                   let key, (optional, value) = attr |> Location.get_data in
+                   (key, (index, optional, value) |> Location.add location))
             |> StringMap.of_seq
           in
           t |> expect Token.RIGHT_BRACE;
@@ -556,11 +575,15 @@ module Rules = struct
       | None -> left
       | Some { precedence; _ } when precedence < prio -> left
       | Some { typ = Ast.Operators.Binary.FUNCTION_CALL; closing_token; _ } ->
+          let name_location = Location.make ~s:t.token.location.loc_start in
           next t;
+          let name_location = name_location ~e:t.token.location.loc_end in
           let arguments =
             t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression
           in
-          let left = Ast.FunctionCall (left, arguments) in
+          let left =
+            Ast.FunctionCall (left |> Location.add (name_location ()), arguments)
+          in
           let expect_close token = expect token t in
           let () = Option.iter expect_close closing_token in
           loop ~left ~prio t
@@ -601,6 +624,10 @@ module Rules = struct
             let attributes =
               Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t
               |> List.to_seq
+              |> Seq.map (fun attr ->
+                     let location = attr |> Location.get in
+                     let key, value = attr |> Location.get_data in
+                     (key, value |> Location.add location))
               |> StringMap.of_seq
             in
             t |> expect Token.RIGHT_PAREN;
@@ -629,8 +656,16 @@ module Rules = struct
   ;;
 end
 
-let scan t =
-  t |> Helpers.list ~fn:Rules.parse_declaration |> List.to_seq |> StringMap.of_seq
+let scan : t -> Ast.t =
+ fun t ->
+  t
+  |> Helpers.list ~fn:Rules.parse_declaration
+  |> List.to_seq
+  |> Seq.map (fun attr ->
+         let location = attr |> Location.get in
+         let key, value = attr |> Location.get_data in
+         (key, value |> Location.add location))
+  |> StringMap.of_seq
 ;;
 
 let parse ~filename source =

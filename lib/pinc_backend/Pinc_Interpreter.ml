@@ -312,7 +312,7 @@ let rec eval_statement ~state = function
   | Ast.ContinueStatement -> raise_notrace Loop_Continue
   | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
 
-and eval_expression ~state = function
+and eval_expression ~state ~loc = function
   | Ast.Int i -> state |> State.add_output ~output:(Value.of_int i)
   | Ast.Float f when Float.is_integer f ->
       state |> State.add_output ~output:(Value.of_int (int_of_float f))
@@ -323,16 +323,24 @@ and eval_expression ~state = function
       |> State.add_output
            ~output:
              (l
-             |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)
+             |> Array.map (fun it ->
+                    let loc = it |> Location.get in
+                    it
+                    |> Location.get_data
+                    |> eval_expression ~loc ~state
+                    |> State.get_output)
              |> Value.of_array)
   | Ast.Record map ->
       state
       |> State.add_output
            ~output:
              (map
-             |> StringMap.mapi (fun ident (index, optional, expression) ->
+             |> StringMap.mapi (fun ident attr ->
+                    let loc = attr |> Location.get in
+                    let index, optional, expression = attr |> Location.get_data in
                     expression
                     |> eval_expression
+                         ~loc
                          ~state:{ state with binding_identifier = Some (optional, ident) }
                     |> State.get_output
                     |> function
@@ -436,10 +444,13 @@ and eval_string_template ~state template =
   |> State.add_output
        ~output:
          (template
-         |> List.map (function
+         |> List.map (fun with_loc ->
+                let loc = Location.get with_loc in
+                let e = Location.get_data with_loc in
+                match e with
                 | Ast.StringText s -> s
                 | Ast.StringInterpolation e ->
-                    eval_expression ~state e |> State.get_output |> Value.to_string)
+                    eval_expression ~state ~loc e |> State.get_output |> Value.to_string)
          |> String.concat ""
          |> Value.of_string)
 
