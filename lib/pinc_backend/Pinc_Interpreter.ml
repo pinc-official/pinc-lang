@@ -296,7 +296,8 @@ module State = struct
   let get_parent_component t = t.parent_component
 end
 
-let rec eval_statement ~state = function
+let rec eval_statement ~state statement =
+  match statement.Ast.statement_desc with
   | Ast.LetStatement (Lowercase_Id ident, expression) ->
       eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
   | Ast.OptionalLetStatement (Lowercase_Id ident, expression) ->
@@ -308,11 +309,12 @@ let rec eval_statement ~state = function
   | Ast.MutationStatement (Lowercase_Id ident, expression) ->
       eval_mutation ~state ~ident expression
   | Ast.UseStatement (Uppercase_Id ident, expression) -> eval_use ~state ~ident expression
-  | Ast.BreakStatement -> raise_notrace Loop_Break
-  | Ast.ContinueStatement -> raise_notrace Loop_Continue
+  | Ast.BreakStatement _ -> raise_notrace Loop_Break
+  | Ast.ContinueStatement _ -> raise_notrace Loop_Continue
   | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
 
-and eval_expression ~state ~loc = function
+and eval_expression ~state expression =
+  match expression.expression_desc with
   | Ast.Int i -> state |> State.add_output ~output:(Value.of_int i)
   | Ast.Float f when Float.is_integer f ->
       state |> State.add_output ~output:(Value.of_int (int_of_float f))
@@ -323,12 +325,7 @@ and eval_expression ~state ~loc = function
       |> State.add_output
            ~output:
              (l
-             |> Array.map (fun it ->
-                    let loc = it |> Location.get in
-                    it
-                    |> Location.get_data
-                    |> eval_expression ~loc ~state
-                    |> State.get_output)
+             |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)
              |> Value.of_array)
   | Ast.Record map ->
       state
@@ -336,11 +333,9 @@ and eval_expression ~state ~loc = function
            ~output:
              (map
              |> StringMap.mapi (fun ident attr ->
-                    let loc = attr |> Location.get in
-                    let index, optional, expression = attr |> Location.get_data in
+                    let index, optional, expression = attr in
                     expression
                     |> eval_expression
-                         ~loc
                          ~state:{ state with binding_identifier = Some (optional, ident) }
                     |> State.get_output
                     |> function
@@ -352,18 +347,19 @@ and eval_expression ~state ~loc = function
                     | value -> (index, value))
              |> Value.of_string_map)
   | Ast.String template -> eval_string_template ~state template
-  | Ast.Function (parameters, body) -> eval_function_declaration ~state ~parameters body
-  | Ast.FunctionCall (left, arguments) -> eval_function_call ~state ~arguments left
+  | Ast.Function { parameters; body } -> eval_function_declaration ~state ~parameters body
+  | Ast.FunctionCall { function_definition; arguments } ->
+      eval_function_call ~state ~arguments function_definition
   | Ast.UppercaseIdentifierExpression id ->
       let value = state.declarations |> StringMap.find_opt id in
       let typ =
         match value with
         | None -> None
-        | Some (Ast.ComponentDeclaration _) -> Some `Component
-        | Some (Ast.PageDeclaration _) -> Some `Page
-        | Some (Ast.SiteDeclaration _) -> Some `Site
-        | Some (Ast.StoreDeclaration _) -> Some `Store
-        | Some (Ast.LibraryDeclaration _) ->
+        | Some { declaration_type = Ast.Declaration_Component _; _ } -> Some `Component
+        | Some { declaration_type = Ast.Declaration_Page _; _ } -> Some `Page
+        | Some { declaration_type = Ast.Declaration_Site _; _ } -> Some `Site
+        | Some { declaration_type = Ast.Declaration_Store _; _ } -> Some `Store
+        | Some { declaration_type = Ast.Declaration_Library _; _ } ->
             (*
                NOTE: Do we really want to evaluate the library with the current state?
                      Or do we maybe want to create a fresh state?
@@ -444,13 +440,10 @@ and eval_string_template ~state template =
   |> State.add_output
        ~output:
          (template
-         |> List.map (fun with_loc ->
-                let loc = Location.get with_loc in
-                let e = Location.get_data with_loc in
-                match e with
-                | Ast.StringText s -> s
-                | Ast.StringInterpolation e ->
-                    eval_expression ~state ~loc e |> State.get_output |> Value.to_string)
+         |> List.map (function
+                | Ast.{ string_template_desc = StringText s; _ } -> s
+                | Ast.{ string_template_desc = StringInterpolation e; _ } ->
+                    eval_expression ~state e |> State.get_output |> Value.to_string)
          |> String.concat ""
          |> Value.of_string)
 
@@ -530,8 +523,20 @@ and eval_function_call ~state ~arguments left =
 and eval_binary_pipe ~state left right =
   let right =
     match right with
-    | Ast.FunctionCall (fn, arguments) -> Ast.FunctionCall (fn, left :: arguments)
-    | fn -> Ast.FunctionCall (fn, [ left ])
+    | Ast.
+        {
+          expression_desc = FunctionCall { function_definition; arguments };
+          expression_loc;
+        } ->
+        let expression_desc =
+          Ast.FunctionCall { function_definition; arguments = left :: arguments }
+        in
+        Ast.{ expression_desc; expression_loc }
+    | fn ->
+        let expression_desc =
+          Ast.FunctionCall { function_definition = fn; arguments = [ left ] }
+        in
+        { fn with expression_desc }
   in
   right |> eval_expression ~state
 
@@ -669,7 +674,7 @@ and eval_binary_concat ~state left right =
 
 and eval_binary_dot_access ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
-  match (left, right) with
+  match (left, right.expression_desc) with
   | Null, _ -> state |> State.add_output ~output:Null
   | Record left, Ast.LowercaseIdentifierExpression b ->
       let output =
@@ -805,6 +810,7 @@ and eval_lowercase_identifier ~state ident =
       state |> State.add_output ~output:value
 
 and eval_let ~state ~ident ~is_mutable ~is_optional expression =
+  let ident, _ident_location = ident in
   let state =
     expression
     |> eval_expression
@@ -820,12 +826,14 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
       |> State.add_output ~output:Null
 
 and eval_use ~state ~ident expression =
+  let ident, _ident_location = ident in
   let value = expression |> eval_expression ~state |> State.get_output in
   match value with
   | value ->
       state |> State.add_value_to_use_scope ~ident ~value |> State.add_output ~output:Null
 
 and eval_mutation ~state ~ident expression =
+  let ident, _ident_location = ident in
   let current_binding = State.get_value_from_scope ~ident state in
   match current_binding with
   | None ->
@@ -859,6 +867,7 @@ and eval_if ~state ~condition ~alternate ~consequent =
   | false, None -> state |> State.add_output ~output:Null
 
 and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
+  let ident, _ident_location = ident in
   let iterable = iterable |> eval_expression ~state |> State.get_output in
   let index = ref (-1) in
   let rec loop acc = function
@@ -871,7 +880,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
         in
         let state =
           match index_ident with
-          | Some (Lowercase_Id ident) ->
+          | Some (Lowercase_Id (ident, _ident_location)) ->
               state
               |> State.add_value_to_scope
                    ~ident
@@ -1170,20 +1179,17 @@ and call_tag_listener ~state ~value_bag t =
   | Error e -> failwith e
 
 and eval_tag ~state tag =
-  let loc = Location.get tag in
-  let Ast.{ tag; attributes; transformer } = tag |> Location.get_data in
+  let Ast.{ tag = tag_identifier; attributes; transformer } = tag.tag_desc in
   let required =
     not (state.binding_identifier |> Option.map fst |> Option.value ~default:false)
   in
   let of_attribute =
-    Option.bind attributes (fun attrs ->
-        attrs |> Location.get_data |> StringMap.find_opt "of")
+    Option.bind attributes (fun attrs -> attrs |> StringMap.find_opt "of")
   in
   let tag_attributes =
     match attributes with
     | Some attributes ->
         attributes
-        |> Location.get_data
         |> StringMap.remove "of"
         |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
     | None -> StringMap.empty
@@ -1211,7 +1217,7 @@ and eval_tag ~state tag =
   let apply_transformer ~transformer value =
     match transformer with
     | Some transformer ->
-        let Ast.Lowercase_Id ident, expr = transformer |> Location.get_data in
+        let Ast.Lowercase_Id (ident, _ident_location), expr = transformer in
         let state =
           state
           |> State.add_scope
@@ -1221,7 +1227,7 @@ and eval_tag ~state tag =
     | _ -> value
   in
   let value =
-    match (state.mode, tag) with
+    match (state.mode, tag_identifier) with
     | _, `CreatePortal -> Portal (Hashtbl.find_all state.portals key)
     | _, `SetContext ->
         let value =
@@ -1238,10 +1244,12 @@ and eval_tag ~state tag =
           match tag_attributes |> StringMap.find_opt "push" with
           | None ->
               Pinc_Diagnostics.error
-                loc
+                tag.tag_loc
                 "The attribute `push` is required when pushing a value into a portal."
           | Some (Function _) ->
-              Pinc_Diagnostics.error loc "A function can not be put into a portal."
+              Pinc_Diagnostics.error
+                tag.tag_loc
+                "A function can not be put into a portal."
           | Some value -> value
         in
         Hashtbl.add state.portals key push;
@@ -1277,34 +1285,53 @@ and eval_tag ~state tag =
   state |> State.add_output ~output:value
 
 and eval_template ~state template =
-  match template with
+  match template.template_node_desc with
   | Ast.TextTemplateNode text -> state |> State.add_output ~output:(String text)
-  | Ast.HtmlTemplateNode { tag; attributes; children; self_closing } ->
-      let attributes =
-        attributes
+  | Ast.HtmlTemplateNode
+      {
+        html_tag_identifier;
+        html_tag_attributes;
+        html_tag_children;
+        html_tag_self_closing;
+      } ->
+      let html_tag_attributes =
+        html_tag_attributes
         |> StringMap.map (eval_expression ~state)
         |> StringMap.map State.get_output
       in
-      let children =
-        children |> List.map (eval_template ~state) |> List.map State.get_output
+      let html_tag_children =
+        html_tag_children |> List.map (eval_template ~state) |> List.map State.get_output
       in
       state
       |> State.add_output
-           ~output:(HtmlTemplateNode (tag, attributes, children, self_closing))
+           ~output:
+             (HtmlTemplateNode
+                ( html_tag_identifier,
+                  html_tag_attributes,
+                  html_tag_children,
+                  html_tag_self_closing ))
   | Ast.ExpressionTemplateNode expr -> eval_expression ~state expr
-  | Ast.ComponentTemplateNode { identifier = Uppercase_Id tag; attributes; children } ->
-      let attributes =
-        attributes
+  | Ast.ComponentTemplateNode
+      {
+        component_tag_identifier = Uppercase_Id (component_tag_identifier, _);
+        component_tag_attributes;
+        component_tag_children;
+      } ->
+      let component_tag_attributes =
+        component_tag_attributes
         |> StringMap.map (eval_expression ~state)
         |> StringMap.map State.get_output
       in
-      let children =
-        children |> List.map (eval_template ~state) |> List.map State.get_output
+      let component_tag_children =
+        component_tag_children
+        |> List.map (eval_template ~state)
+        |> List.map State.get_output
       in
-      let render_fn attributes =
+      let render_fn component_tag_attributes =
         let state =
           State.make
-            ~parent_component:(tag, attributes, children)
+            ~parent_component:
+              (component_tag_identifier, component_tag_attributes, component_tag_children)
             ~tag_listeners:state.tag_listeners
             ~context:state.context
             ~portals:state.portals
@@ -1312,20 +1339,23 @@ and eval_template ~state template =
             ~mode:state.mode
             state.declarations
         in
-        eval_declaration ~state tag |> State.get_output
+        eval_declaration ~state component_tag_identifier |> State.get_output
       in
-      let result = render_fn attributes in
+      let result = render_fn component_tag_attributes in
       state
       |> State.add_output
-           ~output:(ComponentTemplateNode (render_fn, tag, attributes, result))
+           ~output:
+             (ComponentTemplateNode
+                (render_fn, component_tag_identifier, component_tag_attributes, result))
 
 and eval_declaration ~state declaration =
   state.declarations |> StringMap.find_opt declaration |> function
-  | Some (Ast.ComponentDeclaration (_attrs, body))
-  | Some (Ast.LibraryDeclaration (_attrs, body))
-  | Some (Ast.SiteDeclaration (_attrs, body))
-  | Some (Ast.PageDeclaration (_attrs, body))
-  | Some (Ast.StoreDeclaration (_attrs, body)) -> eval_expression ~state body
+  | Some Ast.{ declaration_type = Declaration_Component { declaration_body; _ }; _ }
+  | Some Ast.{ declaration_type = Declaration_Library { declaration_body; _ }; _ }
+  | Some Ast.{ declaration_type = Declaration_Site { declaration_body; _ }; _ }
+  | Some Ast.{ declaration_type = Declaration_Page { declaration_body; _ }; _ }
+  | Some Ast.{ declaration_type = Declaration_Store { declaration_body; _ }; _ } ->
+      eval_expression ~state declaration_body
   | None -> failwith ("Declaration with name `" ^ declaration ^ "` was not found.")
 ;;
 
@@ -1336,13 +1366,19 @@ let eval_meta ?tag_listeners declarations =
     |> Option.value ~default:StringMap.empty
     |> StringMap.map (fun e -> eval_expression ~state e |> State.get_output)
   in
+  let open Ast in
   declarations
   |> StringMap.map (function
-         | Ast.ComponentDeclaration (attrs, _body) -> `Component (eval attrs)
-         | Ast.SiteDeclaration (attrs, _body) -> `Site (eval attrs)
-         | Ast.PageDeclaration (attrs, _body) -> `Page (eval attrs)
-         | Ast.StoreDeclaration (attrs, _body) -> `Store (eval attrs)
-         | Ast.LibraryDeclaration (attrs, _body) -> `Library (eval attrs))
+         | { declaration_type = Declaration_Component { declaration_attributes; _ }; _ }
+           -> `Component (eval declaration_attributes)
+         | { declaration_type = Declaration_Library { declaration_attributes; _ }; _ } ->
+             `Library (eval declaration_attributes)
+         | { declaration_type = Declaration_Site { declaration_attributes; _ }; _ } ->
+             `Site (eval declaration_attributes)
+         | { declaration_type = Declaration_Page { declaration_attributes; _ }; _ } ->
+             `Page (eval declaration_attributes)
+         | { declaration_type = Declaration_Store { declaration_attributes; _ }; _ } ->
+             `Store (eval declaration_attributes))
 ;;
 
 let eval ?tag_listeners ~root declarations =
