@@ -1,8 +1,8 @@
 module Location = Pinc_Diagnostics.Location
 module Operators = Pinc_Operators
 
-type uppercase_identifier = Uppercase_Id of string
-and lowercase_identifier = Lowercase_Id of string
+type uppercase_identifier = Uppercase_Id of (string * Location.t)
+and lowercase_identifier = Lowercase_Id of (string * Location.t)
 
 and template_node = {
   template_node_loc : Location.t;
@@ -68,9 +68,15 @@ and expression_desc =
   | Float of float
   | Bool of bool
   | Array of expression array
-  | Record of (int * bool * expression) StringMap.t
-  | Function of string list * expression
-  | FunctionCall of expression * expression list
+  | Record of (int * bool * expression) StringMap.t  (** order, nullable, value *)
+  | Function of {
+      parameters : string list;
+      body : expression;
+    }
+  | FunctionCall of {
+      function_definition : expression;
+      arguments : expression list;
+    }
   | UppercaseIdentifierExpression of string
   | LowercaseIdentifierExpression of string
   | TagExpression of tag

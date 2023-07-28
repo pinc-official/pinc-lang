@@ -66,17 +66,19 @@ let make ~filename src =
 
 module Helpers = struct
   let expect_identifier ?(typ = `All) t =
-    let start_pos = t.token.location.loc_start in
+    let location =
+      Location.make ~s:t.token.location.loc_start ~e:t.token.location.loc_end ()
+    in
     match t.token.typ with
     | Token.IDENT_UPPER i when typ = `Upper || typ = `All ->
         next t;
-        i
+        (i, location)
     | Token.IDENT_LOWER i when typ = `Lower || typ = `All ->
         next t;
-        i
+        (i, location)
     | token when typ = `Lower ->
         Diagnostics.error
-          (Location.make ~s:start_pos ~e:t.token.location.loc_end ())
+          location
           (match token with
           | Token.IDENT_UPPER i ->
               "Expected to see a lowercase identifier at this point. Did you mean "
@@ -91,7 +93,7 @@ module Helpers = struct
               ^ Token.to_string t)
     | token when typ = `Upper ->
         Diagnostics.error
-          (Location.make ~s:start_pos ~e:t.token.location.loc_end ())
+          location
           (match token with
           | Token.IDENT_LOWER i ->
               "Expected to see an uppercase identifier at this point. Did you mean "
@@ -102,7 +104,7 @@ module Helpers = struct
           | _ -> "Expected to see an uppercase identifier at this point.")
     | token ->
         Diagnostics.error
-          (Location.make ~s:start_pos ~e:t.token.location.loc_end ())
+          location
           (match token with
           | t when Token.is_keyword t ->
               "\"" ^ Token.to_string t ^ "\" is a keyword. Please choose another name."
@@ -112,12 +114,10 @@ module Helpers = struct
   let separated_list ~sep ~fn t =
     let rec loop acc =
       let has_sep = optional sep t in
-      let location = Location.make ~s:t.token.location.loc_start in
       match fn t with
       | Some r ->
-          let location = location ~e:t.token.location.loc_end in
           if has_sep || acc = [] then
-            loop ((r |> Location.add (location ())) :: acc)
+            loop (r :: acc)
           else
             Diagnostics.error
               t.token.location
@@ -129,11 +129,8 @@ module Helpers = struct
 
   let list ~fn t =
     let rec loop acc =
-      let location = Location.make ~s:t.token.location.loc_start in
       match fn t with
-      | Some r ->
-          let location = location ~e:t.token.location.loc_end in
-          loop ((r |> Location.add (location ())) :: acc)
+      | Some r -> loop (r :: acc)
       | None -> List.rev acc
     in
     loop []
@@ -142,16 +139,24 @@ end
 
 module Rules = struct
   let rec parse_string_template t =
-    match t.token.typ with
-    | Token.STRING s ->
-        next t;
-        Some (Ast.StringText s)
-    | Token.LEFT_PIPE_BRACE ->
-        next t;
-        let* expression = parse_expression t in
-        t |> expect Token.RIGHT_PIPE_BRACE;
-        Some (Ast.StringInterpolation expression)
-    | _ -> None
+    let string_template_start = t.token.location.loc_start in
+    let* string_template_desc =
+      match t.token.typ with
+      | Token.STRING s ->
+          next t;
+          Some (Ast.StringText s)
+      | Token.LEFT_PIPE_BRACE ->
+          next t;
+          let* expression = parse_expression t in
+          t |> expect Token.RIGHT_PIPE_BRACE;
+          Some (Ast.StringInterpolation expression)
+      | _ -> None
+    in
+    let string_template_end = t.token.location.loc_end in
+    let string_template_loc =
+      Location.make ~s:string_template_start ~e:string_template_end ()
+    in
+    Ast.{ string_template_desc; string_template_loc } |> Option.some
 
   and parse_fn_param t =
     match t.token.typ with
@@ -183,23 +188,14 @@ module Rules = struct
     let start_token = t.token in
     let attributes =
       if t |> optional Token.LEFT_PAREN then (
-        let start_token = t.token in
         let res =
           t
           |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
           |> List.to_seq
-          |> Seq.map (fun attr ->
-                 let location = attr |> Location.get in
-                 let key, value = attr |> Location.get_data in
-                 (key, value |> Location.add location))
           |> StringMap.of_seq
         in
         t |> expect Token.RIGHT_PAREN;
-        let end_token = t.token in
-        let location =
-          Location.make ~s:start_token.location.loc_start ~e:end_token.location.loc_end ()
-        in
-        Some (res |> Location.add location))
+        Some res)
       else
         None
     in
@@ -219,10 +215,7 @@ module Rules = struct
                 "This tag transformer does not have a valid body."
           | Some expr -> expr
         in
-        let location =
-          Location.make ~s:start_token.location.loc_start ~e:t.token.location.loc_end ()
-        in
-        Some ((Ast.Lowercase_Id bind, body) |> Location.add location))
+        Some (Ast.Lowercase_Id bind, body))
       else
         None
     in
@@ -241,306 +234,362 @@ module Rules = struct
       | "Portal" -> `Portal
       | other -> `Custom other
     in
-    let location =
+    let tag_loc =
       Location.make ~s:start_token.location.loc_start ~e:t.token.location.loc_end ()
     in
-    Some
-      (Ast.TagExpression (Ast.{ tag; attributes; transformer } |> Location.add location))
+    let tag_desc = Ast.{ tag; attributes; transformer } in
+    Ast.TagExpression Ast.{ tag_loc; tag_desc } |> Option.some
 
   and parse_template_node t =
-    match t.token.typ with
-    | Token.STRING s ->
-        next t;
-        Some (Ast.TextTemplateNode s)
-    | Token.LEFT_BRACE ->
-        let start_token = t.token in
-        next t;
-        let expression =
-          match parse_expression t with
-          | Some e -> Ast.ExpressionTemplateNode e
-          | None ->
-              Diagnostics.warn
-                (Location.make
-                   ~s:start_token.location.loc_start
-                   ~e:t.token.location.loc_end
-                   ())
-                "Expected to see an expression between these braces. \n\
-                 This is currently not doing anything, so you can safely remove it.";
-              ExpressionTemplateNode (Ast.BlockExpression [])
-        in
-        t |> expect Token.RIGHT_BRACE;
-        Some expression
-    | Token.HTML_OPEN_TAG tag ->
-        next t;
-        let attributes =
-          t
-          |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
-          |> List.to_seq
-          |> Seq.map (fun attr ->
-                 let location = attr |> Location.get in
-                 let key, value = attr |> Location.get_data in
-                 (key, value |> Location.add location))
-          |> StringMap.of_seq
-        in
-        let self_closing = t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING in
-        let children =
-          if self_closing then
-            []
-          else (
-            t |> expect Token.HTML_OR_COMPONENT_TAG_END;
-            let children = t |> Helpers.list ~fn:parse_template_node in
-            t |> expect (Token.HTML_CLOSE_TAG tag);
-            children)
-        in
-        Some (Ast.HtmlTemplateNode { tag; attributes; children; self_closing })
-    | Token.COMPONENT_OPEN_TAG identifier ->
-        next t;
-        let attributes =
-          t
-          |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
-          |> List.to_seq
-          |> Seq.map (fun attr ->
-                 let location = attr |> Location.get in
-                 let key, value = attr |> Location.get_data in
-                 (key, value |> Location.add location))
-          |> StringMap.of_seq
-        in
-        let self_closing = t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING in
-        let children =
-          if self_closing then
-            []
-          else (
-            t |> expect Token.HTML_OR_COMPONENT_TAG_END;
-            let children = t |> Helpers.list ~fn:parse_template_node in
-            t |> expect (Token.COMPONENT_CLOSE_TAG identifier);
-            children)
-        in
-        Some
-          (Ast.ComponentTemplateNode
-             { identifier = Uppercase_Id identifier; attributes; children })
-    | _ -> None
+    let node_start = t.token in
+    let* template_node_desc =
+      match t.token.typ with
+      | Token.STRING s ->
+          next t;
+          Some (Ast.TextTemplateNode s)
+      | Token.LEFT_BRACE ->
+          let start_token = t.token in
+          next t;
+          let expression =
+            match parse_expression t with
+            | Some e -> Ast.ExpressionTemplateNode e
+            | None ->
+                let location =
+                  Location.make
+                    ~s:start_token.location.loc_start
+                    ~e:t.token.location.loc_end
+                    ()
+                in
+                Diagnostics.warn
+                  location
+                  "Expected to see an expression between these braces. \n\
+                   This is currently not doing anything, so you can safely remove it.";
+                ExpressionTemplateNode
+                  { expression_loc = location; expression_desc = Ast.BlockExpression [] }
+          in
+          t |> expect Token.RIGHT_BRACE;
+          Some expression
+      | Token.HTML_OPEN_TAG html_tag_identifier ->
+          next t;
+          let html_tag_attributes =
+            t
+            |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
+            |> List.to_seq
+            |> StringMap.of_seq
+          in
+          let html_tag_self_closing =
+            t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING
+          in
+          let html_tag_children =
+            if html_tag_self_closing then
+              []
+            else (
+              t |> expect Token.HTML_OR_COMPONENT_TAG_END;
+              let children = t |> Helpers.list ~fn:parse_template_node in
+              t |> expect (Token.HTML_CLOSE_TAG html_tag_identifier);
+              children)
+          in
+          Some
+            (Ast.HtmlTemplateNode
+               {
+                 html_tag_identifier;
+                 html_tag_attributes;
+                 html_tag_children;
+                 html_tag_self_closing;
+               })
+      | Token.COMPONENT_OPEN_TAG identifier ->
+          let component_tag_identifier =
+            Ast.Uppercase_Id (identifier, t.token.location)
+          in
+          next t;
+          let component_tag_attributes =
+            t
+            |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
+            |> List.to_seq
+            |> StringMap.of_seq
+          in
+          let component_tag_self_closing =
+            t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING
+          in
+          let component_tag_children =
+            if component_tag_self_closing then
+              []
+            else (
+              t |> expect Token.HTML_OR_COMPONENT_TAG_END;
+              let children = t |> Helpers.list ~fn:parse_template_node in
+              t |> expect (Token.COMPONENT_CLOSE_TAG identifier);
+              children)
+          in
+          Some
+            (Ast.ComponentTemplateNode
+               {
+                 component_tag_identifier;
+                 component_tag_attributes;
+                 component_tag_children;
+               })
+      | _ -> None
+    in
+    let node_end = t.token in
+    let template_node_loc =
+      Location.make ~s:node_start.location.loc_start ~e:node_end.location.loc_end ()
+    in
+    Ast.{ template_node_desc; template_node_loc } |> Option.some
 
   and parse_statement t =
-    match t.token.typ with
-    (* PARSING BREAK STATEMENT *)
-    | Token.KEYWORD_BREAK ->
-        next t;
-        let _ = optional Token.SEMICOLON t in
-        Some Ast.BreakStatement
-    (* PARSING CONTINUE STATEMENT *)
-    | Token.KEYWORD_CONTINUE ->
-        next t;
-        let _ = optional Token.SEMICOLON t in
-        Some Ast.ContinueStatement
-    (* PARSING LET STATEMENT *)
-    | Token.KEYWORD_LET -> (
-        let start_token = t.token in
-        next t;
-        let is_mutable = t |> optional Token.KEYWORD_MUTABLE in
-        let identifier = Helpers.expect_identifier ~typ:`Lower t in
-        let is_nullable = t |> optional Token.QUESTIONMARK in
-        t |> expect Token.EQUAL;
-        let end_token = t.token in
-        let expression = parse_expression t in
-        let _ = optional Token.SEMICOLON t in
-        match (is_mutable, is_nullable, expression) with
-        | false, true, Some expression ->
-            Some (Ast.OptionalLetStatement (Lowercase_Id identifier, expression))
-        | true, true, Some expression ->
-            Some (Ast.OptionalMutableLetStatement (Lowercase_Id identifier, expression))
-        | false, false, Some expression ->
-            Some (Ast.LetStatement (Lowercase_Id identifier, expression))
-        | true, false, Some expression ->
-            Some (Ast.MutableLetStatement (Lowercase_Id identifier, expression))
-        | _, _, None ->
-            Diagnostics.error
-              (Location.make
-                 ~s:start_token.location.loc_start
-                 ~e:end_token.location.loc_end
-                 ())
-              "Expected expression as right hand side of let declaration")
-    (* PARSING MUTATION STATEMENT *)
-    | Token.IDENT_LOWER identifier when peek t = Token.COLON_EQUAL ->
-        let start_token = t.token in
-        next t;
-        next t;
-        let end_token = t.token in
-        let expression =
-          match parse_expression t with
-          | Some expression -> expression
-          | None ->
+    let statement_start = t.token in
+    let* statement_desc =
+      match t.token.typ with
+      (* PARSING BREAK STATEMENT *)
+      | Token.KEYWORD_BREAK ->
+          next t;
+          let num_loops =
+            match t.token.typ with
+            | Token.INT i ->
+                next t;
+                i
+            | _ -> 1
+          in
+          let _ = optional Token.SEMICOLON t in
+          Some (Ast.BreakStatement num_loops)
+      (* PARSING CONTINUE STATEMENT *)
+      | Token.KEYWORD_CONTINUE ->
+          next t;
+          let num_loops =
+            match t.token.typ with
+            | Token.INT i ->
+                next t;
+                i
+            | _ -> 1
+          in
+          let _ = optional Token.SEMICOLON t in
+          Some (Ast.ContinueStatement num_loops)
+      (* PARSING LET STATEMENT *)
+      | Token.KEYWORD_LET -> (
+          let start_token = t.token in
+          next t;
+          let is_mutable = t |> optional Token.KEYWORD_MUTABLE in
+          let identifier = Helpers.expect_identifier ~typ:`Lower t in
+          let is_nullable = t |> optional Token.QUESTIONMARK in
+          t |> expect Token.EQUAL;
+          let end_token = t.token in
+          let expression = parse_expression t in
+          let _ = optional Token.SEMICOLON t in
+          match (is_mutable, is_nullable, expression) with
+          | false, true, Some expression ->
+              Some (Ast.OptionalLetStatement (Lowercase_Id identifier, expression))
+          | true, true, Some expression ->
+              Some (Ast.OptionalMutableLetStatement (Lowercase_Id identifier, expression))
+          | false, false, Some expression ->
+              Some (Ast.LetStatement (Lowercase_Id identifier, expression))
+          | true, false, Some expression ->
+              Some (Ast.MutableLetStatement (Lowercase_Id identifier, expression))
+          | _, _, None ->
               Diagnostics.error
                 (Location.make
                    ~s:start_token.location.loc_start
                    ~e:end_token.location.loc_end
                    ())
-                "Expected expression as right hand side of mutation statement"
-        in
-        let _ = optional Token.SEMICOLON t in
-        Some (Ast.MutationStatement (Lowercase_Id identifier, expression))
-    (* PARSING USE STATEMENT *)
-    | Token.KEYWORD_USE ->
-        next t;
-        let identifier = Helpers.expect_identifier ~typ:`Upper t in
-        t |> expect Token.EQUAL;
-        let expression =
-          match parse_expression t with
-          | Some expression -> expression
-          | None ->
-              Diagnostics.error
-                t.token.location
-                "Expected expression as right hand side of use statement"
-        in
-        let _ = optional Token.SEMICOLON t in
-        Some (Ast.UseStatement (Uppercase_Id identifier, expression))
-    | _ ->
-        let expr = parse_expression t in
-        let _ = optional Token.SEMICOLON t in
-        expr |> Option.map (fun expression -> Ast.ExpressionStatement expression)
+                "Expected expression as right hand side of let declaration")
+      (* PARSING MUTATION STATEMENT *)
+      | Token.IDENT_LOWER identifier when peek t = Token.COLON_EQUAL ->
+          let start_token = t.token in
+          let identifier_location = t.token.location in
+          next t;
+          next t;
+          let end_token = t.token in
+          let expression =
+            match parse_expression t with
+            | Some expression -> expression
+            | None ->
+                Diagnostics.error
+                  (Location.make
+                     ~s:start_token.location.loc_start
+                     ~e:end_token.location.loc_end
+                     ())
+                  "Expected expression as right hand side of mutation statement"
+          in
+          let _ = optional Token.SEMICOLON t in
+          Some
+            (Ast.MutationStatement
+               (Lowercase_Id (identifier, identifier_location), expression))
+      (* PARSING USE STATEMENT *)
+      | Token.KEYWORD_USE ->
+          next t;
+          let identifier = Helpers.expect_identifier ~typ:`Upper t in
+          t |> expect Token.EQUAL;
+          let expression =
+            match parse_expression t with
+            | Some expression -> expression
+            | None ->
+                Diagnostics.error
+                  t.token.location
+                  "Expected expression as right hand side of use statement"
+          in
+          let _ = optional Token.SEMICOLON t in
+          Some (Ast.UseStatement (Uppercase_Id identifier, expression))
+      | _ ->
+          let expr = parse_expression t in
+          let _ = optional Token.SEMICOLON t in
+          expr |> Option.map (fun expression -> Ast.ExpressionStatement expression)
+    in
+    let statement_end = t.token in
+    let statement_loc =
+      Location.make
+        ~s:statement_start.location.loc_start
+        ~e:statement_end.location.loc_end
+        ()
+    in
+    Ast.{ statement_desc; statement_loc } |> Option.some
 
   and parse_expression_part t =
-    match t.token.typ with
-    (* PARSING PARENTHESIZED EXPRESSION *)
-    | Token.LEFT_PAREN ->
-        next t;
-        let expr = parse_expression t in
-        t |> expect Token.RIGHT_PAREN;
-        expr
-    (* PARSING RECORD or BLOCK EXPRESSION *)
-    | Token.LEFT_BRACE ->
-        next t;
-        let is_record =
-          match t.token.typ with
-          | Token.IDENT_LOWER _ ->
-              let token = peek t in
-              token = Token.COLON || token = Token.QUESTIONMARK
-          | _ -> false
-        in
-        if is_record then (
-          let attrs =
-            t
-            |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field
-            |> List.to_seq
-            |> Seq.mapi (fun index attr ->
-                   let location = attr |> Location.get in
-                   let key, (optional, value) = attr |> Location.get_data in
-                   (key, (index, optional, value) |> Location.add location))
-            |> StringMap.of_seq
+    let expr_start = t.token.location.loc_start in
+    let* expression_desc =
+      match t.token.typ with
+      (* PARSING PARENTHESIZED EXPRESSION *)
+      | Token.LEFT_PAREN ->
+          next t;
+          let expr = parse_expression t in
+          t |> expect Token.RIGHT_PAREN;
+          expr |> Option.map (fun expr -> expr.Ast.expression_desc)
+      (* PARSING RECORD or BLOCK EXPRESSION *)
+      | Token.LEFT_BRACE ->
+          next t;
+          let is_record =
+            match t.token.typ with
+            | Token.IDENT_LOWER _ ->
+                let token = peek t in
+                token = Token.COLON || token = Token.QUESTIONMARK
+            | _ -> false
           in
-          t |> expect Token.RIGHT_BRACE;
-          Some Ast.(Record attrs))
-        else (
-          let statements = t |> Helpers.list ~fn:parse_statement in
-          t |> expect Token.RIGHT_BRACE;
-          Some (Ast.BlockExpression statements))
-    (* PARSING FOR IN EXPRESSION *)
-    | Token.KEYWORD_FOR -> (
-        next t;
-        expect Token.LEFT_PAREN t;
-        let index_or_iterator = Helpers.expect_identifier ~typ:`Lower t in
-        let index, iterator =
-          if optional Token.COMMA t then (
-            let identifier = Helpers.expect_identifier ~typ:`Lower t in
-            (Some (Ast.Lowercase_Id index_or_iterator), identifier))
-          else
-            (None, index_or_iterator)
-        in
-        let iterator = Ast.Lowercase_Id iterator in
-        expect Token.KEYWORD_IN t;
-        let reverse = optional Token.KEYWORD_REVERSE t in
-        let* expr1 = parse_expression t in
-        expect Token.RIGHT_PAREN t;
-        let body = parse_statement t in
-        match body with
-        | None ->
-            Diagnostics.error t.token.location "Expected statement as body of for loop"
-        | Some body ->
-            Some
-              (Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }))
-    (* PARSING FN EXPRESSION *)
-    | Token.KEYWORD_FN ->
-        next t;
-        expect Token.LEFT_PAREN t;
-        let parameters =
-          t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_fn_param
-        in
-        expect Token.RIGHT_PAREN t;
-        expect Token.ARROW t;
-        let* body = t |> parse_expression in
-        Some (Ast.Function (parameters, body))
-    (* PARSING IF EXPRESSION *)
-    | Token.KEYWORD_IF ->
-        next t;
-        expect Token.LEFT_PAREN t;
-        let* condition = t |> parse_expression in
-        expect Token.RIGHT_PAREN t;
-        let* consequent = t |> parse_statement in
-        let alternate =
-          if optional Token.KEYWORD_ELSE t then
-            t |> parse_statement
-          else
-            None
-        in
-        Some (Ast.ConditionalExpression { condition; consequent; alternate })
-    (* PARSING TAG EXPRESSION *)
-    | Token.TAG name ->
-        next t;
-        parse_tag ~name t
-    (* PARSING TEMPLATE EXPRESSION *)
-    | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
-        let template_nodes = t |> Helpers.list ~fn:parse_template_node in
-        Some (Ast.TemplateExpression template_nodes)
-    (* PARSING TEMPLATE EXPRESSION *)
-    | Token.HTML_OPEN_FRAGMENT ->
-        next t;
-        let template_nodes = t |> Helpers.list ~fn:parse_template_node in
-        t |> expect Token.HTML_CLOSE_FRAGMENT;
-        Some (Ast.TemplateExpression template_nodes)
-    (* PARSING UNARY NOT EXPRESSION *)
-    | Token.NOT ->
-        next t;
-        let operator = Ast.Operators.Unary.make NOT in
-        let* argument = parse_expression ~prio:operator.precedence t in
-        Some (Ast.UnaryExpression (Ast.Operators.Unary.NOT, argument))
-    (* PARSING UNARY MINUS EXPRESSION *)
-    | Token.UNARY_MINUS ->
-        next t;
-        let operator = Ast.Operators.Unary.make MINUS in
-        let* argument = parse_expression ~prio:operator.precedence t in
-        Some (Ast.UnaryExpression (Ast.Operators.Unary.MINUS, argument))
-    (* PARSING IDENTIFIER EXPRESSION *)
-    | Token.IDENT_LOWER identifier ->
-        next t;
-        Some (Ast.LowercaseIdentifierExpression identifier)
-    | Token.IDENT_UPPER identifier ->
-        next t;
-        Some (Ast.UppercaseIdentifierExpression identifier)
-    (* PARSING VALUE EXPRESSION *)
-    | Token.DOUBLE_QUOTE ->
-        next t;
-        let s = t |> Helpers.list ~fn:parse_string_template in
-        t |> expect Token.DOUBLE_QUOTE;
-        Some Ast.(String s)
-    | Token.INT i ->
-        next t;
-        Some Ast.(Int i)
-    | Token.FLOAT f ->
-        next t;
-        Some Ast.(Float f)
-    | Token.KEYWORD_TRUE ->
-        next t;
-        Some Ast.(Bool true)
-    | Token.KEYWORD_FALSE ->
-        next t;
-        Some Ast.(Bool false)
-    | Token.LEFT_BRACK ->
-        next t;
-        let expressions =
-          Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t |> Array.of_list
-        in
-        expect Token.RIGHT_BRACK t;
-        Some Ast.(Array expressions)
-    | _ -> None
+          if is_record then (
+            let attrs =
+              t
+              |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field
+              |> List.to_seq
+              |> Seq.mapi (fun index attr ->
+                     let key, (optional, value) = attr in
+                     (key, (index, optional, value)))
+              |> StringMap.of_seq
+            in
+            t |> expect Token.RIGHT_BRACE;
+            Ast.Record attrs |> Option.some)
+          else (
+            let statements = t |> Helpers.list ~fn:parse_statement in
+            t |> expect Token.RIGHT_BRACE;
+            Ast.BlockExpression statements |> Option.some)
+      (* PARSING FOR IN EXPRESSION *)
+      | Token.KEYWORD_FOR -> (
+          next t;
+          let _ = optional Token.LEFT_PAREN t in
+          let index_or_iterator = Helpers.expect_identifier ~typ:`Lower t in
+          let index, iterator =
+            if optional Token.COMMA t then (
+              let identifier = Helpers.expect_identifier ~typ:`Lower t in
+              (Some (Ast.Lowercase_Id index_or_iterator), identifier))
+            else
+              (None, index_or_iterator)
+          in
+          let iterator = Ast.Lowercase_Id iterator in
+          expect Token.KEYWORD_IN t;
+          let reverse = optional Token.KEYWORD_REVERSE t in
+          let* expr1 = parse_expression t in
+          let _ = optional Token.RIGHT_PAREN t in
+          let body = parse_statement t in
+          match body with
+          | None ->
+              Diagnostics.error t.token.location "Expected statement as body of for loop"
+          | Some body ->
+              Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }
+              |> Option.some)
+      (* PARSING FN EXPRESSION *)
+      | Token.KEYWORD_FN ->
+          next t;
+          expect Token.LEFT_PAREN t;
+          let parameters =
+            t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_fn_param
+          in
+          expect Token.RIGHT_PAREN t;
+          expect Token.ARROW t;
+          let* body = t |> parse_expression in
+          Ast.Function { parameters; body } |> Option.some
+      (* PARSING IF EXPRESSION *)
+      | Token.KEYWORD_IF ->
+          next t;
+          let _ = optional Token.LEFT_PAREN t in
+          let* condition = t |> parse_expression in
+          let _ = optional Token.RIGHT_PAREN t in
+          let* consequent = t |> parse_statement in
+          let alternate =
+            if optional Token.KEYWORD_ELSE t then
+              t |> parse_statement
+            else
+              None
+          in
+          Ast.ConditionalExpression { condition; consequent; alternate } |> Option.some
+      (* PARSING TAG EXPRESSION *)
+      | Token.TAG name ->
+          next t;
+          parse_tag ~name t
+      (* PARSING TEMPLATE EXPRESSION *)
+      | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
+          let template_nodes = t |> Helpers.list ~fn:parse_template_node in
+          Ast.TemplateExpression template_nodes |> Option.some
+      (* PARSING TEMPLATE EXPRESSION *)
+      | Token.HTML_OPEN_FRAGMENT ->
+          next t;
+          let template_nodes = t |> Helpers.list ~fn:parse_template_node in
+          t |> expect Token.HTML_CLOSE_FRAGMENT;
+          Ast.TemplateExpression template_nodes |> Option.some
+      (* PARSING UNARY NOT EXPRESSION *)
+      | Token.NOT ->
+          next t;
+          let operator = Ast.Operators.Unary.make NOT in
+          let* argument = parse_expression ~prio:operator.precedence t in
+          Ast.UnaryExpression (Ast.Operators.Unary.NOT, argument) |> Option.some
+      (* PARSING UNARY MINUS EXPRESSION *)
+      | Token.UNARY_MINUS ->
+          next t;
+          let operator = Ast.Operators.Unary.make MINUS in
+          let* argument = parse_expression ~prio:operator.precedence t in
+          Ast.UnaryExpression (Ast.Operators.Unary.MINUS, argument) |> Option.some
+      (* PARSING IDENTIFIER EXPRESSION *)
+      | Token.IDENT_LOWER identifier ->
+          next t;
+          Ast.LowercaseIdentifierExpression identifier |> Option.some
+      | Token.IDENT_UPPER identifier ->
+          next t;
+          Ast.UppercaseIdentifierExpression identifier |> Option.some
+      (* PARSING VALUE EXPRESSION *)
+      | Token.DOUBLE_QUOTE ->
+          next t;
+          let s = t |> Helpers.list ~fn:parse_string_template in
+          t |> expect Token.DOUBLE_QUOTE;
+          Ast.(String s) |> Option.some
+      | Token.INT i ->
+          next t;
+          Ast.(Int i) |> Option.some
+      | Token.FLOAT f ->
+          next t;
+          Ast.(Float f) |> Option.some
+      | Token.KEYWORD_TRUE ->
+          next t;
+          Ast.(Bool true) |> Option.some
+      | Token.KEYWORD_FALSE ->
+          next t;
+          Ast.(Bool false) |> Option.some
+      | Token.LEFT_BRACK ->
+          next t;
+          let expressions =
+            Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t
+            |> Array.of_list
+          in
+          expect Token.RIGHT_BRACK t;
+          Ast.(Array expressions) |> Option.some
+      | _ -> None
+    in
+    let expr_end = t.token.location.loc_end in
+    let expression_loc = Location.make ~s:expr_start ~e:expr_end () in
+    Ast.{ expression_desc; expression_loc } |> Option.some
 
   and parse_binary_operator t =
     match t.token.typ with
@@ -575,19 +624,22 @@ module Rules = struct
       | None -> left
       | Some { precedence; _ } when precedence < prio -> left
       | Some { typ = Ast.Operators.Binary.FUNCTION_CALL; closing_token; _ } ->
-          let name_location = Location.make ~s:t.token.location.loc_start in
+          let expression_start = t.token.location.loc_start in
           next t;
-          let name_location = name_location ~e:t.token.location.loc_end in
           let arguments =
             t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression
           in
-          let left =
-            Ast.FunctionCall (left |> Location.add (name_location ()), arguments)
+          let expression_end = t.token.location.loc_end in
+          let expression_desc =
+            Ast.FunctionCall { function_definition = left; arguments }
           in
+          let expression_loc = Location.make ~s:expression_start ~e:expression_end () in
+          let function_call = Ast.{ expression_desc; expression_loc } in
           let expect_close token = expect token t in
           let () = Option.iter expect_close closing_token in
-          loop ~left ~prio t
+          loop ~left:function_call ~prio t
       | Some { typ = operator; precedence; assoc; closing_token } -> (
+          let expression_start = t.token.location.loc_start in
           next t;
           let new_prio =
             match assoc with
@@ -602,70 +654,71 @@ module Rules = struct
                 ^ Ast.Operators.Binary.to_string operator
                 ^ "`")
           | Some right ->
-              let left = Ast.BinaryExpression (left, operator, right) in
               let expect_close token = expect token t in
               let () = Option.iter expect_close closing_token in
+              let expression_end = t.token.location.loc_end in
+              let expression_desc = Ast.BinaryExpression (left, operator, right) in
+              let expression_loc =
+                Location.make ~s:expression_start ~e:expression_end ()
+              in
+              let left = Ast.{ expression_desc; expression_loc } in
               loop ~left ~prio t)
     in
     let* left = parse_expression_part t in
     Some (loop ~prio ~left t)
 
   and parse_declaration t =
-    match t.token.typ with
-    | ( Token.KEYWORD_SITE
-      | Token.KEYWORD_PAGE
-      | Token.KEYWORD_COMPONENT
-      | Token.KEYWORD_LIBRARY
-      | Token.KEYWORD_STORE ) as typ -> (
-        next t;
-        let identifier = Helpers.expect_identifier ~typ:`Upper t in
-        let attributes =
-          if optional Token.LEFT_PAREN t then (
-            let attributes =
-              Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t
-              |> List.to_seq
-              |> Seq.map (fun attr ->
-                     let location = attr |> Location.get in
-                     let key, value = attr |> Location.get_data in
-                     (key, value |> Location.add location))
-              |> StringMap.of_seq
-            in
-            t |> expect Token.RIGHT_PAREN;
-            Some attributes)
-          else
-            None
-        in
-        let body = t |> parse_expression in
-        match body with
-        | None -> Diagnostics.error t.token.location "Expected declaration to have a body"
-        | Some body -> (
-            match typ with
-            | Token.KEYWORD_SITE ->
-                Some (identifier, Ast.SiteDeclaration (attributes, body))
-            | Token.KEYWORD_PAGE ->
-                Some (identifier, Ast.PageDeclaration (attributes, body))
-            | Token.KEYWORD_COMPONENT ->
-                Some (identifier, Ast.ComponentDeclaration (attributes, body))
-            | Token.KEYWORD_STORE ->
-                Some (identifier, Ast.StoreDeclaration (attributes, body))
-            | Token.KEYWORD_LIBRARY ->
-                Some (identifier, Ast.LibraryDeclaration (attributes, body))
-            | _ -> assert false))
-    | Token.END_OF_INPUT -> None
-    | _ -> assert false
+    let declaration_start = t.token.location.loc_start in
+    let* identifier, declaration_type =
+      match t.token.typ with
+      | ( Token.KEYWORD_SITE
+        | Token.KEYWORD_PAGE
+        | Token.KEYWORD_COMPONENT
+        | Token.KEYWORD_LIBRARY
+        | Token.KEYWORD_STORE ) as typ -> (
+          next t;
+          let identifier = Helpers.expect_identifier ~typ:`Upper t |> fst in
+          let declaration_attributes =
+            if optional Token.LEFT_PAREN t then (
+              let attributes =
+                Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t
+                |> List.to_seq
+                |> StringMap.of_seq
+              in
+              t |> expect Token.RIGHT_PAREN;
+              Some attributes)
+            else
+              None
+          in
+          let declaration_body = t |> parse_expression in
+          match declaration_body with
+          | None ->
+              Diagnostics.error t.token.location "Expected declaration to have a body"
+          | Some declaration_body -> (
+              let declaration_desc = Ast.{ declaration_attributes; declaration_body } in
+              match typ with
+              | Token.KEYWORD_SITE ->
+                  Some (identifier, Ast.Declaration_Site declaration_desc)
+              | Token.KEYWORD_PAGE ->
+                  Some (identifier, Ast.Declaration_Page declaration_desc)
+              | Token.KEYWORD_COMPONENT ->
+                  Some (identifier, Ast.Declaration_Component declaration_desc)
+              | Token.KEYWORD_STORE ->
+                  Some (identifier, Ast.Declaration_Store declaration_desc)
+              | Token.KEYWORD_LIBRARY ->
+                  Some (identifier, Ast.Declaration_Library declaration_desc)
+              | _ -> assert false))
+      | Token.END_OF_INPUT -> None
+      | _ -> assert false
+    in
+    let declaration_end = t.token.location.loc_end in
+    let declaration_loc = Location.make ~s:declaration_start ~e:declaration_end () in
+    (identifier, Ast.{ declaration_loc; declaration_type }) |> Option.some
   ;;
 end
 
 let scan : t -> Ast.t =
- fun t ->
-  t
-  |> Helpers.list ~fn:Rules.parse_declaration
-  |> List.to_seq
-  |> Seq.map (fun attr ->
-         let location = attr |> Location.get in
-         let key, value = attr |> Location.get_data in
-         (key, value |> Location.add location))
-  |> StringMap.of_seq
+ fun t -> t |> Helpers.list ~fn:Rules.parse_declaration |> List.to_seq |> StringMap.of_seq
 ;;
 
 let parse ~filename source =
