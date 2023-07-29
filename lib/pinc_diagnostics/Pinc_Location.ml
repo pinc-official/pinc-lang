@@ -10,3 +10,10 @@ let make ?e ~s () =
   | None -> { loc_start = s; loc_end = s }
   | Some e -> { loc_start = s; loc_end = e }
 ;;
+
+let none =
+  {
+    loc_start = Position.make ~filename:"" ~line:0 ~column:0;
+    loc_end = Position.make ~filename:"" ~line:0 ~column:0;
+  }
+;;

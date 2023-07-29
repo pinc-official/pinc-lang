@@ -81,29 +81,32 @@ let print_code ~color ~loc ic =
 ;;
 
 let print_loc ppf (loc : Location.t) =
-  let loc_string =
-    if loc.loc_start.line = loc.loc_end.line then
-      if loc.loc_start.column = loc.loc_end.column then
-        Format.sprintf "%i:%i" loc.loc_start.line loc.loc_start.column
+  if loc = Location.none then
+    ()
+  else (
+    let loc_string =
+      if loc.loc_start.line = loc.loc_end.line then
+        if loc.loc_start.column = loc.loc_end.column then
+          Format.sprintf "%i:%i" loc.loc_start.line loc.loc_start.column
+        else
+          Format.sprintf
+            "%i:%i-%i"
+            loc.loc_start.line
+            loc.loc_start.column
+            loc.loc_end.column
       else
         Format.sprintf
-          "%i:%i-%i"
+          "%i:%i-%i:%i"
           loc.loc_start.line
           loc.loc_start.column
+          loc.loc_end.line
           loc.loc_end.column
-    else
-      Format.sprintf
-        "%i:%i-%i:%i"
-        loc.loc_start.line
-        loc.loc_start.column
-        loc.loc_end.line
-        loc.loc_end.column
-  in
-  Fmt.pf
-    ppf
-    "%a"
-    Fmt.(styled `Faint string)
-    (Printf.sprintf "in file %s:%s" loc.loc_start.filename loc_string)
+    in
+    Fmt.pf
+      ppf
+      "%a"
+      Fmt.(styled `Faint string)
+      (Printf.sprintf "in file %s:%s" loc.loc_start.filename loc_string))
 ;;
 
 let print_header ppf ~color text =

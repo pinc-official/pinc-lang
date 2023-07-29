@@ -340,7 +340,8 @@ and eval_expression ~state expression =
                     |> State.get_output
                     |> function
                     | Null when not optional ->
-                        failwith
+                        Pinc_Diagnostics.error
+                          expression.expression_loc
                           ("identifier "
                           ^ ident
                           ^ " is not marked as nullable, but was given a null value.")
@@ -370,7 +371,8 @@ and eval_expression ~state expression =
             Some (`Library (top_level_bindings, used_values))
       in
       state |> State.add_output ~output:(DefinitionInfo (id, typ, `NotNegated))
-  | Ast.LowercaseIdentifierExpression id -> eval_lowercase_identifier ~state id
+  | Ast.LowercaseIdentifierExpression id ->
+      eval_lowercase_identifier ~loc:expression.expression_loc ~state id
   | Ast.TagExpression tag -> eval_tag ~state tag
   | Ast.ForInExpression { index; iterator = Lowercase_Id ident; reverse; iterable; body }
     -> eval_for_in ~state ~index_ident:index ~ident ~reverse ~iterable body
@@ -484,8 +486,8 @@ and eval_function_declaration ~state ~parameters body =
   self := fn;
   state |> State.add_output ~output:fn
 
-and eval_function_call ~state ~arguments left =
-  let maybe_fn = eval_expression ~state left |> State.get_output in
+and eval_function_call ~state ~arguments function_definition =
+  let maybe_fn = eval_expression ~state function_definition |> State.get_output in
   match maybe_fn with
   | Function { parameters; state = fn_state; exec }
     when List.compare_lengths parameters arguments = 0 ->
@@ -507,18 +509,23 @@ and eval_function_call ~state ~arguments left =
           |> List.map (fun item -> "`" ^ item ^ "`")
           |> String.concat ", "
         in
-        failwith
+        Pinc_Diagnostics.error
+          function_definition.expression_loc
           ("This function was provided too few arguments. The following parameters are \
             missing: "
           ^ missing))
       else
-        failwith
+        Pinc_Diagnostics.error
+          function_definition.expression_loc
           ("This function only accepts "
           ^ string_of_int (List.length parameters)
           ^ " arguments, but was provided "
           ^ string_of_int (List.length arguments)
           ^ " here.")
-  | _ -> failwith "Trying to call a non function value"
+  | _ ->
+      Pinc_Diagnostics.error
+        function_definition.expression_loc
+        "Trying to call a non function value"
 
 and eval_binary_pipe ~state left right =
   let right =
@@ -548,7 +555,17 @@ and eval_binary_plus ~state left right =
   | Float a, Float b -> state |> State.add_output ~output:(Float (a +. b))
   | Float a, Int b -> state |> State.add_output ~output:(Float (a +. float_of_int b))
   | Int a, Float b -> state |> State.add_output ~output:(Float (float_of_int a +. b))
-  | _ -> failwith "Trying to add non numeric literals."
+  | (Int _ | Float _), _ ->
+      Pinc_Diagnostics.error right.expression_loc "Trying to add non numeric literals."
+  | _, (Int _ | Float _) ->
+      Pinc_Diagnostics.error left.expression_loc "Trying to add non numeric literals."
+  | _ ->
+      Pinc_Diagnostics.error
+        (Location.make
+           ~s:left.expression_loc.loc_start
+           ~e:right.expression_loc.loc_end
+           ())
+        "Trying to add non numeric literals."
 
 and eval_binary_minus ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -558,7 +575,21 @@ and eval_binary_minus ~state left right =
   | Float a, Float b -> state |> State.add_output ~output:(Float (a -. b))
   | Float a, Int b -> state |> State.add_output ~output:(Float (a -. float_of_int b))
   | Int a, Float b -> state |> State.add_output ~output:(Float (float_of_int a -. b))
-  | _ -> failwith "Trying to subtract non numeric literals."
+  | (Int _ | Float _), _ ->
+      Pinc_Diagnostics.error
+        right.expression_loc
+        "Trying to subtract non numeric literals."
+  | _, (Int _ | Float _) ->
+      Pinc_Diagnostics.error
+        left.expression_loc
+        "Trying to subtract non numeric literals."
+  | _ ->
+      Pinc_Diagnostics.error
+        (Location.make
+           ~s:left.expression_loc.loc_start
+           ~e:right.expression_loc.loc_end
+           ())
+        "Trying to subtract non numeric literals."
 
 and eval_binary_times ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -568,23 +599,50 @@ and eval_binary_times ~state left right =
   | Float a, Float b -> state |> State.add_output ~output:(Float (a *. b))
   | Float a, Int b -> state |> State.add_output ~output:(Float (a *. float_of_int b))
   | Int a, Float b -> state |> State.add_output ~output:(Float (float_of_int a *. b))
-  | _ -> failwith "Trying to multiply non numeric literals."
+  | (Int _ | Float _), _ ->
+      Pinc_Diagnostics.error
+        right.expression_loc
+        "Trying to multiply non numeric literals."
+  | _, (Int _ | Float _) ->
+      Pinc_Diagnostics.error
+        left.expression_loc
+        "Trying to multiply non numeric literals."
+  | _ ->
+      Pinc_Diagnostics.error
+        (Location.make
+           ~s:left.expression_loc.loc_start
+           ~e:right.expression_loc.loc_end
+           ())
+        "Trying to multiply non numeric literals."
 
 and eval_binary_div ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
   let r =
     match (a, b) with
-    | Int _, Int 0 -> failwith "Trying to divide by 0"
-    | Float _, Float 0. -> failwith "Trying to divide by 0"
-    | Float _, Int 0 -> failwith "Trying to divide by 0"
-    | Int _, Float 0. -> failwith "Trying to divide by 0"
+    | Int _, Int 0 | Float _, Float 0. | Float _, Int 0 | Int _, Float 0. ->
+        Pinc_Diagnostics.error right.expression_loc "Trying to divide by 0"
     | Int a, Int b -> float_of_int a /. float_of_int b
     | Float a, Float b -> a /. b
     | Float a, Int b -> a /. float_of_int b
     | Int a, Float b -> float_of_int a /. b
-    | _ -> failwith "Trying to divide non numeric literals."
+    | (Int _ | Float _), _ ->
+        Pinc_Diagnostics.error
+          right.expression_loc
+          "Trying to divide non numeric literals."
+    | _, (Int _ | Float _) ->
+        Pinc_Diagnostics.error
+          left.expression_loc
+          "Trying to divide non numeric literals."
+    | _ ->
+        Pinc_Diagnostics.error
+          (Location.make
+             ~s:left.expression_loc.loc_start
+             ~e:right.expression_loc.loc_end
+             ())
+          "Trying to divide non numeric literals."
   in
+
   if Float.is_integer r then
     state |> State.add_output ~output:(Int (int_of_float r))
   else
@@ -599,8 +657,21 @@ and eval_binary_pow ~state left right =
     | Float a, Float b -> a ** b
     | Float a, Int b -> a ** float_of_int b
     | Int a, Float b -> float_of_int a ** b
-    | _ -> failwith "Trying to raise non numeric literals."
+    | (Int _ | Float _), _ ->
+        Pinc_Diagnostics.error
+          right.expression_loc
+          "Trying to raise non numeric literals."
+    | _, (Int _ | Float _) ->
+        Pinc_Diagnostics.error left.expression_loc "Trying to raise non numeric literals."
+    | _ ->
+        Pinc_Diagnostics.error
+          (Location.make
+             ~s:left.expression_loc.loc_start
+             ~e:right.expression_loc.loc_end
+             ())
+          "Trying to raise non numeric literals."
   in
+
   if Float.is_integer r then
     state |> State.add_output ~output:(Int (int_of_float r))
   else
@@ -613,16 +684,31 @@ and eval_binary_modulo ~state left right =
   let ( % ) = ( mod ) in
   let r =
     match (a, b) with
-    | Int _, Int 0 -> failwith "Trying to modulo with 0 on right hand side."
-    | Int _, Float 0. -> failwith "Trying to modulo with 0 on right hand side."
-    | Float _, Float 0. -> failwith "Trying to modulo with 0 on right hand side."
-    | Float _, Int 0 -> failwith "Trying to modulo with 0 on right hand side."
+    | Int _, Int 0 | Int _, Float 0. | Float _, Float 0. | Float _, Int 0 ->
+        Pinc_Diagnostics.error
+          right.expression_loc
+          "Trying to modulo with 0 on right hand side."
     | Int a, Int b -> a % b
     | Float a, Float b -> int_of_float (a %. b)
     | Float a, Int b -> int_of_float a % b
     | Int a, Float b -> a % int_of_float b
-    | _ -> failwith "Trying to modulo non numeric literals."
+    | (Int _ | Float _), _ ->
+        Pinc_Diagnostics.error
+          right.expression_loc
+          "Trying to modulo non numeric literals."
+    | _, (Int _ | Float _) ->
+        Pinc_Diagnostics.error
+          left.expression_loc
+          "Trying to modulo non numeric literals."
+    | _ ->
+        Pinc_Diagnostics.error
+          (Location.make
+             ~s:left.expression_loc.loc_start
+             ~e:right.expression_loc.loc_end
+             ())
+          "Trying to modulo non numeric literals."
   in
+
   state |> State.add_output ~output:(Int r)
 
 and eval_binary_and ~state left right =
@@ -670,11 +756,21 @@ and eval_binary_concat ~state left right =
   let b = right |> eval_expression ~state |> State.get_output in
   match (a, b) with
   | String a, String b -> state |> State.add_output ~output:(String (a ^ b))
-  | _ -> failwith "Trying to concat non string literals."
+  | String _, _ ->
+      Pinc_Diagnostics.error right.expression_loc "Trying to concat non string literals."
+  | _, String _ ->
+      Pinc_Diagnostics.error left.expression_loc "Trying to concat non string literals."
+  | _ ->
+      Pinc_Diagnostics.error
+        (Location.make
+           ~s:left.expression_loc.loc_start
+           ~e:right.expression_loc.loc_end
+           ())
+        "Trying to concat non string literals."
 
 and eval_binary_dot_access ~state left right =
-  let left = left |> eval_expression ~state |> State.get_output in
-  match (left, right.expression_desc) with
+  let left_value = left |> eval_expression ~state |> State.get_output in
+  match (left_value, right.expression_desc) with
   | Null, _ -> state |> State.add_output ~output:Null
   | Record left, Ast.LowercaseIdentifierExpression b ->
       let output =
@@ -694,7 +790,8 @@ and eval_binary_dot_access ~state left right =
                     |> Seq.mapi (fun index (key, value) -> (key, (index, value)))
                     |> StringMap.of_seq))
       | s ->
-          failwith
+          Pinc_Diagnostics.error
+            right.expression_loc
             ("Unknown property "
             ^ s
             ^ " on template node. Known properties are: `tag` and `attributes`."))
@@ -712,12 +809,15 @@ and eval_binary_dot_access ~state left right =
                     |> Seq.mapi (fun index (key, value) -> (key, (index, value)))
                     |> StringMap.of_seq))
       | s ->
-          failwith
+          Pinc_Diagnostics.error
+            right.expression_loc
             ("Unknown property "
             ^ s
             ^ " on component. Known properties are: `tag` and`attributes`."))
   | Record _, _ ->
-      failwith "Expected right hand side of record access to be a lowercase identifier."
+      Pinc_Diagnostics.error
+        right.expression_loc
+        "Expected right hand side of record access to be a lowercase identifier."
   | DefinitionInfo (name, maybe_library, _), Ast.LowercaseIdentifierExpression b -> (
       match (state |> State.get_used_values |> List.assoc_opt name, maybe_library) with
       | None, Some (`Library (top_level_bindings, _))
@@ -731,7 +831,8 @@ and eval_binary_dot_access ~state left right =
                  |> Option.value ~default:Null)
       | None, None -> state |> State.add_output ~output:Null
       | _ ->
-          failwith
+          Pinc_Diagnostics.error
+            left.expression_loc
             "Trying to access a property on a non record, library or template value.")
   | DefinitionInfo (name, maybe_library, _), Ast.UppercaseIdentifierExpression b -> (
       match (state |> State.get_used_values |> List.assoc_opt name, maybe_library) with
@@ -742,18 +843,26 @@ and eval_binary_dot_access ~state left right =
                ~output:(use_scope |> List.assoc_opt b |> Option.value ~default:Null)
       | None, None -> state |> State.add_output ~output:Null
       | _ ->
-          failwith
+          Pinc_Diagnostics.error
+            left.expression_loc
             "Trying to access a property on a non record, library or template value.")
   | DefinitionInfo (name, None, _), _ ->
-      failwith ("Trying to access a property on a non existant library `" ^ name ^ "` .")
+      Pinc_Diagnostics.error
+        left.expression_loc
+        ("Trying to access a property on a non existant library `" ^ name ^ "`.")
   | _, Ast.LowercaseIdentifierExpression _ ->
-      failwith "Trying to access a property on a non record, library or template value."
-  | _ -> failwith "I am really not sure what you are trying to do here..."
+      Pinc_Diagnostics.error
+        left.expression_loc
+        "Trying to access a property on a non record, library or template value."
+  | _ ->
+      Pinc_Diagnostics.error
+        left.expression_loc
+        "I am really not sure what you are trying to do here..."
 
 and eval_binary_bracket_access ~state left right =
-  let left = left |> eval_expression ~state |> State.get_output in
-  let right = right |> eval_expression ~state |> State.get_output in
-  match (left, right) with
+  let left_value = left |> eval_expression ~state |> State.get_output in
+  let right_value = right |> eval_expression ~state |> State.get_output in
+  match (left_value, right_value) with
   | Array left, Int right ->
       let output = try Array.unsafe_get left right with _ -> Null in
       state |> State.add_output ~output
@@ -763,20 +872,32 @@ and eval_binary_bracket_access ~state left right =
       in
       state |> State.add_output ~output
   | Null, _ -> state |> State.add_output ~output:Null
-  | Array _, _ -> failwith "Cannot access array with a non integer value."
-  | Record _, _ -> failwith "Cannot access record with a non string value."
-  | _ -> failwith "Trying to access a property on a non record or array value."
+  | Array _, _ ->
+      Pinc_Diagnostics.error
+        right.expression_loc
+        "Cannot access array with a non integer value."
+  | Record _, _ ->
+      Pinc_Diagnostics.error
+        right.expression_loc
+        "Cannot access record with a non string value."
+  | _ ->
+      Pinc_Diagnostics.error
+        left.expression_loc
+        "Trying to access a property on a non record or array value."
 
 and eval_binary_array_add ~state left right =
-  let left = left |> eval_expression ~state |> State.get_output in
-  let right = right |> eval_expression ~state |> State.get_output in
-  let add left right =
-    match (left, right) with
-    | Array left, value ->
-        state |> State.add_output ~output:(Array (Array.append left [| value |]))
-    | _ -> failwith "Trying to add an element on a non array value."
+  let left_value = left |> eval_expression ~state |> State.get_output in
+  let right_value = right |> eval_expression ~state |> State.get_output in
+  let add l r =
+    match (l, r) with
+    | Array l, value ->
+        state |> State.add_output ~output:(Array (Array.append l [| value |]))
+    | _ ->
+        Pinc_Diagnostics.error
+          left.expression_loc
+          "Trying to add an element on a non array value."
   in
-  add left right
+  add left_value right_value
 
 and eval_binary_merge ~state left right =
   let left = left |> eval_expression ~state |> State.get_output in
@@ -799,18 +920,19 @@ and eval_unary_minus ~state expression =
   | Int i -> state |> State.add_output ~output:(Int (Int.neg i))
   | Float f -> state |> State.add_output ~output:(Float (Float.neg f))
   | _ ->
-      failwith
+      Pinc_Diagnostics.error
+        expression.expression_loc
         "Invalid usage of unary `-` operator. You are only able to negate integers or \
          floats."
 
-and eval_lowercase_identifier ~state ident =
+and eval_lowercase_identifier ~state ~loc ident =
   state |> State.get_value_from_scope ~ident |> function
-  | None -> failwith ("Unbound identifier `" ^ ident ^ "`")
+  | None -> Pinc_Diagnostics.error loc ("Unbound identifier `" ^ ident ^ "`")
   | Some { value; is_mutable = _; is_optional = _ } ->
       state |> State.add_output ~output:value
 
 and eval_let ~state ~ident ~is_mutable ~is_optional expression =
-  let ident, _ident_location = ident in
+  let ident, ident_location = ident in
   let state =
     expression
     |> eval_expression
@@ -818,7 +940,8 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
   in
   match State.get_output state with
   | Null when not is_optional ->
-      failwith
+      Pinc_Diagnostics.error
+        ident_location
         ("identifier " ^ ident ^ " is not marked as nullable, but was given a null value.")
   | value ->
       state
@@ -833,12 +956,15 @@ and eval_use ~state ~ident expression =
       state |> State.add_value_to_use_scope ~ident ~value |> State.add_output ~output:Null
 
 and eval_mutation ~state ~ident expression =
-  let ident, _ident_location = ident in
+  let ident, ident_location = ident in
   let current_binding = State.get_value_from_scope ~ident state in
   match current_binding with
   | None ->
-      failwith "Trying to update a variable, which does not exist in the current scope."
-  | Some { is_mutable = false; _ } -> failwith "Trying to update a non mutable variable."
+      Pinc_Diagnostics.error
+        ident_location
+        "Trying to update a variable, which does not exist in the current scope."
+  | Some { is_mutable = false; _ } ->
+      Pinc_Diagnostics.error ident_location "Trying to update a non mutable variable."
   | Some { value = _; is_mutable = true; is_optional } ->
       let output =
         expression
@@ -848,7 +974,8 @@ and eval_mutation ~state ~ident expression =
       let () =
         output |> State.get_output |> function
         | Null when not is_optional ->
-            failwith
+            Pinc_Diagnostics.error
+              ident_location
               ("identifier "
               ^ ident
               ^ " is not marked as nullable, but was tried to be updated with a null \
@@ -868,7 +995,7 @@ and eval_if ~state ~condition ~alternate ~consequent =
 
 and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
   let ident, _ident_location = ident in
-  let iterable = iterable |> eval_expression ~state |> State.get_output in
+  let iterable_value = iterable |> eval_expression ~state |> State.get_output in
   let index = ref (-1) in
   let rec loop acc = function
     | [] -> List.rev acc
@@ -917,33 +1044,52 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
         in
         state |> State.add_output ~output:res
     | Null -> state |> State.add_output ~output:Null
-    | HtmlTemplateNode _ -> failwith "Cannot iterate over template node"
-    | ComponentTemplateNode _ -> failwith "Cannot iterate over template node"
-    | Portal _ -> failwith "Cannot iterate over portal value"
-    | Record _ -> failwith "Cannot iterate over record value"
-    | Int _ -> failwith "Cannot iterate over int value"
-    | Float _ -> failwith "Cannot iterate over float value"
-    | Bool _ -> failwith "Cannot iterate over boolean value"
-    | DefinitionInfo _ -> failwith "Cannot iterate over definition info"
-    | Function _ -> failwith "Cannot iterate over function"
+    | HtmlTemplateNode _ ->
+        Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over template node"
+    | ComponentTemplateNode _ ->
+        Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over template node"
+    | Portal _ ->
+        Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over portal value"
+    | Record _ ->
+        Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over record value"
+    | Int _ ->
+        Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over int value"
+    | Float _ ->
+        Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over float value"
+    | Bool _ ->
+        Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over boolean value"
+    | DefinitionInfo _ ->
+        Pinc_Diagnostics.error
+          iterable.expression_loc
+          "Cannot iterate over definition info"
+    | Function _ ->
+        Pinc_Diagnostics.error
+          iterable.expression_loc
+          "Cannot iterate over function definition"
     | TagInfo _ -> assert false
   in
-  iter iterable
+  iter iterable_value
 
-and eval_range ~state ~inclusive from upto =
-  let from = from |> eval_expression ~state |> State.get_output in
-  let upto = upto |> eval_expression ~state |> State.get_output in
+and eval_range ~state ~inclusive from_expression upto_expression =
+  let from = from_expression |> eval_expression ~state |> State.get_output in
+  let upto = upto_expression |> eval_expression ~state |> State.get_output in
   let get_range from upto =
     match (from, upto) with
     | Int from, Int upto -> (from, upto)
     | Int _, _ ->
-        failwith
+        Pinc_Diagnostics.error
+          upto_expression.expression_loc
           "Can't construct range in for loop. The end of your range is not of type int."
     | _, Int _ ->
-        failwith
+        Pinc_Diagnostics.error
+          from_expression.expression_loc
           "Can't construct range in for loop. The start of your range is not of type int."
     | _, _ ->
-        failwith
+        Pinc_Diagnostics.error
+          (Location.make
+             ~s:from_expression.expression_loc.loc_start
+             ~e:upto_expression.expression_loc.loc_end
+             ())
           "Can't construct range in for loop. The start and end of your range are not of \
            type int."
   in
@@ -1198,7 +1344,10 @@ and eval_tag ~state tag =
     match (StringMap.find_opt "key" tag_attributes, state.binding_identifier) with
     | None, Some (_optional, ident) -> (ident, { state with binding_identifier = None })
     | Some (String key), _ -> (key, state)
-    | Some _, _ -> failwith "Expected attribute `key` on tag to be of type string"
+    | Some _, _ ->
+        Pinc_Diagnostics.error
+          tag.tag_loc
+          "Expected attribute `key` on tag to be of type string"
     | None, None -> ("", state)
   in
   let path = (state.parent_tag |> Option.value ~default:[]) @ [ key ] in
@@ -1232,8 +1381,14 @@ and eval_tag ~state tag =
     | _, `SetContext ->
         let value =
           tag_attributes |> StringMap.find_opt "value" |> function
-          | None -> failwith "attribute value is required when setting a context."
-          | Some (Function _) -> failwith "a function can not be put into a context."
+          | None ->
+              Pinc_Diagnostics.error
+                tag.tag_loc
+                "attribute value is required when setting a context."
+          | Some (Function _) ->
+              Pinc_Diagnostics.error
+                tag.tag_loc
+                "a function can not be put into a context."
           | Some value -> value
         in
         Hashtbl.add state.context key value;
@@ -1356,7 +1511,10 @@ and eval_declaration ~state declaration =
   | Some Ast.{ declaration_type = Declaration_Page { declaration_body; _ }; _ }
   | Some Ast.{ declaration_type = Declaration_Store { declaration_body; _ }; _ } ->
       eval_expression ~state declaration_body
-  | None -> failwith ("Declaration with name `" ^ declaration ^ "` was not found.")
+  | None ->
+      Pinc_Diagnostics.error
+        Location.none
+        ("Declaration with name `" ^ declaration ^ "` was not found.")
 ;;
 
 let eval_meta ?tag_listeners declarations =
