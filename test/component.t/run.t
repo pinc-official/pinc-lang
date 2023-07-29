@@ -5,5 +5,8 @@
     </section>
 
   $ print . Foo
-  Fatal error: exception Failure("Declaration with name `Foo` was not found.")
-  [2]
+  
+  ERROR 
+  
+  Declaration with name `Foo` was not found.
+  [1]
