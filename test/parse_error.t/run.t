@@ -3,7 +3,7 @@
       
     </div>
   
-  WARNING in file "./empty_template_expression.pi", line 4, characters 5-7
+  WARNING in file ./empty_template_expression.pi:4:5-7
   
   3 │   <div class="Section">
   4 │     {}
@@ -14,7 +14,7 @@
 
   $ print ./tag_transformer_function.pi Component
   
-  ERROR in file "./tag_transformer_function.pi", line 2, characters 22-31
+  ERROR in file ./tag_transformer_function.pi:2:22-31
   
   1 │ component Component {
   2 │   let fail = #String :: _ -> ;
@@ -25,7 +25,7 @@
 
   $ print ./let_without_expression.pi Component
   
-  ERROR in file "./let_without_expression.pi", line 2, characters 3-15
+  ERROR in file ./let_without_expression.pi:2:3-15
   
   1 │ component Component {
   2 │   let fail = ;
@@ -35,7 +35,7 @@
   [1]
   $ print ./mutation_without_expression.pi Component
   
-  ERROR in file "./mutation_without_expression.pi", line 3, characters 3-12
+  ERROR in file ./mutation_without_expression.pi:3:3-12
   
   2 │   let mutable fail = "";
   3 │   fail := ;
