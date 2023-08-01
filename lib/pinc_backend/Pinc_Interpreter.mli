@@ -3,13 +3,15 @@ module Ast = Pinc_Frontend.Ast
 
 module rec Value : sig
   val to_string : value -> string
-  val null : unit -> value
-  val of_string : string -> value
-  val of_bool : bool -> value
-  val of_int : int -> value
-  val of_float : float -> value
-  val of_list : value list -> value
-  val of_string_map : (int * value) StringMap.t -> value
+  val null : value_loc:Pinc_Diagnostics.Location.t -> unit -> value
+  val of_string : value_loc:Pinc_Diagnostics.Location.t -> string -> value
+  val of_bool : value_loc:Pinc_Diagnostics.Location.t -> bool -> value
+  val of_int : value_loc:Pinc_Diagnostics.Location.t -> int -> value
+  val of_float : value_loc:Pinc_Diagnostics.Location.t -> float -> value
+  val of_list : value_loc:Pinc_Diagnostics.Location.t -> value list -> value
+
+  val of_string_map :
+    value_loc:Pinc_Diagnostics.Location.t -> (int * value) StringMap.t -> value
 
   val make_component :
     render:(value StringMap.t -> value) ->

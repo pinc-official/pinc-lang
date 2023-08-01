@@ -1,10 +1,13 @@
-.PHONY: all build install update fmt fmt-check test test-update test-coverage clean clear
-.SILENT: all build install update fmt fmt-check test test-update test-coverage clean clear
+.PHONY: all build dev install update fmt fmt-check test test-update test-coverage clean clear
+.SILENT: all build dev install update fmt fmt-check test test-update test-coverage clean clear
 
 all: build
 
 build:
 	opam exec -- dune build @default
+
+dev:
+	opam exec -- dune build --watch
 
 install:
 	if ! [ -e _opam ]; then \
