@@ -1041,7 +1041,9 @@ and eval_binary_merge ~state left_expression right_expression =
         let result = fn attributes in
         { left with value_desc = ComponentTemplateNode (fn, tag, attributes, result) }
     | ComponentTemplateNode _, _ ->
-        failwith "Trying to merge a non record value onto tag attributes."
+        Pinc_Diagnostics.error
+          right_expression.expression_loc
+          "Trying to merge a non record value onto component attributes."
     | Array _, _ ->
         Pinc_Diagnostics.error
           right_expression.expression_loc
@@ -1416,7 +1418,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
   in
   let check_instance_restriction tag =
     match constraints with
-    | None -> ()
+    | None -> Result.ok ()
     | Some restrictions ->
         let is_in_list = ref false in
         let allowed, disallowed =
@@ -1436,7 +1438,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
           | allowed, _disallowed -> List.mem tag allowed
         in
         if is_allowed then
-          ()
+          Result.ok ()
         else (
           let contraints =
             constraints
@@ -1448,7 +1450,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
                      name)
             |> String.concat ","
           in
-          failwith
+          Result.error
             (Printf.sprintf
                "Child with tag `%s` may not be used inside this #Slot. The following \
                 restrictions are set: [ %s ]"
@@ -1457,10 +1459,12 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
   in
   slotted_elements
   |> List.map (function
-         | ( { value_desc = HtmlTemplateNode (tag_name, _, _, _); _ }
-           | { value_desc = ComponentTemplateNode (_, tag_name, _, _); _ } ) as v ->
-             let () = check_instance_restriction tag_name in
-             v
+         | ( { value_desc = HtmlTemplateNode (tag_name, _, _, _); value_loc }
+           | { value_desc = ComponentTemplateNode (_, tag_name, _, _); value_loc } ) as v
+           -> (
+             match check_instance_restriction tag_name with
+             | Ok () -> v
+             | Error e -> Pinc_Diagnostics.error value_loc e)
          | { value_desc = _; value_loc } ->
              Pinc_Diagnostics.error
                value_loc
@@ -1647,7 +1651,7 @@ and call_tag_listener ~state ~tag ~value_bag t =
   | None -> Result.ok (Value.null ~value_loc:tag.tag_loc ()))
   |> function
   | Ok v -> v |> transformer
-  | Error e -> failwith e
+  | Error e -> Pinc_Diagnostics.error tag.tag_loc e
 
 and eval_tag ~state tag =
   let Ast.{ tag = tag_identifier; attributes; transformer } = tag.tag_desc in
