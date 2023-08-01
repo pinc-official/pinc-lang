@@ -1,6 +1,11 @@
 module Ast = Pinc_Frontend.Ast
 
-type value =
+type value = {
+  value_loc : Pinc_Diagnostics.Location.t;
+  value_desc : value_desc;
+}
+
+and value_desc =
   | Null
   | Portal of value list
   | String of string

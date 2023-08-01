@@ -5,6 +5,8 @@ type t = {
   loc_end : Position.t;
 }
 
+let merge ~s ~e () = { loc_start = s.loc_start; loc_end = e.loc_end }
+
 let make ?e ~s () =
   match e with
   | None -> { loc_start = s; loc_end = s }
