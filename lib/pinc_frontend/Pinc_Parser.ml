@@ -19,22 +19,16 @@ let get_next_token t =
   | Some token -> token
 ;;
 
-let rec next t =
+let next t =
   let token = get_next_token t in
-  match token.typ with
-  | Token.COMMENT -> next t
-  | _ ->
-      t.prev_token <- t.token;
-      t.token <- token
+  t.prev_token <- t.token;
+  t.token <- token
 ;;
 
-let rec peek t =
+let peek t =
   let token = get_next_token t in
-  match token.typ with
-  | Token.COMMENT -> peek t
-  | typ ->
-      Queue.add token t.next;
-      typ
+  Queue.add token t.next;
+  token.typ
 ;;
 
 let optional token t =
@@ -255,6 +249,7 @@ module Rules = struct
       | Token.LEFT_BRACE ->
           let start_token = t.token in
           next t;
+          let has_comment = optional Token.COMMENT t in
           let expression =
             match parse_expression t with
             | Some e -> Ast.ExpressionTemplateNode e
@@ -265,11 +260,12 @@ module Rules = struct
                     ~e:t.token.location.loc_end
                     ()
                 in
-                Diagnostics.warn
-                  location
-                  "Expected to see an expression between these braces. \n\
-                   This is currently not doing anything, so you can safely remove it.\n\
-                   If you wanted to have an empty record here, you need to write `{{}}`";
+                if not has_comment then
+                  Diagnostics.warn
+                    location
+                    "Expected to see an expression between these braces. \n\
+                     This is currently not doing anything, so you can safely remove it.\n\
+                     If you wanted to have an empty record here, you need to write `{{}}`";
                 ExpressionTemplateNode
                   { expression_loc = location; expression_desc = Ast.BlockExpression [] }
           in
@@ -451,6 +447,10 @@ module Rules = struct
     let expr_start = t.token.location.loc_start in
     let* expression_desc =
       match t.token.typ with
+      (* PARSING COMMENT EXPRESSION *)
+      | Token.COMMENT ->
+          next t;
+          Some Ast.Comment
       (* PARSING PARENTHESIZED EXPRESSION *)
       | Token.LEFT_PAREN ->
           next t;

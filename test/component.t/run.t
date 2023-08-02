@@ -1,5 +1,6 @@
   $ print . Component
   <section class="Section">
+      
       <h2 class="HeadlineSecondary ">
   Hello, Headline Secondary!</h2>
     </section>

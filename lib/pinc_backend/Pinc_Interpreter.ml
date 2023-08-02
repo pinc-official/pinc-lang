@@ -311,6 +311,7 @@ let rec eval_statement ~state statement =
 
 and eval_expression ~state expression =
   match expression.expression_desc with
+  | Ast.Comment -> state
   | Ast.Int i ->
       state
       |> State.add_output ~output:(Value.of_int ~value_loc:expression.expression_loc i)

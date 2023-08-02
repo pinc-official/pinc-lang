@@ -153,7 +153,7 @@ let scan_string ~start_pos t =
     match t.current with
     | `EOF ->
         Diagnostics.error
-          (Location.make ~s:start_pos ~e:(make_position t) ())
+          (Location.make ~s:start_pos ())
           "This string is not terminated. Please add a double-quote (\") at the end."
     | `Chr '\\' -> (
         match peek t with
@@ -489,6 +489,38 @@ let skip_comment t =
   skip t
 ;;
 
+let rec skip_block_comment ~start_pos t =
+  next_n ~n:2 t;
+  let rec skip t =
+    match t.current with
+    | `Chr '*' -> (
+        match peek t with
+        | `Chr '/' ->
+            next t;
+            next t;
+            ()
+        | _ ->
+            next t;
+            skip t)
+    | `Chr '/' -> (
+        match peek t with
+        | `Chr '*' ->
+            skip_block_comment ~start_pos:(make_position t) t;
+            skip t
+        | _ ->
+            next t;
+            skip t)
+    | `EOF ->
+        Diagnostics.error
+          (Location.make ~s:start_pos ())
+          "This comment is not terminated. Please add a `*/` at the end."
+    | _ ->
+        next t;
+        skip t
+  in
+  skip t
+;;
+
 let rec scan_template_token ~start_pos t =
   match t.current with
   | `Chr '{' ->
@@ -733,6 +765,9 @@ and scan_normal_token ~start_pos t =
       match peek t with
       | `Chr '/' ->
           skip_comment t;
+          Token.COMMENT
+      | `Chr '*' ->
+          skip_block_comment ~start_pos:(make_position t) t;
           Token.COMMENT
       | _ ->
           next t;

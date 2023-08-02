@@ -63,6 +63,7 @@ and expression = {
 }
 
 and expression_desc =
+  | Comment
   | String of string_template list
   | Int of int
   | Float of float
