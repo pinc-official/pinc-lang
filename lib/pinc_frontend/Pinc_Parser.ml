@@ -6,6 +6,7 @@ module Lexer = Pinc_Lexer
 
 type t = {
   lexer : Lexer.t;
+  mutable prev_token : Token.t;
   mutable token : Token.t;
   next : Token.t Queue.t;
 }
@@ -22,7 +23,9 @@ let rec next t =
   let token = get_next_token t in
   match token.typ with
   | Token.COMMENT -> next t
-  | _ -> t.token <- token
+  | _ ->
+      t.prev_token <- t.token;
+      t.token <- token
 ;;
 
 let rec peek t =
@@ -59,7 +62,9 @@ let make ~filename src =
   let initial_pos = Location.Position.make ~filename ~line:0 ~column:0 in
   let loc = Location.make ~s:initial_pos () in
   let initial_token = Token.make ~loc Token.END_OF_INPUT in
-  let t = { lexer; token = initial_token; next = Queue.create () } in
+  let t =
+    { lexer; prev_token = initial_token; token = initial_token; next = Queue.create () }
+  in
   next t;
   t
 ;;
@@ -329,7 +334,7 @@ module Rules = struct
                })
       | _ -> None
     in
-    let node_end = t.token in
+    let node_end = t.prev_token in
     let template_node_loc =
       Location.make ~s:node_start.location.loc_start ~e:node_end.location.loc_end ()
     in

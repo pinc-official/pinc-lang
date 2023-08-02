@@ -59,21 +59,26 @@ let print_code ~color ~loc ic =
   Fmt.set_style_renderer ppf `Ansi_tty;
   lines
   |> List.iter (fun (line_number, line) ->
-         let is_errored_line =
-           line_number >= highlight_line_start && line_number <= highlight_line_end
-         in
-         if is_errored_line then
-           Fmt.pf ppf "%a" Fmt.(styled `Bold (styled (`Fg color) int)) line_number
+         if line_number >= highlight_line_start && line_number <= highlight_line_end then
+           Fmt.pf
+             ppf
+             "%a"
+             Fmt.(styled `Bold (styled (`Fg color) (fun ppf -> Fmt.pf ppf "%4d")))
+             line_number
          else
-           Fmt.pf ppf "%i" line_number;
+           Fmt.pf ppf "%4d" line_number;
          Fmt.pf ppf " %a " Fmt.(styled `Faint string) "│";
          line
-         |> String.iteri (fun i ch ->
-                if is_errored_line then
-                  if i >= highlight_column_start - 1 && i <= highlight_column_end - 1 then
-                    Fmt.pf ppf "%a" Fmt.(styled `Bold (styled (`Fg color) char)) ch
-                  else
-                    Fmt.pf ppf "%a" Fmt.(styled `None char) ch
+         |> String.iteri (fun column_number ch ->
+                if
+                  line_number = highlight_line_start
+                  && column_number >= highlight_column_start - 1
+                  || line_number = highlight_line_end
+                     && column_number < highlight_column_end - 1
+                  || line_number > highlight_line_start
+                     && line_number < highlight_line_end
+                then
+                  Fmt.pf ppf "%a" Fmt.(styled `Bold (styled (`Fg color) char)) ch
                 else
                   Fmt.pf ppf "%a" Fmt.(styled `None char) ch);
          Format.pp_print_newline ppf ());
@@ -110,7 +115,7 @@ let print_loc ppf (loc : Location.t) =
 ;;
 
 let print_header ppf ~color text =
-  Fmt.pf ppf "%a" Fmt.(styled `Bold (styled (`Fg color) string)) text
+  Fmt.pf ppf "%a" Fmt.(styled `Bold (styled color string)) text
 ;;
 
 let print ~kind ppf (loc : Location.t) =

@@ -37,12 +37,11 @@
 
   $ print . ErrorComponent
   
-  ERROR in file ./data.pi:38:5-39:3
+  ERROR in file ./data.pi:38:5-44
   
-  37 │   <SlotProvider>
-  38 │     <div slot="nothing">Hello Default</div>
-  39 │   </SlotProvider>
-  40 │ }
+    37 │   <SlotProvider>
+    38 │     <div slot="nothing">Hello Default</div>
+    39 │   </SlotProvider>
   
   Child with tag `div` may not be used inside this #Slot. 
   It has an empty array set as constrints, which leads to nothing being allowed to be placed inside.
