@@ -268,7 +268,8 @@ module Rules = struct
                 Diagnostics.warn
                   location
                   "Expected to see an expression between these braces. \n\
-                   This is currently not doing anything, so you can safely remove it.";
+                   This is currently not doing anything, so you can safely remove it.\n\
+                   If you wanted to have an empty record here, you need to write `{{}}`";
                 ExpressionTemplateNode
                   { expression_loc = location; expression_desc = Ast.BlockExpression [] }
           in
@@ -464,6 +465,7 @@ module Rules = struct
             | Token.IDENT_LOWER _ ->
                 let token = peek t in
                 token = Token.COLON || token = Token.QUESTIONMARK
+            | Token.RIGHT_BRACE -> true
             | _ -> false
           in
           if is_record then (

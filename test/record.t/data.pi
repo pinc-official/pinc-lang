@@ -25,7 +25,10 @@ component Component {
     },
   };
 
+  let empty_record = {};
+
   <section>
+    {empty_record}
     {record}
     {record_nested.a}
     {record_nested.d.f}

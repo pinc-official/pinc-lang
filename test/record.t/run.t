@@ -1,5 +1,6 @@
   $ print . Component
   <section>
+      
       1
   foo
   true

@@ -11,6 +11,7 @@
   
   Expected to see an expression between these braces. 
   This is currently not doing anything, so you can safely remove it.
+  If you wanted to have an empty record here, you need to write `{{}}`
 
   $ print ./tag_transformer_function.pi Component
   
