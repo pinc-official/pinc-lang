@@ -28,3 +28,13 @@ component Component(
     }}
   </SlotProvider>
 }
+
+component ErrorComponent(
+  label: "Section",
+  icon: "/images/icons/group.svg",
+  group: "Structure",
+) {
+  <SlotProvider>
+    <div slot="nothing">Hello Default</div>
+  </SlotProvider>
+}

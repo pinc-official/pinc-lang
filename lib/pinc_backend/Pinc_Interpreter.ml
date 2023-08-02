@@ -1419,6 +1419,13 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
   let check_instance_restriction tag =
     match constraints with
     | None -> Result.ok ()
+    | Some [] ->
+        Result.error
+          (Printf.sprintf
+             "Child with tag `%s` may not be used inside this #Slot. \n\
+              It has an empty array set as constrints, which leads to nothing being \
+              allowed to be placed inside."
+             tag)
     | Some restrictions ->
         let is_in_list = ref false in
         let allowed, disallowed =
