@@ -1,0 +1,56 @@
+library String {
+  let length = fn (string) -> {
+    let mutable len = 0;
+    for (_ in string) len := len + 1;
+    len
+  }
+
+  let uppercase_ascii = fn (string) -> {
+    let mutable result = "";
+    for (c in string) {
+      let new_char = if (c >= 'a' && c <= 'z') c - 32 else c
+
+      result := result ++ new_char
+    }
+    result
+  }
+
+  let lowercase_ascii = fn (string) -> {
+    let mutable result = "";
+    for (c in string) {
+      let new_char = if (c >= 'A' && c <= 'Z') c + 32 else c
+
+      result := result ++ new_char
+    }
+    result
+  }
+
+  let capitalize_ascii = fn (string) -> {
+    let mutable result = "";
+    for (index, c in string) {
+      let new_char = if (index == 0 && c >= 'a' && c <= 'z') c - 32 else c
+
+      result := result ++ new_char
+    }
+    result
+  }
+}
+
+component C {
+  let char = 'c';
+
+  <section>
+    String.uppercase_ascii("abcàäöüß"): {String.uppercase_ascii("abcàäöüß")}
+    String.lowercase_ascii("ABCÁÄÖÜß"): {String.lowercase_ascii("ABCÁÄÖÜß")}
+    String.capitalize_ascii("abc"): {String.capitalize_ascii("abc")}
+    String.capitalize_ascii("äöü"): {String.capitalize_ascii("äöü")}
+    {char}
+    {char + 1}
+    {char < 32}
+    {char > 32}
+
+    {for (c in "abc") {
+      c - 32
+    }}
+  </section>
+}

@@ -23,6 +23,7 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected string, got portal value")
     | String s -> Some s
     | Int _ -> Pinc_Diagnostics.(error Location.none "expected string, got int")
+    | Char _ -> Pinc_Diagnostics.(error Location.none "expected string, got char")
     | Float _ -> Pinc_Diagnostics.(error Location.none "expected string, got float")
     | Bool _ -> Pinc_Diagnostics.(error Location.none "expected string, got bool")
     | Array _ -> Pinc_Diagnostics.(error Location.none "expected string, got array")
@@ -44,6 +45,7 @@ module Expect = struct
     | Portal _ -> Pinc_Diagnostics.(error Location.none "expected int, got portal value")
     | String _ -> Pinc_Diagnostics.(error Location.none "expected int, got string")
     | Int i -> Some i
+    | Char _ -> Pinc_Diagnostics.(error Location.none "expected int, got char")
     | Float _ -> Pinc_Diagnostics.(error Location.none "expected int, got float")
     | Bool _ -> Pinc_Diagnostics.(error Location.none "expected int, got bool")
     | Array _ -> Pinc_Diagnostics.(error Location.none "expected int, got array")
@@ -65,6 +67,7 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected float, got portal value")
     | String _ -> Pinc_Diagnostics.(error Location.none "expected float, got string")
     | Int _ -> Pinc_Diagnostics.(error Location.none "expected float, got int")
+    | Char _ -> Pinc_Diagnostics.(error Location.none "expected float, got char")
     | Float f -> Some f
     | Bool _ -> Pinc_Diagnostics.(error Location.none "expected float, got bool")
     | Array _ -> Pinc_Diagnostics.(error Location.none "expected float, got array")
@@ -86,6 +89,7 @@ module Expect = struct
     | Portal _ -> Pinc_Diagnostics.(error Location.none "expected bool, got portal value")
     | String _ -> Pinc_Diagnostics.(error Location.none "expected bool, got string")
     | Int _ -> Pinc_Diagnostics.(error Location.none "expected bool, got int")
+    | Char _ -> Pinc_Diagnostics.(error Location.none "expected bool, got char")
     | Float _ -> Pinc_Diagnostics.(error Location.none "expected bool, got float")
     | Bool b -> Some b
     | Array _ -> Pinc_Diagnostics.(error Location.none "expected bool, got array")
@@ -108,6 +112,7 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected array, got portal value")
     | String _ -> Pinc_Diagnostics.(error Location.none "expected array, got string")
     | Int _ -> Pinc_Diagnostics.(error Location.none "expected array, got int")
+    | Char _ -> Pinc_Diagnostics.(error Location.none "expected array, got char")
     | Float _ -> Pinc_Diagnostics.(error Location.none "expected array, got float")
     | Bool _ -> Pinc_Diagnostics.(error Location.none "expected array, bool")
     | Array a -> Some (a |> Array.to_list |> List.map fn)
@@ -130,6 +135,7 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected record, got portal value")
     | String _ -> Pinc_Diagnostics.(error Location.none "expected record, got string")
     | Int _ -> Pinc_Diagnostics.(error Location.none "expected record, got int")
+    | Char _ -> Pinc_Diagnostics.(error Location.none "expected record, got char")
     | Float _ -> Pinc_Diagnostics.(error Location.none "expected record, got float")
     | Bool _ -> Pinc_Diagnostics.(error Location.none "expected record, got bool")
     | Array _ -> Pinc_Diagnostics.(error Location.none "expected record, got array")
@@ -152,6 +158,7 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected record, got portal value")
     | String _ -> Pinc_Diagnostics.(error Location.none "expected record, got string")
     | Int _ -> Pinc_Diagnostics.(error Location.none "expected record, got int")
+    | Char _ -> Pinc_Diagnostics.(error Location.none "expected record, got char")
     | Float _ -> Pinc_Diagnostics.(error Location.none "expected record, got float")
     | Bool _ -> Pinc_Diagnostics.(error Location.none "expected record, got bool")
     | Array _ -> Pinc_Diagnostics.(error Location.none "expected record, got array")
@@ -176,6 +183,8 @@ module Expect = struct
     | String _ ->
         Pinc_Diagnostics.(error Location.none "expected definition info, got string")
     | Int _ -> Pinc_Diagnostics.(error Location.none "expected definition info, got int")
+    | Char _ ->
+        Pinc_Diagnostics.(error Location.none "expected definition info, got char")
     | Float _ ->
         Pinc_Diagnostics.(error Location.none "expected definition info, got float")
     | Bool _ ->
@@ -225,6 +234,7 @@ module Expect = struct
     | Portal _ -> Pinc_Diagnostics.(error Location.none "expected tag, got portal value")
     | String _ -> Pinc_Diagnostics.(error Location.none "expected tag, got string")
     | Int _ -> Pinc_Diagnostics.(error Location.none "expected tag, got int")
+    | Char _ -> Pinc_Diagnostics.(error Location.none "expected tag, got char")
     | Float _ -> Pinc_Diagnostics.(error Location.none "expected tag, got float")
     | Bool _ -> Pinc_Diagnostics.(error Location.none "expected tag, got bool")
     | Array _ -> Pinc_Diagnostics.(error Location.none "expected tag, got array")

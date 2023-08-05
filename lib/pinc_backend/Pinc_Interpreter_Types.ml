@@ -8,6 +8,7 @@ type value = {
 and value_desc =
   | Null
   | Portal of value list
+  | Char of char
   | String of string
   | Int of int
   | Float of float

@@ -3,11 +3,12 @@ module Ast = Pinc_Frontend.Ast
 module Parser = Pinc_Frontend.Parser
 module Location = Pinc_Diagnostics.Location
 
-exception Loop_Break
-exception Loop_Continue
+exception Loop_Break of state
+exception Loop_Continue of state
 
 module Value = struct
   let null ~value_loc () = { value_loc; value_desc = Null }
+  let of_char ~value_loc c = { value_loc; value_desc = Char c }
   let of_string ~value_loc s = { value_loc; value_desc = String s }
   let of_bool ~value_loc b = { value_loc; value_desc = Bool b }
   let of_int ~value_loc i = { value_loc; value_desc = Int i }
@@ -29,6 +30,7 @@ module Value = struct
     | Portal list -> list |> List.rev_map to_string |> String.concat "\n"
     | Null -> ""
     | String s -> s
+    | Char c -> String.make 1 c
     | Int i -> string_of_int i
     | Float f when Float.is_integer f -> string_of_int (int_of_float f)
     | Float f -> string_of_float f
@@ -49,10 +51,7 @@ module Value = struct
         let b = Buffer.create 1024 in
         m
         |> StringMap.to_seq
-        |> List.of_seq
-        |> List.fast_sort (fun (_key, (index_a, _value)) (_key, (index_b, _value)) ->
-               index_a - index_b)
-        |> List.iter (fun (_key, (_index, value)) ->
+        |> Seq.iter (fun (_key, (_index, value)) ->
                Buffer.add_string b (to_string value);
                Buffer.add_char b '\n');
         Buffer.contents b
@@ -69,6 +68,7 @@ module Value = struct
                  | Function _
                  | String _
                  | Int _
+                 | Char _
                  | Float _
                  | Bool _
                  | Array _
@@ -104,6 +104,7 @@ module Value = struct
     | Null -> false
     | Bool b -> b
     | String s -> s |> String.trim |> String.length > 0
+    | Char _ -> true
     | Int _ -> true
     | Float _ -> true
     | HtmlTemplateNode _ -> true
@@ -121,6 +122,7 @@ module Value = struct
   let rec equal a b =
     match (a.value_desc, b.value_desc) with
     | String a, String b -> String.equal a b
+    | Char a, Char b -> Char.equal a b
     | Int a, Int b -> a = b
     | Float a, Float b -> a = b
     | Float a, Int b -> a = float_of_int b
@@ -148,6 +150,9 @@ module Value = struct
   let compare a b =
     match (a.value_desc, b.value_desc) with
     | String a, String b -> String.compare a b
+    | Char a, Char b -> Char.compare a b
+    | Char a, Int b -> Int.compare (Char.code a) b
+    | Int a, Char b -> Int.compare a (Char.code b)
     | Int a, Int b -> Int.compare a b
     | Float a, Float b -> Float.compare a b
     | Float a, Int b -> Float.compare a (float_of_int b)
@@ -216,40 +221,36 @@ module State = struct
   let update_value_in_scope ~ident ~value t =
     let updated = ref false in
     let rec update_scope state =
-      List.map
-        (function
-          | scope when not !updated ->
-              (List.map (function
-                  | key, binding when (not !updated) && key = ident && binding.is_mutable
-                    ->
-                      updated := true;
-                      (key, { binding with value })
-                  | ( key,
-                      ({
-                         value =
-                           {
-                             value_desc = Function { state = fn_state; parameters; exec };
-                             _;
-                           };
-                         _;
-                       } as binding) )
-                    when not !updated ->
-                      fn_state.environment.scope <- update_scope fn_state;
-                      ( key,
+      state.environment.scope
+      |> List.map
+           (List.map (function
+               | key, binding when key = ident && binding.is_mutable ->
+                   updated := true;
+                   (key, { binding with value })
+               | ( key,
+                   ({
+                      value =
                         {
-                          binding with
-                          value =
-                            {
-                              value with
-                              value_desc = Function { state = fn_state; parameters; exec };
-                            };
-                        } )
-                  | v -> v))
-                scope
-          | scope -> scope)
-        state.environment.scope
+                          value_desc = Function { state = fn_state; parameters; exec };
+                          _;
+                        };
+                      _;
+                    } as binding) )
+                 when not !updated ->
+                   fn_state.environment.scope <- update_scope fn_state;
+                   ( key,
+                     {
+                       binding with
+                       value =
+                         {
+                           value with
+                           value_desc = Function { state = fn_state; parameters; exec };
+                         };
+                     } )
+               | v -> v))
     in
-    t.environment.scope <- update_scope t
+    let new_scope = update_scope t in
+    t.environment.scope <- new_scope
   ;;
 
   let add_value_to_function_scopes ~ident ~value ~is_optional ~is_mutable t =
@@ -305,13 +306,16 @@ let rec eval_statement ~state statement =
   | Ast.MutationStatement (Lowercase_Id ident, expression) ->
       eval_mutation ~state ~ident expression
   | Ast.UseStatement (Uppercase_Id ident, expression) -> eval_use ~state ~ident expression
-  | Ast.BreakStatement _ -> raise_notrace Loop_Break
-  | Ast.ContinueStatement _ -> raise_notrace Loop_Continue
+  | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
+  | Ast.ContinueStatement _ -> raise_notrace (Loop_Continue state)
   | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
 
 and eval_expression ~state expression =
   match expression.expression_desc with
   | Ast.Comment -> state
+  | Ast.Char c ->
+      state
+      |> State.add_output ~output:(Value.of_char ~value_loc:expression.expression_loc c)
   | Ast.Int i ->
       state
       |> State.add_output ~output:(Value.of_int ~value_loc:expression.expression_loc i)
@@ -368,10 +372,15 @@ and eval_expression ~state expression =
         | Some { declaration_type = Ast.Declaration_Site _; _ } -> Some `Site
         | Some { declaration_type = Ast.Declaration_Store _; _ } -> Some `Store
         | Some { declaration_type = Ast.Declaration_Library _; _ } ->
-            (*
-               TODO: Do we really want to evaluate the library with the current state?
-                     Or do we maybe want to create a fresh state?
-            *)
+            let state =
+              State.make
+                ~tag_listeners:state.tag_listeners
+                ~context:state.context
+                ~portals:state.portals
+                ~tag_cache:state.tag_cache
+                ~mode:state.mode
+                state.declarations
+            in
             let declaration = eval_declaration ~state id in
             let top_level_bindings = declaration |> State.get_bindings in
             let used_values = declaration |> State.get_used_values in
@@ -576,6 +585,19 @@ and eval_binary_plus ~state left right =
     Location.merge ~s:left.expression_loc ~e:right.expression_loc ()
   in
   match (a.value_desc, b.value_desc) with
+  | Char a, Char b ->
+      state
+      |> State.add_output
+           ~output:
+             (Value.of_char ~value_loc:merged_value_loc Char.(chr (code a + code b)))
+  | Char a, Int b ->
+      state
+      |> State.add_output
+           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (code a + b)))
+  | Int a, Char b ->
+      state
+      |> State.add_output
+           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (a + code b)))
   | Int a, Int b ->
       state |> State.add_output ~output:(Value.of_int ~value_loc:merged_value_loc (a + b))
   | Float a, Float b ->
@@ -603,6 +625,19 @@ and eval_binary_minus ~state left right =
   let b = right |> eval_expression ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   match (a.value_desc, b.value_desc) with
+  | Char a, Char b ->
+      state
+      |> State.add_output
+           ~output:
+             (Value.of_char ~value_loc:merged_value_loc Char.(chr (code a - code b)))
+  | Char a, Int b ->
+      state
+      |> State.add_output
+           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (code a - b)))
+  | Int a, Char b ->
+      state
+      |> State.add_output
+           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (a - code b)))
   | Int a, Int b ->
       state |> State.add_output ~output:(Value.of_int ~value_loc:merged_value_loc (a - b))
   | Float a, Float b ->
@@ -628,6 +663,19 @@ and eval_binary_times ~state left right =
   let b = right |> eval_expression ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   match (a.value_desc, b.value_desc) with
+  | Char a, Char b ->
+      state
+      |> State.add_output
+           ~output:
+             (Value.of_char ~value_loc:merged_value_loc Char.(chr (code a * code b)))
+  | Char a, Int b ->
+      state
+      |> State.add_output
+           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (code a * b)))
+  | Int a, Char b ->
+      state
+      |> State.add_output
+           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (a * code b)))
   | Int a, Int b ->
       state |> State.add_output ~output:(Value.of_int ~value_loc:merged_value_loc (a * b))
   | Float a, Float b ->
@@ -796,6 +844,21 @@ and eval_binary_concat ~state left right =
   | String a, String b ->
       state
       |> State.add_output ~output:(Value.of_string ~value_loc:merged_value_loc (a ^ b))
+  | String a, Char b ->
+      state
+      |> State.add_output
+           ~output:(Value.of_string ~value_loc:merged_value_loc (a ^ String.make 1 b))
+  | Char a, String b ->
+      state
+      |> State.add_output
+           ~output:(Value.of_string ~value_loc:merged_value_loc (String.make 1 a ^ b))
+  | Char a, Char b ->
+      state
+      |> State.add_output
+           ~output:
+             (Value.of_string
+                ~value_loc:merged_value_loc
+                (String.make 1 a ^ String.make 1 b))
   | String _, _ ->
       Pinc_Diagnostics.error b.value_loc "Trying to concat non string literals."
   | _, String _ ->
@@ -949,6 +1012,19 @@ and eval_binary_bracket_access ~state left right =
   | Array a, Int b ->
       let output =
         try Array.get a b
+        with Invalid_argument _ ->
+          Value.null
+            ~value_loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
+            ()
+      in
+      state |> State.add_output ~output
+  | String a, Int b ->
+      let output =
+        try
+          String.get a b
+          |> Value.of_char
+               ~value_loc:
+                 (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
         with Invalid_argument _ ->
           Value.null
             ~value_loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
@@ -1187,9 +1263,10 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
   let ident, _ident_location = ident in
   let iterable_value = iterable |> eval_expression ~state |> State.get_output in
   let index = ref (-1) in
-  let rec loop acc = function
-    | [] -> List.rev acc
-    | value :: tl -> (
+  let rec loop ~state acc curr =
+    match curr () with
+    | Seq.Nil -> (state, List.rev acc)
+    | Seq.Cons (value, tl) -> (
         index := succ !index;
         let state =
           state
@@ -1207,9 +1284,9 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
           | None -> state
         in
         match eval_statement ~state body with
-        | exception Loop_Continue -> loop acc tl
-        | exception Loop_Break -> List.rev acc
-        | v -> loop (State.get_output v :: acc) tl)
+        | exception Loop_Continue state -> loop ~state acc tl
+        | exception Loop_Break state -> (state, List.rev acc)
+        | state -> loop ~state (State.get_output state :: acc) tl)
   in
   match iterable_value.value_desc with
   | Array l ->
@@ -1220,33 +1297,26 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
         else
           Array.to_seq array
       in
-      let res =
-        l
-        |> to_seq
-        |> List.of_seq
-        |> loop []
-        |> Value.of_list ~value_loc:body.statement_loc
-      in
-      state |> State.add_output ~output:res
+      let state, res = l |> to_seq |> loop ~state [] in
+      state
+      |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.statement_loc)
   | String s ->
-      let res =
-        let aux c =
-          c |> String.make 1 |> Value.of_string ~value_loc:iterable_value.value_loc
-        in
-        let map =
-          if reverse then
-            List.rev_map aux
-          else
-            List.map aux
-        in
+      if reverse then
+        Pinc_Diagnostics.error
+          iterable.expression_loc
+          "Cannot loop through a string in reverse.\n\
+           This restriction might be lifted in the future, but currently reversing a \
+           string might result in unexpected behavior."
+      else
+        ();
+      let state, res =
         s
         |> String.to_seq
-        |> List.of_seq
-        |> map
-        |> loop []
-        |> Value.of_list ~value_loc:body.statement_loc
+        |> Seq.map (Value.of_char ~value_loc:iterable_value.value_loc)
+        |> loop ~state []
       in
-      state |> State.add_output ~output:res
+      state
+      |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.statement_loc)
   | Null -> state |> State.add_output ~output:iterable_value
   | HtmlTemplateNode _ ->
       Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over template node"
@@ -1258,6 +1328,8 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over record value"
   | Int _ ->
       Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over int value"
+  | Char _ ->
+      Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over char value"
   | Float _ ->
       Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over float value"
   | Bool _ ->

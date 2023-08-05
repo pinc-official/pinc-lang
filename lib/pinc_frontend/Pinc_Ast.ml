@@ -65,6 +65,7 @@ and expression = {
 and expression_desc =
   | Comment
   | String of string_template list
+  | Char of char
   | Int of int
   | Float of float
   | Bool of bool

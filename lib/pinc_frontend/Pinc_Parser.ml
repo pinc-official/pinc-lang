@@ -575,6 +575,9 @@ module Rules = struct
       | Token.INT i ->
           next t;
           Ast.(Int i) |> Option.some
+      | Token.CHAR c ->
+          next t;
+          Ast.(Char c) |> Option.some
       | Token.FLOAT f ->
           next t;
           Ast.(Float f) |> Option.some

@@ -7,6 +7,7 @@ type token_type =
   | INT of int
   | FLOAT of float
   | STRING of string
+  | CHAR of char
   | TAG of string
   | LEFT_PAREN
   | RIGHT_PAREN
@@ -87,6 +88,7 @@ let to_string = function
   | FLOAT f -> string_of_float f
   | INT i -> string_of_int i
   | STRING s -> "\"" ^ s ^ "\""
+  | CHAR c -> "'" ^ String.make 1 c ^ "'"
   | IDENT_LOWER s -> String.lowercase_ascii s
   | IDENT_UPPER s -> String.capitalize_ascii s
   | TAG s -> "#" ^ String.capitalize_ascii s
@@ -230,6 +232,7 @@ let is_keyword = function
   | INT _
   | FLOAT _
   | STRING _
+  | CHAR _
   | TAG _
   | HTML_OPEN_TAG _
   | HTML_CLOSE_TAG _

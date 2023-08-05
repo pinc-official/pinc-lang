@@ -161,15 +161,6 @@
   <div class="item">g</div>
   <div class="item">!</div>
   
-      string reverse
-      <div class="item">!</div>
-  <div class="item">g</div>
-  <div class="item">n</div>
-  <div class="item">i</div>
-  <div class="item">r</div>
-  <div class="item">t</div>
-  <div class="item">S</div>
-  
       string array
       <div class="item">0 one</div>
   <div class="item">1 two</div>
@@ -195,3 +186,14 @@
   
     </section>
 
+  $ print . ErrorComponent
+  
+  ERROR in file ./data.pi:136:24-34
+  
+   135 │     string reverse
+   136 │     {for (c in reverse "String!") {
+   137 │       <div class="item">{c}</div>
+  
+  Cannot loop through a string in reverse.
+  This restriction might be lifted in the future, but currently reversing a string might result in unexpected behavior.
+  [1]

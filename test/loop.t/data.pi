@@ -102,11 +102,6 @@ component Component {
       <div class="item">{c}</div>
     }}
 
-    string reverse
-    {for (c in reverse "String!") {
-      <div class="item">{c}</div>
-    }}
-
     string array
     {for (index, s in string_array) {
       <div class="item">{index} {s}</div>
@@ -121,7 +116,7 @@ component Component {
     <h1>BREAK / CONTINUE</h1>
 
     {for (c in "String!") {
-      if (c == "i") continue;
+      if (c == 'i') continue;
 
       c
     }}
@@ -132,5 +127,14 @@ component Component {
       i
     }}
 
+  </section>
+}
+
+component ErrorComponent {
+  <section>
+    string reverse
+    {for (c in reverse "String!") {
+      <div class="item">{c}</div>
+    }}
   </section>
 }

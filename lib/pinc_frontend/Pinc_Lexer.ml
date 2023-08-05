@@ -477,6 +477,25 @@ let scan_number t =
     Token.INT (int_of_string result)
 ;;
 
+let scan_char ~start_pos t =
+  next t;
+  match t.current with
+  | `EOF ->
+      Diagnostics.error
+        (Location.make ~s:start_pos ())
+        "This char is not terminated. Please add a single-quote (\') at the end."
+  | `Chr c -> (
+      next t;
+      match t.current with
+      | `Chr '\'' ->
+          next t;
+          Token.CHAR c
+      | _ ->
+          Diagnostics.error
+            (Location.make ~s:start_pos ())
+            "This char is not terminated. Please add a single-quote (\') at the end.")
+;;
+
 let skip_comment t =
   let rec skip t =
     match t.current with
@@ -694,6 +713,7 @@ and scan_normal_token ~start_pos t =
   match t.current with
   | `Chr 'A' .. 'Z' | `Chr 'a' .. 'z' | `Chr '_' -> scan_ident t
   | `Chr '0' .. '9' -> scan_number t
+  | `Chr '\'' -> scan_char ~start_pos t
   | `Chr '"' ->
       next t;
       setMode String t;
