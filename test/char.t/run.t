@@ -4,13 +4,19 @@
       String.lowercase_ascii("ABCÁÄÖÜß"): abcÁÄÖÜß
       String.capitalize_ascii("abc"): Abc
       String.capitalize_ascii("äöü"): äöü
-      c
-      d
-      false
-      true
   
-      A
-  B
-  C
+      char: c
+      char + 1: d
+      char < 32: false
+      char > 32: true
+  
+      !
+      !
+      \
+      
+  
+      '
+      	
+      �
     </section>
 

@@ -7,7 +7,7 @@ type token_type =
   | INT of int
   | FLOAT of float
   | STRING of string
-  | CHAR of char
+  | CHAR of Uchar.t
   | TAG of string
   | LEFT_PAREN
   | RIGHT_PAREN

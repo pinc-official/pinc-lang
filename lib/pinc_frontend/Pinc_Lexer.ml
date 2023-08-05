@@ -129,6 +129,53 @@ let rec skip_whitespace t =
     skip_whitespace t)
 ;;
 
+let scan_escape t =
+  let digit_value ch =
+    match ch with
+    | `Chr ('0' .. '9' as ch) -> Char.code ch - 48
+    | `Chr ('a' .. 'f' as ch) -> Char.code ch - Char.code 'a' + 10
+    | `Chr ('A' .. 'F' as ch) -> Char.code ch + 32 - Char.code 'a' + 10
+    | _ -> 16
+  in
+  let convert_number t ~n ~base =
+    let x = ref 0 in
+    for _ = n downto 1 do
+      let d = digit_value t.current in
+      x := (!x * base) + d;
+      next t
+    done;
+    Char.chr !x
+  in
+  match t.current with
+  | `Chr '0' .. '9' -> convert_number t ~n:3 ~base:10
+  | `Chr 'b' ->
+      next t;
+      '\008'
+  | `Chr 'n' ->
+      next t;
+      '\010'
+  | `Chr 'r' ->
+      next t;
+      '\013'
+  | `Chr 't' ->
+      next t;
+      '\009'
+  | `Chr 'x' ->
+      next t;
+      convert_number t ~n:2 ~base:16
+  | `Chr 'o' ->
+      next t;
+      convert_number t ~n:3 ~base:8
+  | `Chr ch ->
+      next t;
+      ch
+  | `EOF ->
+      let pos = make_position t in
+      Diagnostics.error
+        (Location.make ~s:pos ())
+        "This escape sequence is not terminated."
+;;
+
 let scan_ident t =
   let buf = Buffer.create 32 in
   (* NOTE: List all vaid chars for identifiers here: *)
@@ -479,21 +526,60 @@ let scan_number t =
 
 let scan_char ~start_pos t =
   next t;
+  let res =
+    match t.current with
+    | `EOF ->
+        Diagnostics.error
+          (Location.make ~s:start_pos ())
+          "This char is not terminated. Please add a single-quote (\') at the end."
+    | `Chr '\\' -> (
+        match peek t with
+        | `Chr ' ' ->
+            next_n ~n:2 t;
+            ' '
+        | `Chr '"' ->
+            next_n ~n:2 t;
+            '"'
+        | `Chr '\'' ->
+            next_n ~n:2 t;
+            '\''
+        | `Chr 'b' ->
+            next_n ~n:2 t;
+            '\b'
+        | `Chr 'f' ->
+            next_n ~n:2 t;
+            '\012'
+        | `Chr 'n' ->
+            next_n ~n:2 t;
+            '\n'
+        | `Chr 'r' ->
+            next_n ~n:2 t;
+            '\r'
+        | `Chr 't' ->
+            next_n ~n:2 t;
+            '\t'
+        | `Chr '\\' ->
+            next_n ~n:2 t;
+            '\\'
+        | `Chr _ ->
+            next t;
+            scan_escape t
+        | `EOF ->
+            Diagnostics.error
+              (Location.make ~s:start_pos ~e:(make_position t) ())
+              "This char is not terminated. Please add a single-quote (') at the end.")
+    | `Chr c ->
+        next t;
+        c
+  in
   match t.current with
-  | `EOF ->
+  | `Chr '\'' ->
+      next t;
+      Token.CHAR (Uchar.of_char res)
+  | _ ->
       Diagnostics.error
         (Location.make ~s:start_pos ())
         "This char is not terminated. Please add a single-quote (\') at the end."
-  | `Chr c -> (
-      next t;
-      match t.current with
-      | `Chr '\'' ->
-          next t;
-          Token.CHAR c
-      | _ ->
-          Diagnostics.error
-            (Location.make ~s:start_pos ())
-            "This char is not terminated. Please add a single-quote (\') at the end.")
 ;;
 
 let skip_comment t =

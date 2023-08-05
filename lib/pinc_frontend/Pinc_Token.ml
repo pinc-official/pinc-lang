@@ -7,7 +7,7 @@ type token_type =
   | INT of int
   | FLOAT of float
   | STRING of string
-  | CHAR of char
+  | CHAR of Uchar.t
   | TAG of string
   | LEFT_PAREN
   | RIGHT_PAREN
@@ -88,7 +88,10 @@ let to_string = function
   | FLOAT f -> string_of_float f
   | INT i -> string_of_int i
   | STRING s -> "\"" ^ s ^ "\""
-  | CHAR c -> "'" ^ String.make 1 c ^ "'"
+  | CHAR c ->
+      let buf = Buffer.create 32 in
+      c |> Buffer.add_utf_8_uchar buf;
+      "'" ^ Buffer.contents buf ^ "'"
   | IDENT_LOWER s -> String.lowercase_ascii s
   | IDENT_UPPER s -> String.capitalize_ascii s
   | TAG s -> "#" ^ String.capitalize_ascii s

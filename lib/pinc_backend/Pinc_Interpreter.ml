@@ -30,7 +30,10 @@ module Value = struct
     | Portal list -> list |> List.rev_map to_string |> String.concat "\n"
     | Null -> ""
     | String s -> s
-    | Char c -> String.make 1 c
+    | Char c ->
+        let buf = Buffer.create 32 in
+        c |> Buffer.add_utf_8_uchar buf;
+        Buffer.contents buf
     | Int i -> string_of_int i
     | Float f when Float.is_integer f -> string_of_int (int_of_float f)
     | Float f -> string_of_float f
@@ -122,7 +125,7 @@ module Value = struct
   let rec equal a b =
     match (a.value_desc, b.value_desc) with
     | String a, String b -> String.equal a b
-    | Char a, Char b -> Char.equal a b
+    | Char a, Char b -> Uchar.equal a b
     | Int a, Int b -> a = b
     | Float a, Float b -> a = b
     | Float a, Int b -> a = float_of_int b
@@ -150,9 +153,9 @@ module Value = struct
   let compare a b =
     match (a.value_desc, b.value_desc) with
     | String a, String b -> String.compare a b
-    | Char a, Char b -> Char.compare a b
-    | Char a, Int b -> Int.compare (Char.code a) b
-    | Int a, Char b -> Int.compare a (Char.code b)
+    | Char a, Char b -> Uchar.compare a b
+    | Char a, Int b -> Int.compare (Uchar.to_int a) b
+    | Int a, Char b -> Int.compare a (Uchar.to_int b)
     | Int a, Int b -> Int.compare a b
     | Float a, Float b -> Float.compare a b
     | Float a, Int b -> Float.compare a (float_of_int b)
@@ -589,15 +592,19 @@ and eval_binary_plus ~state left right =
       state
       |> State.add_output
            ~output:
-             (Value.of_char ~value_loc:merged_value_loc Char.(chr (code a + code b)))
+             (Value.of_char
+                ~value_loc:merged_value_loc
+                Uchar.(of_int (to_int a + to_int b)))
   | Char a, Int b ->
       state
       |> State.add_output
-           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (code a + b)))
+           ~output:
+             (Value.of_char ~value_loc:merged_value_loc Uchar.(of_int (to_int a + b)))
   | Int a, Char b ->
       state
       |> State.add_output
-           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (a + code b)))
+           ~output:
+             (Value.of_char ~value_loc:merged_value_loc Uchar.(of_int (a + to_int b)))
   | Int a, Int b ->
       state |> State.add_output ~output:(Value.of_int ~value_loc:merged_value_loc (a + b))
   | Float a, Float b ->
@@ -629,15 +636,19 @@ and eval_binary_minus ~state left right =
       state
       |> State.add_output
            ~output:
-             (Value.of_char ~value_loc:merged_value_loc Char.(chr (code a - code b)))
+             (Value.of_char
+                ~value_loc:merged_value_loc
+                Uchar.(of_int (to_int a - to_int b)))
   | Char a, Int b ->
       state
       |> State.add_output
-           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (code a - b)))
+           ~output:
+             (Value.of_char ~value_loc:merged_value_loc Uchar.(of_int (to_int a - b)))
   | Int a, Char b ->
       state
       |> State.add_output
-           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (a - code b)))
+           ~output:
+             (Value.of_char ~value_loc:merged_value_loc Uchar.(of_int (a - to_int b)))
   | Int a, Int b ->
       state |> State.add_output ~output:(Value.of_int ~value_loc:merged_value_loc (a - b))
   | Float a, Float b ->
@@ -667,15 +678,19 @@ and eval_binary_times ~state left right =
       state
       |> State.add_output
            ~output:
-             (Value.of_char ~value_loc:merged_value_loc Char.(chr (code a * code b)))
+             (Value.of_char
+                ~value_loc:merged_value_loc
+                Uchar.(of_int (to_int a * to_int b)))
   | Char a, Int b ->
       state
       |> State.add_output
-           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (code a * b)))
+           ~output:
+             (Value.of_char ~value_loc:merged_value_loc Uchar.(of_int (to_int a * b)))
   | Int a, Char b ->
       state
       |> State.add_output
-           ~output:(Value.of_char ~value_loc:merged_value_loc Char.(chr (a * code b)))
+           ~output:
+             (Value.of_char ~value_loc:merged_value_loc Uchar.(of_int (a * to_int b)))
   | Int a, Int b ->
       state |> State.add_output ~output:(Value.of_int ~value_loc:merged_value_loc (a * b))
   | Float a, Float b ->
@@ -840,30 +855,30 @@ and eval_binary_concat ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
-  match (a.value_desc, b.value_desc) with
-  | String a, String b ->
-      state
-      |> State.add_output ~output:(Value.of_string ~value_loc:merged_value_loc (a ^ b))
-  | String a, Char b ->
-      state
-      |> State.add_output
-           ~output:(Value.of_string ~value_loc:merged_value_loc (a ^ String.make 1 b))
-  | Char a, String b ->
-      state
-      |> State.add_output
-           ~output:(Value.of_string ~value_loc:merged_value_loc (String.make 1 a ^ b))
-  | Char a, Char b ->
-      state
-      |> State.add_output
-           ~output:
-             (Value.of_string
-                ~value_loc:merged_value_loc
-                (String.make 1 a ^ String.make 1 b))
-  | String _, _ ->
-      Pinc_Diagnostics.error b.value_loc "Trying to concat non string literals."
-  | _, String _ ->
-      Pinc_Diagnostics.error a.value_loc "Trying to concat non string literals."
-  | _ -> Pinc_Diagnostics.error merged_value_loc "Trying to concat non string literals."
+  let buf = Buffer.create 32 in
+  let () =
+    match (a.value_desc, b.value_desc) with
+    | String a, String b ->
+        Buffer.add_string buf a;
+        Buffer.add_string buf b
+    | String a, Char b ->
+        Buffer.add_string buf a;
+        Buffer.add_utf_8_uchar buf b
+    | Char a, String b ->
+        Buffer.add_utf_8_uchar buf a;
+        Buffer.add_string buf b
+    | Char a, Char b ->
+        Buffer.add_utf_8_uchar buf a;
+        Buffer.add_utf_8_uchar buf b
+    | String _, _ ->
+        Pinc_Diagnostics.error b.value_loc "Trying to concat non string literals."
+    | _, String _ ->
+        Pinc_Diagnostics.error a.value_loc "Trying to concat non string literals."
+    | _ -> Pinc_Diagnostics.error merged_value_loc "Trying to concat non string literals."
+  in
+  state
+  |> State.add_output
+       ~output:(Value.of_string ~value_loc:merged_value_loc (Buffer.contents buf))
 
 and eval_binary_dot_access ~state left right =
   let left_value = left |> eval_expression ~state |> State.get_output in
@@ -1021,7 +1036,8 @@ and eval_binary_bracket_access ~state left right =
   | String a, Int b ->
       let output =
         try
-          String.get a b
+          String.get_utf_8_uchar a b
+          |> Uchar.utf_decode_uchar
           |> Value.of_char
                ~value_loc:
                  (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
@@ -1311,8 +1327,9 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
         ();
       let state, res =
         s
-        |> String.to_seq
-        |> Seq.map (Value.of_char ~value_loc:iterable_value.value_loc)
+        |> CCUtf8_string.of_string_exn
+        |> CCUtf8_string.to_seq
+        |> Seq.map (fun c -> c |> Value.of_char ~value_loc:iterable_value.value_loc)
         |> loop ~state []
       in
       state
