@@ -51,6 +51,8 @@ let get_declarations_from ~directory () =
 ;;
 
 let main =
+  Printexc.record_backtrace true;
+
   let directory = Sys.argv.(1) in
   let root = Sys.argv.(2) in
   let declarations = get_declarations_from ~directory () in
