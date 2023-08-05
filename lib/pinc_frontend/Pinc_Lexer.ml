@@ -144,22 +144,25 @@ let scan_escape t =
       x := (!x * base) + d;
       next t
     done;
-    Char.chr !x
+    Uchar.of_int !x
   in
   match t.current with
   | `Chr '0' .. '9' -> convert_number t ~n:3 ~base:10
   | `Chr 'b' ->
       next t;
-      '\008'
+      Uchar.of_char '\008'
   | `Chr 'n' ->
       next t;
-      '\010'
+      Uchar.of_char '\010'
   | `Chr 'r' ->
       next t;
-      '\013'
+      Uchar.of_char '\013'
   | `Chr 't' ->
       next t;
-      '\009'
+      Uchar.of_char '\009'
+  | `Chr 'f' ->
+      next t;
+      Uchar.of_char '\012'
   | `Chr 'x' ->
       next t;
       convert_number t ~n:2 ~base:16
@@ -168,7 +171,7 @@ let scan_escape t =
       convert_number t ~n:3 ~base:8
   | `Chr ch ->
       next t;
-      ch
+      Uchar.of_char ch
   | `EOF ->
       let pos = make_position t in
       Diagnostics.error
@@ -536,31 +539,16 @@ let scan_char ~start_pos t =
         match peek t with
         | `Chr ' ' ->
             next_n ~n:2 t;
-            ' '
+            Uchar.of_char ' '
         | `Chr '"' ->
             next_n ~n:2 t;
-            '"'
+            Uchar.of_char '"'
         | `Chr '\'' ->
             next_n ~n:2 t;
-            '\''
-        | `Chr 'b' ->
-            next_n ~n:2 t;
-            '\b'
-        | `Chr 'f' ->
-            next_n ~n:2 t;
-            '\012'
-        | `Chr 'n' ->
-            next_n ~n:2 t;
-            '\n'
-        | `Chr 'r' ->
-            next_n ~n:2 t;
-            '\r'
-        | `Chr 't' ->
-            next_n ~n:2 t;
-            '\t'
+            Uchar.of_char '\''
         | `Chr '\\' ->
             next_n ~n:2 t;
-            '\\'
+            Uchar.of_char '\\'
         | `Chr _ ->
             next t;
             scan_escape t
@@ -570,12 +558,12 @@ let scan_char ~start_pos t =
               "This char is not terminated. Please add a single-quote (') at the end.")
     | `Chr c ->
         next t;
-        c
+        Uchar.of_char c
   in
   match t.current with
   | `Chr '\'' ->
       next t;
-      Token.CHAR (Uchar.of_char res)
+      Token.CHAR res
   | _ ->
       Diagnostics.error
         (Location.make ~s:start_pos ())
