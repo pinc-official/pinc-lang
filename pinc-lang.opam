@@ -10,6 +10,7 @@ depends: [
   "ocaml"
   "fmt"
   "dune" {>= "3.6"}
+  "crunch"
   "containers"
   "bisect_ppx" {with-test}
   "odoc" {with-doc}

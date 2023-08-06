@@ -1974,7 +1974,44 @@ let eval_meta ?tag_listeners declarations =
              `Store (eval declaration_attributes))
 ;;
 
+let get_stdlib () =
+  let open Pinc_Includes in
+  Includes.file_list
+  |> List.fold_left
+       (fun acc filename ->
+         let decls = filename |> Includes.read |> Option.get |> Parser.parse ~filename in
+         let f key x y =
+           match (x, y) with
+           | None, Some y -> Some y
+           | Some x, None -> Some x
+           | Some _, Some _ ->
+               Pinc_Diagnostics.error
+                 (Pinc_Diagnostics.Location.make
+                    ~s:
+                      (Pinc_Diagnostics.Location.Position.make
+                         ~filename
+                         ~line:0
+                         ~column:0)
+                    ())
+                 ("Found multiple declarations with identifier " ^ key)
+           | None, None -> None
+         in
+         StringMap.merge f acc decls)
+       StringMap.empty
+;;
+
 let eval ?tag_listeners ~root declarations =
+  let base_lib = get_stdlib () in
+  let declarations =
+    StringMap.merge
+      (fun _key x y ->
+        match (x, y) with
+        | Some _, Some decl -> Some decl
+        | None, Some decl | Some decl, None -> Some decl
+        | None, None -> None)
+      base_lib
+      declarations
+  in
   let state = State.make ?tag_listeners declarations ~mode:Portal_Collection in
   let state = eval_declaration ~state root in
   if state.portals |> Hashtbl.length > 0 then

@@ -9,5 +9,11 @@ site Docs(
 ) {
   let floats? = [1_000.462, 1., 1.4332, .5, 1e10, 1e+2, 1e-5, 1.e-2, 0.1e-1];
 
-  floats[0]
+  let fruits = "    apples,oranges,bannanas    ";
+
+  <>
+    {fruits |> Base.String.trim |> Base.String.split(',')}
+
+    {floats[0]}
+  </>
 }

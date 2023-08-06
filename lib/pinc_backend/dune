@@ -1,6 +1,6 @@
 (library
  (name Pinc_Backend)
  (public_name pinc-lang.backend)
- (libraries Pinc_Diagnostics Pinc_Frontend containers)
+ (libraries Pinc_Diagnostics Pinc_Frontend Pinc_Includes containers)
  (instrumentation
   (backend bisect_ppx)))

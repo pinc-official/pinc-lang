@@ -24,6 +24,7 @@
   ocaml
   fmt
   dune
+  crunch
   containers
   (bisect_ppx :with-test)
   ; (ocaml-lsp-server :with-dev-setup)
