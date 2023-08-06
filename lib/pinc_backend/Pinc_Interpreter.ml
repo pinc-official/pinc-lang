@@ -1317,21 +1317,19 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       state
       |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.statement_loc)
   | String s ->
-      if reverse then
-        Pinc_Diagnostics.error
-          iterable.expression_loc
-          "Cannot loop through a string in reverse.\n\
-           This restriction might be lifted in the future, but currently reversing a \
-           string might result in unexpected behavior."
-      else
-        ();
-      let state, res =
-        s
-        |> CCUtf8_string.of_string_exn
-        |> CCUtf8_string.to_seq
-        |> Seq.map (fun c -> c |> Value.of_char ~value_loc:iterable_value.value_loc)
-        |> loop ~state []
+      let map s =
+        if reverse then
+          s
+          |> CCUtf8_string.to_seq
+          |> CCSeq.to_rev_list
+          |> List.to_seq
+          |> Seq.map (fun c -> c |> Value.of_char ~value_loc:iterable_value.value_loc)
+        else
+          s
+          |> CCUtf8_string.to_seq
+          |> Seq.map (fun c -> c |> Value.of_char ~value_loc:iterable_value.value_loc)
       in
+      let state, res = s |> CCUtf8_string.of_string_exn |> map |> loop ~state [] in
       state
       |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.statement_loc)
   | Null -> state |> State.add_output ~output:iterable_value

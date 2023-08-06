@@ -102,6 +102,11 @@ component Component {
       <div class="item">{c}</div>
     }}
 
+    string reverse
+    {for (c in reverse "Sträinèg!") {
+      <div class="item">{c}</div>
+    }}
+
     string array
     {for (index, s in string_array) {
       <div class="item">{index} {s}</div>
@@ -127,14 +132,5 @@ component Component {
       i
     }}
 
-  </section>
-}
-
-component ErrorComponent {
-  <section>
-    string reverse
-    {for (c in reverse "String!") {
-      <div class="item">{c}</div>
-    }}
   </section>
 }
