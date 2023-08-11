@@ -1299,7 +1299,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
                    ~is_optional:false
           | None -> state
         in
-        match eval_statement ~state body with
+        match eval_expression ~state body with
         | exception Loop_Continue state -> loop ~state acc tl
         | exception Loop_Break state -> (state, List.rev acc)
         | state -> loop ~state (State.get_output state :: acc) tl)
@@ -1315,7 +1315,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       in
       let state, res = l |> to_seq |> loop ~state [] in
       state
-      |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.statement_loc)
+      |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.expression_loc)
   | String s ->
       let map s =
         if reverse then
@@ -1331,7 +1331,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       in
       let state, res = s |> CCUtf8_string.of_string_exn |> map |> loop ~state [] in
       state
-      |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.statement_loc)
+      |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.expression_loc)
   | Null -> state |> State.add_output ~output:iterable_value
   | HtmlTemplateNode _ ->
       Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over template node"

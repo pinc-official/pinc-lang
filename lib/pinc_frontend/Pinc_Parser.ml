@@ -183,6 +183,23 @@ module Rules = struct
         value |> Option.map (fun value -> (key, (nullable, value)))
     | _ -> None
 
+  and parse_block t =
+    let expr_start = t.token.location.loc_start in
+    let* expression_desc =
+      match t.token.typ with
+      | Token.LEFT_BRACE ->
+          next t;
+          let statements = t |> Helpers.list ~fn:parse_statement in
+          t |> expect Token.RIGHT_BRACE;
+          Ast.BlockExpression statements |> Option.some
+      | _ ->
+          let* statement = parse_statement t in
+          Ast.BlockExpression [ statement ] |> Option.some
+    in
+    let expr_end = t.token.location.loc_end in
+    let expression_loc = Location.make ~s:expr_start ~e:expr_end () in
+    Ast.{ expression_desc; expression_loc } |> Option.some
+
   and parse_tag ~name t =
     let start_token = t.token in
     let attributes =
@@ -430,9 +447,8 @@ module Rules = struct
           let _ = optional Token.SEMICOLON t in
           Some (Ast.UseStatement (Uppercase_Id identifier, expression))
       | _ ->
-          let expr = parse_expression t in
-          let _ = optional Token.SEMICOLON t in
-          expr |> Option.map (fun expression -> Ast.ExpressionStatement expression)
+          let* expr = parse_expression t in
+          Some (Ast.ExpressionStatement expr)
     in
     let statement_end = t.token in
     let statement_loc =
@@ -501,10 +517,10 @@ module Rules = struct
           let reverse = optional Token.KEYWORD_REVERSE t in
           let* expr1 = parse_expression t in
           let _ = optional Token.RIGHT_PAREN t in
-          let body = parse_statement t in
+          let body = parse_block t in
           match body with
           | None ->
-              Diagnostics.error t.token.location "Expected statement as body of for loop"
+              Diagnostics.error t.token.location "Expected expression as body of for loop"
           | Some body ->
               Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }
               |> Option.some)
@@ -517,7 +533,7 @@ module Rules = struct
           in
           expect Token.RIGHT_PAREN t;
           expect Token.ARROW t;
-          let* body = t |> parse_expression in
+          let* body = t |> parse_block in
           Ast.Function { parameters; body } |> Option.some
       (* PARSING IF EXPRESSION *)
       | Token.KEYWORD_IF ->
@@ -630,49 +646,52 @@ module Rules = struct
 
   and parse_expression ?(prio = -999) t =
     let rec loop ~prio ~left t =
-      match parse_binary_operator t with
-      | None -> left
-      | Some { precedence; _ } when precedence < prio -> left
-      | Some { typ = Ast.Operators.Binary.FUNCTION_CALL; closing_token; _ } ->
-          let expression_start = t.token.location.loc_start in
-          next t;
-          let arguments =
-            t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression
-          in
-          let expression_end = t.token.location.loc_end in
-          let expression_desc =
-            Ast.FunctionCall { function_definition = left; arguments }
-          in
-          let expression_loc = Location.make ~s:expression_start ~e:expression_end () in
-          let function_call = Ast.{ expression_desc; expression_loc } in
-          let expect_close token = expect token t in
-          let () = Option.iter expect_close closing_token in
-          loop ~left:function_call ~prio t
-      | Some { typ = operator; precedence; assoc; closing_token } -> (
-          let expression_start = t.token.location.loc_start in
-          next t;
-          let new_prio =
-            match assoc with
-            | Left -> precedence + 1
-            | Right -> precedence
-          in
-          match parse_expression ~prio:new_prio t with
-          | None ->
-              Diagnostics.error
-                t.token.location
-                ("Expected expression on right hand side of `"
-                ^ Ast.Operators.Binary.to_string operator
-                ^ "`")
-          | Some right ->
-              let expect_close token = expect token t in
-              let () = Option.iter expect_close closing_token in
-              let expression_end = t.token.location.loc_end in
-              let expression_desc = Ast.BinaryExpression (left, operator, right) in
-              let expression_loc =
-                Location.make ~s:expression_start ~e:expression_end ()
-              in
-              let left = Ast.{ expression_desc; expression_loc } in
-              loop ~left ~prio t)
+      if optional Token.SEMICOLON t then
+        left
+      else (
+        match parse_binary_operator t with
+        | None -> left
+        | Some { precedence; _ } when precedence < prio -> left
+        | Some { typ = Ast.Operators.Binary.FUNCTION_CALL; closing_token; _ } ->
+            let expression_start = t.token.location.loc_start in
+            next t;
+            let arguments =
+              t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression
+            in
+            let expression_end = t.token.location.loc_end in
+            let expression_desc =
+              Ast.FunctionCall { function_definition = left; arguments }
+            in
+            let expression_loc = Location.make ~s:expression_start ~e:expression_end () in
+            let function_call = Ast.{ expression_desc; expression_loc } in
+            let expect_close token = expect token t in
+            let () = Option.iter expect_close closing_token in
+            loop ~left:function_call ~prio t
+        | Some { typ = operator; precedence; assoc; closing_token } -> (
+            let expression_start = t.token.location.loc_start in
+            next t;
+            let new_prio =
+              match assoc with
+              | Left -> precedence + 1
+              | Right -> precedence
+            in
+            match parse_expression ~prio:new_prio t with
+            | None ->
+                Diagnostics.error
+                  t.token.location
+                  ("Expected expression on right hand side of `"
+                  ^ Ast.Operators.Binary.to_string operator
+                  ^ "`")
+            | Some right ->
+                let expect_close token = expect token t in
+                let () = Option.iter expect_close closing_token in
+                let expression_end = t.token.location.loc_end in
+                let expression_desc = Ast.BinaryExpression (left, operator, right) in
+                let expression_loc =
+                  Location.make ~s:expression_start ~e:expression_end ()
+                in
+                let left = Ast.{ expression_desc; expression_loc } in
+                loop ~left ~prio t))
     in
     let* left = parse_expression_part t in
     Some (loop ~prio ~left t)

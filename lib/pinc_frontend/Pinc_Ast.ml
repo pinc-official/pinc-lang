@@ -87,7 +87,7 @@ and expression_desc =
       iterator : lowercase_identifier;
       reverse : bool;
       iterable : expression;
-      body : statement;
+      body : expression;
     }
   | TemplateExpression of template_node list
   | BlockExpression of statement list
