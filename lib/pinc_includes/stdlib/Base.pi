@@ -1,4 +1,5 @@
 library Base {
   use Char = Base__Char;
   use String = Base__String;
+  use Array = Base__Array;
 }

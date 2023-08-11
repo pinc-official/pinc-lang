@@ -1,0 +1,148 @@
+library Base__Array {
+  let make = fn (length) -> {
+    0..length
+  }
+
+  let init = fn (length, f) -> {
+    for (index in make(length)) {
+      f(index)
+    }
+  }
+
+  let length = fn (array) -> {
+    let mutable len = 0;
+    for (_ in array) len := len + 1;
+    len
+  }
+
+  let map = fn (array, f) -> {
+    for (item in array) {
+      f(item)
+    }
+  }
+
+  let map_reverse = fn (array, f) -> {
+    for (item in reverse array) {
+      f(item)
+    }
+  }
+
+  let mapi = fn (array, f) -> {
+    for (index, item in array) {
+      f(index, item)
+    }
+  }
+
+  let mapi_reverse = fn (array, f) -> {
+    for (index, item in reverse array) {
+      f(index, item)
+    }
+  }
+
+  let partition = fn (array, condition) -> {
+    let len = Base.Array.length(array);
+    let part = fn (yes, no, index) -> {
+      if index == len {
+        [yes, no]
+      } else {
+        let item = array[index];
+        if condition(item) {
+          part(yes <- item, no, index + 1);
+        } else {
+          part(yes, no <- item, index + 1);
+        }
+      }
+    };
+    part([], [], 0)
+  }
+
+  let filter = fn (array, condition) -> {
+    let len = Base.Array.length(array);
+    let aux = fn (acc, index) -> {
+      if index == len {
+        acc
+      } else {
+        let item = array[index];
+        if condition(item) {
+          aux(acc <- item, index + 1);
+        } else {
+          aux(acc, index + 1);
+        }
+      }
+    };
+    aux([], 0)
+  }
+
+  let keep = filter
+
+  let find = fn (array, condition) -> {
+    let len = Base.Array.length(array);
+    let aux = fn (index) -> {
+      if index < len {
+        let item = array[index];
+        if condition(item) {
+          item
+        } else {
+          aux(index + 1);
+        }
+      }
+    };
+    aux(0)
+  }
+
+  let exists = fn (array, condition) -> {
+    let len = Base.Array.length(array);
+    let aux = fn (index) -> {
+      if index < len {
+        let item = array[index];
+        if condition(item) {
+          true
+        } else {
+          aux(index + 1);
+        }
+      } else {
+        false
+      }
+    };
+    aux(0)
+  }
+
+  let some = exists
+
+  let for_all = fn (array, condition) -> {
+    let len = Base.Array.length(array);
+    let aux = fn (acc, index) -> {
+      if index == len || acc == false {
+        acc
+      } else {
+        let item = array[index];
+        aux(acc && condition(item), index + 1);
+      }
+    };
+
+    aux(true, 0)
+  }
+
+  let every = for_all
+
+  let fold_left = fn(array, init, f) -> {
+    let len = Base.Array.length(array);
+    let aux = fn (acc, index) -> {
+      if index == len || acc == false {
+        acc
+      } else {
+        let item = array[index];
+        let acc = f(acc, item);
+        aux(acc, index + 1);
+      }
+    };
+
+    aux(init, 0)
+  }
+
+  let reduce = fold_left
+
+  let nth = fn (array, index) -> {
+    array[index]
+  }
+}

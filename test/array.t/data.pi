@@ -12,6 +12,10 @@ component C {
   let nested_array = new_array <- (merged_array <- merged_record_2);
   let index = 8;
 
+  let partitioned = merged_array_2 |> Base.Array.partition(fn (item) -> {item % 2 == 0});
+  let even = partitioned[0];
+  let odd = partitioned[1];
+
   <section>
     {array}
 
@@ -28,5 +32,33 @@ component C {
 
     {nested_array[2 + 3 * 1][index]["y"]}
     {nested_array[2 + 3 * 1][index].y}
+
+    {even}
+
+    {odd}
+
+    {merged_array_2 |> Base.Array.keep(fn (item) -> {item % 2 == 0})}
+    
+    {if (merged_array_2 |> Base.Array.find(fn (item) -> {item == 3})) {
+      "FOUND"
+    } else {
+      "NOT FOUND"
+    }}
+
+    {if merged_array_2 |> Base.Array.find(fn (item) -> {item == -10}) {
+      "FOUND"
+    } else {
+      "NOT FOUND"
+    }}
+
+    {even |> Base.Array.every(fn (item) -> {item % 2 == 0})}
+    {merged_array_2 |> Base.Array.some(fn (item) -> {item % 2 == 0})}
+    {merged_array_2 |> Base.Array.every(fn (item) -> {item % 2 == 0})}
+    {merged_array_2 |> Base.Array.some(fn (item) -> {item < 0})}
+    {
+      Base.Array.make(6)
+      |> Base.Array.map(fn (item) -> item + 1)
+      |> Base.Array.reduce(0, fn (acc, item) -> item + acc)
+    }
   </section>
 }
