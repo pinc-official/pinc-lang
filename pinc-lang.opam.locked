@@ -13,13 +13,13 @@ depends: [
   "base-nnp" {= "base"}
   "base-threads" {= "base"}
   "base-unix" {= "base"}
-  "bisect_ppx" {= "2.8.2" & with-test}
+  "bisect_ppx" {= "2.8.3" & with-test}
   "cmdliner" {= "1.2.0"}
   "containers" {= "3.12"}
   "crunch" {= "3.3.1"}
   "csexp" {= "1.5.2"}
-  "dune" {= "3.9.1"}
-  "dune-configurator" {= "3.9.1"}
+  "dune" {= "3.10.0"}
+  "dune-configurator" {= "3.10.0"}
   "either" {= "1.0.0"}
   "fmt" {= "0.9.0"}
   "ocaml" {= "5.0.0"}
@@ -29,7 +29,7 @@ depends: [
   "ocamlbuild" {= "0.14.2"}
   "ocamlfind" {= "1.9.6"}
   "ppx_derivers" {= "1.2.1" & with-test}
-  "ppxlib" {= "0.27.0" & with-test}
+  "ppxlib" {= "0.30.0" & with-test}
   "ptime" {= "1.1.0"}
   "seq" {= "base"}
   "sexplib0" {= "v0.16.0" & with-test}

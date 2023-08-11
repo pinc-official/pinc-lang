@@ -9,7 +9,7 @@ bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
 depends: [
   "ocaml"
   "fmt"
-  "dune" {>= "3.6"}
+  "dune" {>= "3.7"}
   "crunch"
   "containers"
   "bisect_ppx" {with-test}

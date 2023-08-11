@@ -1,4 +1,4 @@
-(lang dune 3.6)
+(lang dune 3.7)
 
 (using action-plugin 0.1)
 
@@ -7,6 +7,8 @@
 (cram enable)
 
 (generate_opam_files true)
+
+(map_workspace_root false)
 
 (source
  (github pinc-lang/pinc-lang))

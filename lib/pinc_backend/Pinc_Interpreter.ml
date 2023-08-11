@@ -262,7 +262,7 @@ module State = struct
         (List.map (function
             | ( key,
                 ({ value = { value_desc = Function { state; parameters; exec }; _ }; _ }
-                as binding) ) ->
+                 as binding) ) ->
                 let new_state =
                   add_value_to_scope ~ident ~value ~is_optional ~is_mutable state
                 in
@@ -1836,7 +1836,7 @@ and eval_tag ~state tag =
     | Render, `Portal -> Value.null ~value_loc:tag.Ast.tag_loc ()
     | ( Portal_Collection,
         ((`Array | `Boolean | `Custom _ | `Float | `Int | `Record | `Slot | `String) as
-        tag_identifier) ) -> (
+         tag_identifier) ) -> (
         let tag_info =
           {
             tag = tag_identifier;
