@@ -218,7 +218,10 @@ module Rules = struct
     let transformer =
       let start_token = t.token in
       if t |> optional Token.DOUBLE_COLON then (
+        let open_paren = t |> optional Token.LEFT_PAREN in
         let bind = t |> Helpers.expect_identifier ~typ:`Lower in
+        if open_paren then
+          t |> expect Token.RIGHT_PAREN;
         t |> expect Token.ARROW;
         let body =
           match parse_expression t with
@@ -526,12 +529,24 @@ module Rules = struct
               |> Option.some)
       (* PARSING FN EXPRESSION *)
       | Token.KEYWORD_FN ->
+          let fn_loc = t.token.location in
           next t;
-          expect Token.LEFT_PAREN t;
+          let open_paren = t |> optional Token.LEFT_PAREN in
           let parameters =
-            t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_fn_param
+            if open_paren then (
+              let params =
+                t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_fn_param
+              in
+              t |> expect Token.RIGHT_PAREN;
+              params)
+            else (
+              match t |> parse_fn_param with
+              | Some p -> [ p ]
+              | None ->
+                  Diagnostics.error
+                    fn_loc
+                    "Expected this function to have exactly one parameter")
           in
-          expect Token.RIGHT_PAREN t;
           expect Token.ARROW t;
           let* body = t |> parse_block in
           Ast.Function { parameters; body } |> Option.some

@@ -15,6 +15,41 @@ library Base__Array {
     len
   }
 
+  let take_until = fn (array, condition) -> {
+    for (item in array) {
+      if(condition(item)) break;
+      item
+    }
+  }
+
+  let slice = fn (array, offset, length) -> {
+    for (index, item in array) {
+      if(index < offset) { continue };
+      if(index == length + offset) { break };
+
+      item
+    }
+  }
+
+  let chunk = fn (array, size) -> {
+    let len = Base.Array.length(array);
+    let x = Base.Math.ceil(len / size);
+    0..x |> Base.Array.mapi(fn (index, item) -> {
+      Base.Array.slice(array, index * size, size)
+    });
+  }
+
+  let join = fn (array, sep) -> {
+    let mutable result = "";
+    for (index, item in array) {
+      if(index > 0) {
+        result := result ++ sep
+      }
+      result := result ++ item
+    }
+    result
+  }
+
   let map = fn (array, f) -> {
     for (item in array) {
       f(item)

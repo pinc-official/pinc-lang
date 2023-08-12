@@ -1,17 +1,7 @@
-library Base {
-  let default = fn (value, default) -> {
-    if (!value) {
-      default
-    } else {
-      value
-    }
-  }
-}
-
 component HeadlineSecondary {
   let class? = #String;
 
-  let tag? = #String :: value -> value |> Base.default("h3");
+  let tag? = #String :: (value) -> value |> Base.Fn.default("h3");
 
   let data = #Record(of: {
     text: if (tag == "h2") #String else "No no no ... make h2 when you want text",

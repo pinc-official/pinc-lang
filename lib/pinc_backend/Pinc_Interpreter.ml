@@ -765,17 +765,21 @@ and eval_binary_pow ~state left right =
 and eval_binary_modulo ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
-  let ( %. ) = mod_float in
   let ( % ) = ( mod ) in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   let r =
     match (a.value_desc, b.value_desc) with
     | Int _, Int 0 | Int _, Float 0. | Float _, Float 0. | Float _, Int 0 ->
         Pinc_Diagnostics.error b.value_loc "Trying to modulo with 0 on right hand side."
-    | Int a, Int b -> a % b
-    | Float a, Float b -> int_of_float (a %. b)
-    | Float a, Int b -> int_of_float a % b
-    | Int a, Float b -> a % int_of_float b
+    | Int a, Int b -> float_of_int (a % b)
+    | Float a, Float b -> a -. (a /. b *. b)
+    | Float a, Int 1 -> fst (Float.modf a)
+    | Float a, Int b ->
+        let b = float_of_int b in
+        a -. (a /. b *. b)
+    | Int a, Float b ->
+        let a = float_of_int a in
+        a -. (a /. b *. b)
     | (Int _ | Float _), _ ->
         Pinc_Diagnostics.error b.value_loc "Trying to modulo non numeric literals."
     | _, (Int _ | Float _) ->
@@ -783,7 +787,13 @@ and eval_binary_modulo ~state left right =
     | _ ->
         Pinc_Diagnostics.error merged_value_loc "Trying to modulo non numeric literals."
   in
-  state |> State.add_output ~output:(Value.of_int ~value_loc:merged_value_loc r)
+  state
+  |> State.add_output
+       ~output:
+         (if Float.is_integer r then
+            Value.of_int ~value_loc:merged_value_loc (int_of_float r)
+          else
+            Value.of_float ~value_loc:merged_value_loc r)
 
 and eval_binary_and ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -1363,6 +1373,10 @@ and eval_range ~state ~inclusive from_expression upto_expression =
   let get_range from upto =
     match (from.value_desc, upto.value_desc) with
     | Int from, Int upto -> (from, upto)
+    | Int from, Float upto when Float.is_integer upto -> (from, int_of_float upto)
+    | Float from, Int upto when Float.is_integer from -> (int_of_float from, upto)
+    | Float from, Float upto when Float.is_integer from && Float.is_integer upto ->
+        (int_of_float from, int_of_float upto)
     | Int _, _ ->
         Pinc_Diagnostics.error
           upto.value_loc

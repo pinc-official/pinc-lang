@@ -1,0 +1,11 @@
+library Base__Fn {
+  let default = fn (value, default) -> {
+    if (!value) {
+      default
+    } else {
+      value
+    }
+  };
+
+  let id = fn x -> x;
+}

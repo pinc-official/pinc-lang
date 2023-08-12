@@ -1,0 +1,12 @@
+library Base__Math {
+  let floor = fn n -> {
+    let mod = n % 1;
+    if (mod >= 0) {
+      n - mod
+    } else {
+      n - (1 + mod)
+    }
+  }
+
+  let ceil = fn n -> -(Base.Math.floor(-n))
+}

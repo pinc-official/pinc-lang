@@ -60,5 +60,16 @@ component C {
       |> Base.Array.map(fn (item) -> item + 1)
       |> Base.Array.reduce(0, fn (acc, item) -> item + acc)
     }
+
+    {merged_array_2 |> Base.Array.take_until(fn item -> item == 5)}
+
+    {1...10 |> Base.Array.slice(2, 5)}
+
+    {
+      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+      |> Base.Array.chunk(3)
+      |> Base.Array.map(fn chunk -> Base.Array.join(chunk, ","))
+      |> Base.Array.map(fn item -> <div> {item} </div>)
+    }
   </section>
 }
