@@ -437,18 +437,31 @@ module Rules = struct
       (* PARSING USE STATEMENT *)
       | Token.KEYWORD_USE ->
           next t;
-          let identifier = Helpers.expect_identifier ~typ:`Upper t in
-          t |> expect Token.EQUAL;
-          let expression =
-            match parse_expression t with
-            | Some expression -> expression
-            | None ->
-                Diagnostics.error
-                  t.token.location
-                  "Expected expression as right hand side of use statement"
-          in
-          let _ = optional Token.SEMICOLON t in
-          Some (Ast.UseStatement (Uppercase_Id identifier, expression))
+          let is_assignment = peek t = Token.EQUAL in
+          if is_assignment then (
+            let identifier = Helpers.expect_identifier ~typ:`Upper t in
+            t |> expect Token.EQUAL;
+            let expression =
+              match parse_expression t with
+              | Some expression -> expression
+              | None ->
+                  Diagnostics.error
+                    t.token.location
+                    "Expected expression as right hand side of use statement"
+            in
+            let _ = optional Token.SEMICOLON t in
+            Some (Ast.UseStatement (Some (Uppercase_Id identifier), expression)))
+          else (
+            let expression =
+              match parse_expression t with
+              | Some expression -> expression
+              | None ->
+                  Diagnostics.error
+                    t.token.location
+                    "Expected to see a library next to the use keyword."
+            in
+            let _ = optional Token.SEMICOLON t in
+            Some (Ast.UseStatement (None, expression)))
       | _ ->
           let* expr = parse_expression t in
           Some (Ast.ExpressionStatement expr)

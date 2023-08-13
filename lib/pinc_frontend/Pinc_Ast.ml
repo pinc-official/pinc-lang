@@ -107,7 +107,7 @@ and statement = {
 and statement_desc =
   | BreakStatement of int
   | ContinueStatement of int
-  | UseStatement of uppercase_identifier * expression
+  | UseStatement of uppercase_identifier option * expression
   | OptionalMutableLetStatement of lowercase_identifier * expression
   | OptionalLetStatement of lowercase_identifier * expression
   | MutableLetStatement of lowercase_identifier * expression

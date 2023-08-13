@@ -308,7 +308,7 @@ let rec eval_statement ~state statement =
       eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
   | Ast.MutationStatement (Lowercase_Id ident, expression) ->
       eval_mutation ~state ~ident expression
-  | Ast.UseStatement (Uppercase_Id ident, expression) -> eval_use ~state ~ident expression
+  | Ast.UseStatement (ident, expression) -> eval_use ~state ~ident expression
   | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
   | Ast.ContinueStatement _ -> raise_notrace (Loop_Continue state)
   | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
@@ -1228,13 +1228,46 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
       |> State.add_output ~output:(Value.null ~value_loc:expression.expression_loc ())
 
 and eval_use ~state ~ident expression =
-  let ident, _ident_location = ident in
-  let value = expression |> eval_expression ~state |> State.get_output in
-  match value with
-  | value ->
-      state
-      |> State.add_value_to_use_scope ~ident ~value
-      |> State.add_output ~output:(Value.null ~value_loc:expression.expression_loc ())
+  match ident with
+  | Some (Uppercase_Id ident) -> (
+      let ident, _ident_location = ident in
+      let value = expression |> eval_expression ~state |> State.get_output in
+      match value with
+      | value ->
+          state
+          |> State.add_value_to_use_scope ~ident ~value
+          |> State.add_output ~output:(Value.null ~value_loc:expression.expression_loc ())
+      )
+  | None -> (
+      let value = expression |> eval_expression ~state |> State.get_output in
+      match value with
+      | {
+       value_desc =
+         DefinitionInfo (_, Some (`Library (top_level_bindings, used_values)), _);
+       _;
+      } ->
+          let state =
+            top_level_bindings
+            |> List.fold_left
+                 (fun state (ident, { is_optional; value; _ }) ->
+                   state
+                   |> State.add_value_to_scope
+                        ~ident
+                        ~is_mutable:false
+                        ~is_optional
+                        ~value)
+                 state
+          in
+          used_values
+          |> List.fold_left
+               (fun state (ident, value) ->
+                 state |> State.add_value_to_use_scope ~ident ~value)
+               state
+      | _ ->
+          Pinc_Diagnostics.error
+            expression.expression_loc
+            "Attempted to use a non library definition. \n\
+             Expected to see a Library at the right hand side of the `use` statement.")
 
 and eval_mutation ~state ~ident expression =
   let ident, ident_location = ident in
