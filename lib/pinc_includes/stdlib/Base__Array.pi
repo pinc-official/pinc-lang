@@ -180,4 +180,36 @@ library Base__Array {
   let nth = fn (array, index) -> {
     array[index]
   }
+
+  let sort = fn (array, f) -> {
+    let merge = fn (a, b) -> {
+      let len_a = Base.Array.length(a);
+      if len_a == 0 {
+        b
+      } else {
+        let len_b = Base.Array.length(b);
+        if len_b == 0 {
+          a
+        } else {
+          let first_a = a[0];
+          let first_b = b[0];
+          if f(first_a, first_b) < 0 {
+            [first_a] @@ merge(Base.Array.slice(a, 1, len_a), b)
+          } else {
+            [first_b] @@ merge(a, Base.Array.slice(b, 1, len_b))
+          }
+        }
+      }
+    }
+
+    let len = Base.Array.length(array);
+    if len < 2 {
+      array
+    } else {
+        let h = Base.Math.ceil(len / 2);
+        let first_half = array |> Base.Array.slice(0, h);
+        let second_half = array |> Base.Array.slice(h, len);
+        merge(sort(first_half, f), sort(second_half, f));
+    }
+  }
 }

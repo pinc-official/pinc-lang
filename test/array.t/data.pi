@@ -73,5 +73,7 @@ component C {
       |> Array.map(fn chunk -> Array.join(chunk, ","))
       |> Array.map(fn item -> <div> {item} </div>)
     }
+
+    {[5, 1, 2, 3, 6, 3, 4, 7] |> Array.sort(fn (a, b) -> a - b)}
   </section>
 }
