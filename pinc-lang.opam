@@ -7,7 +7,7 @@ license: "MIT"
 homepage: "https://github.com/pinc-lang/pinc-lang"
 bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
 depends: [
-  "ocaml"
+  "ocaml" {>= "4.12"}
   "fmt"
   "dune" {>= "3.7"}
   "crunch"

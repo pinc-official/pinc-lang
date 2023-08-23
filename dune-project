@@ -23,7 +23,8 @@
  (name pinc-lang)
  (synopsis "The PiNC Language as Syntax and Interpreter")
  (depends
-  ocaml
+  (ocaml
+   (>= 4.12))
   fmt
   dune
   crunch

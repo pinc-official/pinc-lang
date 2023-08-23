@@ -607,9 +607,22 @@ module Rules = struct
       | Token.IDENT_LOWER identifier ->
           next t;
           Ast.LowercaseIdentifierExpression identifier |> Option.some
-      | Token.IDENT_UPPER identifier ->
+      | Token.IDENT_UPPER identifier -> (
           next t;
-          Ast.UppercaseIdentifierExpression identifier |> Option.some
+          let rec get_path list =
+            match t.token.typ with
+            | Token.DOT -> (
+                match peek t with
+                | Token.IDENT_UPPER i ->
+                    next t;
+                    next t;
+                    get_path (i :: list)
+                | _ -> List.rev list)
+            | _ -> List.rev list
+          in
+          match get_path [ identifier ] with
+          | [ identifier ] -> Ast.UppercaseIdentifierExpression identifier |> Option.some
+          | path -> Ast.UppercaseIdentifierPathExpression path |> Option.some)
       (* PARSING VALUE EXPRESSION *)
       | Token.DOUBLE_QUOTE ->
           next t;
@@ -635,7 +648,7 @@ module Rules = struct
           next t;
           let expressions =
             Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t
-            |> Array.of_list
+            |> CCRAL.of_list
           in
           expect Token.RIGHT_BRACK t;
           Ast.(Array expressions) |> Option.some
