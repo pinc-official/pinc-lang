@@ -1,4 +1,5 @@
 module Ast = Pinc_Frontend.Ast
+module Vector = CCRAL
 
 type value = {
   value_loc : Pinc_Diagnostics.Location.t;
@@ -13,7 +14,7 @@ and value_desc =
   | Int of int
   | Float of float
   | Bool of bool
-  | Array of value array
+  | Array of value Vector.t
   | Record of (int * value) StringMap.t
   | Function of function_info
   | DefinitionInfo of definition_info
@@ -28,7 +29,7 @@ and definition_info =
     | `Site
     | `Page
     | `Store
-    | `Library of (string * binding) list * (string * value) list
+    | `Library of binding StringMap.t * value StringMap.t
     ]
     option
   * [ `Negated | `NotNegated ]
@@ -112,6 +113,7 @@ and state = {
   declarations : Ast.t;
   output : value;
   environment : environment;
+  libraries : (binding StringMap.t * value StringMap.t) StringMap.t;
   tag_listeners : tag_listeners;
   tag_cache : (string, value Queue.t) Hashtbl.t;
   parent_tag : string list option;
@@ -121,8 +123,8 @@ and state = {
 }
 
 and environment = {
-  mutable scope : (string * binding) list list;
-  mutable use_scope : (string * value) list;
+  mutable scope : binding StringMap.t list;
+  mutable use_scope : value StringMap.t;
 }
 
 and binding = {

@@ -13,8 +13,8 @@ module Value = struct
   let of_bool ~value_loc b = { value_loc; value_desc = Bool b }
   let of_int ~value_loc i = { value_loc; value_desc = Int i }
   let of_float ~value_loc f = { value_loc; value_desc = Float f }
-  let of_array ~value_loc l = { value_loc; value_desc = Array l }
-  let of_list ~value_loc l = { value_loc; value_desc = Array (Array.of_list l) }
+  let of_vector ~value_loc l = { value_loc; value_desc = Array l }
+  let of_list ~value_loc l = { value_loc; value_desc = Array (Vector.of_list l) }
   let of_string_map ~value_loc m = { value_loc; value_desc = Record m }
 
   let make_component ~render ~tag ~attributes =
@@ -45,7 +45,7 @@ module Value = struct
     | Array l ->
         let buf = Buffer.create 200 in
         l
-        |> Array.iteri (fun i it ->
+        |> Vector.iteri ~f:(fun i it ->
                if i <> 0 then
                  Buffer.add_char buf '\n';
                Buffer.add_string buf (to_string it));
@@ -116,8 +116,7 @@ module Value = struct
     | DefinitionInfo (_name, Some _, _negated) -> true
     | DefinitionInfo (_name, None, _negated) -> false
     | Function _ -> true
-    | Array [||] -> false
-    | Array _ -> true
+    | Array v -> not (Vector.is_empty v)
     | Record m -> not (StringMap.is_empty m)
     | TagInfo _ -> assert false
   ;;
@@ -131,7 +130,7 @@ module Value = struct
     | Float a, Int b -> a = float_of_int b
     | Int a, Float b -> float_of_int a = b
     | Bool a, Bool b -> a = b
-    | Array a, Array b -> Array.combine a b |> Array.for_all (fun (a, b) -> equal a b)
+    | Array a, Array b -> Vector.equal ~eq:(fun a b -> equal a b) a b
     | Record a, Record b -> StringMap.equal (fun (_, a) (_, b) -> equal a b) a b
     | Function _, Function _ -> false
     | DefinitionInfo (a, _, _), DefinitionInfo (b, _, _) -> String.equal a b
@@ -161,7 +160,7 @@ module Value = struct
     | Float a, Int b -> Float.compare a (float_of_int b)
     | Int a, Float b -> Float.compare (float_of_int a) b
     | Bool a, Bool b -> Bool.compare a b
-    | Array a, Array b -> Int.compare (Array.length a) (Array.length b)
+    | Array a, Array b -> Int.compare (Vector.length a) (Vector.length b)
     | Record a, Record b -> StringMap.compare compare a b
     | Null, Null -> 0
     | ComponentTemplateNode _, ComponentTemplateNode _ -> 0
@@ -190,7 +189,8 @@ module State = struct
       binding_identifier = None;
       declarations;
       output = { value_desc = Null; value_loc = Location.none };
-      environment = { scope = []; use_scope = [] };
+      environment = { scope = []; use_scope = StringMap.empty };
+      libraries = StringMap.empty;
       tag_listeners;
       parent_tag = None;
       tag_cache;
@@ -201,7 +201,9 @@ module State = struct
   ;;
 
   let add_scope t =
-    let environment = { t.environment with scope = [] :: t.environment.scope } in
+    let environment =
+      { t.environment with scope = StringMap.empty :: t.environment.scope }
+    in
     { t with environment }
   ;;
 
@@ -209,14 +211,15 @@ module State = struct
     let update_scope t =
       match t.environment.scope with
       | [] -> assert false
-      | scope :: rest -> ((ident, { is_mutable; is_optional; value }) :: scope) :: rest
+      | scope :: rest ->
+          StringMap.add ident { is_mutable; is_optional; value } scope :: rest
     in
     let environment = { t.environment with scope = update_scope t } in
     { t with environment }
   ;;
 
   let add_value_to_use_scope ~ident ~value t =
-    let use_scope = (ident, value) :: t.environment.use_scope in
+    let use_scope = StringMap.add ident value t.environment.use_scope in
     let environment = { t.environment with use_scope } in
     { t with environment }
   ;;
@@ -226,55 +229,54 @@ module State = struct
     let rec update_scope state =
       state.environment.scope
       |> List.map
-           (List.map (function
-               | key, binding when key = ident && binding.is_mutable ->
-                   updated := true;
-                   (key, { binding with value })
-               | ( key,
-                   ({
-                      value =
-                        {
-                          value_desc = Function { state = fn_state; parameters; exec };
-                          _;
-                        };
-                      _;
-                    } as binding) )
-                 when not !updated ->
-                   fn_state.environment.scope <- update_scope fn_state;
-                   ( key,
-                     {
-                       binding with
+           (StringMap.mapi (fun key binding ->
+                match (key, binding) with
+                | key, binding when key = ident && binding.is_mutable ->
+                    updated := true;
+                    { binding with value }
+                | ( _key,
+                    ({
                        value =
                          {
-                           value with
                            value_desc = Function { state = fn_state; parameters; exec };
+                           _;
                          };
-                     } )
-               | v -> v))
+                       _;
+                     } as binding) )
+                  when not !updated ->
+                    fn_state.environment.scope <- update_scope fn_state;
+                    {
+                      binding with
+                      value =
+                        {
+                          value with
+                          value_desc = Function { state = fn_state; parameters; exec };
+                        };
+                    }
+                | _, v -> v))
     in
     let new_scope = update_scope t in
     t.environment.scope <- new_scope
   ;;
 
   let add_value_to_function_scopes ~ident ~value ~is_optional ~is_mutable t =
+    print_endline (Printf.sprintf "add_value_to_function_scopes: %s" ident);
     let update_scope state =
       List.map
-        (List.map (function
-            | ( key,
-                ({ value = { value_desc = Function { state; parameters; exec }; _ }; _ }
-                 as binding) ) ->
+        (StringMap.map (function
+            | { value = { value_desc = Function { state; parameters; exec }; _ }; _ } as
+              binding ->
                 let new_state =
                   add_value_to_scope ~ident ~value ~is_optional ~is_mutable state
                 in
-                ( key,
-                  {
-                    binding with
-                    value =
-                      {
-                        value with
-                        value_desc = Function { state = new_state; parameters; exec };
-                      };
-                  } )
+                {
+                  binding with
+                  value =
+                    {
+                      value with
+                      value_desc = Function { state = new_state; parameters; exec };
+                    };
+                }
             | v -> v))
         state.environment.scope
     in
@@ -282,7 +284,7 @@ module State = struct
   ;;
 
   let get_value_from_scope ~ident t =
-    t.environment.scope |> List.find_map (List.assoc_opt ident)
+    t.environment.scope |> List.find_map (StringMap.find_opt ident)
   ;;
 
   let get_output t = t.output
@@ -337,8 +339,8 @@ and eval_expression ~state expression =
       |> State.add_output
            ~output:
              (l
-             |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)
-             |> Value.of_array ~value_loc:expression.expression_loc)
+             |> Vector.map ~f:(fun it -> it |> eval_expression ~state |> State.get_output)
+             |> Value.of_vector ~value_loc:expression.expression_loc)
   | Ast.Record map ->
       state
       |> State.add_output
@@ -365,6 +367,23 @@ and eval_expression ~state expression =
       eval_function_declaration ~loc:expression.expression_loc ~state ~parameters body
   | Ast.FunctionCall { function_definition; arguments } ->
       eval_function_call ~state ~arguments function_definition
+  | Ast.UppercaseIdentifierPathExpression path ->
+      let rec eval_path state use_values = function
+        | [] -> state
+        | id :: tl ->
+            let value =
+              match use_values |> StringMap.find_opt id with
+              | None -> Value.null ~value_loc:expression.expression_loc ()
+              | Some (_, use_scope) ->
+                  use_scope
+                  |> StringMap.find_opt id
+                  |> Option.value
+                       ~default:(Value.null ~value_loc:expression.expression_loc ())
+            in
+            state |> State.add_output ~output:value
+      in
+      let use_values = state |> State.get_used_values in
+      eval_path state use_values path
   | Ast.UppercaseIdentifierExpression id ->
       let declaration = state.declarations |> StringMap.find_opt id in
       let typ =
@@ -374,20 +393,15 @@ and eval_expression ~state expression =
         | Some { declaration_type = Ast.Declaration_Page _; _ } -> Some `Page
         | Some { declaration_type = Ast.Declaration_Site _; _ } -> Some `Site
         | Some { declaration_type = Ast.Declaration_Store _; _ } -> Some `Store
-        | Some { declaration_type = Ast.Declaration_Library _; _ } ->
-            let state =
-              State.make
-                ~tag_listeners:state.tag_listeners
-                ~context:state.context
-                ~portals:state.portals
-                ~tag_cache:state.tag_cache
-                ~mode:state.mode
-                state.declarations
-            in
-            let declaration = eval_declaration ~state id in
-            let top_level_bindings = declaration |> State.get_bindings in
-            let used_values = declaration |> State.get_used_values in
-            Some (`Library (top_level_bindings, used_values))
+        | Some { declaration_type = Ast.Declaration_Library _; _ } -> (
+            try
+              let top_level_bindings, used_values =
+                state.libraries |> StringMap.find id
+              in
+              Some (`Library (top_level_bindings, used_values))
+            with Not_found ->
+              print_endline ("Not Found: " ^ id);
+              None)
       in
       state
       |> State.add_output
@@ -488,6 +502,14 @@ and eval_function_declaration ~state ~loc ~parameters body =
   let self = ref { value_desc = Null; value_loc = loc } in
   let exec ~arguments ~state () =
     let state =
+      state
+      |> State.add_scope
+      |> StringMap.fold
+           (fun ident value ->
+             State.add_value_to_scope ~ident ~value ~is_mutable:false ~is_optional:false)
+           arguments
+    in
+    let state =
       match ident with
       | None -> state
       | Some (_, ident) ->
@@ -497,14 +519,6 @@ and eval_function_declaration ~state ~loc ~parameters body =
                ~value:!self
                ~is_mutable:false
                ~is_optional:false
-    in
-    let state =
-      state
-      |> State.add_scope
-      |> StringMap.fold
-           (fun ident value ->
-             State.add_value_to_scope ~ident ~value ~is_mutable:false ~is_optional:false)
-           arguments
     in
     eval_expression ~state body |> State.get_output
   in
@@ -951,7 +965,9 @@ and eval_binary_dot_access ~state left right =
         right.expression_loc
         "Expected right hand side of record access to be a lowercase identifier."
   | DefinitionInfo (name, maybe_library, _), Ast.LowercaseIdentifierExpression b -> (
-      match (state |> State.get_used_values |> List.assoc_opt name, maybe_library) with
+      match
+        (state |> State.get_used_values |> StringMap.find_opt name, maybe_library)
+      with
       | None, Some (`Library (top_level_bindings, _))
       | ( Some
             {
@@ -963,7 +979,7 @@ and eval_binary_dot_access ~state left right =
           |> State.add_output
                ~output:
                  (top_level_bindings
-                 |> List.assoc_opt b
+                 |> StringMap.find_opt b
                  |> Option.map (fun b -> b.value)
                  |> Option.value
                       ~default:
@@ -987,7 +1003,9 @@ and eval_binary_dot_access ~state left right =
             left.expression_loc
             "Trying to access a property on a non record, library or template value.")
   | DefinitionInfo (name, maybe_library, _), Ast.UppercaseIdentifierExpression b -> (
-      match (state |> State.get_used_values |> List.assoc_opt name, maybe_library) with
+      match
+        (state |> State.get_used_values |> StringMap.find_opt name, maybe_library)
+      with
       | None, Some (`Library (_, use_scope))
       | Some { value_desc = DefinitionInfo (_, Some (`Library (_, use_scope)), _); _ }, _
         ->
@@ -995,7 +1013,7 @@ and eval_binary_dot_access ~state left right =
           |> State.add_output
                ~output:
                  (use_scope
-                 |> List.assoc_opt b
+                 |> StringMap.find_opt b
                  |> Option.value
                       ~default:
                         (Value.null
@@ -1036,7 +1054,7 @@ and eval_binary_bracket_access ~state left right =
   match (left_value.value_desc, right_value.value_desc) with
   | Array a, Int b ->
       let output =
-        try Array.get a b
+        try Vector.get_exn a b
         with Invalid_argument _ ->
           Value.null
             ~value_loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
@@ -1096,11 +1114,11 @@ and eval_binary_array_add ~state left right =
   let right_value = right |> eval_expression ~state |> State.get_output in
   match (left_value.value_desc, right_value) with
   | Array l, value ->
-      let new_array = Array.append l [| value |] in
+      let new_array = Vector.add_list l [ value ] in
       state
       |> State.add_output
            ~output:
-             (Value.of_array
+             (Value.of_vector
                 ~value_loc:
                   (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
                 new_array)
@@ -1115,9 +1133,9 @@ and eval_binary_merge ~state left_expression right_expression =
   let eval_merge left right =
     match (left.value_desc, right.value_desc) with
     | Array l, Array r ->
-        Value.of_array
+        Value.of_vector
           ~value_loc:(Location.merge ~s:left.value_loc ~e:right.value_loc ())
-          (Array.append l r)
+          (Vector.append l r)
     | Record l, Record r ->
         Value.of_string_map
           ~value_loc:(Location.merge ~s:left.value_loc ~e:right.value_loc ())
@@ -1228,46 +1246,34 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
       |> State.add_output ~output:(Value.null ~value_loc:expression.expression_loc ())
 
 and eval_use ~state ~ident expression =
-  match ident with
-  | Some (Uppercase_Id ident) -> (
-      let ident, _ident_location = ident in
-      let value = expression |> eval_expression ~state |> State.get_output in
-      match value with
-      | value ->
+  let value = expression |> eval_expression ~state |> State.get_output in
+  match value with
+  | {
+   value_desc = DefinitionInfo (_, Some (`Library (top_level_bindings, used_values)), _);
+   _;
+  } -> (
+      match ident with
+      | Some (Uppercase_Id ident) ->
+          let ident, _ident_location = ident in
           state
-          |> State.add_value_to_use_scope ~ident ~value
-          |> State.add_output ~output:(Value.null ~value_loc:expression.expression_loc ())
-      )
-  | None -> (
-      let value = expression |> eval_expression ~state |> State.get_output in
-      match value with
-      | {
-       value_desc =
-         DefinitionInfo (_, Some (`Library (top_level_bindings, used_values)), _);
-       _;
-      } ->
+          |> State.add_value_to_use_scope ~ident ~value:(top_level_bindings, used_values)
+      | None ->
           let state =
-            top_level_bindings
-            |> List.fold_left
-                 (fun state (ident, { is_optional; value; _ }) ->
-                   state
-                   |> State.add_value_to_scope
-                        ~ident
-                        ~is_mutable:false
-                        ~is_optional
-                        ~value)
-                 state
+            StringMap.fold
+              (fun ident { is_optional; value; _ } ->
+                State.add_value_to_scope ~ident ~is_mutable:false ~is_optional ~value)
+              top_level_bindings
+              state
           in
-          used_values
-          |> List.fold_left
-               (fun state (ident, value) ->
-                 state |> State.add_value_to_use_scope ~ident ~value)
-               state
-      | _ ->
-          Pinc_Diagnostics.error
-            expression.expression_loc
-            "Attempted to use a non library definition. \n\
-             Expected to see a Library at the right hand side of the `use` statement.")
+          StringMap.fold
+            (fun ident value -> State.add_value_to_use_scope ~ident ~value)
+            used_values
+            state)
+  | _ ->
+      Pinc_Diagnostics.error
+        expression.expression_loc
+        "Attempted to use a non library definition. \n\
+         Expected to see a Library at the right hand side of the `use` statement."
 
 and eval_mutation ~state ~ident expression =
   let ident, ident_location = ident in
@@ -1350,11 +1356,10 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
   match iterable_value.value_desc with
   | Array l ->
       let to_seq array =
-        if reverse then (
-          array |> Array.stable_sort (fun _ _ -> 1);
-          array |> Array.to_seq)
+        if reverse then
+          array |> Vector.rev |> Vector.to_array |> Array.to_seq
         else
-          Array.to_seq array
+          array |> Vector.to_array |> Array.to_seq
       in
       let state, res = l |> to_seq |> loop ~state [] in
       state
@@ -1427,7 +1432,7 @@ and eval_range ~state ~inclusive from_expression upto_expression =
   let from_int, upto_int = get_range from upto in
   let iter =
     if from_int > upto_int then
-      [||]
+      Vector.empty
     else (
       let start = from_int in
       let stop =
@@ -1436,15 +1441,16 @@ and eval_range ~state ~inclusive from_expression upto_expression =
         else
           upto_int
       in
-      Array.init (stop - start) (fun i ->
-          Value.of_int
-            ~value_loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
-            (i + start)))
+      Vector.make (stop - start) 0
+      |> Vector.mapi ~f:(fun i _ ->
+             Value.of_int
+               ~value_loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
+               (i + start)))
   in
   state
   |> State.add_output
        ~output:
-         (Value.of_array
+         (Value.of_vector
             ~value_loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
             iter)
 
@@ -1470,7 +1476,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
           v :: acc
         else
           acc
-    | { value_desc = Array l; _ } -> l |> Array.fold_left keep_slotted acc
+    | { value_desc = Array l; _ } -> l |> Vector.fold ~f:keep_slotted ~x:acc
     | { value_desc = String s; _ } when String.trim s = "" -> acc
     | { value_loc; _ } ->
         Pinc_Diagnostics.error
@@ -1530,9 +1536,8 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
                  value_loc
                  "slot contraints need to be an array of definitions which are either \
                   allowed or disallowed")
-    |> Option.map Array.to_list
     |> Option.map
-         (List.map (function
+         (Vector.map ~f:(function
              | { value_desc = DefinitionInfo (name, Some `Component, negated); _ } ->
                  (`Component, name, negated)
              | { value_desc = DefinitionInfo (name, None, _negated); value_loc } ->
@@ -1554,7 +1559,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
   let check_instance_restriction tag =
     match constraints with
     | None -> Result.ok ()
-    | Some [] ->
+    | Some v when Vector.is_empty v ->
         Result.error
           (Printf.sprintf
              "Child with tag `%s` may not be used inside this #Slot. \n\
@@ -1565,6 +1570,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
         let is_in_list = ref false in
         let allowed, disallowed =
           restrictions
+          |> Vector.to_list
           |> List.partition_map (fun (_typ, name, negated) ->
                  if name = tag then
                    is_in_list := true;
@@ -1584,6 +1590,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
         else (
           let contraints =
             constraints
+            |> Option.map Vector.to_list
             |> Option.value ~default:[]
             |> List.map (fun (_typ, name, negated) ->
                    if negated = `Negated then
@@ -1679,14 +1686,14 @@ and eval_internal_tag ~state ~tag ~key ~attributes ~value_bag tag_identifier =
                    (Printf.sprintf "Expected attribute %s to be an array." key))
       |> Option.map (fun array ->
              array
-             |> Array.mapi (fun index item ->
+             |> Vector.mapi ~f:(fun index item ->
                     let key = string_of_int index in
                     { of' with key }
                     |> eval_internal_or_external_tag
                          ~state
                          ~tag
                          ~value:(StringMap.singleton key item))
-             |> Value.of_array ~value_loc:tag.Ast.tag_loc)
+             |> Value.of_vector ~value_loc:tag.Ast.tag_loc)
       |> Option.value ~default:(Value.null ~value_loc:tag.tag_loc ())
   | `Record ->
       let of' =
@@ -2047,6 +2054,27 @@ let get_stdlib () =
        StringMap.empty
 ;;
 
+let eval_libraries ~state declarations =
+  StringMap.fold
+    (fun key declaration state ->
+      match declaration with
+      | Ast.{ declaration_type = Declaration_Component _; _ }
+      | Ast.{ declaration_type = Declaration_Site _; _ }
+      | Ast.{ declaration_type = Declaration_Page _; _ }
+      | Ast.{ declaration_type = Declaration_Store _; _ } -> state
+      | Ast.{ declaration_type = Declaration_Library { declaration_body; _ }; _ } ->
+          let state = eval_expression ~state declaration_body in
+          let top_level_bindings = state |> State.get_bindings in
+          let used_values = state |> State.get_used_values in
+          {
+            state with
+            libraries =
+              state.libraries |> StringMap.add key (top_level_bindings, used_values);
+          })
+    declarations
+    state
+;;
+
 let eval ?tag_listeners ~root declarations =
   let base_lib = get_stdlib () in
   let declarations =
@@ -2060,6 +2088,7 @@ let eval ?tag_listeners ~root declarations =
       declarations
   in
   let state = State.make ?tag_listeners declarations ~mode:Portal_Collection in
+  let state = eval_libraries ~state declarations in
   let state = eval_declaration ~state root in
   if state.portals |> Hashtbl.length > 0 then
     eval_declaration ~state:{ state with mode = Render } root
