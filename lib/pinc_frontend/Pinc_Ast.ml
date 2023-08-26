@@ -69,7 +69,7 @@ and expression_desc =
   | Int of int
   | Float of float
   | Bool of bool
-  | Array of expression CCRAL.t
+  | Array of expression array
   | Record of (int * bool * expression) StringMap.t  (** order, nullable, value *)
   | Function of {
       parameters : string list;

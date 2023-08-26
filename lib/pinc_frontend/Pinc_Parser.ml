@@ -648,7 +648,7 @@ module Rules = struct
           next t;
           let expressions =
             Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t
-            |> CCRAL.of_list
+            |> Array.of_list
           in
           expect Token.RIGHT_BRACK t;
           Ast.(Array expressions) |> Option.some

@@ -1,5 +1,4 @@
 module Ast = Pinc_Frontend.Ast
-module Vector = CCRAL
 
 module rec Value : sig
   type value = {
@@ -15,7 +14,7 @@ module rec Value : sig
     | Int of int
     | Float of float
     | Bool of bool
-    | Array of value Vector.t
+    | Array of value Array.t
     | Record of (int * value) StringMap.t
     | Function of function_info
     | DefinitionInfo of definition_info

@@ -16,8 +16,8 @@ module Value = struct
   let of_bool ~value_loc b = { value_loc; value_desc = Bool b }
   let of_int ~value_loc i = { value_loc; value_desc = Int i }
   let of_float ~value_loc f = { value_loc; value_desc = Float f }
-  let of_vector ~value_loc l = { value_loc; value_desc = Array l }
-  let of_list ~value_loc l = { value_loc; value_desc = Array (Vector.of_list l) }
+  let of_array ~value_loc l = { value_loc; value_desc = Array l }
+  let of_list ~value_loc l = { value_loc; value_desc = Array (Array.of_list l) }
   let of_string_map ~value_loc m = { value_loc; value_desc = Record m }
 
   let make_component ~render ~tag ~attributes =
@@ -48,7 +48,7 @@ module Value = struct
     | Array l ->
         let buf = Buffer.create 200 in
         l
-        |> Vector.iteri ~f:(fun i it ->
+        |> Array.iteri (fun i it ->
                if i <> 0 then
                  Buffer.add_char buf '\n';
                Buffer.add_string buf (to_string it));
@@ -119,7 +119,8 @@ module Value = struct
     | DefinitionInfo (_name, Some _, _negated) -> true
     | DefinitionInfo (_name, None, _negated) -> false
     | Function _ -> true
-    | Array v -> not (Vector.is_empty v)
+    | Array [||] -> false
+    | Array _ -> true
     | Record m -> not (StringMap.is_empty m)
     | TagInfo _ -> assert false
   ;;
@@ -133,7 +134,7 @@ module Value = struct
     | Float a, Int b -> a = float_of_int b
     | Int a, Float b -> float_of_int a = b
     | Bool a, Bool b -> a = b
-    | Array a, Array b -> Vector.equal ~eq:(fun a b -> equal a b) a b
+    | Array a, Array b -> Array.combine a b |> Array.for_all (fun (a, b) -> equal a b)
     | Record a, Record b -> StringMap.equal (fun (_, a) (_, b) -> equal a b) a b
     | Function _, Function _ -> false
     | DefinitionInfo (a, _, _), DefinitionInfo (b, _, _) -> String.equal a b
@@ -163,7 +164,7 @@ module Value = struct
     | Float a, Int b -> Float.compare a (float_of_int b)
     | Int a, Float b -> Float.compare (float_of_int a) b
     | Bool a, Bool b -> Bool.compare a b
-    | Array a, Array b -> Int.compare (Vector.length a) (Vector.length b)
+    | Array a, Array b -> Int.compare (Array.length a) (Array.length b)
     | Record a, Record b -> StringMap.compare compare a b
     | Null, Null -> 0
     | ComponentTemplateNode _, ComponentTemplateNode _ -> 0
@@ -366,8 +367,8 @@ and eval_expression ~state expression =
   | Ast.Array l ->
       let output =
         l
-        |> Vector.map ~f:(fun it -> it |> eval_expression ~state |> State.get_output)
-        |> Value.of_vector ~value_loc:expression.expression_loc
+        |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)
+        |> Value.of_array ~value_loc:expression.expression_loc
       in
       state |> State.add_output ~output
   | Ast.Record map ->
@@ -1062,7 +1063,7 @@ and eval_binary_bracket_access ~state left right =
   match (left_value.value_desc, right_value.value_desc) with
   | Array a, Int b ->
       let output =
-        try Vector.get_exn a b
+        try Array.get a b
         with Invalid_argument _ ->
           Value.null
             ~value_loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
@@ -1115,18 +1116,20 @@ and eval_binary_bracket_access ~state left right =
   | _ ->
       Pinc_Diagnostics.error
         left.expression_loc
-        "Trying to access a property on a non record or array value."
+        (Printf.sprintf
+           "Trying to access a property on a non record or array value (%s)."
+           (Value.to_string left_value))
 
 and eval_binary_array_add ~state left right =
   let left_value = left |> eval_expression ~state |> State.get_output in
   let right_value = right |> eval_expression ~state |> State.get_output in
   match (left_value.value_desc, right_value) with
   | Array l, value ->
-      let new_array = Vector.add_list l [ value ] in
+      let new_array = Array.append l [| value |] in
       state
       |> State.add_output
            ~output:
-             (Value.of_vector
+             (Value.of_array
                 ~value_loc:
                   (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
                 new_array)
@@ -1141,9 +1144,9 @@ and eval_binary_merge ~state left_expression right_expression =
   let eval_merge left right =
     match (left.value_desc, right.value_desc) with
     | Array l, Array r ->
-        Value.of_vector
+        Value.of_array
           ~value_loc:(Location.merge ~s:left.value_loc ~e:right.value_loc ())
-          (Vector.append l r)
+          (Array.append l r)
     | Record l, Record r ->
         Value.of_string_map
           ~value_loc:(Location.merge ~s:left.value_loc ~e:right.value_loc ())
@@ -1360,10 +1363,11 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
   match iterable_value.value_desc with
   | Array l ->
       let to_seq array =
-        if reverse then
-          array |> Vector.rev |> Vector.to_array |> Array.to_seq
+        if reverse then (
+          array |> Array.stable_sort (fun _ _ -> 1);
+          array |> Array.to_seq)
         else
-          array |> Vector.to_array |> Array.to_seq
+          array |> Array.to_seq
       in
       let state, res = l |> to_seq |> loop ~state [] in
       state
@@ -1436,7 +1440,7 @@ and eval_range ~state ~inclusive from_expression upto_expression =
   let from_int, upto_int = get_range from upto in
   let iter =
     if from_int > upto_int then
-      Vector.empty
+      [||]
     else (
       let start = from_int in
       let stop =
@@ -1445,16 +1449,15 @@ and eval_range ~state ~inclusive from_expression upto_expression =
         else
           upto_int
       in
-      Vector.make (stop - start) 0
-      |> Vector.mapi ~f:(fun i _ ->
-             Value.of_int
-               ~value_loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
-               (i + start)))
+      Array.init (stop - start) (fun i ->
+          Value.of_int
+            ~value_loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
+            (i + start)))
   in
   state
   |> State.add_output
        ~output:
-         (Value.of_vector
+         (Value.of_array
             ~value_loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
             iter)
 
@@ -1481,7 +1484,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
           v :: acc
         else
           acc
-    | { value_desc = Array l; _ } -> l |> Vector.fold ~f:keep_slotted ~x:acc
+    | { value_desc = Array l; _ } -> l |> Array.fold_left keep_slotted acc
     | { value_desc = String s; _ } when String.trim s = "" -> acc
     | { value_loc; _ } ->
         Pinc_Diagnostics.error
@@ -1542,7 +1545,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
                  "slot contraints need to be an array of definitions which are either \
                   allowed or disallowed")
     |> Option.map
-         (Vector.map ~f:(function
+         (Array.map (function
              | { value_desc = DefinitionInfo (name, Some `Component, negated); _ } ->
                  (`Component, name, negated)
              | { value_desc = DefinitionInfo (name, None, _negated); value_loc } ->
@@ -1564,7 +1567,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
   let check_instance_restriction tag =
     match constraints with
     | None -> Result.ok ()
-    | Some v when Vector.is_empty v ->
+    | Some [||] ->
         Result.error
           (Printf.sprintf
              "Child with tag `%s` may not be used inside this #Slot. \n\
@@ -1575,7 +1578,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
         let is_in_list = ref false in
         let allowed, disallowed =
           restrictions
-          |> Vector.to_list
+          |> Array.to_list
           |> List.partition_map (fun (_typ, name, negated) ->
                  if name = tag then
                    is_in_list := true;
@@ -1595,7 +1598,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
         else (
           let contraints =
             constraints
-            |> Option.map Vector.to_list
+            |> Option.map Array.to_list
             |> Option.value ~default:[]
             |> List.map (fun (_typ, name, negated) ->
                    if negated = `Negated then
@@ -1691,14 +1694,14 @@ and eval_internal_tag ~state ~tag ~key ~attributes ~value_bag tag_identifier =
                    (Printf.sprintf "Expected attribute %s to be an array." key))
       |> Option.map (fun array ->
              array
-             |> Vector.mapi ~f:(fun index item ->
+             |> Array.mapi (fun index item ->
                     let key = string_of_int index in
                     { of' with key }
                     |> eval_internal_or_external_tag
                          ~state
                          ~tag
                          ~value:(StringMap.singleton key item))
-             |> Value.of_vector ~value_loc:tag.Ast.tag_loc)
+             |> Value.of_array ~value_loc:tag.Ast.tag_loc)
       |> Option.value ~default:(Value.null ~value_loc:tag.tag_loc ())
   | `Record ->
       let of' =
