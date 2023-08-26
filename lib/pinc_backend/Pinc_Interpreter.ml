@@ -242,20 +242,15 @@ module State = struct
       state.environment.scope
       |> List.map
            (StringMap.mapi (fun key binding ->
-                match (key, binding) with
-                | key, binding when key = ident && binding.is_mutable ->
-                    updated := true;
-                    { binding with value }
-                | ( _key,
-                    ({
-                       value =
-                         {
-                           value_desc = Function { state = fn_state; parameters; exec };
-                           _;
-                         };
-                       _;
-                     } as binding) )
+                match binding with
+                | binding when key = ident && binding.is_mutable -> { binding with value }
+                | {
+                    value =
+                      { value_desc = Function { state = fn_state; parameters; exec }; _ };
+                    _;
+                  } as binding
                   when not !updated ->
+                    updated := true;
                     fn_state.environment.scope <- update_scope fn_state;
                     {
                       binding with
@@ -265,7 +260,7 @@ module State = struct
                           value_desc = Function { state = fn_state; parameters; exec };
                         };
                     }
-                | _, v -> v))
+                | v -> v))
     in
     let new_scope = update_scope t in
     t.environment.scope <- new_scope
@@ -449,7 +444,14 @@ and eval_expression ~state expression =
                 expression.expression_loc
                 (Printf.sprintf "Library with name `%s` could not be found." hd)))
   | Ast.UppercaseIdentifierExpression id ->
-      let state, typ = get_uppercase_identifier_typ ~state id in
+      let state, typ =
+        state
+        |> State.get_used_values
+        |> StringMap.find_opt id
+        |> Option.fold
+             ~some:(fun l -> (state, Some (`Library l)))
+             ~none:(get_uppercase_identifier_typ ~state id)
+      in
       let output =
         {
           value_desc = DefinitionInfo (id, typ, `NotNegated);
