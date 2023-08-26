@@ -115,7 +115,7 @@ module Expect = struct
     | Char _ -> Pinc_Diagnostics.(error Location.none "expected array, got char")
     | Float _ -> Pinc_Diagnostics.(error Location.none "expected array, got float")
     | Bool _ -> Pinc_Diagnostics.(error Location.none "expected array, bool")
-    | Array a -> Some (a |> Vector.map ~f:fn)
+    | Array a -> Some (a |> Array.map fn)
     | Record _ -> Pinc_Diagnostics.(error Location.none "expected array, got record")
     | Function _ ->
         Pinc_Diagnostics.(error Location.none "expected array, got function definition")
