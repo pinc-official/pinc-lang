@@ -4,9 +4,7 @@
  (modules print)
  (modes native)
  (ocamlopt_flags -O3)
- (libraries landmarks pinc)
- (instrumentation
-  (backend landmarks --auto)))
+ (libraries landmarks pinc))
 
 (executable
  (name print_debug)
