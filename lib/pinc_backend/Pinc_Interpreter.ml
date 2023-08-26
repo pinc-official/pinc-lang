@@ -6,6 +6,9 @@ module Location = Pinc_Diagnostics.Location
 exception Loop_Break of state
 exception Loop_Continue of state
 
+let libraries = Hashtbl.create 100
+let add_library ~ident ~library = Hashtbl.add libraries ident library
+
 module Value = struct
   let null ~value_loc () = { value_loc; value_desc = Null }
   let of_char ~value_loc c = { value_loc; value_desc = Char c }
@@ -190,7 +193,6 @@ module State = struct
       declarations;
       output = { value_desc = Null; value_loc = Location.none };
       environment = { scope = []; use_scope = StringMap.empty };
-      libraries = StringMap.empty;
       tag_listeners;
       parent_tag = None;
       tag_cache;
@@ -201,10 +203,20 @@ module State = struct
   ;;
 
   let add_scope t =
-    let environment =
-      { t.environment with scope = StringMap.empty :: t.environment.scope }
+    {
+      t with
+      environment = { t.environment with scope = StringMap.empty :: t.environment.scope };
+    }
+  ;;
+
+  let remove_scope t =
+    let new_scope =
+      match t.environment.scope with
+      | [] -> []
+      | [ hd ] -> [ hd ]
+      | _hd :: tl -> tl
     in
-    { t with environment }
+    { t with environment = { t.environment with scope = new_scope } }
   ;;
 
   let add_value_to_scope ~ident ~value ~is_optional ~is_mutable t =
@@ -260,7 +272,6 @@ module State = struct
   ;;
 
   let add_value_to_function_scopes ~ident ~value ~is_optional ~is_mutable t =
-    print_endline (Printf.sprintf "add_value_to_function_scopes: %s" ident);
     let update_scope state =
       List.map
         (StringMap.map (function
@@ -298,7 +309,30 @@ module State = struct
   ;;
 end
 
-let rec eval_statement ~state statement =
+let rec get_uppercase_identifier_typ ~state ident =
+  let declaration = state.declarations |> StringMap.find_opt ident in
+  match declaration with
+  | None -> (state, None)
+  | Some { declaration_type = Ast.Declaration_Component _; _ } -> (state, Some `Component)
+  | Some { declaration_type = Ast.Declaration_Page _; _ } -> (state, Some `Page)
+  | Some { declaration_type = Ast.Declaration_Site _; _ } -> (state, Some `Site)
+  | Some { declaration_type = Ast.Declaration_Store _; _ } -> (state, Some `Store)
+  | Some { declaration_type = Ast.Declaration_Library { declaration_body; _ }; _ } -> (
+      match Hashtbl.find_opt libraries ident with
+      | Some library -> (state, Some (`Library library))
+      | None ->
+          let s =
+            eval_expression
+              ~state:{ state with environment = { state.environment with scope = [] } }
+              declaration_body
+          in
+          let bindings = s |> State.get_bindings in
+          let includes = s |> State.get_used_values in
+          let library = Library.make ~bindings ~includes in
+          add_library ~library ~ident;
+          (state, Some (`Library library)))
+
+and eval_statement ~state statement =
   match statement.Ast.statement_desc with
   | Ast.LetStatement (Lowercase_Id ident, expression) ->
       eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
@@ -335,12 +369,12 @@ and eval_expression ~state expression =
       state
       |> State.add_output ~output:(Value.of_bool ~value_loc:expression.expression_loc b)
   | Ast.Array l ->
-      state
-      |> State.add_output
-           ~output:
-             (l
-             |> Vector.map ~f:(fun it -> it |> eval_expression ~state |> State.get_output)
-             |> Value.of_vector ~value_loc:expression.expression_loc)
+      let output =
+        l
+        |> Vector.map ~f:(fun it -> it |> eval_expression ~state |> State.get_output)
+        |> Value.of_vector ~value_loc:expression.expression_loc
+      in
+      state |> State.add_output ~output
   | Ast.Record map ->
       state
       |> State.add_output
@@ -367,49 +401,62 @@ and eval_expression ~state expression =
       eval_function_declaration ~loc:expression.expression_loc ~state ~parameters body
   | Ast.FunctionCall { function_definition; arguments } ->
       eval_function_call ~state ~arguments function_definition
-  | Ast.UppercaseIdentifierPathExpression path ->
-      let rec eval_path state use_values = function
-        | [] -> state
-        | id :: tl ->
-            let value =
-              match use_values |> StringMap.find_opt id with
-              | None -> Value.null ~value_loc:expression.expression_loc ()
-              | Some (_, use_scope) ->
-                  use_scope
-                  |> StringMap.find_opt id
-                  |> Option.value
-                       ~default:(Value.null ~value_loc:expression.expression_loc ())
-            in
-            state |> State.add_output ~output:value
+  | Ast.UppercaseIdentifierPathExpression path -> (
+      let rec eval_library_path ~state (name, library) path =
+        match path with
+        | [] -> (state, name, library)
+        | hd :: tl -> (
+            match library |> Library.get_include hd with
+            | Some l -> eval_library_path ~state (hd, l) tl
+            | None ->
+                Pinc_Diagnostics.error
+                  expression.expression_loc
+                  (Printf.sprintf
+                     "Library with name `%s` could not be found inside `%s`."
+                     hd
+                     name))
       in
-      let use_values = state |> State.get_used_values in
-      eval_path state use_values path
-  | Ast.UppercaseIdentifierExpression id ->
-      let declaration = state.declarations |> StringMap.find_opt id in
-      let typ =
-        match declaration with
-        | None -> None
-        | Some { declaration_type = Ast.Declaration_Component _; _ } -> Some `Component
-        | Some { declaration_type = Ast.Declaration_Page _; _ } -> Some `Page
-        | Some { declaration_type = Ast.Declaration_Site _; _ } -> Some `Site
-        | Some { declaration_type = Ast.Declaration_Store _; _ } -> Some `Store
-        | Some { declaration_type = Ast.Declaration_Library _; _ } -> (
-            try
-              let top_level_bindings, used_values =
-                state.libraries |> StringMap.find id
+      match path with
+      | [] -> assert false
+      | hd :: tl -> (
+          let state, library =
+            state
+            |> State.get_used_values
+            |> StringMap.find_opt hd
+            |> Option.fold
+                 ~some:(fun l -> (state, Some (`Library l)))
+                 ~none:(get_uppercase_identifier_typ ~state hd)
+          in
+          match library with
+          | Some (`Library l) ->
+              let state, name, library = eval_library_path ~state (hd, l) tl in
+              let output =
+                {
+                  value_loc = expression.expression_loc;
+                  value_desc = DefinitionInfo (name, Some (`Library library), `NotNegated);
+                }
               in
-              Some (`Library (top_level_bindings, used_values))
-            with Not_found ->
-              print_endline ("Not Found: " ^ id);
-              None)
+              state |> State.add_output ~output
+          | Some _ ->
+              Pinc_Diagnostics.error
+                expression.expression_loc
+                (Printf.sprintf
+                   "`%s` is not a library. Cannot construct a path with non library \
+                    definitions."
+                   hd)
+          | None ->
+              Pinc_Diagnostics.error
+                expression.expression_loc
+                (Printf.sprintf "Library with name `%s` could not be found." hd)))
+  | Ast.UppercaseIdentifierExpression id ->
+      let state, typ = get_uppercase_identifier_typ ~state id in
+      let output =
+        {
+          value_desc = DefinitionInfo (id, typ, `NotNegated);
+          value_loc = expression.expression_loc;
+        }
       in
-      state
-      |> State.add_output
-           ~output:
-             {
-               value_desc = DefinitionInfo (id, typ, `NotNegated);
-               value_loc = expression.expression_loc;
-             }
+      state |> State.add_output ~output
   | Ast.LowercaseIdentifierExpression id ->
       eval_lowercase_identifier ~loc:expression.expression_loc ~state id
   | Ast.TagExpression tag -> eval_tag ~state tag
@@ -520,7 +567,9 @@ and eval_function_declaration ~state ~loc ~parameters body =
                ~is_mutable:false
                ~is_optional:false
     in
-    eval_expression ~state body |> State.get_output
+    let state = eval_expression ~state body in
+    let state = state |> State.remove_scope in
+    state |> State.get_output
   in
   let fn = { value_loc = loc; value_desc = Function { parameters; state; exec } } in
   ident
@@ -905,7 +954,8 @@ and eval_binary_concat ~state left right =
        ~output:(Value.of_string ~value_loc:merged_value_loc (Buffer.contents buf))
 
 and eval_binary_dot_access ~state left right =
-  let left_value = left |> eval_expression ~state |> State.get_output in
+  let state = left |> eval_expression ~state in
+  let left_value = state |> State.get_output in
   match (left_value.value_desc, right.expression_desc) with
   | Null, _ ->
       state |> State.add_output ~output:(Value.null ~value_loc:left_value.value_loc ())
@@ -964,66 +1014,22 @@ and eval_binary_dot_access ~state left right =
       Pinc_Diagnostics.error
         right.expression_loc
         "Expected right hand side of record access to be a lowercase identifier."
-  | DefinitionInfo (name, maybe_library, _), Ast.LowercaseIdentifierExpression b -> (
-      match
-        (state |> State.get_used_values |> StringMap.find_opt name, maybe_library)
-      with
-      | None, Some (`Library (top_level_bindings, _))
-      | ( Some
-            {
-              value_desc = DefinitionInfo (_, Some (`Library (top_level_bindings, _)), _);
-              _;
-            },
-          _ ) ->
-          state
-          |> State.add_output
-               ~output:
-                 (top_level_bindings
-                 |> StringMap.find_opt b
-                 |> Option.map (fun b -> b.value)
-                 |> Option.value
-                      ~default:
-                        (Value.null
-                           ~value_loc:
-                             (Location.merge
-                                ~s:left.expression_loc
-                                ~e:right.expression_loc
-                                ())
-                           ()))
-      | None, None ->
-          state
-          |> State.add_output
-               ~output:
-                 (Value.null
-                    ~value_loc:
-                      (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
-                    ())
-      | _ ->
-          Pinc_Diagnostics.error
-            left.expression_loc
-            "Trying to access a property on a non record, library or template value.")
-  | DefinitionInfo (name, maybe_library, _), Ast.UppercaseIdentifierExpression b -> (
-      match
-        (state |> State.get_used_values |> StringMap.find_opt name, maybe_library)
-      with
-      | None, Some (`Library (_, use_scope))
-      | Some { value_desc = DefinitionInfo (_, Some (`Library (_, use_scope)), _); _ }, _
-        ->
-          state
-          |> State.add_output
-               ~output:
-                 (use_scope
-                 |> StringMap.find_opt b
-                 |> Option.value
-                      ~default:
-                        (Value.null
-                           ~value_loc:
-                             (Location.merge
-                                ~s:left.expression_loc
-                                ~e:right.expression_loc
-                                ())
-                           ()))
-      | None, None ->
+  | DefinitionInfo (_, maybe_library, _), Ast.LowercaseIdentifierExpression b -> (
+      match maybe_library with
+      | Some (`Library l) ->
+          let output =
+            l
+            |> Library.get_binding b
+            |> Option.map (fun b -> b.value)
+            |> Option.value
+                 ~default:
+                   (Value.null
+                      ~value_loc:
+                        (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
+                      ())
+          in
+          state |> State.add_output ~output
+      | None ->
           state
           |> State.add_output
                ~output:
@@ -1248,26 +1254,22 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
 and eval_use ~state ~ident expression =
   let value = expression |> eval_expression ~state |> State.get_output in
   match value with
-  | {
-   value_desc = DefinitionInfo (_, Some (`Library (top_level_bindings, used_values)), _);
-   _;
-  } -> (
+  | { value_desc = DefinitionInfo (_, Some (`Library library), _); _ } -> (
       match ident with
       | Some (Uppercase_Id ident) ->
           let ident, _ident_location = ident in
-          state
-          |> State.add_value_to_use_scope ~ident ~value:(top_level_bindings, used_values)
+          state |> State.add_value_to_use_scope ~ident ~value:library
       | None ->
           let state =
             StringMap.fold
               (fun ident { is_optional; value; _ } ->
                 State.add_value_to_scope ~ident ~is_mutable:false ~is_optional ~value)
-              top_level_bindings
+              (Library.get_bindings library)
               state
           in
           StringMap.fold
             (fun ident value -> State.add_value_to_use_scope ~ident ~value)
-            used_values
+            (Library.get_includes library)
             state)
   | _ ->
       Pinc_Diagnostics.error
@@ -1456,7 +1458,8 @@ and eval_range ~state ~inclusive from_expression upto_expression =
 
 and eval_block ~state statements =
   let state = state |> State.add_scope in
-  statements |> List.fold_left (fun state -> eval_statement ~state) state
+  let state = statements |> List.fold_left (fun state -> eval_statement ~state) state in
+  state |> State.remove_scope
 
 and eval_slot ~tag ~attributes ~slotted_elements key =
   let find_slot_key attributes =
@@ -1848,7 +1851,9 @@ and eval_tag ~state tag =
           |> State.add_scope
           |> State.add_value_to_scope ~ident ~value ~is_optional:false ~is_mutable:false
         in
-        eval_expression ~state expr |> State.get_output
+        let state = eval_expression ~state expr in
+        let state = state |> State.remove_scope in
+        state |> State.get_output
     | _ -> value
   in
   let value =
@@ -2054,27 +2059,6 @@ let get_stdlib () =
        StringMap.empty
 ;;
 
-let eval_libraries ~state declarations =
-  StringMap.fold
-    (fun key declaration state ->
-      match declaration with
-      | Ast.{ declaration_type = Declaration_Component _; _ }
-      | Ast.{ declaration_type = Declaration_Site _; _ }
-      | Ast.{ declaration_type = Declaration_Page _; _ }
-      | Ast.{ declaration_type = Declaration_Store _; _ } -> state
-      | Ast.{ declaration_type = Declaration_Library { declaration_body; _ }; _ } ->
-          let state = eval_expression ~state declaration_body in
-          let top_level_bindings = state |> State.get_bindings in
-          let used_values = state |> State.get_used_values in
-          {
-            state with
-            libraries =
-              state.libraries |> StringMap.add key (top_level_bindings, used_values);
-          })
-    declarations
-    state
-;;
-
 let eval ?tag_listeners ~root declarations =
   let base_lib = get_stdlib () in
   let declarations =
@@ -2088,7 +2072,6 @@ let eval ?tag_listeners ~root declarations =
       declarations
   in
   let state = State.make ?tag_listeners declarations ~mode:Portal_Collection in
-  let state = eval_libraries ~state declarations in
   let state = eval_declaration ~state root in
   if state.portals |> Hashtbl.length > 0 then
     eval_declaration ~state:{ state with mode = Render } root

@@ -1,39 +1,35 @@
 component C {
   let array = 1...1000;
-
-  Base.Array.length(array);
-
-  Base.Array.length(array)
   
-  // let merge = fn (a, b, f) -> {
-  //   let len_a = ;
-  //   if len_a == 0 {
-  //     b
-  //   } else {
-  //     let len_b = Base.Array.length(b);
-  //     if len_b == 0 {
-  //       a
-  //     } else {
-  //       if f(a[0], b[0]) < 0 {
-  //         [a[0]] @@ merge(Base.Array.slice(a, 1, len_a), b, f)
-  //       } else {
-  //         [b[0]] @@ merge(a, Base.Array.slice(b, 1, len_b), f)
-  //       }
-  //     }
-  //   }
-  // }
+  let merge = fn (a, b, f) -> {
+    let len_a = Base.Array.length(a);
+    if len_a == 0 {
+      b
+    } else {
+      let len_b = Base.Array.length(b);
+      if len_b == 0 {
+        a
+      } else {
+        if f(a[0], b[0]) < 0 {
+          [a[0]] @@ merge(Base.Array.slice(a, 1, len_a), b, f)
+        } else {
+          [b[0]] @@ merge(a, Base.Array.slice(b, 1, len_b), f)
+        }
+      }
+    }
+  }
 
-  // let sort = fn (array, f) -> {
-  //   let len = Base.Array.length(array);
-  //   if len < 2 {
-  //     array
-  //   } else {
-  //       let h = Base.Math.ceil(len / 2);
-  //       let first_half = array |> Base.Array.slice(0, h);
-  //       let second_half = array |> Base.Array.slice(h, len);
-  //       merge(sort(first_half, f), sort(second_half, f), f);
-  //   }
-  // }
+  let sort = fn (array, f) -> {
+    let len = Base.Array.length(array);
+    if len < 2 {
+      array
+    } else {
+        let h = Base.Math.ceil(len / 2);
+        let first_half = array |> Base.Array.slice(0, h);
+        let second_half = array |> Base.Array.slice(h, len);
+        merge(sort(first_half, f), sort(second_half, f), f);
+    }
+  }
 
-  // sort(array, fn (a, b) -> 0)
+  sort(array, fn (a, b) -> 0)
 }
