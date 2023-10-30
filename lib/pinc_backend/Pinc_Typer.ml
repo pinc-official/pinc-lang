@@ -17,7 +17,8 @@ module Expect = struct
   let attribute key fn value = Option.bind (StringMap.find_opt key value) fn
   let any_value v = v
 
-  let string = function
+  let string v =
+    match v.value_desc with
     | Null -> None
     | Portal _ ->
         Pinc_Diagnostics.(error Location.none "expected string, got portal value")
@@ -40,7 +41,8 @@ module Expect = struct
           error Location.none "expected string, got component template node")
   ;;
 
-  let int = function
+  let int v =
+    match v.value_desc with
     | Null -> None
     | Portal _ -> Pinc_Diagnostics.(error Location.none "expected int, got portal value")
     | String _ -> Pinc_Diagnostics.(error Location.none "expected int, got string")
@@ -61,7 +63,8 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected int, got component template node")
   ;;
 
-  let float = function
+  let float v =
+    match v.value_desc with
     | Null -> None
     | Portal _ ->
         Pinc_Diagnostics.(error Location.none "expected float, got portal value")
@@ -84,7 +87,8 @@ module Expect = struct
           error Location.none "expected float, got component template node")
   ;;
 
-  let bool = function
+  let bool v =
+    match v.value_desc with
     | Null -> None
     | Portal _ -> Pinc_Diagnostics.(error Location.none "expected bool, got portal value")
     | String _ -> Pinc_Diagnostics.(error Location.none "expected bool, got string")
@@ -106,7 +110,8 @@ module Expect = struct
           error Location.none "expected bool, got component template node")
   ;;
 
-  let array fn = function
+  let array fn v =
+    match v.value_desc with
     | Null -> None
     | Portal _ ->
         Pinc_Diagnostics.(error Location.none "expected array, got portal value")
@@ -129,7 +134,32 @@ module Expect = struct
           error Location.none "expected array, got component template node")
   ;;
 
-  let record = function
+  let list fn v =
+    match v.value_desc with
+    | Null -> None
+    | Portal _ ->
+        Pinc_Diagnostics.(error Location.none "expected array, got portal value")
+    | String _ -> Pinc_Diagnostics.(error Location.none "expected array, got string")
+    | Int _ -> Pinc_Diagnostics.(error Location.none "expected array, got int")
+    | Char _ -> Pinc_Diagnostics.(error Location.none "expected array, got char")
+    | Float _ -> Pinc_Diagnostics.(error Location.none "expected array, got float")
+    | Bool _ -> Pinc_Diagnostics.(error Location.none "expected array, bool")
+    | Array a -> Some (a |> Array.to_list |> List.map fn)
+    | Record _ -> Pinc_Diagnostics.(error Location.none "expected array, got record")
+    | Function _ ->
+        Pinc_Diagnostics.(error Location.none "expected array, got function definition")
+    | DefinitionInfo _ ->
+        Pinc_Diagnostics.(error Location.none "expected array, got definition info")
+    | TagInfo _ -> Pinc_Diagnostics.(error Location.none "expected array, got tag")
+    | HtmlTemplateNode (_, _, _, _) ->
+        Pinc_Diagnostics.(error Location.none "expected array, got HTML template node")
+    | ComponentTemplateNode (_, _, _, _) ->
+        Pinc_Diagnostics.(
+          error Location.none "expected array, got component template node")
+  ;;
+
+  let record v =
+    match v.value_desc with
     | Null -> None
     | Portal _ ->
         Pinc_Diagnostics.(error Location.none "expected record, got portal value")
@@ -152,7 +182,8 @@ module Expect = struct
           error Location.none "expected record, got component template node")
   ;;
 
-  let record_with_order = function
+  let record_with_order v =
+    match v.value_desc with
     | Null -> None
     | Portal _ ->
         Pinc_Diagnostics.(error Location.none "expected record, got portal value")
@@ -162,7 +193,7 @@ module Expect = struct
     | Float _ -> Pinc_Diagnostics.(error Location.none "expected record, got float")
     | Bool _ -> Pinc_Diagnostics.(error Location.none "expected record, got bool")
     | Array _ -> Pinc_Diagnostics.(error Location.none "expected record, got array")
-    | Record r -> Some r
+    | Record r -> r |> Option.some
     | Function _ ->
         Pinc_Diagnostics.(error Location.none "expected record, got function definition")
     | DefinitionInfo _ ->
@@ -175,7 +206,8 @@ module Expect = struct
           error Location.none "expected record, got component template node")
   ;;
 
-  let definition_info ?(typ = `All) = function
+  let definition_info ?(typ = `All) v =
+    match v.value_desc with
     | Null -> None
     | Portal _ ->
         Pinc_Diagnostics.(
@@ -229,7 +261,8 @@ module Expect = struct
           error Location.none "expected definition info, got component template node")
   ;;
 
-  let tag_info = function
+  let tag_info v =
+    match v.value_desc with
     | Null -> None
     | Portal _ -> Pinc_Diagnostics.(error Location.none "expected tag, got portal value")
     | String _ -> Pinc_Diagnostics.(error Location.none "expected tag, got string")

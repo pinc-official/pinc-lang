@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "pinc-lang"
-version: "dev"
+version: "~dev"
 synopsis: "The PiNC Language as Syntax and Interpreter"
 maintainer: "torben@ewert-online.com"
 authors: "Torben Ewert"
