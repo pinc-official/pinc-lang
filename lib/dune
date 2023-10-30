@@ -1,6 +1,6 @@
 (library
  (name pinc)
  (public_name pinc-lang)
- (libraries Pinc_Backend Pinc_Includes)
+ (libraries Pinc_Backend Pinc_Includes eio_main eio)
  (instrumentation
   (backend bisect_ppx)))

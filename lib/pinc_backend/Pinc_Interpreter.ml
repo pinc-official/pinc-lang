@@ -305,7 +305,7 @@ module State = struct
   ;;
 end
 
-let rec get_uppercase_identifier_typ ~state ident =
+let rec get_uppercase_identifier_typ ~env ~state ident =
   let declaration = state.declarations |> StringMap.find_opt ident in
   match declaration with
   | None -> (state, None)
@@ -319,6 +319,7 @@ let rec get_uppercase_identifier_typ ~state ident =
       | None ->
           let s =
             eval_expression
+              ~env
               ~state:{ state with environment = { state.environment with scope = [] } }
               declaration_body
           in
@@ -328,24 +329,24 @@ let rec get_uppercase_identifier_typ ~state ident =
           add_library ~library ~ident;
           (state, Some (`Library library)))
 
-and eval_statement ~state statement =
+and eval_statement ~env ~state statement =
   match statement.Ast.statement_desc with
   | Ast.LetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
+      eval_let ~env ~state ~ident ~is_mutable:false ~is_optional:false expression
   | Ast.OptionalLetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:false ~is_optional:true expression
+      eval_let ~env ~state ~ident ~is_mutable:false ~is_optional:true expression
   | Ast.OptionalMutableLetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:true ~is_optional:true expression
+      eval_let ~env ~state ~ident ~is_mutable:true ~is_optional:true expression
   | Ast.MutableLetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
+      eval_let ~env ~state ~ident ~is_mutable:true ~is_optional:false expression
   | Ast.MutationStatement (Lowercase_Id ident, expression) ->
-      eval_mutation ~state ~ident expression
-  | Ast.UseStatement (ident, expression) -> eval_use ~state ~ident expression
+      eval_mutation ~env ~state ~ident expression
+  | Ast.UseStatement (ident, expression) -> eval_use ~env ~state ~ident expression
   | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
   | Ast.ContinueStatement _ -> raise_notrace (Loop_Continue state)
-  | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
+  | Ast.ExpressionStatement expression -> expression |> eval_expression ~env ~state
 
-and eval_expression ~state expression =
+and eval_expression ~env ~state expression =
   match expression.expression_desc with
   | Ast.Comment -> state
   | Ast.Char c ->
@@ -367,7 +368,7 @@ and eval_expression ~state expression =
   | Ast.Array l ->
       let output =
         l
-        |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)
+        |> Array.map (fun it -> it |> eval_expression ~env ~state |> State.get_output)
         |> Value.of_array ~value_loc:expression.expression_loc
       in
       state |> State.add_output ~output
@@ -380,6 +381,7 @@ and eval_expression ~state expression =
                     let index, optional, expression = attr in
                     expression
                     |> eval_expression
+                         ~env
                          ~state:{ state with binding_identifier = Some (optional, ident) }
                     |> State.get_output
                     |> function
@@ -392,18 +394,23 @@ and eval_expression ~state expression =
                              ident)
                     | value -> (index, value))
              |> Value.of_string_map ~value_loc:expression.expression_loc)
-  | Ast.String template -> eval_string_template ~state template
+  | Ast.String template -> eval_string_template ~env ~state template
   | Ast.Function { parameters; body } ->
-      eval_function_declaration ~loc:expression.expression_loc ~state ~parameters body
+      eval_function_declaration
+        ~loc:expression.expression_loc
+        ~env
+        ~state
+        ~parameters
+        body
   | Ast.FunctionCall { function_definition; arguments } ->
-      eval_function_call ~state ~arguments function_definition
+      eval_function_call ~env ~state ~arguments function_definition
   | Ast.UppercaseIdentifierPathExpression path -> (
-      let rec eval_library_path ~state (name, library) path =
+      let rec eval_library_path ~env ~state (name, library) path =
         match path with
         | [] -> (state, name, library)
         | hd :: tl -> (
             match library |> Library.get_include hd with
-            | Some l -> eval_library_path ~state (hd, l) tl
+            | Some l -> eval_library_path ~env ~state (hd, l) tl
             | None ->
                 Pinc_Diagnostics.error
                   expression.expression_loc
@@ -421,11 +428,11 @@ and eval_expression ~state expression =
             |> StringMap.find_opt hd
             |> Option.fold
                  ~some:(fun l -> (state, Some (`Library l)))
-                 ~none:(get_uppercase_identifier_typ ~state hd)
+                 ~none:(get_uppercase_identifier_typ ~env ~state hd)
           in
           match library with
           | Some (`Library l) ->
-              let state, name, library = eval_library_path ~state (hd, l) tl in
+              let state, name, library = eval_library_path ~env ~state (hd, l) tl in
               let output =
                 {
                   value_loc = expression.expression_loc;
@@ -451,7 +458,7 @@ and eval_expression ~state expression =
         |> StringMap.find_opt id
         |> Option.fold
              ~some:(fun l -> (state, Some (`Library l)))
-             ~none:(get_uppercase_identifier_typ ~state id)
+             ~none:(get_uppercase_identifier_typ ~env ~state id)
       in
       let output =
         {
@@ -462,71 +469,71 @@ and eval_expression ~state expression =
       state |> State.add_output ~output
   | Ast.LowercaseIdentifierExpression id ->
       eval_lowercase_identifier ~loc:expression.expression_loc ~state id
-  | Ast.TagExpression tag -> eval_tag ~state tag
+  | Ast.TagExpression tag -> eval_tag ~env ~state tag
   | Ast.ForInExpression { index; iterator = Lowercase_Id ident; reverse; iterable; body }
-    -> eval_for_in ~state ~index_ident:index ~ident ~reverse ~iterable body
+    -> eval_for_in ~env ~state ~index_ident:index ~ident ~reverse ~iterable body
   | Ast.TemplateExpression nodes ->
       state
       |> State.add_output
            ~output:
              (nodes
-             |> List.map (fun it -> it |> eval_template ~state |> State.get_output)
+             |> List.map (fun it -> it |> eval_template ~env ~state |> State.get_output)
              |> Value.of_list ~value_loc:expression.expression_loc)
-  | Ast.BlockExpression e -> eval_block ~state e
+  | Ast.BlockExpression e -> eval_block ~env ~state e
   | Ast.ConditionalExpression { condition; consequent; alternate } ->
-      eval_if ~state ~condition ~alternate ~consequent
+      eval_if ~env ~state ~condition ~alternate ~consequent
   | Ast.UnaryExpression (Ast.Operators.Unary.NOT, expression) ->
-      eval_unary_not ~state expression
+      eval_unary_not ~env ~state expression
   | Ast.UnaryExpression (Ast.Operators.Unary.MINUS, expression) ->
-      eval_unary_minus ~state expression
+      eval_unary_minus ~env ~state expression
   | Ast.BinaryExpression (left, Ast.Operators.Binary.EQUAL, right) ->
-      eval_binary_equal ~state left right
+      eval_binary_equal ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.NOT_EQUAL, right) ->
-      eval_binary_not_equal ~state left right
+      eval_binary_not_equal ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.GREATER, right) ->
-      eval_binary_greater ~state left right
+      eval_binary_greater ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.GREATER_EQUAL, right) ->
-      eval_binary_greater_equal ~state left right
+      eval_binary_greater_equal ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.LESS, right) ->
-      eval_binary_less ~state left right
+      eval_binary_less ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.LESS_EQUAL, right) ->
-      eval_binary_less_equal ~state left right
+      eval_binary_less_equal ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.PLUS, right) ->
-      eval_binary_plus ~state left right
+      eval_binary_plus ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.MINUS, right) ->
-      eval_binary_minus ~state left right
+      eval_binary_minus ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.TIMES, right) ->
-      eval_binary_times ~state left right
+      eval_binary_times ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.DIV, right) ->
-      eval_binary_div ~state left right
+      eval_binary_div ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.POW, right) ->
-      eval_binary_pow ~state left right
+      eval_binary_pow ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.MODULO, right) ->
-      eval_binary_modulo ~state left right
+      eval_binary_modulo ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.CONCAT, right) ->
-      eval_binary_concat ~state left right
+      eval_binary_concat ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.AND, right) ->
-      eval_binary_and ~state left right
+      eval_binary_and ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.OR, right) ->
-      eval_binary_or ~state left right
+      eval_binary_or ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.DOT_ACCESS, right) ->
-      eval_binary_dot_access ~state left right
+      eval_binary_dot_access ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.BRACKET_ACCESS, right) ->
-      eval_binary_bracket_access ~state left right
+      eval_binary_bracket_access ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.ARRAY_ADD, right) ->
-      eval_binary_array_add ~state left right
+      eval_binary_array_add ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.MERGE, right) ->
-      eval_binary_merge ~state left right
+      eval_binary_merge ~env ~state left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.RANGE, right) ->
-      eval_range ~state ~inclusive:false left right
+      eval_range ~env ~state ~inclusive:false left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.INCLUSIVE_RANGE, right) ->
-      eval_range ~state ~inclusive:true left right
+      eval_range ~env ~state ~inclusive:true left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.FUNCTION_CALL, right) ->
-      eval_function_call ~state ~arguments:[ right ] left
+      eval_function_call ~env ~state ~arguments:[ right ] left
   | Ast.BinaryExpression (left, Ast.Operators.Binary.PIPE, right) ->
-      eval_binary_pipe ~state left right
+      eval_binary_pipe ~env ~state left right
 
-and eval_string_template ~state template =
+and eval_string_template ~env ~state template =
   let start_loc = ref Location.none in
   let end_loc = ref Location.none in
   state
@@ -542,12 +549,12 @@ and eval_string_template ~state template =
                 match string_template.Ast.string_template_desc with
                 | StringText s -> s
                 | StringInterpolation e ->
-                    eval_expression ~state e |> State.get_output |> Value.to_string)
+                    eval_expression ~env ~state e |> State.get_output |> Value.to_string)
          |> String.concat ""
          |> Value.of_string
               ~value_loc:(Location.make ~s:!start_loc.loc_start ~e:!end_loc.loc_end ()))
 
-and eval_function_declaration ~state ~loc ~parameters body =
+and eval_function_declaration ~env ~state ~loc ~parameters body =
   let ident = state.binding_identifier in
   let self = ref { value_desc = Null; value_loc = loc } in
   let exec ~arguments ~state () =
@@ -570,7 +577,7 @@ and eval_function_declaration ~state ~loc ~parameters body =
                ~is_mutable:false
                ~is_optional:false
     in
-    let state = eval_expression ~state body in
+    let state = eval_expression ~env ~state body in
     let state = state |> State.remove_scope in
     state |> State.get_output
   in
@@ -586,8 +593,8 @@ and eval_function_declaration ~state ~loc ~parameters body =
   self := fn;
   state |> State.add_output ~output:fn
 
-and eval_function_call ~state ~arguments function_definition =
-  let maybe_fn = eval_expression ~state function_definition |> State.get_output in
+and eval_function_call ~env ~state ~arguments function_definition =
+  let maybe_fn = eval_expression ~env ~state function_definition |> State.get_output in
   match maybe_fn.value_desc with
   | Function { parameters; state = fn_state; exec }
     when List.compare_lengths parameters arguments = 0 ->
@@ -595,7 +602,7 @@ and eval_function_call ~state ~arguments function_definition =
         List.combine parameters arguments
         |> List.fold_left
              (fun acc (param, arg) ->
-               let value = arg |> eval_expression ~state |> State.get_output in
+               let value = arg |> eval_expression ~env ~state |> State.get_output in
                acc |> StringMap.add param value)
              StringMap.empty
       in
@@ -627,7 +634,7 @@ and eval_function_call ~state ~arguments function_definition =
         function_definition.expression_loc
         "Trying to call a non function value"
 
-and eval_binary_pipe ~state left right =
+and eval_binary_pipe ~env ~state left right =
   let right =
     match right with
     | Ast.
@@ -645,11 +652,11 @@ and eval_binary_pipe ~state left right =
         in
         { fn with expression_desc }
   in
-  right |> eval_expression ~state
+  right |> eval_expression ~env ~state
 
-and eval_binary_plus ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_plus ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc =
     Location.merge ~s:left.expression_loc ~e:right.expression_loc ()
   in
@@ -693,9 +700,9 @@ and eval_binary_plus ~state left right =
         (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
         "Trying to add non numeric literals."
 
-and eval_binary_minus ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_minus ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   match (a.value_desc, b.value_desc) with
   | Char a, Char b ->
@@ -735,9 +742,9 @@ and eval_binary_minus ~state left right =
   | _ ->
       Pinc_Diagnostics.error merged_value_loc "Trying to subtract non numeric literals."
 
-and eval_binary_times ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_times ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   match (a.value_desc, b.value_desc) with
   | Char a, Char b ->
@@ -777,9 +784,9 @@ and eval_binary_times ~state left right =
   | _ ->
       Pinc_Diagnostics.error merged_value_loc "Trying to multiply non numeric literals."
 
-and eval_binary_div ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_div ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   let r =
     match (a.value_desc, b.value_desc) with
@@ -804,9 +811,9 @@ and eval_binary_div ~state left right =
   else
     state |> State.add_output ~output:(Value.of_float ~value_loc:merged_value_loc r)
 
-and eval_binary_pow ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_pow ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   let r =
     match (a.value_desc, b.value_desc) with
@@ -828,9 +835,9 @@ and eval_binary_pow ~state left right =
   else
     state |> State.add_output ~output:(Value.of_float ~value_loc:merged_value_loc r)
 
-and eval_binary_modulo ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_modulo ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let ( % ) = ( mod ) in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   let r =
@@ -861,75 +868,75 @@ and eval_binary_modulo ~state left right =
           else
             Value.of_float ~value_loc:merged_value_loc r)
 
-and eval_binary_and ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_and ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
        ~output:
          (Value.of_bool ~value_loc:merged_value_loc (Value.is_true a && Value.is_true b))
 
-and eval_binary_or ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_or ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
        ~output:
          (Value.of_bool ~value_loc:merged_value_loc (Value.is_true a || Value.is_true b))
 
-and eval_binary_less ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_less ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
        ~output:(Value.of_bool ~value_loc:merged_value_loc (Value.compare a b < 0))
 
-and eval_binary_less_equal ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_less_equal ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
        ~output:(Value.of_bool ~value_loc:merged_value_loc (Value.compare a b <= 0))
 
-and eval_binary_greater ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_greater ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
        ~output:(Value.of_bool ~value_loc:merged_value_loc (Value.compare a b > 0))
 
-and eval_binary_greater_equal ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_greater_equal ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
        ~output:(Value.of_bool ~value_loc:merged_value_loc (Value.compare a b >= 0))
 
-and eval_binary_equal ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_equal ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
        ~output:(Value.of_bool ~value_loc:merged_value_loc (Value.equal a b))
 
-and eval_binary_not_equal ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_not_equal ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
        ~output:(Value.of_bool ~value_loc:merged_value_loc (not (Value.equal a b)))
 
-and eval_binary_concat ~state left right =
-  let a = left |> eval_expression ~state |> State.get_output in
-  let b = right |> eval_expression ~state |> State.get_output in
+and eval_binary_concat ~env ~state left right =
+  let a = left |> eval_expression ~env ~state |> State.get_output in
+  let b = right |> eval_expression ~env ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   let buf = Buffer.create 32 in
   let () =
@@ -956,8 +963,8 @@ and eval_binary_concat ~state left right =
   |> State.add_output
        ~output:(Value.of_string ~value_loc:merged_value_loc (Buffer.contents buf))
 
-and eval_binary_dot_access ~state left right =
-  let state = left |> eval_expression ~state in
+and eval_binary_dot_access ~env ~state left right =
+  let state = left |> eval_expression ~env ~state in
   let left_value = state |> State.get_output in
   match (left_value.value_desc, right.expression_desc) with
   | Null, _ ->
@@ -1057,9 +1064,9 @@ and eval_binary_dot_access ~state left right =
         left.expression_loc
         "I am really not sure what you are trying to do here..."
 
-and eval_binary_bracket_access ~state left right =
-  let left_value = left |> eval_expression ~state |> State.get_output in
-  let right_value = right |> eval_expression ~state |> State.get_output in
+and eval_binary_bracket_access ~env ~state left right =
+  let left_value = left |> eval_expression ~env ~state |> State.get_output in
+  let right_value = right |> eval_expression ~env ~state |> State.get_output in
   match (left_value.value_desc, right_value.value_desc) with
   | Array a, Int b ->
       let output =
@@ -1120,9 +1127,9 @@ and eval_binary_bracket_access ~state left right =
            "Trying to access a property on a non record or array value (%s)."
            (Value.to_string left_value))
 
-and eval_binary_array_add ~state left right =
-  let left_value = left |> eval_expression ~state |> State.get_output in
-  let right_value = right |> eval_expression ~state |> State.get_output in
+and eval_binary_array_add ~env ~state left right =
+  let left_value = left |> eval_expression ~env ~state |> State.get_output in
+  let right_value = right |> eval_expression ~env ~state |> State.get_output in
   match (left_value.value_desc, right_value) with
   | Array l, value ->
       let new_array = Array.append l [| value |] in
@@ -1138,9 +1145,9 @@ and eval_binary_array_add ~state left right =
         left.expression_loc
         "Trying to add an element onto a non array value."
 
-and eval_binary_merge ~state left_expression right_expression =
-  let left = left_expression |> eval_expression ~state |> State.get_output in
-  let right = right_expression |> eval_expression ~state |> State.get_output in
+and eval_binary_merge ~env ~state left_expression right_expression =
+  let left = left_expression |> eval_expression ~env ~state |> State.get_output in
+  let right = right_expression |> eval_expression ~env ~state |> State.get_output in
   let eval_merge left right =
     match (left.value_desc, right.value_desc) with
     | Array l, Array r ->
@@ -1194,8 +1201,8 @@ and eval_binary_merge ~state left_expression right_expression =
   in
   state |> State.add_output ~output:(eval_merge left right)
 
-and eval_unary_not ~state expression =
-  let expression_value = eval_expression ~state expression |> State.get_output in
+and eval_unary_not ~env ~state expression =
+  let expression_value = eval_expression ~env ~state expression |> State.get_output in
   match expression_value.value_desc with
   | DefinitionInfo (name, typ, negated) ->
       let negated =
@@ -1215,8 +1222,8 @@ and eval_unary_not ~state expression =
                 ~value_loc:expression.expression_loc
                 (not (Value.is_true expression_value)))
 
-and eval_unary_minus ~state expression =
-  let expression_value = eval_expression ~state expression |> State.get_output in
+and eval_unary_minus ~env ~state expression =
+  let expression_value = eval_expression ~env ~state expression |> State.get_output in
   match expression_value.value_desc with
   | Int i ->
       state
@@ -1238,11 +1245,12 @@ and eval_lowercase_identifier ~state ~loc ident =
   | Some { value; is_mutable = _; is_optional = _ } ->
       state |> State.add_output ~output:value
 
-and eval_let ~state ~ident ~is_mutable ~is_optional expression =
+and eval_let ~env ~state ~ident ~is_mutable ~is_optional expression =
   let ident, ident_location = ident in
   let state =
     expression
     |> eval_expression
+         ~env
          ~state:{ state with binding_identifier = Some (is_optional, ident) }
   in
   let value = State.get_output state in
@@ -1256,8 +1264,8 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
       |> State.add_value_to_scope ~ident ~value ~is_mutable ~is_optional
       |> State.add_output ~output:(Value.null ~value_loc:expression.expression_loc ())
 
-and eval_use ~state ~ident expression =
-  let value = expression |> eval_expression ~state |> State.get_output in
+and eval_use ~env ~state ~ident expression =
+  let value = expression |> eval_expression ~env ~state |> State.get_output in
   match value with
   | { value_desc = DefinitionInfo (_, Some (`Library library), _); _ } -> (
       match ident with
@@ -1282,7 +1290,7 @@ and eval_use ~state ~ident expression =
         "Attempted to use a non library definition. \n\
          Expected to see a Library at the right hand side of the `use` statement."
 
-and eval_mutation ~state ~ident expression =
+and eval_mutation ~env ~state ~ident expression =
   let ident, ident_location = ident in
   let current_binding = State.get_value_from_scope ~ident state in
   match current_binding with
@@ -1296,6 +1304,7 @@ and eval_mutation ~state ~ident expression =
       let output =
         expression
         |> eval_expression
+             ~env
              ~state:{ state with binding_identifier = Some (is_optional, ident) }
       in
       let () =
@@ -1312,13 +1321,13 @@ and eval_mutation ~state ~ident expression =
       state
       |> State.add_output ~output:(Value.null ~value_loc:expression.expression_loc ())
 
-and eval_if ~state ~condition ~alternate ~consequent =
+and eval_if ~env ~state ~condition ~alternate ~consequent =
   let condition_matches =
-    condition |> eval_expression ~state |> State.get_output |> Value.is_true
+    condition |> eval_expression ~env ~state |> State.get_output |> Value.is_true
   in
   match (condition_matches, alternate) with
-  | true, _ -> consequent |> eval_statement ~state
-  | false, Some alt -> alt |> eval_statement ~state
+  | true, _ -> consequent |> eval_statement ~env ~state
+  | false, Some alt -> alt |> eval_statement ~env ~state
   | false, None ->
       state
       |> State.add_output
@@ -1331,11 +1340,11 @@ and eval_if ~state ~condition ~alternate ~consequent =
                      ())
                 ())
 
-and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
+and eval_for_in ~env ~state ~index_ident ~ident ~reverse ~iterable body =
   let ident, _ident_location = ident in
-  let iterable_value = iterable |> eval_expression ~state |> State.get_output in
+  let iterable_value = iterable |> eval_expression ~env ~state |> State.get_output in
   let index = ref (-1) in
-  let rec loop ~state acc curr =
+  let rec loop ~env ~state acc curr =
     match curr () with
     | Seq.Nil -> (state, List.rev acc)
     | Seq.Cons (value, tl) -> (
@@ -1355,10 +1364,10 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
                    ~is_optional:false
           | None -> state
         in
-        match eval_expression ~state body with
-        | exception Loop_Continue state -> loop ~state acc tl
+        match eval_expression ~env ~state body with
+        | exception Loop_Continue state -> loop ~env ~state acc tl
         | exception Loop_Break state -> (state, List.rev acc)
-        | state -> loop ~state (State.get_output state :: acc) tl)
+        | state -> loop ~env ~state (State.get_output state :: acc) tl)
   in
   match iterable_value.value_desc with
   | Array l ->
@@ -1369,7 +1378,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
         else
           array |> Array.to_seq
       in
-      let state, res = l |> to_seq |> loop ~state [] in
+      let state, res = l |> to_seq |> loop ~env ~state [] in
       state
       |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.expression_loc)
   | String s ->
@@ -1385,7 +1394,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
           |> CCUtf8_string.to_seq
           |> Seq.map (fun c -> c |> Value.of_char ~value_loc:iterable_value.value_loc)
       in
-      let state, res = s |> CCUtf8_string.of_string_exn |> map |> loop ~state [] in
+      let state, res = s |> CCUtf8_string.of_string_exn |> map |> loop ~env ~state [] in
       state
       |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.expression_loc)
   | Null -> state |> State.add_output ~output:iterable_value
@@ -1413,9 +1422,9 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
         "Cannot iterate over function definition"
   | TagInfo _ -> assert false
 
-and eval_range ~state ~inclusive from_expression upto_expression =
-  let from = from_expression |> eval_expression ~state |> State.get_output in
-  let upto = upto_expression |> eval_expression ~state |> State.get_output in
+and eval_range ~env ~state ~inclusive from_expression upto_expression =
+  let from = from_expression |> eval_expression ~env ~state |> State.get_output in
+  let upto = upto_expression |> eval_expression ~env ~state |> State.get_output in
   let get_range from upto =
     match (from.value_desc, upto.value_desc) with
     | Int from, Int upto -> (from, upto)
@@ -1461,9 +1470,11 @@ and eval_range ~state ~inclusive from_expression upto_expression =
             ~value_loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
             iter)
 
-and eval_block ~state statements =
+and eval_block ~env ~state statements =
   let state = state |> State.add_scope in
-  let state = statements |> List.fold_left (fun state -> eval_statement ~state) state in
+  let state =
+    statements |> List.fold_left (fun state -> eval_statement ~env ~state) state
+  in
   state |> State.remove_scope
 
 and eval_slot ~tag ~attributes ~slotted_elements key =
@@ -1630,7 +1641,7 @@ and eval_slot ~tag ~attributes ~slotted_elements key =
                 into a slot, you have to wrap it in some html tag or component.")
   |> Value.of_list ~value_loc:tag.Ast.tag_loc
 
-and eval_internal_tag ~state ~tag ~key ~attributes ~value_bag tag_identifier =
+and eval_internal_tag ~env ~state ~tag ~key ~attributes ~value_bag tag_identifier =
   match tag_identifier with
   | `String ->
       value_bag
@@ -1698,6 +1709,7 @@ and eval_internal_tag ~state ~tag ~key ~attributes ~value_bag tag_identifier =
                     let key = string_of_int index in
                     { of' with key }
                     |> eval_internal_or_external_tag
+                         ~env
                          ~state
                          ~tag
                          ~value:(StringMap.singleton key item))
@@ -1731,7 +1743,9 @@ and eval_internal_tag ~state ~tag ~key ~attributes ~value_bag tag_identifier =
                  match (x, y) with
                  | Some _, Some (idx, { value_desc = TagInfo info; _ }) ->
                      Some
-                       (idx, eval_internal_or_external_tag ~state ~tag ~value:record info)
+                       ( idx,
+                         eval_internal_or_external_tag ~env ~state ~tag ~value:record info
+                       )
                  | None, Some (idx, { value_desc = TagInfo _; value_loc }) ->
                      Some (idx, Value.null ~value_loc ())
                  | (None | Some _), Some (idx, value) -> Some (idx, value)
@@ -1741,7 +1755,7 @@ and eval_internal_tag ~state ~tag ~key ~attributes ~value_bag tag_identifier =
              |> Value.of_string_map ~value_loc:tag.Ast.tag_loc)
       |> Option.value ~default:(Value.null ~value_loc:tag.Ast.tag_loc ())
 
-and eval_internal_or_external_tag ~state ~tag ?value tag_info =
+and eval_internal_or_external_tag ~env ~state ~tag ?value tag_info =
   let { tag = tag_identifier; key; required = _; attributes; transformer } = tag_info in
   match (value, state.parent_component) with
   | None, Some (_, value_bag, slotted_elements)
@@ -1749,18 +1763,44 @@ and eval_internal_or_external_tag ~state ~tag ?value tag_info =
       match tag_identifier with
       | (`Array | `Boolean | `Float | `Int | `Record | `String) as tag_identifier ->
           tag_identifier
-          |> eval_internal_tag ~state ~tag ~key ~attributes ~value_bag
+          |> eval_internal_tag ~env ~state ~tag ~key ~attributes ~value_bag
           |> transformer
       | `Slot -> key |> eval_slot ~tag ~attributes ~slotted_elements |> transformer
-      | `Custom _ -> tag_info |> call_tag_listener ~state ~tag ~value_bag:(Some value_bag)
-      )
-  | value_bag, _ -> tag_info |> call_tag_listener ~state ~tag ~value_bag
+      | `Custom _ ->
+          tag_info |> call_tag_listener ~env ~state ~tag ~value_bag:(Some value_bag))
+  | value_bag, _ -> tag_info |> call_tag_listener ~env ~state ~tag ~value_bag
 
-and call_tag_listener ~state ~tag ~value_bag t =
+and call_tag_listener ~env ~state ~tag ~value_bag t =
+  let net = Eio.Stdenv.net env in
   let { tag = tag_identifier; key; required; attributes; transformer } = t in
   let listener = Hashtbl.find_opt state.tag_listeners tag_identifier in
+  let rec pinc_value_to_rpc value =
+    match value.value_desc with
+    | Char c -> Pinc_Rpc.Value.string (CCUtf8_string.make 1 c |> CCUtf8_string.to_string)
+    | String s -> Pinc_Rpc.Value.string s
+    | Int i -> Pinc_Rpc.Value.int i
+    | Float f -> Pinc_Rpc.Value.float f
+    | Bool b -> Pinc_Rpc.Value.bool b
+    | Array l -> Pinc_Rpc.Value.list (List.map pinc_value_to_rpc (Array.to_list l))
+    | Record r ->
+        Pinc_Rpc.Value.record
+          (r
+          |> StringMap.map (fun v -> v |> snd |> pinc_value_to_rpc)
+          |> StringMap.to_seq
+          |> List.of_seq)
+    | _ -> failwith "TODO"
+  in
+  let rpc_attributes =
+    attributes |> StringMap.map pinc_value_to_rpc |> StringMap.to_seq |> List.of_seq
+  in
   (match listener with
-  | Some (`String fn) -> fn ~required ~attributes ~key
+  | Some (`String _fn) ->
+      (* !nomerge *)
+      ("localhost", "8081")
+      |> Pinc_Rpc.make_string_request ~net ~key ~required ~attributes:rpc_attributes
+      |> Value.of_string ~value_loc:tag.tag_loc
+      |> Result.ok
+      (* fn ~required ~attributes ~key *)
   | Some (`Int fn) -> fn ~required ~attributes ~key
   | Some (`Float fn) -> fn ~required ~attributes ~key
   | Some (`Boolean fn) -> fn ~required ~attributes ~key
@@ -1810,7 +1850,7 @@ and call_tag_listener ~state ~tag ~value_bag t =
   | Ok v -> v |> transformer
   | Error e -> Pinc_Diagnostics.error tag.tag_loc e
 
-and eval_tag ~state tag =
+and eval_tag ~env ~state tag =
   let Ast.{ tag = tag_identifier; attributes; transformer } = tag.tag_desc in
   let required =
     not (state.binding_identifier |> Option.map fst |> Option.value ~default:false)
@@ -1821,7 +1861,7 @@ and eval_tag ~state tag =
     | Some attributes ->
         attributes
         |> StringMap.remove "of"
-        |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
+        |> StringMap.map (fun it -> it |> eval_expression ~env ~state |> State.get_output)
     | None -> StringMap.empty
   in
   let key, state =
@@ -1843,7 +1883,7 @@ and eval_tag ~state tag =
          (of'
          |> Option.map (fun it ->
                 it
-                |> eval_expression ~state:{ state with parent_tag = Some path }
+                |> eval_expression ~env ~state:{ state with parent_tag = Some path }
                 |> State.get_output)
          |> Option.value ~default:(Value.null ~value_loc:tag.Ast.tag_loc ()))
   in
@@ -1856,7 +1896,7 @@ and eval_tag ~state tag =
           |> State.add_scope
           |> State.add_value_to_scope ~ident ~value ~is_optional:false ~is_mutable:false
         in
-        let state = eval_expression ~state expr in
+        let state = eval_expression ~env ~state expr in
         let state = state |> State.remove_scope in
         state |> State.get_output
     | _ -> value
@@ -1911,7 +1951,7 @@ and eval_tag ~state tag =
           }
         in
         match state.parent_tag with
-        | None -> tag_info |> eval_internal_or_external_tag ~tag ~state
+        | None -> tag_info |> eval_internal_or_external_tag ~env ~tag ~state
         | Some _ -> { value_desc = TagInfo tag_info; value_loc = tag.Ast.tag_loc })
     | Render, _ ->
         Option.bind (Hashtbl.find_opt state.tag_cache key) Queue.take_opt
@@ -1927,7 +1967,7 @@ and eval_tag ~state tag =
     | Some q -> Queue.add value q);
   state |> State.add_output ~output:value
 
-and eval_template ~state template =
+and eval_template ~env ~state template =
   match template.template_node_desc with
   | Ast.TextTemplateNode text ->
       state
@@ -1942,11 +1982,13 @@ and eval_template ~state template =
       } ->
       let html_tag_attributes =
         html_tag_attributes
-        |> StringMap.map (eval_expression ~state)
+        |> StringMap.map (eval_expression ~env ~state)
         |> StringMap.map State.get_output
       in
       let html_tag_children =
-        html_tag_children |> List.map (eval_template ~state) |> List.map State.get_output
+        html_tag_children
+        |> List.map (eval_template ~env ~state)
+        |> List.map State.get_output
       in
       state
       |> State.add_output
@@ -1960,7 +2002,7 @@ and eval_template ~state template =
                      html_tag_children,
                      html_tag_self_closing );
              }
-  | Ast.ExpressionTemplateNode expr -> eval_expression ~state expr
+  | Ast.ExpressionTemplateNode expr -> eval_expression ~env ~state expr
   | Ast.ComponentTemplateNode
       {
         component_tag_identifier = Uppercase_Id (component_tag_identifier, _);
@@ -1969,12 +2011,12 @@ and eval_template ~state template =
       } ->
       let component_tag_attributes =
         component_tag_attributes
-        |> StringMap.map (eval_expression ~state)
+        |> StringMap.map (eval_expression ~env ~state)
         |> StringMap.map State.get_output
       in
       let component_tag_children =
         component_tag_children
-        |> List.map (eval_template ~state)
+        |> List.map (eval_template ~env ~state)
         |> List.map State.get_output
       in
       let render_fn component_tag_attributes =
@@ -1989,7 +2031,7 @@ and eval_template ~state template =
             ~mode:state.mode
             state.declarations
         in
-        eval_declaration ~state component_tag_identifier |> State.get_output
+        eval_declaration ~env ~state component_tag_identifier |> State.get_output
       in
       let result = render_fn component_tag_attributes in
       state
@@ -2002,26 +2044,26 @@ and eval_template ~state template =
                    (render_fn, component_tag_identifier, component_tag_attributes, result);
              }
 
-and eval_declaration ~state declaration =
+and eval_declaration ~env ~state declaration =
   state.declarations |> StringMap.find_opt declaration |> function
   | Some Ast.{ declaration_type = Declaration_Component { declaration_body; _ }; _ }
   | Some Ast.{ declaration_type = Declaration_Library { declaration_body; _ }; _ }
   | Some Ast.{ declaration_type = Declaration_Site { declaration_body; _ }; _ }
   | Some Ast.{ declaration_type = Declaration_Page { declaration_body; _ }; _ }
   | Some Ast.{ declaration_type = Declaration_Store { declaration_body; _ }; _ } ->
-      eval_expression ~state declaration_body
+      eval_expression ~env ~state declaration_body
   | None ->
       Pinc_Diagnostics.error
         Location.none
         ("Declaration with name `" ^ declaration ^ "` was not found.")
 ;;
 
-let eval_meta ?tag_listeners declarations =
+let eval_meta ~env ?tag_listeners declarations =
   let state = State.make ?tag_listeners declarations ~mode:Render in
   let eval attrs =
     attrs
     |> Option.value ~default:StringMap.empty
-    |> StringMap.map (fun e -> eval_expression ~state e |> State.get_output)
+    |> StringMap.map (fun e -> eval_expression ~env ~state e |> State.get_output)
   in
   let open Ast in
   declarations
@@ -2064,7 +2106,7 @@ let get_stdlib () =
        StringMap.empty
 ;;
 
-let eval ?tag_listeners ~root declarations =
+let eval ~env ?tag_listeners ~root declarations =
   let base_lib = get_stdlib () in
   let declarations =
     StringMap.merge
@@ -2077,14 +2119,14 @@ let eval ?tag_listeners ~root declarations =
       declarations
   in
   let state = State.make ?tag_listeners declarations ~mode:Portal_Collection in
-  let state = eval_declaration ~state root in
+  let state = eval_declaration ~env ~state root in
   if state.portals |> Hashtbl.length > 0 then
-    eval_declaration ~state:{ state with mode = Render } root
+    eval_declaration ~env ~state:{ state with mode = Render } root
   else
     state
 ;;
 
-let from_source ?(filename = "") ~source root =
+let from_source ~env ?(filename = "") ~source root =
   let declarations = Parser.parse ~filename source in
-  eval ~root declarations
+  eval ~env ~root declarations
 ;;

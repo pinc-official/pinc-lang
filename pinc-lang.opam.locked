@@ -8,33 +8,66 @@ license: "MIT"
 homepage: "https://github.com/pinc-lang/pinc-lang"
 bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
 depends: [
+  "angstrom" {= "0.15.0"}
   "base-bigarray" {= "base"}
   "base-domains" {= "base"}
   "base-nnp" {= "base"}
   "base-threads" {= "base"}
   "base-unix" {= "base"}
+  "base64" {= "3.5.1"}
+  "bigstringaf" {= "0.9.1"}
   "bisect_ppx" {= "2.8.3" & with-test}
   "cmdliner" {= "1.2.0"}
   "containers" {= "3.12"}
+  "cppo" {= "1.6.9"}
   "crunch" {= "3.3.1"}
   "csexp" {= "1.5.2"}
-  "dune" {= "3.10.0"}
-  "dune-configurator" {= "3.10.0"}
+  "cstruct" {= "6.2.0"}
+  "domain-local-await" {= "1.0.0"}
+  "dune" {= "3.11.1"}
+  "dune-configurator" {= "3.11.1"}
+  "eio" {= "0.12"}
+  "eio_main" {= "0.12"}
+  "eio_posix" {= "0.12"}
   "either" {= "1.0.0"}
+  "faraday" {= "0.8.2"}
   "fmt" {= "0.9.0"}
-  "ocaml" {= "5.0.0"}
-  "ocaml-compiler-libs" {= "v0.12.4" & with-test}
+  "gluten" {= "0.5.0"}
+  "gluten-eio" {= "0.5.0"}
+  "grpc" {= "0.2.0"}
+  "grpc-eio" {= "0.2.0"}
+  "h2" {= "0.11"}
+  "h2-eio" {= "0.11"}
+  "hmap" {= "0.8.1"}
+  "hpack" {= "0.11"}
+  "httpaf" {= "0.7.1"}
+  "iomux" {= "0.3"}
+  "lwt-dllist" {= "1.0.1"}
+  "mtime" {= "2.0.0"}
+  "ocaml" {= "5.1.0"}
+  "ocaml-base-compiler" {= "5.1.0"}
+  "ocaml-compiler-libs" {= "v0.12.4"}
   "ocaml-config" {= "3"}
-  "ocaml-system" {= "5.0.0"}
+  "ocaml-options-vanilla" {= "1"}
+  "ocaml-protoc" {= "2.4"}
+  "ocaml-syntax-shims" {= "1.0.0"}
   "ocamlbuild" {= "0.14.2"}
   "ocamlfind" {= "1.9.6"}
-  "ppx_derivers" {= "1.2.1" & with-test}
-  "ppxlib" {= "0.30.0" & with-test}
+  "optint" {= "0.3.0"}
+  "pbrt" {= "2.4"}
+  "ppx_derivers" {= "1.2.1"}
+  "ppx_deriving" {= "5.2.1"}
+  "ppxlib" {= "0.31.0"}
+  "psq" {= "0.2.1"}
   "ptime" {= "1.1.0"}
+  "result" {= "1.5"}
   "seq" {= "base"}
-  "sexplib0" {= "v0.16.0" & with-test}
-  "stdlib-shims" {= "0.3.0" & with-test}
+  "sexplib0" {= "v0.16.0"}
+  "stdlib-shims" {= "0.3.0"}
+  "stringext" {= "1.6.0"}
+  "thread-table" {= "1.0.0"}
   "topkg" {= "1.0.7"}
+  "uri" {= "4.4.0"}
 ]
 build: [
   ["dune" "subst"] {dev}
@@ -51,3 +84,6 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/pinc-lang/pinc-lang.git"
+pin-depends: [
+  ["h2.0.11" "git+https://github.com/anmonteiro/ocaml-h2#0.11.0"] ["h2-eio.0.11" "git+https://github.com/anmonteiro/ocaml-h2#0.11.0"] ["hpack.0.11" "git+https://github.com/anmonteiro/ocaml-h2#0.11.0"] ["ocaml-protoc.2.4" "git+https://github.com/mransan/ocaml-protoc#master"]
+]

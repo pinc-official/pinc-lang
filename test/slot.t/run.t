@@ -37,7 +37,7 @@
 
   $ print . ErrorComponent
   
-  ERROR in file ./data.pi:38:5-44
+  ERROR in file data.pi:38:5-44
   
     37 │   <SlotProvider>
     38 │     <div slot="nothing">Hello Default</div>

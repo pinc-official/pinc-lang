@@ -2,17 +2,8 @@
  (name print)
  (public_name print)
  (modules print)
- (modes native)
  (ocamlopt_flags -O3)
  (libraries pinc))
-
-(executable
- (name print_debug)
- (public_name print_debug)
- (modules print_debug)
- (modes native)
- (ocamlopt_flags -O3)
- (libraries pinc unix))
 
 (cram
  (deps %{bin:print}))

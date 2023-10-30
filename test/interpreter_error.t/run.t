@@ -7,7 +7,7 @@
 
   $ print . UseNonLibrary
   
-  ERROR in file ./data.pi:2:7-19
+  ERROR in file data.pi:2:7-19
   
      1 │ component UseNonLibrary {
      2 │   use NotALibrary;

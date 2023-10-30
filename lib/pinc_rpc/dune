@@ -1,0 +1,14 @@
+(rule
+ (mode promote)
+ (targets definitions.ml definitions.mli)
+ (deps
+  (:proto definitions.proto))
+ (action
+  (run ocaml-protoc --binary --ml_out . %{proto})))
+
+(library
+ (name Pinc_Rpc)
+ (public_name pinc-lang.rpc)
+ (flags
+  (:standard -w -30))
+ (libraries ocaml-protoc unix eio grpc-eio))

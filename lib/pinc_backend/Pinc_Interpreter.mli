@@ -27,6 +27,7 @@ and State : sig
 end
 
 val eval_meta :
+  env:Eio_unix.Stdenv.base ->
   ?tag_listeners:Pinc_Interpreter_Types.tag_listeners ->
   Ast.t ->
   [> `Component of value StringMap.t
@@ -38,9 +39,11 @@ val eval_meta :
   StringMap.t
 
 val eval :
+  env:Eio_unix.Stdenv.base ->
   ?tag_listeners:Pinc_Interpreter_Types.tag_listeners ->
   root:StringMap.key ->
   Ast.t ->
   state
 
-val from_source : ?filename:string -> source:string -> string -> state
+val from_source :
+  env:Eio_unix.Stdenv.base -> ?filename:string -> source:string -> string -> state
