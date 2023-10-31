@@ -1,8 +1,11 @@
-open Definitions
+module Definitions = Definitions
 
 module Value = struct
+  open Definitions
+
   type t = t_value
 
+  let null = V_null
   let string s = V_string s
   let float f = V_float f
   let int i = V_int (Int32.of_int i)
@@ -17,13 +20,14 @@ let make_string_request
     ?(attributes : (string * Value.t) list = [])
     ~key
     (host, port) =
-  let payload = default_string_request ~required ~key ~attributes () in
+  let payload = Definitions.default_string_request ~required ~key ~attributes () in
   let encoder = Pbrt.Encoder.create () in
-  let () = encode_pb_string_request payload encoder in
+  let () = Definitions.encode_pb_string_request payload encoder in
   let payload = Pbrt.Encoder.to_string encoder in
   let decode = function
-    | Some response -> response |> Pbrt.Decoder.of_string |> decode_pb_string_response
-    | None -> default_string_response ()
+    | Some response ->
+        response |> Pbrt.Decoder.of_string |> Definitions.decode_pb_string_response
+    | None -> Definitions.default_string_response ()
   in
   Eio.Switch.run @@ fun sw ->
   let inet, port =
@@ -49,7 +53,7 @@ let make_string_request
   Eio.Promise.await (H2_eio.Client.shutdown connection);
   match result with
   | Ok (response, _) -> response.value
-  | Error _ -> (default_string_response ()).value
+  | Error _ -> (Definitions.default_string_response ()).value
 ;;
 
 let make_int_request
@@ -57,9 +61,9 @@ let make_int_request
     ?(attributes : (string * Value.t) list = [])
     ~key
     () =
-  let payload = default_int_request ~required ~key ~attributes () in
+  let payload = Definitions.default_int_request ~required ~key ~attributes () in
   let encoder = Pbrt.Encoder.create () in
-  let () = encode_pb_int_request payload encoder in
+  let () = Definitions.encode_pb_int_request payload encoder in
   Pbrt.Encoder.to_string encoder
 ;;
 
@@ -68,9 +72,9 @@ let make_float_request
     ?(attributes : (string * Value.t) list = [])
     ~key
     () =
-  let payload = default_float_request ~required ~key ~attributes () in
+  let payload = Definitions.default_float_request ~required ~key ~attributes () in
   let encoder = Pbrt.Encoder.create () in
-  let () = encode_pb_float_request payload encoder in
+  let () = Definitions.encode_pb_float_request payload encoder in
   Pbrt.Encoder.to_string encoder
 ;;
 
@@ -79,8 +83,8 @@ let make_bool_request
     ?(attributes : (string * Value.t) list = [])
     ~key
     () =
-  let payload = default_bool_request ~required ~key ~attributes () in
+  let payload = Definitions.default_bool_request ~required ~key ~attributes () in
   let encoder = Pbrt.Encoder.create () in
-  let () = encode_pb_bool_request payload encoder in
+  let () = Definitions.encode_pb_bool_request payload encoder in
   Pbrt.Encoder.to_string encoder
 ;;

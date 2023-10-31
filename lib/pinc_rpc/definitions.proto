@@ -116,6 +116,8 @@ message t_list {
   repeated t_value value = 1;
 }
 
+message t_null {}
+
 message t_value {
   oneof value {
     string vString = 2;
@@ -124,5 +126,6 @@ message t_value {
     bool vBool = 5;
     t_struct vRecord = 6;
     t_list vList = 7;
+    t_null vNull = 8;
   }
 }

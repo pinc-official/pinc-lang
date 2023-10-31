@@ -1,6 +1,9 @@
 [@@@ocaml.warning "-27-30-39"]
 
+type t_null = unit
+
 type t_value =
+  | V_null
   | V_list of t_list
   | V_record of t_struct
   | V_bool of bool
@@ -96,7 +99,9 @@ type record_response = {
   value : (string * t_value) list;
 }
 
-let rec default_t_value () : t_value = V_list (default_t_list ())
+let rec default_t_null = ()
+
+let rec default_t_value (): t_value = V_null
 
 and default_t_list 
   ?value:((value:t_value list) = [])
@@ -392,8 +397,14 @@ let default_record_response_mutable () : record_response_mutable = {
 
 (** {2 Protobuf Encoding} *)
 
+let rec encode_pb_t_null (v:t_null) encoder = 
+()
+
 let rec encode_pb_t_value (v:t_value) encoder = 
   begin match v with
+  | V_null ->
+    Pbrt.Encoder.key (8, Pbrt.Bytes) encoder; 
+    Pbrt.Encoder.empty_nested encoder
   | V_list x ->
     Pbrt.Encoder.key (7, Pbrt.Bytes) encoder; 
     Pbrt.Encoder.nested (encode_pb_t_list x) encoder;
@@ -626,10 +637,20 @@ let rec encode_pb_record_response (v:record_response) encoder =
 
 (** {2 Protobuf Decoding} *)
 
+let rec decode_pb_t_null d =
+  match Pbrt.Decoder.key d with
+  | None -> ();
+  | Some (_, pk) -> 
+    Pbrt.Decoder.unexpected_payload "Unexpected fields in empty message(t_null)" pk
+
 let rec decode_pb_t_value d = 
   let rec loop () = 
     let ret:t_value = match Pbrt.Decoder.key d with
       | None -> Pbrt.Decoder.malformed_variant "t_value"
+      | Some (8, _) -> begin 
+        Pbrt.Decoder.empty_nested d ;
+        (V_null : t_value)
+      end
       | Some (7, _) -> (V_list (decode_pb_t_list (Pbrt.Decoder.nested d)) : t_value) 
       | Some (6, _) -> (V_record (decode_pb_t_struct (Pbrt.Decoder.nested d)) : t_value) 
       | Some (5, _) -> (V_bool (Pbrt.Decoder.bool d) : t_value) 

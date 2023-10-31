@@ -1,6 +1,9 @@
+module Definitions = Definitions
+
 module Value : sig
   type t
 
+  val null : t
   val string : string -> t
   val float : float -> t
   val int : int -> t

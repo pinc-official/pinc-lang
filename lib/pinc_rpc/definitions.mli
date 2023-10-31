@@ -7,7 +7,10 @@
 
 (** {2 Types} *)
 
+type t_null = unit
+
 type t_value =
+  | V_null
   | V_list of t_list
   | V_record of t_struct
   | V_bool of bool
@@ -105,6 +108,9 @@ type record_response = {
 
 
 (** {2 Basic values} *)
+
+val default_t_null : unit
+(** [default_t_null ()] is the default value for type [t_null] *)
 
 val default_t_value : unit -> t_value
 (** [default_t_value ()] is the default value for type [t_value] *)
@@ -227,6 +233,9 @@ val default_record_response :
 
 (** {2 Protobuf Encoding} *)
 
+val encode_pb_t_null : t_null -> Pbrt.Encoder.t -> unit
+(** [encode_pb_t_null v encoder] encodes [v] with the given [encoder] *)
+
 val encode_pb_t_value : t_value -> Pbrt.Encoder.t -> unit
 (** [encode_pb_t_value v encoder] encodes [v] with the given [encoder] *)
 
@@ -283,6 +292,9 @@ val encode_pb_record_response : record_response -> Pbrt.Encoder.t -> unit
 
 
 (** {2 Protobuf Decoding} *)
+
+val decode_pb_t_null : Pbrt.Decoder.t -> t_null
+(** [decode_pb_t_null decoder] decodes a [t_null] binary value from [decoder] *)
 
 val decode_pb_t_value : Pbrt.Decoder.t -> t_value
 (** [decode_pb_t_value decoder] decodes a [t_value] binary value from [decoder] *)
