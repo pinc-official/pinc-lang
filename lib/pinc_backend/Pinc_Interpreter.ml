@@ -1796,10 +1796,9 @@ and eval_internal_or_external_tag ~env ~state ~tag ?value tag_info =
           tag_info |> call_tag_listener ~env ~state ~tag ~value_bag:(Some value_bag))
   | value_bag, _ -> tag_info |> call_tag_listener ~env ~state ~tag ~value_bag
 
-and call_tag_listener ~env ~state ~tag ~value_bag t =
+and call_tag_listener ~env ~state:_ ~tag ~value_bag:_ t =
   let net = Eio.Stdenv.net env in
   let { tag = tag_identifier; key; required; attributes; transformer } = t in
-  let listener = Hashtbl.find_opt state.tag_listeners tag_identifier in
   let rec pinc_value_to_rpc value =
     match value.value_desc with
     | Char c -> Pinc_Rpc.Value.string (CCUtf8_string.make 1 c |> CCUtf8_string.to_string)
@@ -1814,64 +1813,75 @@ and call_tag_listener ~env ~state ~tag ~value_bag t =
           |> StringMap.map (fun v -> v |> snd |> pinc_value_to_rpc)
           |> StringMap.to_seq
           |> List.of_seq)
-    | _ -> failwith "TODO"
+    | Null -> Pinc_Rpc.Value.null
+    | Portal _ -> failwith "TODO: Portal"
+    | Function _ -> failwith "TODO: Function"
+    | DefinitionInfo _ -> failwith "TODO: DefinitionInfo"
+    | TagInfo _ -> failwith "TODO: TagInfo"
+    | HtmlTemplateNode (_, _, _, _) -> failwith "TODO: HtmlTemplateNode"
+    | ComponentTemplateNode (_, _, _, _) -> failwith "TODO: ComponentTemplateNode"
   in
   let rpc_attributes =
     attributes |> StringMap.map pinc_value_to_rpc |> StringMap.to_seq |> List.of_seq
   in
-  (match listener with
-  | Some (`String _fn) ->
+  (match tag_identifier with
+  | `String ->
       (* !nomerge *)
-      ("localhost", "8081")
+      ("127.0.0.1", "8081")
       |> Pinc_Rpc.make_string_request ~net ~key ~required ~attributes:rpc_attributes
       |> Value.of_string ~value_loc:tag.tag_loc
       |> Result.ok
       (* fn ~required ~attributes ~key *)
-  | Some (`Int fn) -> fn ~required ~attributes ~key
-  | Some (`Float fn) -> fn ~required ~attributes ~key
-  | Some (`Boolean fn) -> fn ~required ~attributes ~key
-  | Some (`Array fn) ->
-      let child =
-        attributes |> StringMap.find_opt "of" |> function
-        | Some { value_desc = TagInfo i; _ } -> i
-        | Some { value_desc = _; value_loc } ->
-            Pinc_Diagnostics.error
-              value_loc
-              "Attribute `of` needs to be a tag value describing the type of values in \
-               this array."
-        | None ->
-            Pinc_Diagnostics.error tag.Ast.tag_loc "Attribute `of` is required on #Array."
-      in
-      fn ~required ~attributes ~child ~key
-  | Some (`Record fn) ->
-      let children =
-        attributes
-        |> StringMap.find_opt "of"
-        |> (function
-             | Some { value_desc = Record r; _ } -> r
-             | Some { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   "Attribute `of` needs to be a record describing the shape and type of \
-                    values in this record."
-             | None ->
-                 Pinc_Diagnostics.error
-                   tag.Ast.tag_loc
-                   "Attribute `of` is required on #Record.")
-        |> StringMap.filter_map (fun _key (index, value) ->
-               match value with
-               | { value_desc = TagInfo i; _ } -> Some (index, i)
-               | _ -> None)
-        |> StringMap.to_seq
-        |> List.of_seq
-        |> List.fast_sort (fun (_key, (index_a, _value)) (_key, (index_b, _value)) ->
-               index_a - index_b)
-        |> List.map (fun (key, (_index, value)) -> (key, value))
-      in
-      fn ~required ~attributes ~children ~key
-  | Some (`Slot fn) -> fn ~required ~attributes ~key
-  | Some (`Custom fn) -> fn ~required ~attributes ~parent_value:value_bag ~key
-  | None -> Result.ok (Value.null ~value_loc:tag.tag_loc ()))
+  | `Int -> failwith "!nomerge"
+  | `Float -> failwith "!nomerge"
+  | `Boolean -> failwith "!nomerge"
+  | `Array ->
+      (* let child =
+           attributes |> StringMap.find_opt "of" |> function
+           | Some { value_desc = TagInfo i; _ } -> i
+           | Some { value_desc = _; value_loc } ->
+               Pinc_Diagnostics.error
+                 value_loc
+                 "Attribute `of` needs to be a tag value describing the type of values in \
+                  this array."
+           | None ->
+               Pinc_Diagnostics.error tag.Ast.tag_loc "Attribute `of` is required on #Array."
+         in
+         fn ~required ~attributes ~child ~key *)
+      failwith "!nomerge"
+  | `Record ->
+      (* let children =
+           attributes
+           |> StringMap.find_opt "of"
+           |> (function
+                | Some { value_desc = Record r; _ } -> r
+                | Some { value_desc = _; value_loc } ->
+                    Pinc_Diagnostics.error
+                      value_loc
+                      "Attribute `of` needs to be a record describing the shape and type of \
+                       values in this record."
+                | None ->
+                    Pinc_Diagnostics.error
+                      tag.Ast.tag_loc
+                      "Attribute `of` is required on #Record.")
+           |> StringMap.filter_map (fun _key (index, value) ->
+                  match value with
+                  | { value_desc = TagInfo i; _ } -> Some (index, i)
+                  | _ -> None)
+           |> StringMap.to_seq
+           |> List.of_seq
+           |> List.fast_sort (fun (_key, (index_a, _value)) (_key, (index_b, _value)) ->
+                  index_a - index_b)
+           |> List.map (fun (key, (_index, value)) -> (key, value))
+         in
+         fn ~required ~attributes ~children ~key *)
+      failwith "!nomerge"
+  | `Slot ->
+      (* fn ~required ~attributes ~key *)
+      failwith "!nomerge"
+  | `Custom s ->
+      (* fn ~required ~attributes ~parent_value:value_bag ~key *)
+      failwith ("!nomerge" ^ s))
   |> function
   | Ok v -> v |> transformer
   | Error e -> Pinc_Diagnostics.error tag.tag_loc e
