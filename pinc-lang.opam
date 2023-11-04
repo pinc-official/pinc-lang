@@ -37,10 +37,4 @@ build: [
 dev-repo: "git+https://github.com/pinc-lang/pinc-lang.git"
 pin-depends: [
   [ "ocaml-protoc.2.4" "git+https://github.com/mransan/ocaml-protoc#master" ]
-  [ "h2-eio.0.11" "git+https://github.com/anmonteiro/ocaml-h2#0.11.0" ]
-  [ "h2.0.11" "git+https://github.com/anmonteiro/ocaml-h2#0.11.0" ]
-  [ "hpack.0.11" "git+https://github.com/anmonteiro/ocaml-h2#0.11.0" ]
-  [ "eio_main.dev" "git+https://github.com/ocaml-multicore/eio#main" ]
-  [ "eio.dev" "git+https://github.com/ocaml-multicore/eio#main" ]
-  [ "eio_posix.dev" "git+https://github.com/ocaml-multicore/eio#main" ]
 ]
