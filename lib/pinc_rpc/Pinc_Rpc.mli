@@ -21,10 +21,22 @@ val make_string_request :
   string * (string -> Definitions.string_response)
 
 val make_int_request :
-  ?required:bool -> ?attributes:(string * Value.t) list -> key:string -> unit -> string
+  ?required:bool ->
+  ?attributes:(string * Value.t) list ->
+  key:string ->
+  unit ->
+  string * (string -> Definitions.int_response)
 
 val make_float_request :
-  ?required:bool -> ?attributes:(string * Value.t) list -> key:string -> unit -> string
+  ?required:bool ->
+  ?attributes:(string * Value.t) list ->
+  key:string ->
+  unit ->
+  string * (string -> Definitions.float_response)
 
 val make_bool_request :
-  ?required:bool -> ?attributes:(string * Value.t) list -> key:string -> unit -> string
+  ?required:bool ->
+  ?attributes:(string * Value.t) list ->
+  key:string ->
+  unit ->
+  string * (string -> Definitions.bool_response)

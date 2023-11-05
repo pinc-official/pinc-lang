@@ -35,7 +35,8 @@ let make_int_request
   let payload = Definitions.default_int_request ~required ~key ~attributes () in
   let encoder = Pbrt.Encoder.create () in
   let () = Definitions.encode_pb_int_request payload encoder in
-  Pbrt.Encoder.to_string encoder
+  let decode s = Pbrt.Decoder.of_string s |> Definitions.decode_pb_int_response in
+  (Pbrt.Encoder.to_string encoder, decode)
 ;;
 
 let make_float_request
@@ -46,7 +47,8 @@ let make_float_request
   let payload = Definitions.default_float_request ~required ~key ~attributes () in
   let encoder = Pbrt.Encoder.create () in
   let () = Definitions.encode_pb_float_request payload encoder in
-  Pbrt.Encoder.to_string encoder
+  let decode s = Pbrt.Decoder.of_string s |> Definitions.decode_pb_float_response in
+  (Pbrt.Encoder.to_string encoder, decode)
 ;;
 
 let make_bool_request
@@ -57,5 +59,6 @@ let make_bool_request
   let payload = Definitions.default_bool_request ~required ~key ~attributes () in
   let encoder = Pbrt.Encoder.create () in
   let () = Definitions.encode_pb_bool_request payload encoder in
-  Pbrt.Encoder.to_string encoder
+  let decode s = Pbrt.Decoder.of_string s |> Definitions.decode_pb_bool_response in
+  (Pbrt.Encoder.to_string encoder, decode)
 ;;
