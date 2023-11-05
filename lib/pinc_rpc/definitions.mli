@@ -34,6 +34,7 @@ type string_request = {
 
 type string_response = {
   value : string;
+  meta : (string * t_value) list;
 }
 
 type float_request = {
@@ -44,6 +45,7 @@ type float_request = {
 
 type float_response = {
   value : float;
+  meta : (string * t_value) list;
 }
 
 type int_request = {
@@ -54,6 +56,7 @@ type int_request = {
 
 type int_response = {
   value : int32;
+  meta : (string * t_value) list;
 }
 
 type bool_request = {
@@ -64,6 +67,7 @@ type bool_request = {
 
 type bool_response = {
   value : bool;
+  meta : (string * t_value) list;
 }
 
 type array_request = {
@@ -100,10 +104,12 @@ and record_request_t_tag_struct_t_tag_struct_item = {
 
 type array_response = {
   value : t_value list;
+  meta : (string * t_value) list;
 }
 
 type record_response = {
   value : (string * t_value) list;
+  meta : (string * t_value) list;
 }
 
 
@@ -137,6 +143,7 @@ val default_string_request :
 
 val default_string_response : 
   ?value:string ->
+  ?meta:(string * t_value) list ->
   unit ->
   string_response
 (** [default_string_response ()] is the default value for type [string_response] *)
@@ -151,6 +158,7 @@ val default_float_request :
 
 val default_float_response : 
   ?value:float ->
+  ?meta:(string * t_value) list ->
   unit ->
   float_response
 (** [default_float_response ()] is the default value for type [float_response] *)
@@ -165,6 +173,7 @@ val default_int_request :
 
 val default_int_response : 
   ?value:int32 ->
+  ?meta:(string * t_value) list ->
   unit ->
   int_response
 (** [default_int_response ()] is the default value for type [int_response] *)
@@ -179,6 +188,7 @@ val default_bool_request :
 
 val default_bool_response : 
   ?value:bool ->
+  ?meta:(string * t_value) list ->
   unit ->
   bool_response
 (** [default_bool_response ()] is the default value for type [bool_response] *)
@@ -220,12 +230,14 @@ val default_record_request_t_tag_struct_t_tag_struct_item :
 
 val default_array_response : 
   ?value:t_value list ->
+  ?meta:(string * t_value) list ->
   unit ->
   array_response
 (** [default_array_response ()] is the default value for type [array_response] *)
 
 val default_record_response : 
   ?value:(string * t_value) list ->
+  ?meta:(string * t_value) list ->
   unit ->
   record_response
 (** [default_record_response ()] is the default value for type [record_response] *)

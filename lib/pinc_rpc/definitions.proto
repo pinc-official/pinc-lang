@@ -21,6 +21,7 @@ message StringRequest {
 
 message StringResponse {
   string value = 1;
+  map<string, t_value> meta = 2;
 }
 
 // ========================= FLOAT =========================
@@ -33,6 +34,7 @@ message FloatRequest {
 
 message FloatResponse {
   float value = 1;
+  map<string, t_value> meta = 2;
 }
 
 // ========================= INT =========================
@@ -45,6 +47,7 @@ message IntRequest {
 
 message IntResponse {
   int32 value = 1;
+  map<string, t_value> meta = 2;
 }
 
 // ========================= BOOL =========================
@@ -57,6 +60,7 @@ message BoolRequest {
 
 message BoolResponse {
   bool value = 1;
+  map<string, t_value> meta = 2;
 }
 
 // ========================= ARRAY =========================
@@ -70,6 +74,7 @@ message ArrayRequest {
 
 message ArrayResponse {
   repeated t_value value = 1;
+  map<string, t_value> meta = 2;
 }
 
 // ========================= RECORD =========================
@@ -93,6 +98,7 @@ message RecordRequest {
 
 message RecordResponse {
   map<string, t_value> value = 1;
+  map<string, t_value> meta = 2;
 }
 
 // ========================= TYPES =========================

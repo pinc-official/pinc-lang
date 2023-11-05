@@ -27,6 +27,7 @@ type string_request = {
 
 type string_response = {
   value : string;
+  meta : (string * t_value) list;
 }
 
 type float_request = {
@@ -37,6 +38,7 @@ type float_request = {
 
 type float_response = {
   value : float;
+  meta : (string * t_value) list;
 }
 
 type int_request = {
@@ -47,6 +49,7 @@ type int_request = {
 
 type int_response = {
   value : int32;
+  meta : (string * t_value) list;
 }
 
 type bool_request = {
@@ -57,6 +60,7 @@ type bool_request = {
 
 type bool_response = {
   value : bool;
+  meta : (string * t_value) list;
 }
 
 type array_request = {
@@ -93,10 +97,12 @@ and record_request_t_tag_struct_t_tag_struct_item = {
 
 type array_response = {
   value : t_value list;
+  meta : (string * t_value) list;
 }
 
 type record_response = {
   value : (string * t_value) list;
+  meta : (string * t_value) list;
 }
 
 let rec default_t_null = ()
@@ -127,8 +133,10 @@ let rec default_string_request
 
 let rec default_string_response 
   ?value:((value:string) = "")
+  ?meta:((meta:(string * t_value) list) = [])
   () : string_response  = {
   value;
+  meta;
 }
 
 let rec default_float_request 
@@ -143,8 +151,10 @@ let rec default_float_request
 
 let rec default_float_response 
   ?value:((value:float) = 0.)
+  ?meta:((meta:(string * t_value) list) = [])
   () : float_response  = {
   value;
+  meta;
 }
 
 let rec default_int_request 
@@ -159,8 +169,10 @@ let rec default_int_request
 
 let rec default_int_response 
   ?value:((value:int32) = 0l)
+  ?meta:((meta:(string * t_value) list) = [])
   () : int_response  = {
   value;
+  meta;
 }
 
 let rec default_bool_request 
@@ -175,8 +187,10 @@ let rec default_bool_request
 
 let rec default_bool_response 
   ?value:((value:bool) = false)
+  ?meta:((meta:(string * t_value) list) = [])
   () : bool_response  = {
   value;
+  meta;
 }
 
 let rec default_array_request 
@@ -223,14 +237,18 @@ and default_record_request_t_tag_struct_t_tag_struct_item
 
 let rec default_array_response 
   ?value:((value:t_value list) = [])
+  ?meta:((meta:(string * t_value) list) = [])
   () : array_response  = {
   value;
+  meta;
 }
 
 let rec default_record_response 
   ?value:((value:(string * t_value) list) = [])
+  ?meta:((meta:(string * t_value) list) = [])
   () : record_response  = {
   value;
+  meta;
 }
 
 type t_list_mutable = {
@@ -263,10 +281,12 @@ let default_string_request_mutable () : string_request_mutable = {
 
 type string_response_mutable = {
   mutable value : string;
+  mutable meta : (string * t_value) list;
 }
 
 let default_string_response_mutable () : string_response_mutable = {
   value = "";
+  meta = [];
 }
 
 type float_request_mutable = {
@@ -283,10 +303,12 @@ let default_float_request_mutable () : float_request_mutable = {
 
 type float_response_mutable = {
   mutable value : float;
+  mutable meta : (string * t_value) list;
 }
 
 let default_float_response_mutable () : float_response_mutable = {
   value = 0.;
+  meta = [];
 }
 
 type int_request_mutable = {
@@ -303,10 +325,12 @@ let default_int_request_mutable () : int_request_mutable = {
 
 type int_response_mutable = {
   mutable value : int32;
+  mutable meta : (string * t_value) list;
 }
 
 let default_int_response_mutable () : int_response_mutable = {
   value = 0l;
+  meta = [];
 }
 
 type bool_request_mutable = {
@@ -323,10 +347,12 @@ let default_bool_request_mutable () : bool_request_mutable = {
 
 type bool_response_mutable = {
   mutable value : bool;
+  mutable meta : (string * t_value) list;
 }
 
 let default_bool_response_mutable () : bool_response_mutable = {
   value = false;
+  meta = [];
 }
 
 type array_request_mutable = {
@@ -379,18 +405,22 @@ let default_record_request_t_tag_struct_t_tag_struct_item_mutable () : record_re
 
 type array_response_mutable = {
   mutable value : t_value list;
+  mutable meta : (string * t_value) list;
 }
 
 let default_array_response_mutable () : array_response_mutable = {
   value = [];
+  meta = [];
 }
 
 type record_response_mutable = {
   mutable value : (string * t_value) list;
+  mutable meta : (string * t_value) list;
 }
 
 let default_record_response_mutable () : record_response_mutable = {
   value = [];
+  meta = [];
 }
 
 [@@@ocaml.warning "-27-30-39"]
@@ -463,6 +493,15 @@ let rec encode_pb_string_request (v:string_request) encoder =
 let rec encode_pb_string_response (v:string_response) encoder = 
   Pbrt.Encoder.key (1, Pbrt.Bytes) encoder; 
   Pbrt.Encoder.string v.value encoder;
+  let encode_key = Pbrt.Encoder.string in
+  let encode_value = (fun x encoder ->
+    Pbrt.Encoder.nested (encode_pb_t_value x) encoder;
+  ) in
+  List.iter (fun (k, v) ->
+    Pbrt.Encoder.key (2, Pbrt.Bytes) encoder; 
+    let map_entry = (k, Pbrt.Bytes), (v, Pbrt.Bytes) in
+    Pbrt.Encoder.map_entry ~encode_key ~encode_value map_entry encoder
+  ) v.meta;
   ()
 
 let rec encode_pb_float_request (v:float_request) encoder = 
@@ -484,6 +523,15 @@ let rec encode_pb_float_request (v:float_request) encoder =
 let rec encode_pb_float_response (v:float_response) encoder = 
   Pbrt.Encoder.key (1, Pbrt.Bits32) encoder; 
   Pbrt.Encoder.float_as_bits32 v.value encoder;
+  let encode_key = Pbrt.Encoder.string in
+  let encode_value = (fun x encoder ->
+    Pbrt.Encoder.nested (encode_pb_t_value x) encoder;
+  ) in
+  List.iter (fun (k, v) ->
+    Pbrt.Encoder.key (2, Pbrt.Bytes) encoder; 
+    let map_entry = (k, Pbrt.Bytes), (v, Pbrt.Bytes) in
+    Pbrt.Encoder.map_entry ~encode_key ~encode_value map_entry encoder
+  ) v.meta;
   ()
 
 let rec encode_pb_int_request (v:int_request) encoder = 
@@ -505,6 +553,15 @@ let rec encode_pb_int_request (v:int_request) encoder =
 let rec encode_pb_int_response (v:int_response) encoder = 
   Pbrt.Encoder.key (1, Pbrt.Varint) encoder; 
   Pbrt.Encoder.int32_as_varint v.value encoder;
+  let encode_key = Pbrt.Encoder.string in
+  let encode_value = (fun x encoder ->
+    Pbrt.Encoder.nested (encode_pb_t_value x) encoder;
+  ) in
+  List.iter (fun (k, v) ->
+    Pbrt.Encoder.key (2, Pbrt.Bytes) encoder; 
+    let map_entry = (k, Pbrt.Bytes), (v, Pbrt.Bytes) in
+    Pbrt.Encoder.map_entry ~encode_key ~encode_value map_entry encoder
+  ) v.meta;
   ()
 
 let rec encode_pb_bool_request (v:bool_request) encoder = 
@@ -526,6 +583,15 @@ let rec encode_pb_bool_request (v:bool_request) encoder =
 let rec encode_pb_bool_response (v:bool_response) encoder = 
   Pbrt.Encoder.key (1, Pbrt.Varint) encoder; 
   Pbrt.Encoder.bool v.value encoder;
+  let encode_key = Pbrt.Encoder.string in
+  let encode_value = (fun x encoder ->
+    Pbrt.Encoder.nested (encode_pb_t_value x) encoder;
+  ) in
+  List.iter (fun (k, v) ->
+    Pbrt.Encoder.key (2, Pbrt.Bytes) encoder; 
+    let map_entry = (k, Pbrt.Bytes), (v, Pbrt.Bytes) in
+    Pbrt.Encoder.map_entry ~encode_key ~encode_value map_entry encoder
+  ) v.meta;
   ()
 
 let rec encode_pb_array_request (v:array_request) encoder = 
@@ -619,6 +685,15 @@ let rec encode_pb_array_response (v:array_response) encoder =
     Pbrt.Encoder.key (1, Pbrt.Bytes) encoder; 
     Pbrt.Encoder.nested (encode_pb_t_value x) encoder;
   ) v.value;
+  let encode_key = Pbrt.Encoder.string in
+  let encode_value = (fun x encoder ->
+    Pbrt.Encoder.nested (encode_pb_t_value x) encoder;
+  ) in
+  List.iter (fun (k, v) ->
+    Pbrt.Encoder.key (2, Pbrt.Bytes) encoder; 
+    let map_entry = (k, Pbrt.Bytes), (v, Pbrt.Bytes) in
+    Pbrt.Encoder.map_entry ~encode_key ~encode_value map_entry encoder
+  ) v.meta;
   ()
 
 let rec encode_pb_record_response (v:record_response) encoder = 
@@ -631,6 +706,15 @@ let rec encode_pb_record_response (v:record_response) encoder =
     let map_entry = (k, Pbrt.Bytes), (v, Pbrt.Bytes) in
     Pbrt.Encoder.map_entry ~encode_key ~encode_value map_entry encoder
   ) v.value;
+  let encode_key = Pbrt.Encoder.string in
+  let encode_value = (fun x encoder ->
+    Pbrt.Encoder.nested (encode_pb_t_value x) encoder;
+  ) in
+  List.iter (fun (k, v) ->
+    Pbrt.Encoder.key (2, Pbrt.Bytes) encoder; 
+    let map_entry = (k, Pbrt.Bytes), (v, Pbrt.Bytes) in
+    Pbrt.Encoder.map_entry ~encode_key ~encode_value map_entry encoder
+  ) v.meta;
   ()
 
 [@@@ocaml.warning "-27-30-39"]
@@ -751,16 +835,28 @@ let rec decode_pb_string_response d =
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
+      v.meta <- List.rev v.meta;
     ); continue__ := false
     | Some (1, Pbrt.Bytes) -> begin
       v.value <- Pbrt.Decoder.string d;
     end
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(string_response), field(1)" pk
+    | Some (2, Pbrt.Bytes) -> begin
+      let decode_value = (fun d ->
+        decode_pb_t_value (Pbrt.Decoder.nested d)
+      ) in
+      v.meta <- (
+        (Pbrt.Decoder.map_entry d ~decode_key:Pbrt.Decoder.string ~decode_value)::v.meta;
+      );
+    end
+    | Some (2, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(string_response), field(2)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
   ({
     value = v.value;
+    meta = v.meta;
   } : string_response)
 
 let rec decode_pb_float_request d =
@@ -805,16 +901,28 @@ let rec decode_pb_float_response d =
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
+      v.meta <- List.rev v.meta;
     ); continue__ := false
     | Some (1, Pbrt.Bits32) -> begin
       v.value <- Pbrt.Decoder.float_as_bits32 d;
     end
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(float_response), field(1)" pk
+    | Some (2, Pbrt.Bytes) -> begin
+      let decode_value = (fun d ->
+        decode_pb_t_value (Pbrt.Decoder.nested d)
+      ) in
+      v.meta <- (
+        (Pbrt.Decoder.map_entry d ~decode_key:Pbrt.Decoder.string ~decode_value)::v.meta;
+      );
+    end
+    | Some (2, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(float_response), field(2)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
   ({
     value = v.value;
+    meta = v.meta;
   } : float_response)
 
 let rec decode_pb_int_request d =
@@ -859,16 +967,28 @@ let rec decode_pb_int_response d =
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
+      v.meta <- List.rev v.meta;
     ); continue__ := false
     | Some (1, Pbrt.Varint) -> begin
       v.value <- Pbrt.Decoder.int32_as_varint d;
     end
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(int_response), field(1)" pk
+    | Some (2, Pbrt.Bytes) -> begin
+      let decode_value = (fun d ->
+        decode_pb_t_value (Pbrt.Decoder.nested d)
+      ) in
+      v.meta <- (
+        (Pbrt.Decoder.map_entry d ~decode_key:Pbrt.Decoder.string ~decode_value)::v.meta;
+      );
+    end
+    | Some (2, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(int_response), field(2)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
   ({
     value = v.value;
+    meta = v.meta;
   } : int_response)
 
 let rec decode_pb_bool_request d =
@@ -913,16 +1033,28 @@ let rec decode_pb_bool_response d =
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
+      v.meta <- List.rev v.meta;
     ); continue__ := false
     | Some (1, Pbrt.Varint) -> begin
       v.value <- Pbrt.Decoder.bool d;
     end
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(bool_response), field(1)" pk
+    | Some (2, Pbrt.Bytes) -> begin
+      let decode_value = (fun d ->
+        decode_pb_t_value (Pbrt.Decoder.nested d)
+      ) in
+      v.meta <- (
+        (Pbrt.Decoder.map_entry d ~decode_key:Pbrt.Decoder.string ~decode_value)::v.meta;
+      );
+    end
+    | Some (2, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(bool_response), field(2)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
   ({
     value = v.value;
+    meta = v.meta;
   } : bool_response)
 
 let rec decode_pb_array_request d =
@@ -1083,6 +1215,7 @@ let rec decode_pb_array_response d =
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
+      v.meta <- List.rev v.meta;
       v.value <- List.rev v.value;
     ); continue__ := false
     | Some (1, Pbrt.Bytes) -> begin
@@ -1090,10 +1223,21 @@ let rec decode_pb_array_response d =
     end
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(array_response), field(1)" pk
+    | Some (2, Pbrt.Bytes) -> begin
+      let decode_value = (fun d ->
+        decode_pb_t_value (Pbrt.Decoder.nested d)
+      ) in
+      v.meta <- (
+        (Pbrt.Decoder.map_entry d ~decode_key:Pbrt.Decoder.string ~decode_value)::v.meta;
+      );
+    end
+    | Some (2, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(array_response), field(2)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
   ({
     value = v.value;
+    meta = v.meta;
   } : array_response)
 
 let rec decode_pb_record_response d =
@@ -1102,6 +1246,7 @@ let rec decode_pb_record_response d =
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
+      v.meta <- List.rev v.meta;
       v.value <- List.rev v.value;
     ); continue__ := false
     | Some (1, Pbrt.Bytes) -> begin
@@ -1114,8 +1259,19 @@ let rec decode_pb_record_response d =
     end
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(record_response), field(1)" pk
+    | Some (2, Pbrt.Bytes) -> begin
+      let decode_value = (fun d ->
+        decode_pb_t_value (Pbrt.Decoder.nested d)
+      ) in
+      v.meta <- (
+        (Pbrt.Decoder.map_entry d ~decode_key:Pbrt.Decoder.string ~decode_value)::v.meta;
+      );
+    end
+    | Some (2, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(record_response), field(2)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
   ({
     value = v.value;
+    meta = v.meta;
   } : record_response)
