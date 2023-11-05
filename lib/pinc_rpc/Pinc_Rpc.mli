@@ -1,3 +1,4 @@
+module Client = Pinc_Rpc_Client
 module Definitions = Definitions
 
 module Value : sig
@@ -13,12 +14,11 @@ module Value : sig
 end
 
 val make_string_request :
-  net:[> `Network | `Platform of [ `Generic | `Unix ] ] Eio.Resource.t ->
   ?required:bool ->
   ?attributes:(string * Value.t) list ->
   key:string ->
-  string * string ->
-  string
+  unit ->
+  string * (string -> Definitions.string_response)
 
 val make_int_request :
   ?required:bool -> ?attributes:(string * Value.t) list -> key:string -> unit -> string

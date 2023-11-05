@@ -1797,7 +1797,6 @@ and eval_internal_or_external_tag ~env ~state ~tag ?value tag_info =
   | value_bag, _ -> tag_info |> call_tag_listener ~env ~state ~tag ~value_bag
 
 and call_tag_listener ~env ~state:_ ~tag ~value_bag:_ t =
-  let net = Eio.Stdenv.net env in
   let { tag = tag_identifier; key; required; attributes; transformer } = t in
   let rec pinc_value_to_rpc value =
     match value.value_desc with
@@ -1824,13 +1823,16 @@ and call_tag_listener ~env ~state:_ ~tag ~value_bag:_ t =
   let rpc_attributes =
     attributes |> StringMap.map pinc_value_to_rpc |> StringMap.to_seq |> List.of_seq
   in
+  let address = Pinc_Rpc.Client.make_address 8081 in
   (match tag_identifier with
   | `String ->
       (* !nomerge *)
-      ("127.0.0.1", "8081")
-      |> Pinc_Rpc.make_string_request ~net ~key ~required ~attributes:rpc_attributes
-      |> Value.of_string ~value_loc:tag.tag_loc
-      |> Result.ok
+      let response =
+        Pinc_Rpc.make_string_request ~key ~required ~attributes:rpc_attributes ()
+        |> Pinc_Rpc.Client.send ~env ~address ~rpc:"string"
+        |> Option.value ~default:(Pinc_Rpc.Definitions.default_string_response ())
+      in
+      response.value |> Value.of_string ~value_loc:tag.tag_loc |> Result.ok
       (* fn ~required ~attributes ~key *)
   | `Int -> failwith "!nomerge"
   | `Float -> failwith "!nomerge"
