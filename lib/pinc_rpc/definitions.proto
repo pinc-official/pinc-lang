@@ -3,21 +3,22 @@ syntax = "proto3";
 package pinc;
 
 service Tags {
-  rpc string(StringRequest) returns (StringResponse);
-  rpc int(IntRequest) returns (IntResponse);
-  rpc float(FloatRequest) returns (FloatResponse);
-  rpc bool(BoolRequest) returns (BoolResponse);
-  rpc array(ArrayRequest) returns (ArrayResponse);
-  rpc record(RecordRequest) returns (RecordResponse);
+  rpc string(TagRequest) returns (StringResponse);
+  rpc int(TagRequest) returns (IntResponse);
+  rpc float(TagRequest) returns (FloatResponse);
+  rpc bool(TagRequest) returns (BoolResponse);
+  rpc array(TagRequest) returns (ArrayResponse);
+  rpc record(TagRequest) returns (RecordResponse);
+}
+
+message TagRequest {
+  bool required = 1;
+  repeated string key = 2;
+  map<string, t_value> attributes = 3;
+  map<string, t_value> childMeta = 4;
 }
 
 // ========================= STRING =========================
-
-message StringRequest {
-  bool required = 1;
-  string key = 2;
-  map<string, t_value> attributes = 3;
-}
 
 message StringResponse {
   string value = 1;
@@ -26,24 +27,12 @@ message StringResponse {
 
 // ========================= FLOAT =========================
 
-message FloatRequest {
-  bool required = 1;
-  string key = 2;
-  map<string, t_value> attributes = 3;
-}
-
 message FloatResponse {
   float value = 1;
   map<string, t_value> meta = 2;
 }
 
 // ========================= INT =========================
-
-message IntRequest {
-  bool required = 1;
-  string key = 2;
-  map<string, t_value> attributes = 3;
-}
 
 message IntResponse {
   int32 value = 1;
@@ -52,25 +41,12 @@ message IntResponse {
 
 // ========================= BOOL =========================
 
-message BoolRequest {
-  bool required = 1;
-  string key = 2;
-  map<string, t_value> attributes = 3;
-}
-
 message BoolResponse {
   bool value = 1;
   map<string, t_value> meta = 2;
 }
 
 // ========================= ARRAY =========================
-
-message ArrayRequest {
-  bool required = 1;
-  string key = 2;
-  t_tag of = 3;
-  map<string, t_value> attributes = 4;
-}
 
 message ArrayResponse {
   repeated t_value value = 1;
@@ -79,40 +55,12 @@ message ArrayResponse {
 
 // ========================= RECORD =========================
 
-message RecordRequest {
-  message t_tag_struct {
-    message t_tag_struct_item {
-      string key = 1;
-      bool required = 2;
-      t_tag value = 3;
-    }
-
-    repeated t_tag_struct_item value = 1;
-  }
-
-  bool required = 1;
-  string key = 2;
-  t_tag_struct of = 3;
-  map<string, t_value> attributes = 4;
-}
-
 message RecordResponse {
   map<string, t_value> value = 1;
   map<string, t_value> meta = 2;
 }
 
 // ========================= TYPES =========================
-
-message t_tag {
-  oneof value {
-    StringRequest tString = 2;
-    FloatRequest tFloat = 3;
-    IntRequest tInt = 4;
-    BoolRequest tBool = 5;
-    RecordRequest tRecord = 6;
-    ArrayRequest tList = 7;
-  }
-}
 
 message t_struct {
   map<string, t_value> value = 1;

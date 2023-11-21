@@ -18,11 +18,14 @@ end
 let make_string_request
     ?(required = false)
     ?(attributes : (string * Value.t) list = [])
+    ?(child_meta : (string * Value.t) list = [])
     ~key
     () =
-  let payload = Definitions.default_string_request ~required ~key ~attributes () in
+  let payload =
+    Definitions.default_tag_request ~required ~key ~attributes ~child_meta ()
+  in
   let encoder = Pbrt.Encoder.create () in
-  let () = Definitions.encode_pb_string_request payload encoder in
+  let () = Definitions.encode_pb_tag_request payload encoder in
   let decode s = Pbrt.Decoder.of_string s |> Definitions.decode_pb_string_response in
   (Pbrt.Encoder.to_string encoder, decode)
 ;;
@@ -30,11 +33,14 @@ let make_string_request
 let make_int_request
     ?(required = false)
     ?(attributes : (string * Value.t) list = [])
+    ?(child_meta : (string * Value.t) list = [])
     ~key
     () =
-  let payload = Definitions.default_int_request ~required ~key ~attributes () in
+  let payload =
+    Definitions.default_tag_request ~required ~key ~attributes ~child_meta ()
+  in
   let encoder = Pbrt.Encoder.create () in
-  let () = Definitions.encode_pb_int_request payload encoder in
+  let () = Definitions.encode_pb_tag_request payload encoder in
   let decode s = Pbrt.Decoder.of_string s |> Definitions.decode_pb_int_response in
   (Pbrt.Encoder.to_string encoder, decode)
 ;;
@@ -42,11 +48,14 @@ let make_int_request
 let make_float_request
     ?(required = false)
     ?(attributes : (string * Value.t) list = [])
+    ?(child_meta : (string * Value.t) list = [])
     ~key
     () =
-  let payload = Definitions.default_float_request ~required ~key ~attributes () in
+  let payload =
+    Definitions.default_tag_request ~required ~key ~attributes ~child_meta ()
+  in
   let encoder = Pbrt.Encoder.create () in
-  let () = Definitions.encode_pb_float_request payload encoder in
+  let () = Definitions.encode_pb_tag_request payload encoder in
   let decode s = Pbrt.Decoder.of_string s |> Definitions.decode_pb_float_response in
   (Pbrt.Encoder.to_string encoder, decode)
 ;;
@@ -54,11 +63,29 @@ let make_float_request
 let make_bool_request
     ?(required = false)
     ?(attributes : (string * Value.t) list = [])
+    ?(child_meta : (string * Value.t) list = [])
     ~key
     () =
-  let payload = Definitions.default_bool_request ~required ~key ~attributes () in
+  let payload =
+    Definitions.default_tag_request ~required ~key ~attributes ~child_meta ()
+  in
   let encoder = Pbrt.Encoder.create () in
-  let () = Definitions.encode_pb_bool_request payload encoder in
+  let () = Definitions.encode_pb_tag_request payload encoder in
   let decode s = Pbrt.Decoder.of_string s |> Definitions.decode_pb_bool_response in
+  (Pbrt.Encoder.to_string encoder, decode)
+;;
+
+let make_array_request
+    ?(required = false)
+    ?(attributes : (string * Value.t) list = [])
+    ?(child_meta : (string * Value.t) list = [])
+    ~key
+    () =
+  let payload =
+    Definitions.default_tag_request ~required ~key ~attributes ~child_meta ()
+  in
+  let encoder = Pbrt.Encoder.create () in
+  let () = Definitions.encode_pb_tag_request payload encoder in
+  let decode s = Pbrt.Decoder.of_string s |> Definitions.decode_pb_array_response in
   (Pbrt.Encoder.to_string encoder, decode)
 ;;

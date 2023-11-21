@@ -1792,12 +1792,12 @@ and eval_internal_or_external_tag ~env ~state ~tag ?value tag_info =
           |> eval_internal_tag ~env ~state ~tag ~key ~attributes ~value_bag
           |> transformer
       | `Slot -> key |> eval_slot ~tag ~attributes ~slotted_elements |> transformer
-      | `Custom _ ->
-          tag_info |> call_tag_listener ~env ~state ~tag ~value_bag:(Some value_bag))
-  | value_bag, _ -> tag_info |> call_tag_listener ~env ~state ~tag ~value_bag
+      | `Custom _ -> tag_info |> call_tag_listener ~loc:tag.tag_loc ~env |> fst)
+  | _value_bag, _ -> tag_info |> call_tag_listener ~loc:tag.tag_loc ~env |> fst
 
-and call_tag_listener ~env ~state:_ ~tag ~value_bag:_ t =
+and call_tag_listener ?(parent_keys = []) ~env ~loc t =
   let { tag = tag_identifier; key; required; attributes; transformer } = t in
+  let key_path = parent_keys @ [ key ] in
   let rec pinc_value_to_rpc value =
     match value.value_desc with
     | Char c -> Pinc_Rpc.Value.string (CCUtf8_string.make 1 c |> CCUtf8_string.to_string)
@@ -1820,37 +1820,69 @@ and call_tag_listener ~env ~state:_ ~tag ~value_bag:_ t =
     | HtmlTemplateNode (_, _, _, _) -> failwith "TODO: HtmlTemplateNode"
     | ComponentTemplateNode (_, _, _, _) -> failwith "TODO: ComponentTemplateNode"
   in
-  let rpc_attributes =
-    attributes |> StringMap.map pinc_value_to_rpc |> StringMap.to_seq |> List.of_seq
+  let rec rpc_value_to_pinc value =
+    let open Pinc_Rpc.Definitions in
+    match value with
+    | V_string s -> Value.of_string s
+    | V_int i -> i |> Int32.to_int |> Value.of_int
+    | V_float f -> Value.of_float f
+    | V_bool b -> Value.of_bool b
+    | V_list l -> Value.of_list (List.map rpc_value_to_pinc l.value)
+    | V_record r ->
+        Value.of_string_map
+          (r.value
+          |> List.mapi (fun i (k, v) -> (k, (i, rpc_value_to_pinc v)))
+          |> StringMap.of_list)
+    | V_null -> Value.null ()
   in
+  let rpc_attributes =
+    attributes
+    |> StringMap.remove "of"
+    |> StringMap.map pinc_value_to_rpc
+    |> StringMap.to_seq
+    |> List.of_seq
+  in
+  (* !nomerge *)
   let address = Pinc_Rpc.Client.make_address 8081 in
   (match tag_identifier with
   | `String ->
-      (* !nomerge *)
       let response =
-        Pinc_Rpc.make_string_request ~key ~required ~attributes:rpc_attributes ()
+        Pinc_Rpc.make_string_request ~key:key_path ~required ~attributes:rpc_attributes ()
         |> Pinc_Rpc.Client.send ~env ~address ~rpc:"string"
         |> Option.value ~default:(Pinc_Rpc.Definitions.default_string_response ())
       in
-      response.value |> Value.of_string ~value_loc:tag.tag_loc |> Result.ok
-      (* fn ~required ~attributes ~key *)
+      let value = response.value |> Value.of_string ~value_loc:loc in
+      let meta = response.meta in
+      Result.ok (value, meta)
   | `Int -> failwith "!nomerge"
   | `Float -> failwith "!nomerge"
   | `Boolean -> failwith "!nomerge"
   | `Array ->
-      (* let child =
-           attributes |> StringMap.find_opt "of" |> function
-           | Some { value_desc = TagInfo i; _ } -> i
-           | Some { value_desc = _; value_loc } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 "Attribute `of` needs to be a tag value describing the type of values in \
-                  this array."
-           | None ->
-               Pinc_Diagnostics.error tag.Ast.tag_loc "Attribute `of` is required on #Array."
-         in
-         fn ~required ~attributes ~child ~key *)
-      failwith "!nomerge"
+      let of', of_loc =
+        attributes |> StringMap.find_opt "of" |> function
+        | Some { value_desc = TagInfo i; value_loc } -> (i, value_loc)
+        | Some { value_desc = _; value_loc } ->
+            Pinc_Diagnostics.error
+              value_loc
+              "Attribute `of` needs to be a tag value describing the type of values in \
+               this array."
+        | None -> Pinc_Diagnostics.error loc "Attribute `of` is required on #Array."
+      in
+      let response =
+        Pinc_Rpc.make_array_request ~key:key_path ~required ~attributes:rpc_attributes ()
+        |> Pinc_Rpc.Client.send ~env ~address ~rpc:"array"
+        |> Option.value ~default:(Pinc_Rpc.Definitions.default_array_response ())
+      in
+      let meta = response.meta in
+      let values_with_meta =
+        response.value
+        |> List.map rpc_value_to_pinc
+        |> List.mapi @@ fun index _item ->
+           let key = string_of_int index in
+           { of' with key } |> call_tag_listener ~parent_keys:key_path ~env ~loc:of_loc
+      in
+      let value = values_with_meta |> List.map fst |> Value.of_list ~value_loc:loc in
+      Result.ok (value, meta)
   | `Record ->
       (* let children =
            attributes
@@ -1885,8 +1917,8 @@ and call_tag_listener ~env ~state:_ ~tag ~value_bag:_ t =
       (* fn ~required ~attributes ~parent_value:value_bag ~key *)
       failwith ("!nomerge" ^ s))
   |> function
-  | Ok v -> v |> transformer
-  | Error e -> Pinc_Diagnostics.error tag.tag_loc e
+  | Ok (v, meta) -> (v |> transformer, meta)
+  | Error e -> Pinc_Diagnostics.error loc e
 
 and eval_tag ~env ~state tag =
   let Ast.{ tag = tag_identifier; attributes; transformer } = tag.tag_desc in
