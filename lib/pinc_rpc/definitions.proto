@@ -16,6 +16,7 @@ message TagRequest {
   repeated string key = 2;
   map<string, t_value> attributes = 3;
   map<string, t_value> childMeta = 4;
+  optional t_value value = 5;
 }
 
 // ========================= STRING =========================
@@ -74,12 +75,12 @@ message t_null {}
 
 message t_value {
   oneof value {
+    t_null vNull = 1;
     string vString = 2;
     float vFloat = 3;
     int32 vInt = 4;
     bool vBool = 5;
     t_struct vRecord = 6;
     t_list vList = 7;
-    t_null vNull = 8;
   }
 }

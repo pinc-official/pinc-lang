@@ -11,19 +11,19 @@ type t_null = unit
 
 type t_value =
   | V_null
-  | V_list of t_list
-  | V_record of t_struct
-  | V_bool of bool
-  | V_int of int32
-  | V_float of float
   | V_string of string
-
-and t_list = {
-  value : t_value list;
-}
+  | V_float of float
+  | V_int of int32
+  | V_bool of bool
+  | V_record of t_struct
+  | V_list of t_list
 
 and t_struct = {
   value : (string * t_value) list;
+}
+
+and t_list = {
+  value : t_value list;
 }
 
 type tag_request = {
@@ -31,6 +31,7 @@ type tag_request = {
   key : string list;
   attributes : (string * t_value) list;
   child_meta : (string * t_value) list;
+  value : t_value option;
 }
 
 type string_response = {
@@ -72,23 +73,24 @@ val default_t_null : unit
 val default_t_value : unit -> t_value
 (** [default_t_value ()] is the default value for type [t_value] *)
 
-val default_t_list : 
-  ?value:t_value list ->
-  unit ->
-  t_list
-(** [default_t_list ()] is the default value for type [t_list] *)
-
 val default_t_struct : 
   ?value:(string * t_value) list ->
   unit ->
   t_struct
 (** [default_t_struct ()] is the default value for type [t_struct] *)
 
+val default_t_list : 
+  ?value:t_value list ->
+  unit ->
+  t_list
+(** [default_t_list ()] is the default value for type [t_list] *)
+
 val default_tag_request : 
   ?required:bool ->
   ?key:string list ->
   ?attributes:(string * t_value) list ->
   ?child_meta:(string * t_value) list ->
+  ?value:t_value option ->
   unit ->
   tag_request
 (** [default_tag_request ()] is the default value for type [tag_request] *)
@@ -144,11 +146,11 @@ val encode_pb_t_null : t_null -> Pbrt.Encoder.t -> unit
 val encode_pb_t_value : t_value -> Pbrt.Encoder.t -> unit
 (** [encode_pb_t_value v encoder] encodes [v] with the given [encoder] *)
 
-val encode_pb_t_list : t_list -> Pbrt.Encoder.t -> unit
-(** [encode_pb_t_list v encoder] encodes [v] with the given [encoder] *)
-
 val encode_pb_t_struct : t_struct -> Pbrt.Encoder.t -> unit
 (** [encode_pb_t_struct v encoder] encodes [v] with the given [encoder] *)
+
+val encode_pb_t_list : t_list -> Pbrt.Encoder.t -> unit
+(** [encode_pb_t_list v encoder] encodes [v] with the given [encoder] *)
 
 val encode_pb_tag_request : tag_request -> Pbrt.Encoder.t -> unit
 (** [encode_pb_tag_request v encoder] encodes [v] with the given [encoder] *)
@@ -180,11 +182,11 @@ val decode_pb_t_null : Pbrt.Decoder.t -> t_null
 val decode_pb_t_value : Pbrt.Decoder.t -> t_value
 (** [decode_pb_t_value decoder] decodes a [t_value] binary value from [decoder] *)
 
-val decode_pb_t_list : Pbrt.Decoder.t -> t_list
-(** [decode_pb_t_list decoder] decodes a [t_list] binary value from [decoder] *)
-
 val decode_pb_t_struct : Pbrt.Decoder.t -> t_struct
 (** [decode_pb_t_struct decoder] decodes a [t_struct] binary value from [decoder] *)
+
+val decode_pb_t_list : Pbrt.Decoder.t -> t_list
+(** [decode_pb_t_list decoder] decodes a [t_list] binary value from [decoder] *)
 
 val decode_pb_tag_request : Pbrt.Decoder.t -> tag_request
 (** [decode_pb_tag_request decoder] decodes a [tag_request] binary value from [decoder] *)
