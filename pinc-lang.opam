@@ -35,6 +35,3 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/pinc-lang/pinc-lang.git"
-pin-depends: [
-  [ "ocaml-protoc.2.4" "git+https://github.com/mransan/ocaml-protoc#master" ]
-]

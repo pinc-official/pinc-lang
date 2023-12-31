@@ -1,3 +1,0 @@
-pin-depends: [
-  [ "ocaml-protoc.2.4" "git+https://github.com/mransan/ocaml-protoc#master" ]
-]

@@ -8,7 +8,7 @@ license: "MIT"
 homepage: "https://github.com/pinc-lang/pinc-lang"
 bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
 depends: [
-  "angstrom" {= "0.15.0"}
+  "angstrom" {= "0.16.0"}
   "astring" {= "0.8.5" & with-dev-setup}
   "base" {= "v0.16.3" & with-dev-setup}
   "base-bigarray" {= "base"}
@@ -21,22 +21,22 @@ depends: [
   "bigstringaf" {= "0.9.1"}
   "bisect_ppx" {= "2.8.3" & with-test}
   "camlp-streams" {= "5.0.1" & with-dev-setup}
-  "chrome-trace" {= "3.11.1" & with-dev-setup}
+  "chrome-trace" {= "3.12.1" & with-dev-setup}
   "cmdliner" {= "1.2.0"}
-  "containers" {= "3.12"}
+  "containers" {= "3.13.1"}
   "cppo" {= "1.6.9"}
   "crunch" {= "3.3.1"}
   "csexp" {= "1.5.2"}
   "cstruct" {= "6.2.0"}
   "domain-local-await" {= "1.0.0"}
-  "dune" {= "3.11.1"}
-  "dune-build-info" {= "3.11.1" & with-dev-setup}
-  "dune-configurator" {= "3.11.1"}
-  "dune-rpc" {= "3.11.1" & with-dev-setup}
-  "dyn" {= "3.11.1" & with-dev-setup}
-  "eio" {= "dev"}
-  "eio_main" {= "dev"}
-  "eio_posix" {= "dev"}
+  "dune" {= "3.12.1"}
+  "dune-build-info" {= "3.12.1" & with-dev-setup}
+  "dune-configurator" {= "3.12.1"}
+  "dune-rpc" {= "3.12.1" & with-dev-setup}
+  "dyn" {= "3.12.1" & with-dev-setup}
+  "eio" {= "0.13"}
+  "eio_main" {= "0.13"}
+  "eio_posix" {= "0.13"}
   "either" {= "1.0.0"}
   "faraday" {= "0.8.2"}
   "fiber" {= "3.7.0" & with-dev-setup}
@@ -47,38 +47,37 @@ depends: [
   "gluten-eio" {= "0.5.0"}
   "grpc" {= "0.2.0"}
   "grpc-eio" {= "0.2.0"}
-  "h2" {= "0.11"}
-  "h2-eio" {= "0.11"}
+  "h2" {= "0.11.0"}
+  "h2-eio" {= "0.11.0"}
   "hmap" {= "0.8.1"}
-  "hpack" {= "0.11"}
+  "hpack" {= "0.11.0"}
   "httpaf" {= "0.7.1"}
   "iomux" {= "0.3"}
   "lwt-dllist" {= "1.0.1"}
   "menhir" {= "20230608" & with-dev-setup}
   "menhirLib" {= "20230608" & with-dev-setup}
   "menhirSdk" {= "20230608" & with-dev-setup}
-  "merlin-lib" {= "4.12-501" & with-dev-setup}
+  "merlin-lib" {= "4.13.1-501" & with-dev-setup}
   "mtime" {= "2.0.0"}
-  "ocaml" {= "5.1.0"}
-  "ocaml-base-compiler" {= "5.1.0"}
+  "ocaml" {= "5.1.1"}
+  "ocaml-base-compiler" {= "5.1.1"}
   "ocaml-compiler-libs" {= "v0.12.4"}
   "ocaml-config" {= "3"}
-  "ocaml-lsp-server" {= "1.16.2" & with-dev-setup}
+  "ocaml-lsp-server" {= "1.17.0" & with-dev-setup}
   "ocaml-options-vanilla" {= "1"}
-  "ocaml-protoc" {= "2.4"}
+  "ocaml-protoc" {= "3.0.1"}
   "ocaml-syntax-shims" {= "1.0.0"}
-  "ocaml-version" {= "3.6.2" & with-dev-setup}
-  "ocamlbuild" {= "0.14.2"}
-  "ocamlc-loc" {= "3.11.1" & with-dev-setup}
+  "ocaml-version" {= "3.6.3" & with-dev-setup}
+  "ocamlbuild" {= "0.14.3"}
+  "ocamlc-loc" {= "3.12.1" & with-dev-setup}
   "ocamlfind" {= "1.9.6"}
   "ocamlformat" {= "0.26.1" & with-dev-setup}
   "ocamlformat-lib" {= "0.26.1" & with-dev-setup}
   "ocamlformat-rpc-lib" {= "0.26.1" & with-dev-setup}
   "ocp-indent" {= "1.8.1" & with-dev-setup}
-  "odoc-parser" {= "2.0.0" & with-dev-setup}
   "optint" {= "0.3.0"}
-  "ordering" {= "3.11.1" & with-dev-setup}
-  "pbrt" {= "2.4"}
+  "ordering" {= "3.12.1" & with-dev-setup}
+  "pbrt" {= "3.0.1"}
   "pp" {= "1.2.0" & with-dev-setup}
   "ppx_derivers" {= "1.2.1"}
   "ppx_deriving" {= "5.2.1"}
@@ -93,7 +92,7 @@ depends: [
   "spawn" {= "v0.15.1" & with-dev-setup}
   "stdio" {= "v0.16.0" & with-dev-setup}
   "stdlib-shims" {= "0.3.0"}
-  "stdune" {= "3.11.1" & with-dev-setup}
+  "stdune" {= "3.12.1" & with-dev-setup}
   "stringext" {= "1.6.0"}
   "thread-table" {= "1.0.0"}
   "topkg" {= "1.0.7"}
@@ -101,8 +100,8 @@ depends: [
   "uucp" {= "15.1.0" & with-dev-setup}
   "uuseg" {= "15.1.0" & with-dev-setup}
   "uutf" {= "1.0.3" & with-dev-setup}
-  "xdg" {= "3.11.1" & with-dev-setup}
-  "yojson" {= "2.1.1" & with-dev-setup}
+  "xdg" {= "3.12.1" & with-dev-setup}
+  "yojson" {= "2.1.2" & with-dev-setup}
 ]
 build: [
   ["dune" "subst"] {dev}
@@ -119,9 +118,3 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/pinc-lang/pinc-lang.git"
-pin-depends: [
-  ["eio.dev" "git+https://github.com/ocaml-multicore/eio#main"]
-  ["eio_main.dev" "git+https://github.com/ocaml-multicore/eio#main"]
-  ["eio_posix.dev" "git+https://github.com/ocaml-multicore/eio#main"]
-  ["h2.0.11" "git+https://github.com/anmonteiro/ocaml-h2#0.11.0"] ["h2-eio.0.11" "git+https://github.com/anmonteiro/ocaml-h2#0.11.0"] ["hpack.0.11" "git+https://github.com/anmonteiro/ocaml-h2#0.11.0"] ["ocaml-protoc.2.4" "git+https://github.com/mransan/ocaml-protoc#master"]
-]
