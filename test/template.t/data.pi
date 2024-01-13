@@ -6,7 +6,7 @@ component Component(
 
   let name = "String Template";
   let intro = true;
-  let content = "Hello, {| if (intro) name else "World" |}!";
+  let content = "Hello, $(if (intro) { name } else { "World" })!";
 
   <section class="Section">
     <div />

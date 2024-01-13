@@ -15,8 +15,7 @@ type token_type =
   | RIGHT_BRACK
   | LEFT_BRACE
   | RIGHT_BRACE
-  | LEFT_PIPE_BRACE
-  | RIGHT_PIPE_BRACE
+  | OPEN_TEMPLATE_LITERAL
   | DOUBLE_QUOTE
   | COLON
   | DOUBLE_COLON
@@ -101,8 +100,7 @@ let to_string = function
   | RIGHT_PAREN -> ")"
   | LEFT_BRACE -> "{"
   | RIGHT_BRACE -> "}"
-  | LEFT_PIPE_BRACE -> "{|"
-  | RIGHT_PIPE_BRACE -> "|}"
+  | OPEN_TEMPLATE_LITERAL -> "$("
   | DOUBLE_QUOTE -> "\""
   | LEFT_BRACK -> "["
   | RIGHT_BRACK -> "]"
@@ -190,8 +188,7 @@ let is_keyword = function
   | RIGHT_BRACK
   | LEFT_BRACE
   | RIGHT_BRACE
-  | LEFT_PIPE_BRACE
-  | RIGHT_PIPE_BRACE
+  | OPEN_TEMPLATE_LITERAL
   | DOUBLE_QUOTE
   | COLON
   | DOUBLE_COLON

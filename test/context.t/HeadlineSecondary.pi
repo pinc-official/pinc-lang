@@ -7,7 +7,7 @@ component HeadlineSecondary {
     subheadline?: #String
   };
 
-  let class = "HeadlineSecondary {| class |}";
+  let class = "HeadlineSecondary $(class)";
 
   let content =
   <>

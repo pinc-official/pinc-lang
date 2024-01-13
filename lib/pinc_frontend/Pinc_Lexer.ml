@@ -252,7 +252,7 @@ let scan_string ~start_pos t =
             Diagnostics.error
               (Location.make ~s:start_pos ~e:(make_position t) ())
               "This string is not terminated. Please add a double-quote (\") at the end.")
-    | `Chr '{' when peek t = `Chr '|' -> ()
+    | `Chr '$' when peek t = `Chr '(' -> ()
     | `Chr '"' -> ()
     | `Chr c ->
         next t;
@@ -689,14 +689,10 @@ and scan_string_token ~start_pos t =
       popMode String t;
       next t;
       Token.DOUBLE_QUOTE
-  | `Chr '{' when peek t = `Chr '|' ->
+  | `Chr '$' when peek t = `Chr '(' ->
       setMode Normal t;
       next_n ~n:2 t;
-      Token.LEFT_PIPE_BRACE
-  | `Chr '|' when peek t = `Chr '}' ->
-      popMode Normal t;
-      next_n ~n:2 t;
-      Token.RIGHT_PIPE_BRACE
+      Token.OPEN_TEMPLATE_LITERAL
   | _ -> scan_string ~start_pos t
 
 and scan_component_attributes_token ~start_pos t =
@@ -794,9 +790,11 @@ and scan_normal_token ~start_pos t =
       Token.DOUBLE_QUOTE
   | `Chr '(' ->
       next t;
+      setMode Normal t;
       Token.LEFT_PAREN
   | `Chr ')' ->
       next t;
+      popMode Normal t;
       Token.RIGHT_PAREN
   | `Chr '[' ->
       next t;
@@ -912,10 +910,6 @@ and scan_normal_token ~start_pos t =
       | `Chr '|' ->
           next_n ~n:2 t;
           Token.LOGICAL_OR
-      | `Chr '}' ->
-          popMode Normal t;
-          next_n ~n:2 t;
-          Token.RIGHT_PIPE_BRACE
       | `Chr '>' ->
           next_n ~n:2 t;
           Token.PIPE

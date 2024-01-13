@@ -8,7 +8,7 @@ component HeadlineSecondary {
     subheadline?: if (tag == "h2") #String
   });
 
-  let class = "HeadlineSecondary {| class |}";
+  let class = "HeadlineSecondary $(class)";
 
   let content =
   <>

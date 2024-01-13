@@ -144,10 +144,10 @@ module Rules = struct
       | Token.STRING s ->
           next t;
           Some (Ast.StringText s)
-      | Token.LEFT_PIPE_BRACE ->
+      | Token.OPEN_TEMPLATE_LITERAL ->
           next t;
           let* expression = parse_expression t in
-          t |> expect Token.RIGHT_PIPE_BRACE;
+          t |> expect Token.RIGHT_PAREN;
           Some (Ast.StringInterpolation expression)
       | _ -> None
     in
