@@ -69,14 +69,23 @@ let print_code ~color ~loc ic =
            Fmt.pf ppf "%4d" line_number;
          Fmt.pf ppf " %a " Fmt.(styled `Faint string) "│";
          line
-         |> String.iteri (fun column_number ch ->
+         |> String.iteri (fun column_index ch ->
+                let column_number = column_index + 1 in
+                let on_line_start = Int.equal line_number highlight_line_start in
+                let after_column_start = column_number >= highlight_column_start in
+                let between_lines =
+                  line_number >= highlight_line_start && line_number <= highlight_line_end
+                in
+                let between_columns =
+                  column_number >= highlight_column_start
+                  && column_number <= highlight_column_end
+                in
+                let on_line_end = Int.equal line_number highlight_line_end in
+                let before_column_start = column_number <= highlight_column_end in
                 if
-                  line_number = highlight_line_start
-                  && column_number >= highlight_column_start - 1
-                  || line_number = highlight_line_end
-                     && column_number < highlight_column_end - 1
-                  || line_number > highlight_line_start
-                     && line_number < highlight_line_end
+                  (on_line_start && (not on_line_end) && after_column_start)
+                  || (between_lines && between_columns)
+                  || (on_line_end && (not on_line_start) && before_column_start)
                 then
                   Fmt.pf ppf "%a" Fmt.(styled `Bold (styled (`Fg color) char)) ch
                 else
