@@ -54,7 +54,7 @@ and string_template = {
 }
 
 and string_template_desc =
-  | StringInterpolation of expression
+  | StringInterpolation of lowercase_identifier
   | StringText of string
 
 and expression = {

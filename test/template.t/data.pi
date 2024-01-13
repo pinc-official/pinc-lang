@@ -3,10 +3,9 @@ component Component(
   icon: "/images/icons/group.svg",
   group: "Structure",
 ) {
-
-  let name = "String Template";
   let intro = true;
-  let content = "Hello, $(if (intro) { name } else { "World" })!";
+  let name = if (intro) "String Template" else "World";
+  let content = "Hello, $(name)!";
 
   <section class="Section">
     <div />

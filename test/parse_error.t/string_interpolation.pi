@@ -1,0 +1,7 @@
+component Component {
+  let fail = #String
+
+  <div class="Section $(if fail "A" else "B")">
+    {fail}
+  </div>
+}

@@ -64,7 +64,7 @@ let make ~filename src =
 ;;
 
 module Helpers = struct
-  let expect_identifier ?(typ = `All) t =
+  let expect_identifier ?error_message ?(typ = `All) t =
     let location =
       Location.make ~s:t.token.location.loc_start ~e:t.token.location.loc_end ()
     in
@@ -78,36 +78,37 @@ module Helpers = struct
     | token when typ = `Lower ->
         Diagnostics.error
           location
-          (match token with
-          | Token.IDENT_UPPER i ->
+          (match (error_message, token) with
+          | Some message, _ -> message
+          | None, Token.IDENT_UPPER i ->
               "Expected to see a lowercase identifier at this point. Did you mean "
               ^ String.lowercase_ascii i
               ^ " instead of "
               ^ i
               ^ "?"
-          | t when Token.is_keyword t ->
-              "`" ^ Token.to_string t ^ "` is a keyword. Please choose another name."
-          | t ->
+          | None, t ->
               "Expected to see a lowercase identifier at this point. Instead saw "
               ^ Token.to_string t)
     | token when typ = `Upper ->
         Diagnostics.error
           location
-          (match token with
-          | Token.IDENT_LOWER i ->
+          (match (error_message, token) with
+          | Some message, _ -> message
+          | None, Token.IDENT_LOWER i ->
               "Expected to see an uppercase identifier at this point. Did you mean "
               ^ String.capitalize_ascii i
               ^ " instead of "
               ^ i
               ^ "?"
-          | _ -> "Expected to see an uppercase identifier at this point.")
+          | None, _ -> "Expected to see an uppercase identifier at this point.")
     | token ->
         Diagnostics.error
           location
-          (match token with
-          | t when Token.is_keyword t ->
+          (match (error_message, token) with
+          | Some message, _ -> message
+          | None, t when Token.is_keyword t ->
               "\"" ^ Token.to_string t ^ "\" is a keyword. Please choose another name."
-          | _ -> "Expected to see an identifier at this point.")
+          | None, _ -> "Expected to see an identifier at this point.")
   ;;
 
   let separated_list ~sep ~fn t =
@@ -146,9 +147,18 @@ module Rules = struct
           Some (Ast.StringText s)
       | Token.OPEN_TEMPLATE_LITERAL ->
           next t;
-          let* expression = parse_expression t in
+          let identifier =
+            t
+            |> Helpers.expect_identifier
+                 ~typ:`Lower
+                 ~error_message:
+                   "Only lowercase identifiers are allowed as string interpolation \
+                    placeholders.\n\
+                    If you want to use more complex constructs, you can always assign \
+                    them to a let binding."
+          in
           t |> expect Token.RIGHT_PAREN;
-          Some (Ast.StringInterpolation expression)
+          Some (Ast.StringInterpolation (Lowercase_Id identifier))
       | _ -> None
     in
     let string_template_end = t.token.location.loc_end in

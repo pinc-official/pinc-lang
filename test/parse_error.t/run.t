@@ -34,6 +34,7 @@
   
   Expected expression as right hand side of let declaration
   [1]
+
   $ print ./mutation_without_expression.pi Component
   
   ERROR in file ./mutation_without_expression.pi:3:3-12
@@ -43,4 +44,16 @@
      4 │ 
   
   Expected expression as right hand side of mutation statement
+  [1]
+
+  $ print ./string_interpolation.pi Component
+  
+  ERROR in file ./string_interpolation.pi:4:25-27
+  
+     3 │ 
+     4 │   <div class="Section $(if fail "A" else "B")">
+     5 │     {fail}
+  
+  Only lowercase identifiers are allowed as string interpolation placeholders.
+  If you want to use more complex constructs, you can always assign them to a let binding.
   [1]

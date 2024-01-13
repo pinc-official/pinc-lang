@@ -567,8 +567,11 @@ and eval_string_template ~state template =
 
                 match string_template.Ast.string_template_desc with
                 | StringText s -> s
-                | StringInterpolation e ->
-                    eval_expression ~state e |> State.get_output |> Value.to_string)
+                | StringInterpolation (Lowercase_Id (id, loc)) ->
+                    id
+                    |> eval_lowercase_identifier ~loc ~state
+                    |> State.get_output
+                    |> Value.to_string)
          |> String.concat ""
          |> Value.of_string
               ~value_loc:(Location.make ~s:!start_loc.loc_start ~e:!end_loc.loc_end ()))
