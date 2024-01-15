@@ -37,11 +37,13 @@
 
   $ print ./mutation_without_expression.pi Component
   
-  ERROR in file ./mutation_without_expression.pi:3:3-12
+  ERROR in file ./mutation_without_expression.pi:3:3-5:4
   
      2 │   let mutable fail = "";
-     3 │   fail := ;
-     4 │ 
+     3 │   fail := 
+     4 │    
+     5 │   ;
+     6 │ 
   
   Expected expression as right hand side of mutation statement
   [1]
