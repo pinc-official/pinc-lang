@@ -1102,12 +1102,14 @@ and eval_binary_bracket_access ~state left right =
   | String a, Int b ->
       let output =
         try
-          String.get_utf_8_uchar a b
-          |> Uchar.utf_decode_uchar
+          a
+          |> CCUtf8_string.of_string_exn
+          |> CCUtf8_string.to_list
+          |> Fun.flip List.nth b
           |> Value.of_char
                ~value_loc:
                  (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
-        with Invalid_argument _ ->
+        with Failure _ | Invalid_argument _ ->
           Value.null
             ~value_loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
             ()
