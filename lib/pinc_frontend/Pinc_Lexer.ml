@@ -110,15 +110,12 @@ let make ~filename src =
   }
 ;;
 
-let is_whitespace = function
-  | `Chr ' ' | `Chr '\t' | `Chr '\n' | `Chr '\r' -> true
-  | _ -> false
-;;
-
 let rec skip_whitespace t =
-  if is_whitespace t.current then (
-    eat t;
-    skip_whitespace t)
+  match t.current with
+  | `Chr ' ' | `Chr '\t' | `Chr '\n' | `Chr '\r' ->
+      eat t;
+      skip_whitespace t
+  | _ -> ()
 ;;
 
 let scan_escape t =
