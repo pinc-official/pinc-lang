@@ -63,7 +63,7 @@ and expression = {
 }
 
 and expression_desc =
-  | Comment
+  | Comment of string
   | String of string_template list
   | Char of Uchar.t
   | Int of int

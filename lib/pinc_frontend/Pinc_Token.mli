@@ -1,7 +1,7 @@
 open Pinc_Diagnostics
 
 type token_type =
-  | COMMENT
+  | COMMENT of string
   | IDENT_LOWER of string
   | IDENT_UPPER of string
   | INT of int

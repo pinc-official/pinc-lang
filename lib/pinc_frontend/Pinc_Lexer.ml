@@ -570,48 +570,44 @@ let scan_char ~start_pos t =
         "This char is not terminated. Please add a single-quote (\') at the end."
 ;;
 
-let skip_comment t =
-  let rec skip t =
+let scan_comment t =
+  let rec loop buf t =
     match t.current with
-    | `Chr '\n' | `Chr '\r' -> ()
-    | `EOF -> ()
-    | _ ->
+    (* This case also matches \r\n on windows *)
+    | `EOF | `Chr '\n' -> Buffer.contents buf
+    | `Chr c ->
         next t;
-        skip t
+        Buffer.add_char buf c;
+        loop buf t
   in
-  skip t
+  let buf = Buffer.create 128 in
+  let found = loop buf t in
+  found
 ;;
 
-let rec skip_block_comment ~start_pos t =
+let rec scan_block_comment t =
+  let start_pos = make_position t in
   next_n ~n:2 t;
-  let rec skip t =
+  let rec loop buf t =
     match t.current with
-    | `Chr '*' -> (
-        match peek t with
-        | `Chr '/' ->
-            next t;
-            next t;
-            ()
-        | _ ->
-            next t;
-            skip t)
-    | `Chr '/' -> (
-        match peek t with
-        | `Chr '*' ->
-            skip_block_comment ~start_pos:(make_position t) t;
-            skip t
-        | _ ->
-            next t;
-            skip t)
+    | `Chr '*' when peek t = `Chr '/' ->
+        next_n ~n:2 t;
+        Buffer.contents buf
+    | `Chr '/' when peek t = `Chr '*' ->
+        Buffer.add_string buf (scan_block_comment t);
+        loop buf t
     | `EOF ->
         Diagnostics.error
           (Location.make ~s:start_pos ())
           "This comment is not terminated. Please add a `*/` at the end."
-    | _ ->
+    | `Chr c ->
         next t;
-        skip t
+        Buffer.add_char buf c;
+        loop buf t
   in
-  skip t
+  let buf = Buffer.create 512 in
+  let found = loop buf t in
+  found
 ;;
 
 let rec scan_template_token ~start_pos t =
@@ -855,12 +851,8 @@ and scan_normal_token ~start_pos t =
       Token.QUESTIONMARK
   | `Chr '/' -> (
       match peek t with
-      | `Chr '/' ->
-          skip_comment t;
-          Token.COMMENT
-      | `Chr '*' ->
-          skip_block_comment ~start_pos:(make_position t) t;
-          Token.COMMENT
+      | `Chr '/' -> Token.COMMENT (scan_comment t)
+      | `Chr '*' -> Token.COMMENT (scan_block_comment t)
       | _ ->
           next t;
           Token.SLASH)

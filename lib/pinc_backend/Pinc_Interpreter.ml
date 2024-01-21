@@ -373,7 +373,7 @@ and eval_statement ~state statement =
 
 and eval_expression ~state expression =
   match expression.expression_desc with
-  | Ast.Comment -> state
+  | Ast.Comment _ -> state
   | Ast.Char c ->
       state
       |> State.add_output ~output:(Value.of_char ~value_loc:expression.expression_loc c)

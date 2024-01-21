@@ -279,7 +279,11 @@ module Rules = struct
       | Token.LEFT_BRACE ->
           let start_token = t.token in
           next t;
-          let has_comment = optional Token.COMMENT t in
+          let has_comment =
+            match t.token.typ with
+            | Token.COMMENT _ -> true
+            | _ -> false
+          in
           let expression =
             match parse_expression t with
             | Some e -> Ast.ExpressionTemplateNode e
@@ -490,9 +494,9 @@ module Rules = struct
     let* expression_desc =
       match t.token.typ with
       (* PARSING COMMENT EXPRESSION *)
-      | Token.COMMENT ->
+      | Token.COMMENT s ->
           next t;
-          Some Ast.Comment
+          Some (Ast.Comment s)
       (* PARSING PARENTHESIZED EXPRESSION *)
       | Token.LEFT_PAREN ->
           next t;

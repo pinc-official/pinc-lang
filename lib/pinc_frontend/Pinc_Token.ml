@@ -1,7 +1,7 @@
 module Location = Pinc_Diagnostics.Location
 
 type token_type =
-  | COMMENT
+  | COMMENT of string
   | IDENT_LOWER of string
   | IDENT_UPPER of string
   | INT of int
@@ -151,7 +151,7 @@ let to_string = function
   | KEYWORD_SITE -> "site"
   | KEYWORD_PAGE -> "page"
   | KEYWORD_STORE -> "store"
-  | COMMENT -> "// Comment"
+  | COMMENT s -> "/* " ^ s ^ " */"
   | HTML_OPEN_FRAGMENT -> "<>"
   | HTML_CLOSE_FRAGMENT -> "</>"
   | HTML_OPEN_TAG s -> "<" ^ s
@@ -181,7 +181,7 @@ let is_keyword = function
   | KEYWORD_SITE
   | KEYWORD_PAGE
   | KEYWORD_STORE -> true
-  | COMMENT
+  | COMMENT _
   | LEFT_PAREN
   | RIGHT_PAREN
   | LEFT_BRACK
