@@ -17,7 +17,6 @@ type char' =
 type t = {
   filename : string;
   src : string;
-  mutable prev : char';
   mutable current : char';
   mutable offset : int;
   mutable line_offset : int;
@@ -77,7 +76,6 @@ let eat t =
   in
   t.column <- next_offset - t.line_offset;
   t.offset <- next_offset;
-  t.prev <- t.current;
   t.current <- (try `Chr (String.get t.src next_offset) with Invalid_argument _ -> `EOF)
 ;;
 
@@ -99,7 +97,6 @@ let make ~filename src =
   {
     filename;
     src;
-    prev = `EOF;
     current =
       (if src = "" then
          `EOF
@@ -955,9 +952,6 @@ and scan_normal_token ~start_pos t =
           setMode Template t;
           setMode ComponentAttributes t;
           scan_component_open_tag t
-      | c when is_whitespace t.prev && is_whitespace c ->
-          eat t;
-          Token.LESS
       | `Chr '/' -> (
           popMode Template t;
           match peek2 t with
@@ -979,9 +973,8 @@ and scan_normal_token ~start_pos t =
                 "Your Template was not closed correctly.\n\
                  You probably mismatched or forgot a closing tag.")
       | _ ->
-          Diagnostics.error
-            (Location.make ~s:start_pos ~e:(make_position t) ())
-            "The character < is unknown. You should remove it.")
+          eat t;
+          Token.LESS)
   | `EOF -> Token.END_OF_INPUT
   | `Chr c ->
       Diagnostics.error
