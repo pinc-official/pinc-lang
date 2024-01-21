@@ -17,7 +17,6 @@ type char' =
 type t = {
   filename : string;
   src : string;
-  src_length : int;
   mutable prev : char';
   mutable current : char';
   mutable offset : int;
@@ -67,7 +66,7 @@ let popMode mode t =
   | _ -> ()
 ;;
 
-let next t =
+let eat t =
   let next_offset = t.offset + 1 in
   let () =
     match t.current with
@@ -79,31 +78,27 @@ let next t =
   t.column <- next_offset - t.line_offset;
   t.offset <- next_offset;
   t.prev <- t.current;
-  t.current <-
-    (if next_offset < t.src_length then
-       `Chr (String.unsafe_get t.src next_offset)
-     else
-       `EOF)
+  t.current <- (try `Chr (String.get t.src next_offset) with Invalid_argument _ -> `EOF)
 ;;
 
-let next_n ~n t =
-  for _ = 1 to n do
-    next t
-  done
+let eat2 t =
+  eat t;
+  eat t
 ;;
 
-let peek ?(n = 1) t =
-  if t.offset + n < t.src_length then
-    `Chr (String.unsafe_get t.src (t.offset + n))
-  else
-    `EOF
+let eat3 t =
+  eat t;
+  eat t;
+  eat t
 ;;
+
+let peek t = try `Chr (String.get t.src (t.offset + 1)) with Invalid_argument _ -> `EOF
+let peek2 t = try `Chr (String.get t.src (t.offset + 2)) with Invalid_argument _ -> `EOF
 
 let make ~filename src =
   {
     filename;
     src;
-    src_length = String.length src;
     prev = `EOF;
     current =
       (if src = "" then
@@ -125,7 +120,7 @@ let is_whitespace = function
 
 let rec skip_whitespace t =
   if is_whitespace t.current then (
-    next t;
+    eat t;
     skip_whitespace t)
 ;;
 
@@ -142,35 +137,35 @@ let scan_escape t =
     for _ = n downto 1 do
       let d = digit_value t.current in
       x := (!x * base) + d;
-      next t
+      eat t
     done;
     Uchar.of_int !x
   in
   match t.current with
   | `Chr '0' .. '9' -> convert_number t ~n:3 ~base:10
   | `Chr 'b' ->
-      next t;
+      eat t;
       Uchar.of_char '\008'
   | `Chr 'n' ->
-      next t;
+      eat t;
       Uchar.of_char '\010'
   | `Chr 'r' ->
-      next t;
+      eat t;
       Uchar.of_char '\013'
   | `Chr 't' ->
-      next t;
+      eat t;
       Uchar.of_char '\009'
   | `Chr 'f' ->
-      next t;
+      eat t;
       Uchar.of_char '\012'
   | `Chr 'x' ->
-      next t;
+      eat t;
       convert_number t ~n:2 ~base:16
   | `Chr 'o' ->
-      next t;
+      eat t;
       convert_number t ~n:3 ~base:8
   | `Chr ch ->
-      next t;
+      eat t;
       Uchar.of_char ch
   | `EOF ->
       let pos = make_position t in
@@ -188,7 +183,7 @@ let scan_ident t =
     | `Chr ('a' .. 'z' as c)
     | `Chr ('0' .. '9' as c)
     | `Chr ('_' as c) ->
-        next t;
+        eat t;
         Buffer.add_char buf c;
         loop t
     | _ -> ()
@@ -208,39 +203,39 @@ let scan_string ~start_pos t =
     | `Chr '\\' -> (
         match peek t with
         | `Chr ' ' ->
-            next_n ~n:2 t;
+            eat2 t;
             Buffer.add_char buf '\\';
             loop t
         | `Chr '"' ->
-            next_n ~n:2 t;
+            eat2 t;
             Buffer.add_char buf '"';
             loop t
         | `Chr '\'' ->
-            next_n ~n:2 t;
+            eat2 t;
             Buffer.add_char buf '\'';
             loop t
         | `Chr 'b' ->
-            next_n ~n:2 t;
+            eat2 t;
             Buffer.add_char buf '\b';
             loop t
         | `Chr 'f' ->
-            next_n ~n:2 t;
+            eat2 t;
             Buffer.add_char buf '\012';
             loop t
         | `Chr 'n' ->
-            next_n ~n:2 t;
+            eat2 t;
             Buffer.add_char buf '\n';
             loop t
         | `Chr 'r' ->
-            next_n ~n:2 t;
+            eat2 t;
             Buffer.add_char buf '\r';
             loop t
         | `Chr 't' ->
-            next_n ~n:2 t;
+            eat2 t;
             Buffer.add_char buf '\t';
             loop t
         | `Chr '\\' ->
-            next_n ~n:2 t;
+            eat2 t;
             Buffer.add_char buf '\\';
             loop t
         | `Chr _ ->
@@ -255,7 +250,7 @@ let scan_string ~start_pos t =
     | `Chr '$' when peek t = `Chr '(' -> ()
     | `Chr '"' -> ()
     | `Chr c ->
-        next t;
+        eat t;
         Buffer.add_char buf c;
         loop t
   in
@@ -273,7 +268,7 @@ let scan_tag t =
     | `Chr ('a' .. 'z' as c)
     | `Chr ('0' .. '9' as c)
     | `Chr ('_' as c) ->
-        next t;
+        eat t;
         Buffer.add_char buf c;
         loop t
     | _ -> ()
@@ -296,7 +291,7 @@ let get_html_tag_ident t =
   let rec loop buf t =
     match t.current with
     | `Chr ('a' .. 'z' as c) | `Chr ('0' .. '9' as c) | `Chr ('-' as c) ->
-        next t;
+        eat t;
         Buffer.add_char buf c;
         loop buf t
     | _ -> Buffer.contents buf
@@ -322,7 +317,7 @@ let get_uppercase_ident t =
     | `Chr ('a' .. 'z' as c)
     | `Chr ('0' .. '9' as c)
     | `Chr ('_' as c) ->
-        next t;
+        eat t;
         Buffer.add_char buf c;
         loop buf t
     | _ -> Buffer.contents buf
@@ -334,7 +329,7 @@ let get_uppercase_ident t =
 let scan_component_open_tag t =
   let start_pos = make_position t in
   (* NEXT once to skip the beginning < char *)
-  next t;
+  eat t;
   match t.current with
   | `Chr 'A' .. 'Z' -> Token.COMPONENT_OPEN_TAG (get_uppercase_ident t)
   | `Chr c ->
@@ -353,7 +348,7 @@ let scan_component_open_tag t =
 let scan_open_tag t =
   let start_pos = make_position t in
   (* NEXT once to skip the beginning < char *)
-  next t;
+  eat t;
   match t.current with
   | `Chr 'a' .. 'z' -> Token.HTML_OPEN_TAG (get_html_tag_ident t)
   | `Chr c ->
@@ -371,8 +366,8 @@ let scan_open_tag t =
 
 let scan_component_close_tag t =
   let start_pos = make_position t in
-  (* NEXT twice to skip the beginning </ chars *)
-  next_n ~n:2 t;
+  (* eat twice to skip the beginning </ chars *)
+  eat2 t;
   let close_tag =
     match t.current with
     | `Chr 'A' .. 'Z' -> get_uppercase_ident t
@@ -390,7 +385,7 @@ let scan_component_close_tag t =
   in
   match t.current with
   | `Chr '>' ->
-      next t;
+      eat t;
       Token.COMPONENT_CLOSE_TAG close_tag
   | _ ->
       Diagnostics.error
@@ -400,8 +395,8 @@ let scan_component_close_tag t =
 
 let scan_close_tag t =
   let start_pos = make_position t in
-  (* NEXT twice to skip the beginning </ chars *)
-  next_n ~n:2 t;
+  (* eat twice to skip the beginning </ chars *)
+  eat2 t;
   let close_tag =
     match t.current with
     | `Chr 'a' .. 'z' -> Token.HTML_CLOSE_TAG (get_html_tag_ident t)
@@ -419,7 +414,7 @@ let scan_close_tag t =
   in
   match t.current with
   | `Chr '>' ->
-      next t;
+      eat t;
       close_tag
   | _ ->
       Diagnostics.error
@@ -442,11 +437,11 @@ let scan_template_text t =
         | `Chr '/' -> Buffer.contents buf
         | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' -> Buffer.contents buf
         | _ ->
-            next t;
+            eat t;
             Buffer.add_char buf '<';
             loop buf t)
     | `Chr c ->
-        next t;
+        eat t;
         Buffer.add_char buf c;
         loop buf t
   in
@@ -464,7 +459,7 @@ let scan_html_attribute_ident t =
     | `Chr ('0' .. '9' as c)
     | `Chr (':' as c)
     | `Chr ('-' as c) ->
-        next t;
+        eat t;
         Buffer.add_char buf c;
         loop buf t
     | _ -> Buffer.contents buf
@@ -480,10 +475,10 @@ let scan_number t =
     match t.current with
     | `Chr ('0' .. '9' as c) ->
         Buffer.add_char result c;
-        next t;
+        eat t;
         scan_digits t
     | `Chr '_' ->
-        next t;
+        eat t;
         scan_digits t
     | _ -> ()
   in
@@ -495,7 +490,7 @@ let scan_number t =
         | `Chr '.' -> false (* Two Dots in a row mean that this is a range operator *)
         | _ ->
             Buffer.add_char result '.';
-            next t;
+            eat t;
             scan_digits t;
             true)
     | _ -> false
@@ -505,15 +500,15 @@ let scan_number t =
     match t.current with
     | `Chr 'e' | `Chr 'E' ->
         Buffer.add_char result 'e';
-        next t;
+        eat t;
         let () =
           match t.current with
           | `Chr '+' ->
               Buffer.add_char result '+';
-              next t
+              eat t
           | `Chr '-' ->
               Buffer.add_char result '-';
-              next t
+              eat t
           | _ -> ()
         in
         scan_digits t;
@@ -528,7 +523,7 @@ let scan_number t =
 ;;
 
 let scan_char ~start_pos t =
-  next t;
+  eat t;
   let res =
     match t.current with
     | `EOF ->
@@ -538,31 +533,31 @@ let scan_char ~start_pos t =
     | `Chr '\\' -> (
         match peek t with
         | `Chr ' ' ->
-            next_n ~n:2 t;
+            eat2 t;
             Uchar.of_char ' '
         | `Chr '"' ->
-            next_n ~n:2 t;
+            eat2 t;
             Uchar.of_char '"'
         | `Chr '\'' ->
-            next_n ~n:2 t;
+            eat2 t;
             Uchar.of_char '\''
         | `Chr '\\' ->
-            next_n ~n:2 t;
+            eat2 t;
             Uchar.of_char '\\'
         | `Chr _ ->
-            next t;
+            eat t;
             scan_escape t
         | `EOF ->
             Diagnostics.error
               (Location.make ~s:start_pos ~e:(make_position t) ())
               "This char is not terminated. Please add a single-quote (') at the end.")
     | `Chr c ->
-        next t;
+        eat t;
         Uchar.of_char c
   in
   match t.current with
   | `Chr '\'' ->
-      next t;
+      eat t;
       Token.CHAR res
   | _ ->
       Diagnostics.error
@@ -576,7 +571,7 @@ let scan_comment t =
     (* This case also matches \r\n on windows *)
     | `EOF | `Chr '\n' -> Buffer.contents buf
     | `Chr c ->
-        next t;
+        eat t;
         Buffer.add_char buf c;
         loop buf t
   in
@@ -587,11 +582,11 @@ let scan_comment t =
 
 let rec scan_block_comment t =
   let start_pos = make_position t in
-  next_n ~n:2 t;
+  eat2 t;
   let rec loop buf t =
     match t.current with
     | `Chr '*' when peek t = `Chr '/' ->
-        next_n ~n:2 t;
+        eat2 t;
         Buffer.contents buf
     | `Chr '/' when peek t = `Chr '*' ->
         Buffer.add_string buf (scan_block_comment t);
@@ -601,7 +596,7 @@ let rec scan_block_comment t =
           (Location.make ~s:start_pos ())
           "This comment is not terminated. Please add a `*/` at the end."
     | `Chr c ->
-        next t;
+        eat t;
         Buffer.add_char buf c;
         loop buf t
   in
@@ -614,16 +609,16 @@ let rec scan_template_token ~start_pos t =
   match t.current with
   | `Chr '{' ->
       setMode Normal t;
-      next t;
+      eat t;
       Token.LEFT_BRACE
   | `Chr '}' ->
       popMode Normal t;
-      next t;
+      eat t;
       Token.RIGHT_BRACE
   | `Chr '<' -> (
       match peek t with
       | `Chr '>' ->
-          next_n ~n:2 t;
+          eat2 t;
           setMode Template t;
           Token.HTML_OPEN_FRAGMENT
       | `Chr 'a' .. 'z' ->
@@ -636,11 +631,11 @@ let rec scan_template_token ~start_pos t =
           scan_component_open_tag t
       | `Chr '/' -> (
           popMode Template t;
-          match peek ~n:2 t with
+          match peek2 t with
           | `Chr 'a' .. 'z' -> scan_close_tag t
           | `Chr 'A' .. 'Z' -> scan_component_close_tag t
           | `Chr '>' ->
-              next_n ~n:3 t;
+              eat3 t;
               Token.HTML_CLOSE_FRAGMENT
           | `Chr c ->
               Diagnostics.error
@@ -658,7 +653,7 @@ let rec scan_template_token ~start_pos t =
       match peek t with
       | `Chr '>' ->
           popMode Template t;
-          next_n ~n:2 t;
+          eat2 t;
           Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING
       | `Chr c ->
           Diagnostics.error
@@ -670,7 +665,7 @@ let rec scan_template_token ~start_pos t =
             "Your Template was not closed correctly.\n\
              You probably mismatched or forgot a closing tag.")
   | `Chr '>' ->
-      next t;
+      eat t;
       Token.HTML_OR_COMPONENT_TAG_END
   | `EOF ->
       Diagnostics.error
@@ -683,11 +678,11 @@ and scan_string_token ~start_pos t =
   match t.current with
   | `Chr '"' ->
       popMode String t;
-      next t;
+      eat t;
       Token.DOUBLE_QUOTE
   | `Chr '$' when peek t = `Chr '(' ->
       setMode Normal t;
-      next_n ~n:2 t;
+      eat2 t;
       Token.OPEN_TEMPLATE_LITERAL
   | _ -> scan_string ~start_pos t
 
@@ -695,19 +690,19 @@ and scan_component_attributes_token ~start_pos t =
   match t.current with
   | `Chr '_' | `Chr 'a' .. 'z' -> scan_ident t
   | `Chr '"' ->
-      next t;
+      eat t;
       setMode String t;
       Token.DOUBLE_QUOTE
   | `Chr '=' ->
-      next t;
+      eat t;
       Token.EQUAL
   | `Chr '{' ->
       setMode Normal t;
-      next t;
+      eat t;
       Token.LEFT_BRACE
   | `Chr '}' ->
       popMode Normal t;
-      next t;
+      eat t;
       Token.RIGHT_BRACE
   | `Chr '/' -> (
       match peek t with
@@ -737,19 +732,19 @@ and scan_template_attributes_token ~start_pos t =
   match t.current with
   | `Chr 'A' .. 'Z' | `Chr 'a' .. 'z' -> scan_html_attribute_ident t
   | `Chr '"' ->
-      next t;
+      eat t;
       setMode String t;
       Token.DOUBLE_QUOTE
   | `Chr '=' ->
-      next t;
+      eat t;
       Token.EQUAL
   | `Chr '{' ->
       setMode Normal t;
-      next t;
+      eat t;
       Token.LEFT_BRACE
   | `Chr '}' ->
       popMode Normal t;
-      next t;
+      eat t;
       Token.RIGHT_BRACE
   | `Chr '/' -> (
       match peek t with
@@ -781,99 +776,99 @@ and scan_normal_token ~start_pos t =
   | `Chr '0' .. '9' -> scan_number t
   | `Chr '\'' -> scan_char ~start_pos t
   | `Chr '"' ->
-      next t;
+      eat t;
       setMode String t;
       Token.DOUBLE_QUOTE
   | `Chr '(' ->
-      next t;
+      eat t;
       setMode Normal t;
       Token.LEFT_PAREN
   | `Chr ')' ->
-      next t;
+      eat t;
       popMode Normal t;
       Token.RIGHT_PAREN
   | `Chr '[' ->
-      next t;
+      eat t;
       Token.LEFT_BRACK
   | `Chr ']' ->
-      next t;
+      eat t;
       Token.RIGHT_BRACK
   | `Chr '{' ->
       setMode Normal t;
-      next t;
+      eat t;
       Token.LEFT_BRACE
   | `Chr '}' ->
       popMode Normal t;
-      next t;
+      eat t;
       Token.RIGHT_BRACE
   | `Chr ':' -> (
       match peek t with
       | `Chr ':' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.DOUBLE_COLON
       | `Chr '=' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.COLON_EQUAL
       | _ ->
-          next t;
+          eat t;
           Token.COLON)
   | `Chr ',' ->
-      next t;
+      eat t;
       Token.COMMA
   | `Chr ';' ->
-      next t;
+      eat t;
       Token.SEMICOLON
   | `Chr '-' ->
       if is_whitespace (peek t) then (
-        next t;
+        eat t;
         Token.MINUS)
       else (
         match peek t with
         | `Chr '>' ->
-            next_n ~n:2 t;
+            eat2 t;
             Token.ARROW
         | _ ->
-            next t;
+            eat t;
             Token.UNARY_MINUS)
   | `Chr '+' -> (
       match peek t with
       | `Chr '+' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.PLUSPLUS
       | _ ->
-          next t;
+          eat t;
           Token.PLUS)
   | `Chr '%' ->
-      next t;
+      eat t;
       Token.PERCENT
   | `Chr '?' ->
-      next t;
+      eat t;
       Token.QUESTIONMARK
   | `Chr '/' -> (
       match peek t with
       | `Chr '/' -> Token.COMMENT (scan_comment t)
       | `Chr '*' -> Token.COMMENT (scan_block_comment t)
       | _ ->
-          next t;
+          eat t;
           Token.SLASH)
   | `Chr '.' -> (
       match peek t with
       | `Chr '0' .. '9' -> scan_number t
       | `Chr '.' -> (
-          match peek ~n:2 t with
+          match peek2 t with
           | `Chr '.' ->
-              next_n ~n:3 t;
+              eat3 t;
               Token.DOTDOTDOT
           | _ ->
-              next_n ~n:2 t;
+              eat2 t;
               Token.DOTDOT)
       | _ ->
-          next t;
+          eat t;
           Token.DOT)
   | `Chr '@' -> (
       match peek t with
       | `Chr '@' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.ATAT
       | _ ->
           Diagnostics.error
@@ -882,7 +877,7 @@ and scan_normal_token ~start_pos t =
   | `Chr '#' -> (
       match peek t with
       | `Chr 'A' .. 'Z' ->
-          next t;
+          eat t;
           Token.TAG (scan_tag t)
       | _ ->
           Diagnostics.error
@@ -891,7 +886,7 @@ and scan_normal_token ~start_pos t =
   | `Chr '&' -> (
       match peek t with
       | `Chr '&' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.LOGICAL_AND
       | _ ->
           Diagnostics.error
@@ -900,10 +895,10 @@ and scan_normal_token ~start_pos t =
   | `Chr '|' -> (
       match peek t with
       | `Chr '|' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.LOGICAL_OR
       | `Chr '>' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.PIPE
       | _ ->
           Diagnostics.error
@@ -912,45 +907,45 @@ and scan_normal_token ~start_pos t =
   | `Chr '!' -> (
       match peek t with
       | `Chr '=' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.NOT_EQUAL
       | _ ->
-          next t;
+          eat t;
           Token.NOT)
   | `Chr '=' -> (
       match peek t with
       | `Chr '=' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.EQUAL_EQUAL
       | _ ->
-          next t;
+          eat t;
           Token.EQUAL)
   | `Chr '>' -> (
       match peek t with
       | `Chr '=' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.GREATER_EQUAL
       | _ ->
-          next t;
+          eat t;
           Token.GREATER)
   | `Chr '*' -> (
       match peek t with
       | `Chr '*' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.STAR_STAR
       | _ ->
-          next t;
+          eat t;
           Token.STAR)
   | `Chr '<' -> (
       match peek t with
       | `Chr '>' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.HTML_OPEN_FRAGMENT
       | `Chr '-' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.ARROW_LEFT
       | `Chr '=' ->
-          next_n ~n:2 t;
+          eat2 t;
           Token.LESS_EQUAL
       | `Chr 'a' .. 'z' ->
           setMode Template t;
@@ -961,13 +956,13 @@ and scan_normal_token ~start_pos t =
           setMode ComponentAttributes t;
           scan_component_open_tag t
       | c when is_whitespace t.prev && is_whitespace c ->
-          next t;
+          eat t;
           Token.LESS
       | `Chr '/' -> (
           popMode Template t;
-          match peek ~n:2 t with
+          match peek2 t with
           | `Chr '>' ->
-              next_n ~n:3 t;
+              eat3 t;
               Token.HTML_CLOSE_FRAGMENT
           | `Chr 'a' .. 'z' -> scan_close_tag t
           | `Chr 'A' .. 'Z' -> scan_component_close_tag t
@@ -993,7 +988,7 @@ and scan_normal_token ~start_pos t =
         (Location.make ~s:start_pos ~e:(make_position t) ())
         ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.")
 (* NOTE: Maybe we can ignore this and continue scanning... *)
-(* next t;
+(* eat t;
     scan_token ~start_pos t *)
 
 and scan_token ~start_pos t =
