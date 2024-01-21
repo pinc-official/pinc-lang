@@ -97,8 +97,8 @@ and expression_desc =
       consequent : statement;
       alternate : statement option;
     }
-  | UnaryExpression of Operators.Unary.typ * expression
-  | BinaryExpression of expression * Operators.Binary.typ * expression
+  | UnaryExpression of Operators.Unary.t * expression
+  | BinaryExpression of expression * Operators.Binary.t * expression
 
 and statement = {
   statement_loc : Location.t;

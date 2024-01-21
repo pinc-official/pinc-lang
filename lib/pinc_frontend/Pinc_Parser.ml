@@ -1,4 +1,5 @@
 module Ast = Pinc_Ast
+module Operators = Ast.Operators
 module Diagnostics = Pinc_Diagnostics
 module Location = Diagnostics.Location
 module Token = Pinc_Token
@@ -490,16 +491,15 @@ module Rules = struct
     Ast.{ statement_desc; statement_loc } |> Option.some
 
   and parse_unary_expression t =
-    let* operator_typ =
+    let* operator =
       match t.token.typ with
-      | Token.NOT -> Some Ast.Operators.Unary.NOT
-      | Token.MINUS -> Some Ast.Operators.Unary.MINUS
+      | Token.NOT -> Some Operators.Unary.NOT
+      | Token.MINUS -> Some Operators.Unary.MINUS
       | _ -> None
     in
-    let operator = Ast.Operators.Unary.make operator_typ in
     next t;
-    let* argument = parse_expression ~prio:operator.precedence t in
-    Ast.UnaryExpression (operator_typ, argument) |> Option.some
+    let* argument = parse_expression ~prio:(Operators.Unary.get_precedence operator) t in
+    Ast.UnaryExpression (operator, argument) |> Option.some
 
   and parse_expression_part t =
     let expr_start = t.token.location.loc_start in
@@ -674,29 +674,29 @@ module Rules = struct
 
   and parse_binary_operator t =
     match t.token.typ with
-    | Token.LOGICAL_AND -> Some Ast.Operators.Binary.(make AND)
-    | Token.LOGICAL_OR -> Some Ast.Operators.Binary.(make OR)
-    | Token.EQUAL_EQUAL -> Some Ast.Operators.Binary.(make EQUAL)
-    | Token.NOT_EQUAL -> Some Ast.Operators.Binary.(make NOT_EQUAL)
-    | Token.GREATER -> Some Ast.Operators.Binary.(make GREATER)
-    | Token.GREATER_EQUAL -> Some Ast.Operators.Binary.(make GREATER_EQUAL)
-    | Token.LESS -> Some Ast.Operators.Binary.(make LESS)
-    | Token.LESS_EQUAL -> Some Ast.Operators.Binary.(make LESS_EQUAL)
-    | Token.PLUSPLUS -> Some Ast.Operators.Binary.(make CONCAT)
-    | Token.PLUS -> Some Ast.Operators.Binary.(make PLUS)
-    | Token.MINUS -> Some Ast.Operators.Binary.(make MINUS)
-    | Token.STAR -> Some Ast.Operators.Binary.(make TIMES)
-    | Token.SLASH -> Some Ast.Operators.Binary.(make DIV)
-    | Token.STAR_STAR -> Some Ast.Operators.Binary.(make POW)
-    | Token.PERCENT -> Some Ast.Operators.Binary.(make MODULO)
-    | Token.DOT -> Some Ast.Operators.Binary.(make DOT_ACCESS)
-    | Token.ARROW_LEFT -> Some Ast.Operators.Binary.(make ARRAY_ADD)
-    | Token.ATAT -> Some Ast.Operators.Binary.(make MERGE)
-    | Token.LEFT_BRACK -> Some Ast.Operators.Binary.(make BRACKET_ACCESS)
-    | Token.LEFT_PAREN -> Some Ast.Operators.Binary.(make FUNCTION_CALL)
-    | Token.DOTDOT -> Some Ast.Operators.Binary.(make RANGE)
-    | Token.DOTDOTDOT -> Some Ast.Operators.Binary.(make INCLUSIVE_RANGE)
-    | Token.PIPE -> Some Ast.Operators.Binary.(make PIPE)
+    | Token.LOGICAL_AND -> Some Operators.Binary.AND
+    | Token.LOGICAL_OR -> Some Operators.Binary.OR
+    | Token.EQUAL_EQUAL -> Some Operators.Binary.EQUAL
+    | Token.NOT_EQUAL -> Some Operators.Binary.NOT_EQUAL
+    | Token.GREATER -> Some Operators.Binary.GREATER
+    | Token.GREATER_EQUAL -> Some Operators.Binary.GREATER_EQUAL
+    | Token.LESS -> Some Operators.Binary.LESS
+    | Token.LESS_EQUAL -> Some Operators.Binary.LESS_EQUAL
+    | Token.PLUSPLUS -> Some Operators.Binary.CONCAT
+    | Token.PLUS -> Some Operators.Binary.PLUS
+    | Token.MINUS -> Some Operators.Binary.MINUS
+    | Token.STAR -> Some Operators.Binary.TIMES
+    | Token.SLASH -> Some Operators.Binary.DIV
+    | Token.STAR_STAR -> Some Operators.Binary.POW
+    | Token.PERCENT -> Some Operators.Binary.MODULO
+    | Token.DOT -> Some Operators.Binary.DOT_ACCESS
+    | Token.ARROW_LEFT -> Some Operators.Binary.ARRAY_ADD
+    | Token.ATAT -> Some Operators.Binary.MERGE
+    | Token.LEFT_BRACK -> Some Operators.Binary.BRACKET_ACCESS
+    | Token.LEFT_PAREN -> Some Operators.Binary.FUNCTION_CALL
+    | Token.DOTDOT -> Some Operators.Binary.RANGE
+    | Token.DOTDOTDOT -> Some Operators.Binary.INCLUSIVE_RANGE
+    | Token.PIPE -> Some Operators.Binary.PIPE
     | _ -> None
 
   and parse_expression ?(prio = -999) t =
@@ -706,47 +706,43 @@ module Rules = struct
       else (
         match parse_binary_operator t with
         | None -> left
-        | Some { precedence; _ } when precedence < prio -> left
-        | Some { typ = Ast.Operators.Binary.FUNCTION_CALL; closing_token; _ } ->
-            let expression_start = t.token.location.loc_start in
-            next t;
-            let arguments =
-              t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression
-            in
-            let expression_end = t.token.location.loc_end in
-            let expression_desc =
-              Ast.FunctionCall { function_definition = left; arguments }
-            in
-            let expression_loc = Location.make ~s:expression_start ~e:expression_end () in
-            let function_call = Ast.{ expression_desc; expression_loc } in
-            let expect_close token = expect token t in
-            let () = Option.iter expect_close closing_token in
-            loop ~left:function_call ~prio t
-        | Some { typ = operator; precedence; assoc; closing_token } -> (
-            let expression_start = t.token.location.loc_start in
-            next t;
-            let new_prio =
-              match assoc with
-              | Left -> precedence + 1
-              | Right -> precedence
-            in
-            match parse_expression ~prio:new_prio t with
-            | None ->
-                Diagnostics.error
-                  t.token.location
-                  ("Expected expression on right hand side of `"
-                  ^ Ast.Operators.Binary.to_string operator
-                  ^ "`")
-            | Some right ->
-                let expect_close token = expect token t in
-                let () = Option.iter expect_close closing_token in
-                let expression_end = t.token.location.loc_end in
-                let expression_desc = Ast.BinaryExpression (left, operator, right) in
-                let expression_loc =
-                  Location.make ~s:expression_start ~e:expression_end ()
-                in
-                let left = Ast.{ expression_desc; expression_loc } in
-                loop ~left ~prio t))
+        | Some operator ->
+            let precedence = Operators.Binary.get_precedence operator in
+            if precedence < prio then
+              left
+            else (
+              let expression_start = t.token.location.loc_start in
+              next t;
+              let expression_desc =
+                match operator with
+                | Operators.Binary.FUNCTION_CALL ->
+                    let arguments =
+                      t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression
+                    in
+                    Ast.FunctionCall { function_definition = left; arguments }
+                | operator -> (
+                    let new_prio =
+                      match Operators.Binary.get_associativity operator with
+                      | Assoc_Left -> precedence + 1
+                      | Assoc_Right -> precedence
+                    in
+                    match parse_expression ~prio:new_prio t with
+                    | None ->
+                        Diagnostics.error
+                          t.token.location
+                          ("Expected expression on right hand side of `"
+                          ^ Operators.Binary.to_string operator
+                          ^ "`")
+                    | Some right -> Ast.BinaryExpression (left, operator, right))
+              in
+              let expect_close token = expect token t in
+              Operators.Binary.get_closing_token operator |> Option.iter expect_close;
+              let expression_end = t.token.location.loc_end in
+              let expression_loc =
+                Location.make ~s:expression_start ~e:expression_end ()
+              in
+              let left = Ast.{ expression_desc; expression_loc } in
+              loop ~left ~prio t))
     in
     let* left = parse_expression_part t in
     Some (loop ~prio ~left t)
