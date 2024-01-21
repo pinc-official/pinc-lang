@@ -35,7 +35,6 @@ type token_type =
   | GREATER
   | LESS
   | PLUS
-  | UNARY_MINUS
   | MINUS
   | STAR
   | STAR_STAR
@@ -130,7 +129,6 @@ let to_string = function
   | PLUSPLUS -> "++"
   | PLUS -> "+"
   | MINUS -> "-"
-  | UNARY_MINUS -> "-"
   | STAR -> "*"
   | STAR_STAR -> "**"
   | SLASH -> "/"
@@ -208,7 +206,6 @@ let is_keyword = function
   | GREATER
   | LESS
   | PLUS
-  | UNARY_MINUS
   | MINUS
   | STAR
   | STAR_STAR

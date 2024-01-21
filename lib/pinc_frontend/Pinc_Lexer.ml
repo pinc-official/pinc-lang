@@ -815,18 +815,14 @@ and scan_normal_token ~start_pos t =
   | `Chr ';' ->
       eat t;
       Token.SEMICOLON
-  | `Chr '-' ->
-      if is_whitespace (peek t) then (
-        eat t;
-        Token.MINUS)
-      else (
-        match peek t with
-        | `Chr '>' ->
-            eat2 t;
-            Token.ARROW
-        | _ ->
-            eat t;
-            Token.UNARY_MINUS)
+  | `Chr '-' -> (
+      match peek t with
+      | `Chr '>' ->
+          eat2 t;
+          Token.ARROW
+      | _ ->
+          eat t;
+          Token.MINUS)
   | `Chr '+' -> (
       match peek t with
       | `Chr '+' ->

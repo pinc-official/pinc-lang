@@ -35,7 +35,6 @@ type token_type =
   | GREATER
   | LESS
   | PLUS
-  | UNARY_MINUS
   | MINUS
   | STAR
   | STAR_STAR

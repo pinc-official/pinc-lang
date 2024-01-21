@@ -489,6 +489,18 @@ module Rules = struct
     in
     Ast.{ statement_desc; statement_loc } |> Option.some
 
+  and parse_unary_expression t =
+    let* operator_typ =
+      match t.token.typ with
+      | Token.NOT -> Some Ast.Operators.Unary.NOT
+      | Token.MINUS -> Some Ast.Operators.Unary.MINUS
+      | _ -> None
+    in
+    let operator = Ast.Operators.Unary.make operator_typ in
+    next t;
+    let* argument = parse_expression ~prio:operator.precedence t in
+    Ast.UnaryExpression (operator_typ, argument) |> Option.some
+
   and parse_expression_part t =
     let expr_start = t.token.location.loc_start in
     let* expression_desc =
@@ -605,18 +617,6 @@ module Rules = struct
           let template_nodes = t |> Helpers.list ~fn:parse_template_node in
           t |> expect Token.HTML_CLOSE_FRAGMENT;
           Ast.TemplateExpression template_nodes |> Option.some
-      (* PARSING UNARY NOT EXPRESSION *)
-      | Token.NOT ->
-          next t;
-          let operator = Ast.Operators.Unary.make NOT in
-          let* argument = parse_expression ~prio:operator.precedence t in
-          Ast.UnaryExpression (Ast.Operators.Unary.NOT, argument) |> Option.some
-      (* PARSING UNARY MINUS EXPRESSION *)
-      | Token.UNARY_MINUS ->
-          next t;
-          let operator = Ast.Operators.Unary.make MINUS in
-          let* argument = parse_expression ~prio:operator.precedence t in
-          Ast.UnaryExpression (Ast.Operators.Unary.MINUS, argument) |> Option.some
       (* PARSING IDENTIFIER EXPRESSION *)
       | Token.IDENT_LOWER identifier ->
           next t;
@@ -666,7 +666,7 @@ module Rules = struct
           in
           expect Token.RIGHT_BRACK t;
           Ast.(Array expressions) |> Option.some
-      | _ -> None
+      | _ -> parse_unary_expression t
     in
     let expr_end = t.token.location.loc_end in
     let expression_loc = Location.make ~s:expr_start ~e:expr_end () in
