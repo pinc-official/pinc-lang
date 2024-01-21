@@ -1,0 +1,9 @@
+(executable
+ (name benchmark)
+ (public_name benchmark)
+ (foreign_stubs
+  (language c)
+  (names time))
+ (libraries pinc))
+
+(data_only_dirs data)
