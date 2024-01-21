@@ -793,7 +793,10 @@ module Rules = struct
                   Some (identifier, Ast.Declaration_Library declaration_desc)
               | _ -> assert false))
       | Token.END_OF_INPUT -> None
-      | _ -> assert false
+      | _ ->
+          Diagnostics.error
+            t.token.location
+            "Expected to see a declaration (site, page, component, store or library)."
     in
     let declaration_end = t.token.location.loc_end in
     let declaration_loc = Location.make ~s:declaration_start ~e:declaration_end () in
