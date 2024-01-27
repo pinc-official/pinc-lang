@@ -52,52 +52,6 @@ module rec Value : sig
     attributes : value StringMap.t;
     transformer : value -> value;
   }
-
-  and tag_handler =
-    [ `String of
-      required:bool ->
-      attributes:value StringMap.t ->
-      key:string ->
-      (value, string) Result.t
-    | `Int of
-      required:bool ->
-      attributes:value StringMap.t ->
-      key:string ->
-      (value, string) Result.t
-    | `Float of
-      required:bool ->
-      attributes:value StringMap.t ->
-      key:string ->
-      (value, string) Result.t
-    | `Boolean of
-      required:bool ->
-      attributes:value StringMap.t ->
-      key:string ->
-      (value, string) Result.t
-    | `Array of
-      required:bool ->
-      attributes:value StringMap.t ->
-      child:tag_info ->
-      key:string ->
-      (value, string) Result.t
-    | `Record of
-      required:bool ->
-      attributes:value StringMap.t ->
-      children:(string * tag_info) list ->
-      key:string ->
-      (value, string) Result.t
-    | `Slot of
-      required:bool ->
-      attributes:value StringMap.t ->
-      key:string ->
-      (value, string) Result.t
-    | `Custom of
-      required:bool ->
-      attributes:value StringMap.t ->
-      parent_value:value StringMap.t option ->
-      key:string ->
-      (value, string) Result.t
-    ]
 end =
   Value
 
@@ -108,7 +62,6 @@ and State : sig
     declarations : Ast.t;
     output : Value.value;
     environment : environment;
-    tag_listeners : tag_listeners;
     tag_cache : (string, Value.value Queue.t) Hashtbl.t;
     parent_tag : string list option;
     parent_component : (string * Value.value StringMap.t * Value.value list) option;
@@ -126,8 +79,6 @@ and State : sig
     is_optional : bool;
     value : Value.value;
   }
-
-  and tag_listeners = (Value.external_tag, Value.tag_handler) Hashtbl.t
 
   and mode =
     | Portal_Collection

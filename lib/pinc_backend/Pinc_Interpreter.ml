@@ -207,7 +207,6 @@ end
 
 module State = struct
   let make
-      ?(tag_listeners = Hashtbl.create 10)
       ?parent_component
       ?(context = Hashtbl.create 10)
       ?(portals = Hashtbl.create 10)
@@ -220,7 +219,6 @@ module State = struct
       declarations;
       output = { value_desc = Null; value_loc = Location.none };
       environment = { scope = []; use_scope = StringMap.empty };
-      tag_listeners;
       parent_tag = None;
       tag_cache;
       parent_component;
@@ -1783,63 +1781,8 @@ and eval_internal_or_external_tag ~state ~tag ?value tag_info =
           |> eval_internal_tag ~state ~tag ~key ~attributes ~value_bag
           |> transformer
       | `Slot -> key |> eval_slot ~tag ~attributes ~slotted_elements |> transformer
-      | `Custom _ -> tag_info |> call_tag_listener ~state ~tag ~value_bag:(Some value_bag)
-      )
-  | value_bag, _ -> tag_info |> call_tag_listener ~state ~tag ~value_bag
-
-and call_tag_listener ~state ~tag ~value_bag t =
-  let { tag = tag_identifier; key; required; attributes; transformer } = t in
-  let listener = Hashtbl.find_opt state.tag_listeners tag_identifier in
-  (match listener with
-  | Some (`String fn) -> fn ~required ~attributes ~key
-  | Some (`Int fn) -> fn ~required ~attributes ~key
-  | Some (`Float fn) -> fn ~required ~attributes ~key
-  | Some (`Boolean fn) -> fn ~required ~attributes ~key
-  | Some (`Array fn) ->
-      let child =
-        attributes |> StringMap.find_opt "of" |> function
-        | Some { value_desc = TagInfo i; _ } -> i
-        | Some { value_desc = _; value_loc } ->
-            Pinc_Diagnostics.error
-              value_loc
-              "Attribute `of` needs to be a tag value describing the type of values in \
-               this array."
-        | None ->
-            Pinc_Diagnostics.error tag.Ast.tag_loc "Attribute `of` is required on #Array."
-      in
-      fn ~required ~attributes ~child ~key
-  | Some (`Record fn) ->
-      let children =
-        attributes
-        |> StringMap.find_opt "of"
-        |> (function
-             | Some { value_desc = Record r; _ } -> r
-             | Some { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   "Attribute `of` needs to be a record describing the shape and type of \
-                    values in this record."
-             | None ->
-                 Pinc_Diagnostics.error
-                   tag.Ast.tag_loc
-                   "Attribute `of` is required on #Record.")
-        |> StringMap.filter_map (fun _key (index, value) ->
-               match value with
-               | { value_desc = TagInfo i; _ } -> Some (index, i)
-               | _ -> None)
-        |> StringMap.to_seq
-        |> List.of_seq
-        |> List.fast_sort (fun (_key, (index_a, _value)) (_key, (index_b, _value)) ->
-               index_a - index_b)
-        |> List.map (fun (key, (_index, value)) -> (key, value))
-      in
-      fn ~required ~attributes ~children ~key
-  | Some (`Slot fn) -> fn ~required ~attributes ~key
-  | Some (`Custom fn) -> fn ~required ~attributes ~parent_value:value_bag ~key
-  | None -> Result.ok (Value.null ~value_loc:tag.tag_loc ()))
-  |> function
-  | Ok v -> v |> transformer
-  | Error e -> Pinc_Diagnostics.error tag.tag_loc e
+      | `Custom _ -> failwith "TODO")
+  | _value_bag, _ -> failwith "TODO"
 
 and eval_tag ~state tag =
   let Ast.{ tag = tag_identifier; attributes; transformer } = tag.tag_desc in
@@ -2013,7 +1956,6 @@ and eval_template ~state template =
           State.make
             ~parent_component:
               (component_tag_identifier, component_tag_attributes, component_tag_children)
-            ~tag_listeners:state.tag_listeners
             ~context:state.context
             ~portals:state.portals
             ~tag_cache:state.tag_cache
@@ -2047,8 +1989,8 @@ and eval_declaration ~state declaration =
         ("Declaration with name `" ^ declaration ^ "` was not found.")
 ;;
 
-let eval_meta ?tag_listeners declarations =
-  let state = State.make ?tag_listeners declarations ~mode:Render in
+let eval_meta declarations =
+  let state = State.make declarations ~mode:Render in
   let eval attrs =
     attrs
     |> Option.value ~default:StringMap.empty
@@ -2095,7 +2037,7 @@ let get_stdlib () =
        StringMap.empty
 ;;
 
-let eval ?tag_listeners ~root declarations =
+let eval ~root declarations =
   let base_lib = get_stdlib () in
   let declarations =
     StringMap.merge
@@ -2107,7 +2049,7 @@ let eval ?tag_listeners ~root declarations =
       base_lib
       declarations
   in
-  let state = State.make ?tag_listeners declarations ~mode:Portal_Collection in
+  let state = State.make declarations ~mode:Portal_Collection in
   let state = eval_declaration ~state root in
   if state.portals |> Hashtbl.length > 0 then
     eval_declaration ~state:{ state with mode = Render } root
