@@ -322,11 +322,7 @@ module State = struct
   let add_output ~output t = { t with output }
   let get_bindings t = t.environment.scope |> List.hd
   let get_used_values t = t.environment.use_scope
-
-  let get_parent_component t =
-    t.parent_component
-    |> Option.map (fun (name, attributes, children) -> (name, attributes, children))
-  ;;
+  let get_parent_component t = t.parent_component
 end
 
 let rec get_uppercase_identifier_typ ~state ident =
@@ -1773,8 +1769,8 @@ and eval_internal_tag ~state ~tag ~key ~attributes ~value_bag tag_identifier =
 and eval_internal_or_external_tag ~state ~tag ?value tag_info =
   let { tag = tag_identifier; key; required = _; attributes; transformer } = tag_info in
   match (value, state.parent_component) with
-  | None, Some (_, value_bag, slotted_elements)
-  | Some value_bag, Some (_, _, slotted_elements) -> (
+  | None, Some (value_bag, slotted_elements) | Some value_bag, Some (_, slotted_elements)
+    -> (
       match tag_identifier with
       | (`Array | `Boolean | `Float | `Int | `Record | `String) as tag_identifier ->
           tag_identifier
@@ -1954,8 +1950,7 @@ and eval_template ~state template =
       let render_fn component_tag_attributes =
         let state =
           State.make
-            ~parent_component:
-              (component_tag_identifier, component_tag_attributes, component_tag_children)
+            ~parent_component:(component_tag_attributes, component_tag_children)
             ~context:state.context
             ~portals:state.portals
             ~tag_cache:state.tag_cache

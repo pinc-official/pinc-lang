@@ -23,7 +23,7 @@ end
 and State : sig
   val get_output : state -> value
   val get_bindings : state -> binding StringMap.t
-  val get_parent_component : state -> (string * value StringMap.t * value list) option
+  val get_parent_component : state -> (value StringMap.t * value list) option
 end
 
 val eval_meta :
