@@ -1,17 +1,17 @@
 let is_void_el = function
-  | "area" -> true
-  | "base" -> true
-  | "br" -> true
-  | "col" -> true
-  | "embed" -> true
-  | "hr" -> true
-  | "img" -> true
-  | "input" -> true
-  | "link" -> true
-  | "meta" -> true
-  | "param" -> true
-  | "source" -> true
-  | "track" -> true
+  | "area"
+  | "base"
+  | "br"
+  | "col"
+  | "embed"
+  | "hr"
+  | "img"
+  | "input"
+  | "link"
+  | "meta"
+  | "param"
+  | "source"
+  | "track"
   | "wbr" -> true
   | _ -> false
 ;;
