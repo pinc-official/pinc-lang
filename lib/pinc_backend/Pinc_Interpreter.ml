@@ -113,8 +113,7 @@ module Value = struct
                      Buffer.add_char buf '=';
                      Buffer.add_char buf '"';
                      Buffer.add_string buf (value |> to_string);
-                     Buffer.add_char buf '"'
-                 | TagInfo _ -> assert false);
+                     Buffer.add_char buf '"');
         if self_closing && Pinc_HTML.is_void_el tag then
           Buffer.add_string buf " />"
         else (
@@ -128,7 +127,6 @@ module Value = struct
     | ComponentTemplateNode (_render_fn, _tag, _attributes, result) -> result |> to_string
     | Function _ -> ""
     | DefinitionInfo _ -> ""
-    | TagInfo _ -> assert false
   ;;
 
   let is_true value =
@@ -148,7 +146,6 @@ module Value = struct
     | Array [||] -> false
     | Array _ -> true
     | Record m -> not (StringMap.is_empty m)
-    | TagInfo _ -> assert false
   ;;
 
   let rec equal a b =
@@ -174,8 +171,6 @@ module Value = struct
         ComponentTemplateNode (_, b_tag, b_attributes, _) ) ->
         a_tag = b_tag && StringMap.equal equal a_attributes b_attributes
     | Null, Null -> true
-    | TagInfo _, _ -> assert false
-    | _, TagInfo _ -> assert false
     | _ -> false
   ;;
 
@@ -197,8 +192,6 @@ module Value = struct
     | HtmlTemplateNode _, HtmlTemplateNode _ -> 0
     | DefinitionInfo _, DefinitionInfo _ -> 0
     | Function _, Function _ -> 0
-    | TagInfo _, _ -> assert false
-    | _, TagInfo _ -> assert false
     | Portal _, _ -> 0
     | _, Portal _ -> 0
     | _ -> 0
@@ -212,10 +205,8 @@ module State = struct
       ?(tag_cache = Hashtbl.create 10)
       ?(tag_environment = StringMap.empty)
       ?(slot_environment = [])
-      ~mode
       declarations =
     {
-      mode;
       binding_identifier = None;
       declarations;
       output = { value_desc = Null; value_loc = Location.none };
@@ -1436,7 +1427,6 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       Pinc_Diagnostics.error
         iterable.expression_loc
         "Cannot iterate over function definition"
-  | TagInfo _ -> assert false
 
 and eval_range ~state ~inclusive from_expression upto_expression =
   let from = from_expression |> eval_expression ~state |> State.get_output in
@@ -1885,7 +1875,6 @@ and eval_template ~state template =
             ~context:state.context
             ~portals:state.portals
             ~tag_cache:state.tag_cache
-            ~mode:state.mode
             ~tag_environment:component_tag_attributes
             ~slot_environment:component_tag_children
             state.declarations
@@ -1918,7 +1907,7 @@ and eval_declaration ~state declaration =
 ;;
 
 let eval_meta declarations =
-  let state = State.make declarations ~mode:Render in
+  let state = State.make declarations in
   let eval attrs =
     attrs
     |> Option.value ~default:StringMap.empty
@@ -1945,42 +1934,24 @@ let get_stdlib () =
   |> List.fold_left
        (fun acc filename ->
          let decls = filename |> Includes.read |> Option.get |> Parser.parse ~filename in
-         let f key x y =
-           match (x, y) with
-           | None, Some y -> Some y
-           | Some x, None -> Some x
-           | Some _, Some _ ->
-               Pinc_Diagnostics.error
-                 (Pinc_Diagnostics.Location.make
-                    ~s:
-                      (Pinc_Diagnostics.Location.Position.make
-                         ~filename
-                         ~line:0
-                         ~column:0)
-                    ())
-                 ("Found multiple declarations with identifier " ^ key)
-           | None, None -> None
+         let f key _ _ =
+           Pinc_Diagnostics.error
+             (Pinc_Diagnostics.Location.make
+                ~s:(Pinc_Diagnostics.Location.Position.make ~filename ~line:0 ~column:0)
+                ())
+             ("Found multiple declarations with identifier " ^ key)
          in
-         StringMap.merge f acc decls)
+         StringMap.union f acc decls)
        StringMap.empty
 ;;
 
 let eval ~root declarations =
   let base_lib = get_stdlib () in
-  let declarations =
-    StringMap.merge
-      (fun _key x y ->
-        match (x, y) with
-        | Some _, Some decl -> Some decl
-        | None, Some decl | Some decl, None -> Some decl
-        | None, None -> None)
-      base_lib
-      declarations
-  in
-  let state = State.make declarations ~mode:Portal_Collection in
+  let declarations = StringMap.union (fun _key _x y -> Some y) base_lib declarations in
+  let state = State.make declarations in
   let state = eval_declaration ~state root in
   if state.portals |> Hashtbl.length > 0 then
-    eval_declaration ~state:{ state with mode = Render } root
+    eval_declaration ~state root
   else
     state
 ;;

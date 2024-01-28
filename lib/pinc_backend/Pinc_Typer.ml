@@ -33,7 +33,6 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected string, got function definition")
     | DefinitionInfo _ ->
         Pinc_Diagnostics.(error Location.none "expected string, got definition info")
-    | TagInfo _ -> Pinc_Diagnostics.(error Location.none "expected string, got tag")
     | HtmlTemplateNode (_, _, _, _) ->
         Pinc_Diagnostics.(error Location.none "expected string, got HTML template node")
     | ComponentTemplateNode (_, _, _, _) ->
@@ -56,7 +55,6 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected int, got function definition")
     | DefinitionInfo _ ->
         Pinc_Diagnostics.(error Location.none "expected int, got definition info")
-    | TagInfo _ -> Pinc_Diagnostics.(error Location.none "expected int, got tag")
     | HtmlTemplateNode (_, _, _, _) ->
         Pinc_Diagnostics.(error Location.none "expected int, got HTML template node")
     | ComponentTemplateNode (_, _, _, _) ->
@@ -79,7 +77,6 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected float, got function definition")
     | DefinitionInfo _ ->
         Pinc_Diagnostics.(error Location.none "expected float, got definition info")
-    | TagInfo _ -> Pinc_Diagnostics.(error Location.none "expected float, got tag")
     | HtmlTemplateNode (_, _, _, _) ->
         Pinc_Diagnostics.(error Location.none "expected float, got HTML template node")
     | ComponentTemplateNode (_, _, _, _) ->
@@ -102,7 +99,6 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected bool, got function definition")
     | DefinitionInfo _ ->
         Pinc_Diagnostics.(error Location.none "expected bool, got definition info")
-    | TagInfo _ -> Pinc_Diagnostics.(error Location.none "expected bool, got tag")
     | HtmlTemplateNode (_, _, _, _) ->
         Pinc_Diagnostics.(error Location.none "expected bool, got HTML template node")
     | ComponentTemplateNode (_, _, _, _) ->
@@ -126,7 +122,6 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected array, got function definition")
     | DefinitionInfo _ ->
         Pinc_Diagnostics.(error Location.none "expected array, got definition info")
-    | TagInfo _ -> Pinc_Diagnostics.(error Location.none "expected array, got tag")
     | HtmlTemplateNode (_, _, _, _) ->
         Pinc_Diagnostics.(error Location.none "expected array, got HTML template node")
     | ComponentTemplateNode (_, _, _, _) ->
@@ -150,7 +145,6 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected array, got function definition")
     | DefinitionInfo _ ->
         Pinc_Diagnostics.(error Location.none "expected array, got definition info")
-    | TagInfo _ -> Pinc_Diagnostics.(error Location.none "expected array, got tag")
     | HtmlTemplateNode (_, _, _, _) ->
         Pinc_Diagnostics.(error Location.none "expected array, got HTML template node")
     | ComponentTemplateNode (_, _, _, _) ->
@@ -174,7 +168,6 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected record, got function definition")
     | DefinitionInfo _ ->
         Pinc_Diagnostics.(error Location.none "expected record, got definition info")
-    | TagInfo _ -> Pinc_Diagnostics.(error Location.none "expected record, got tag")
     | HtmlTemplateNode (_, _, _, _) ->
         Pinc_Diagnostics.(error Location.none "expected record, got HTML template node")
     | ComponentTemplateNode (_, _, _, _) ->
@@ -198,7 +191,6 @@ module Expect = struct
         Pinc_Diagnostics.(error Location.none "expected record, got function definition")
     | DefinitionInfo _ ->
         Pinc_Diagnostics.(error Location.none "expected record, got definition info")
-    | TagInfo _ -> Pinc_Diagnostics.(error Location.none "expected record, got tag")
     | HtmlTemplateNode (_, _, _, _) ->
         Pinc_Diagnostics.(error Location.none "expected record, got HTML template node")
     | ComponentTemplateNode (_, _, _, _) ->
@@ -251,35 +243,11 @@ module Expect = struct
               Pinc_Diagnostics.(error Location.none "expected a store definition")
         in
         Some (typ, name, negated = `Negated)
-    | TagInfo _ ->
-        Pinc_Diagnostics.(error Location.none "expected definition info, got tag")
     | HtmlTemplateNode (_, _, _, _) ->
         Pinc_Diagnostics.(
           error Location.none "expected definition info, got HTML template node")
     | ComponentTemplateNode (_, _, _, _) ->
         Pinc_Diagnostics.(
           error Location.none "expected definition info, got component template node")
-  ;;
-
-  let tag_info v =
-    match v.value_desc with
-    | Null -> None
-    | Portal _ -> Pinc_Diagnostics.(error Location.none "expected tag, got portal value")
-    | String _ -> Pinc_Diagnostics.(error Location.none "expected tag, got string")
-    | Int _ -> Pinc_Diagnostics.(error Location.none "expected tag, got int")
-    | Char _ -> Pinc_Diagnostics.(error Location.none "expected tag, got char")
-    | Float _ -> Pinc_Diagnostics.(error Location.none "expected tag, got float")
-    | Bool _ -> Pinc_Diagnostics.(error Location.none "expected tag, got bool")
-    | Array _ -> Pinc_Diagnostics.(error Location.none "expected tag, got array")
-    | Record _ -> Pinc_Diagnostics.(error Location.none "expected tag, got record")
-    | Function _ ->
-        Pinc_Diagnostics.(error Location.none "expected tag, got function definition")
-    | DefinitionInfo _ ->
-        Pinc_Diagnostics.(error Location.none "expected tag, got definition info")
-    | TagInfo i -> Some i
-    | HtmlTemplateNode (_, _, _, _) ->
-        Pinc_Diagnostics.(error Location.none "expected tag, got HTML template node")
-    | ComponentTemplateNode (_, _, _, _) ->
-        Pinc_Diagnostics.(error Location.none "expected tag, got component template node")
   ;;
 end

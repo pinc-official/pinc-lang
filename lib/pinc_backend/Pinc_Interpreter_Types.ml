@@ -18,7 +18,6 @@ module rec Value : sig
     | Record of (int * value) StringMap.t
     | Function of function_info
     | DefinitionInfo of definition_info
-    | TagInfo of tag_info
     | HtmlTemplateNode of string * value StringMap.t * value list * bool
     | ComponentTemplateNode of
         (value StringMap.t -> value) * string * value StringMap.t * value
@@ -44,20 +43,11 @@ module rec Value : sig
     | `Slot
     | `Custom of string
     ]
-
-  and tag_info = {
-    tag : external_tag;
-    key : string;
-    required : bool;
-    attributes : value StringMap.t;
-    transformer : value -> value;
-  }
 end =
   Value
 
 and State : sig
   type state = {
-    mode : mode;
     binding_identifier : (bool * string) option;
     declarations : Ast.t;
     output : Value.value;
@@ -79,10 +69,6 @@ and State : sig
     is_optional : bool;
     value : Value.value;
   }
-
-  and mode =
-    | Portal_Collection
-    | Render
 end =
   State
 

@@ -27,6 +27,4 @@ module Expect : sig
     ?typ:[< `All | `Component | `Library | `Page | `Site | `Store > `All ] ->
     Pinc_Interpreter_Types.value ->
     ([> `Component | `Library | `Page | `Site | `Store ] * string * bool) option
-
-  val tag_info : Pinc_Interpreter_Types.value -> Pinc_Interpreter_Types.tag_info option
 end
