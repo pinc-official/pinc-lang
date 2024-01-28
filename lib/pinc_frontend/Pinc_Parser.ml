@@ -222,9 +222,9 @@ module Rules = struct
           |> StringMap.of_seq
         in
         t |> expect Token.RIGHT_PAREN;
-        Some res)
+        res)
       else
-        None
+        StringMap.empty
     in
     let transformer =
       let start_token = t.token in

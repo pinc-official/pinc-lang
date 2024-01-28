@@ -62,6 +62,8 @@ and State : sig
     declarations : Ast.t;
     output : Value.value;
     environment : environment;
+    slot_environment : Value.value list;
+    tag_environment : Value.value StringMap.t;
     tag_cache : (string, Value.value Queue.t) Hashtbl.t;
     parent_tag : string list option;
     parent_component : (Value.value StringMap.t * Value.value list) option;

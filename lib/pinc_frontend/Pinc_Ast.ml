@@ -44,7 +44,7 @@ and tag_desc = {
     | `Portal
     | `Custom of string
     ];
-  attributes : expression StringMap.t option;
+  attributes : expression StringMap.t;
   transformer : (lowercase_identifier * expression) option;
 }
 
