@@ -70,7 +70,7 @@ and expression_desc =
   | Float of float
   | Bool of bool
   | Array of expression array
-  | Record of (int * bool * expression) StringMap.t  (** order, nullable, value *)
+  | Record of (bool * expression) StringMap.t  (** nullable, value *)
   | Function of {
       parameters : string list;
       body : expression;

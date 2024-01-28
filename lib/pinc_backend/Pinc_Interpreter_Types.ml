@@ -15,7 +15,7 @@ module rec Value : sig
     | Float of float
     | Bool of bool
     | Array of value Array.t
-    | Record of (int * value) StringMap.t
+    | Record of value StringMap.t
     | Function of function_info
     | DefinitionInfo of definition_info
     | HtmlTemplateNode of string * value StringMap.t * value list * bool

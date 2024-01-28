@@ -163,30 +163,7 @@ module Expect = struct
     | Float _ -> Pinc_Diagnostics.(error Location.none "expected record, got float")
     | Bool _ -> Pinc_Diagnostics.(error Location.none "expected record, got bool")
     | Array _ -> Pinc_Diagnostics.(error Location.none "expected record, got array")
-    | Record r -> Some (r |> StringMap.map snd)
-    | Function _ ->
-        Pinc_Diagnostics.(error Location.none "expected record, got function definition")
-    | DefinitionInfo _ ->
-        Pinc_Diagnostics.(error Location.none "expected record, got definition info")
-    | HtmlTemplateNode (_, _, _, _) ->
-        Pinc_Diagnostics.(error Location.none "expected record, got HTML template node")
-    | ComponentTemplateNode (_, _, _, _) ->
-        Pinc_Diagnostics.(
-          error Location.none "expected record, got component template node")
-  ;;
-
-  let record_with_order v =
-    match v.value_desc with
-    | Null -> None
-    | Portal _ ->
-        Pinc_Diagnostics.(error Location.none "expected record, got portal value")
-    | String _ -> Pinc_Diagnostics.(error Location.none "expected record, got string")
-    | Int _ -> Pinc_Diagnostics.(error Location.none "expected record, got int")
-    | Char _ -> Pinc_Diagnostics.(error Location.none "expected record, got char")
-    | Float _ -> Pinc_Diagnostics.(error Location.none "expected record, got float")
-    | Bool _ -> Pinc_Diagnostics.(error Location.none "expected record, got bool")
-    | Array _ -> Pinc_Diagnostics.(error Location.none "expected record, got array")
-    | Record r -> r |> Option.some
+    | Record r -> Some r
     | Function _ ->
         Pinc_Diagnostics.(error Location.none "expected record, got function definition")
     | DefinitionInfo _ ->

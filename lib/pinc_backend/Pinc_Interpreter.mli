@@ -9,9 +9,7 @@ module rec Value : sig
   val of_int : ?value_loc:Pinc_Diagnostics.Location.t -> int -> value
   val of_float : ?value_loc:Pinc_Diagnostics.Location.t -> float -> value
   val of_list : ?value_loc:Pinc_Diagnostics.Location.t -> value list -> value
-
-  val of_string_map :
-    ?value_loc:Pinc_Diagnostics.Location.t -> (int * value) StringMap.t -> value
+  val of_string_map : ?value_loc:Pinc_Diagnostics.Location.t -> value StringMap.t -> value
 
   val make_component :
     render:(value StringMap.t -> value) ->
@@ -35,5 +33,11 @@ val eval_meta :
   ]
   StringMap.t
 
-val eval : root:StringMap.key -> Ast.t -> state
+val eval :
+  ?tag_environment:Pinc_Interpreter_Types.value StringMap.t ->
+  ?slot_environment:Pinc_Interpreter_Types.value list ->
+  root:StringMap.key ->
+  Ast.t ->
+  state
+
 val from_source : ?filename:string -> source:string -> string -> state

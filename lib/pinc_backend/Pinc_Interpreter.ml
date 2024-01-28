@@ -83,7 +83,7 @@ module Value = struct
         let b = Buffer.create 1024 in
         m
         |> StringMap.to_seq
-        |> Seq.iter (fun (_key, (_index, value)) ->
+        |> Seq.iter (fun (_key, value) ->
                Buffer.add_string b (to_string value);
                Buffer.add_char b '\n');
         Buffer.contents b
@@ -158,7 +158,7 @@ module Value = struct
     | Int a, Float b -> float_of_int a = b
     | Bool a, Bool b -> a = b
     | Array a, Array b -> Array.combine a b |> Array.for_all (fun (a, b) -> equal a b)
-    | Record a, Record b -> StringMap.equal (fun (_, a) (_, b) -> equal a b) a b
+    | Record a, Record b -> StringMap.equal equal a b
     | Function _, Function _ -> false
     | DefinitionInfo (a, _, _), DefinitionInfo (b, _, _) -> String.equal a b
     | ( HtmlTemplateNode (a_tag, a_attrs, a_children, a_self_closing),
@@ -388,7 +388,7 @@ and eval_expression ~state expression =
            ~output:
              (map
              |> StringMap.mapi (fun ident attr ->
-                    let index, optional, expression = attr in
+                    let optional, expression = attr in
                     expression
                     |> eval_expression
                          ~state:{ state with binding_identifier = Some (optional, ident) }
@@ -401,7 +401,7 @@ and eval_expression ~state expression =
                              "identifier %s is not marked as nullable, but was given a \
                               null value."
                              ident)
-                    | value -> (index, value))
+                    | value -> value)
              |> Value.of_string_map ~value_loc:expression.expression_loc)
   | Ast.String template -> eval_string_template ~state template
   | Ast.Function { parameters; body } ->
@@ -980,7 +980,6 @@ and eval_binary_dot_access ~state left right =
       let output =
         a
         |> StringMap.find_opt b
-        |> Option.map snd
         |> Option.value ~default:(Value.null ~value_loc:left.expression_loc ())
       in
       state |> State.add_output ~output
@@ -992,13 +991,7 @@ and eval_binary_dot_access ~state left right =
       | "attributes" ->
           state
           |> State.add_output
-               ~output:
-                 (Value.of_string_map
-                    ~value_loc:left.expression_loc
-                    (attributes
-                    |> StringMap.to_seq
-                    |> Seq.mapi (fun index (key, value) -> (key, (index, value)))
-                    |> StringMap.of_seq))
+               ~output:(Value.of_string_map ~value_loc:left.expression_loc attributes)
       | s ->
           Pinc_Diagnostics.error
             right.expression_loc
@@ -1014,13 +1007,7 @@ and eval_binary_dot_access ~state left right =
       | "attributes" ->
           state
           |> State.add_output
-               ~output:
-                 (Value.of_string_map
-                    ~value_loc:left.expression_loc
-                    (attributes
-                    |> StringMap.to_seq
-                    |> Seq.mapi (fun index (key, value) -> (key, (index, value)))
-                    |> StringMap.of_seq))
+               ~output:(Value.of_string_map ~value_loc:left.expression_loc attributes)
       | s ->
           Pinc_Diagnostics.error
             right.expression_loc
@@ -1104,7 +1091,6 @@ and eval_binary_bracket_access ~state left right =
       let output =
         a
         |> StringMap.find_opt b
-        |> Option.map snd
         |> Option.value
              ~default:
                (Value.null
@@ -1166,14 +1152,9 @@ and eval_binary_merge ~state left_expression right_expression =
     | Record l, Record r ->
         Value.of_string_map
           ~value_loc:(Location.merge ~s:left.value_loc ~e:right.value_loc ())
-          (StringMap.union (fun _key _x y -> Some y) l r
-          |> StringMap.to_seq
-          |> Seq.mapi (fun index (key, (_, value)) -> (key, (index, value)))
-          |> StringMap.of_seq)
+          (StringMap.union (fun _key _x y -> Some y) l r)
     | HtmlTemplateNode (tag, attributes, children, self_closing), Record right ->
-        let attributes =
-          StringMap.union (fun _key _x y -> Some y) attributes (StringMap.map snd right)
-        in
+        let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
         {
           left with
           value_desc = HtmlTemplateNode (tag, attributes, children, self_closing);
@@ -1183,9 +1164,7 @@ and eval_binary_merge ~state left_expression right_expression =
           right_expression.expression_loc
           "Trying to merge a non record value onto tag attributes."
     | ComponentTemplateNode (fn, tag, attributes, _), Record right ->
-        let attributes =
-          StringMap.union (fun _key _x y -> Some y) attributes (StringMap.map snd right)
-        in
+        let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
         let result = fn attributes in
         { left with value_desc = ComponentTemplateNode (fn, tag, attributes, result) }
     | ComponentTemplateNode _, _ ->
@@ -1801,7 +1780,7 @@ and eval_tag ~state t =
                      value_loc
                      (Printf.sprintf "Expected attribute %s to be a record." key))
         |> Option.map (fun record ->
-               let state = { state with tag_environment = record |> StringMap.map snd } in
+               let state = { state with tag_environment = record } in
                match of' with
                | None ->
                    Pinc_Diagnostics.error
@@ -1945,10 +1924,10 @@ let get_stdlib () =
        StringMap.empty
 ;;
 
-let eval ~root declarations =
+let eval ?tag_environment ?slot_environment ~root declarations =
   let base_lib = get_stdlib () in
   let declarations = StringMap.union (fun _key _x y -> Some y) base_lib declarations in
-  let state = State.make declarations in
+  let state = State.make ?tag_environment ?slot_environment declarations in
   let state = eval_declaration ~state root in
   if state.portals |> Hashtbl.length > 0 then
     eval_declaration ~state root

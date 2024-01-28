@@ -19,10 +19,6 @@ module Expect : sig
   val record :
     Pinc_Interpreter_Types.value -> Pinc_Interpreter_Types.value StringMap.t option
 
-  val record_with_order :
-    Pinc_Interpreter_Types.value ->
-    (int * Pinc_Interpreter_Types.value) StringMap.t option
-
   val definition_info :
     ?typ:[< `All | `Component | `Library | `Page | `Site | `Store > `All ] ->
     Pinc_Interpreter_Types.value ->
