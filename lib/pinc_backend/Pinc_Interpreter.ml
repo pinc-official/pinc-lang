@@ -207,7 +207,6 @@ end
 
 module State = struct
   let make
-      ?parent_component
       ?(context = Hashtbl.create 10)
       ?(portals = Hashtbl.create 10)
       ?(tag_cache = Hashtbl.create 10)
@@ -223,9 +222,7 @@ module State = struct
       environment = { scope = []; use_scope = StringMap.empty };
       slot_environment;
       tag_environment;
-      parent_tag = None;
       tag_cache;
-      parent_component;
       context;
       portals;
     }
@@ -326,7 +323,6 @@ module State = struct
   let add_output ~output t = { t with output }
   let get_bindings t = t.environment.scope |> List.hd
   let get_used_values t = t.environment.use_scope
-  let get_parent_component t = t.parent_component
 end
 
 let rec get_uppercase_identifier_typ ~state ident =
@@ -1886,7 +1882,6 @@ and eval_template ~state template =
       let render_fn component_tag_attributes =
         let state =
           State.make
-            ~parent_component:(component_tag_attributes, component_tag_children)
             ~context:state.context
             ~portals:state.portals
             ~tag_cache:state.tag_cache

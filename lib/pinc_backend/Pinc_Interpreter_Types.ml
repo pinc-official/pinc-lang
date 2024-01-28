@@ -65,8 +65,6 @@ and State : sig
     slot_environment : Value.value list;
     tag_environment : Value.value StringMap.t;
     tag_cache : (string, Value.value Queue.t) Hashtbl.t;
-    parent_tag : string list option;
-    parent_component : (Value.value StringMap.t * Value.value list) option;
     context : (string, Value.value) Hashtbl.t;
     portals : (string, Value.value) Hashtbl.t;
   }
