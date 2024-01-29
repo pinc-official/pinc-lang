@@ -1,13 +1,5 @@
 open Pinc
 
-let get_source filename =
-  let file_contents chan = really_input_string chan (in_channel_length chan) in
-  let chan = open_in filename in
-  let src = chan |> file_contents in
-  close_in chan;
-  src
-;;
-
 let get_files_with_ext ~ext dir =
   let rec loop result = function
     | file :: rest when Sys.is_directory file ->
@@ -24,29 +16,22 @@ let get_files_with_ext ~ext dir =
 ;;
 
 let get_declarations_from ~directory () =
-  (* TODO: This should happen asynchronously *)
   directory
   |> get_files_with_ext ~ext:".pi"
   |> List.fold_left
        (fun acc filename ->
-         let decls = filename |> get_source |> Parser.parse ~filename in
-         let f key x y =
-           match (x, y) with
-           | None, Some y -> Some y
-           | Some x, None -> Some x
-           | Some _, Some _ ->
-               Pinc_Diagnostics.error
-                 (Pinc_Diagnostics.Location.make
-                    ~s:
-                      (Pinc_Diagnostics.Location.Position.make
-                         ~filename
-                         ~line:0
-                         ~column:0)
-                    ())
-                 ("Found multiple declarations with identifier " ^ key)
-           | None, None -> None
+         let decls =
+           In_channel.with_open_bin filename In_channel.input_all
+           |> Parser.parse ~filename
          in
-         StringMap.merge f acc decls)
+         let f key _ _ =
+           Pinc_Diagnostics.error
+             (Pinc_Diagnostics.Location.make
+                ~s:(Pinc_Diagnostics.Location.Position.make ~filename ~line:0 ~column:0)
+                ())
+             ("Found multiple declarations with identifier " ^ key)
+         in
+         StringMap.union f acc decls)
        StringMap.empty
 ;;
 
