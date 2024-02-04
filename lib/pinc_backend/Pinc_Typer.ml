@@ -200,10 +200,10 @@ module Expect = struct
     | DefinitionInfo (name, def_typ, negated) ->
         let typ =
           match (typ, def_typ) with
-          | (`Component | `All), Some `Component -> `Component
-          | (`Page | `All), Some `Page -> `Page
-          | (`Library | `All), Some (`Library _) -> `Library
-          | (`Store | `All), Some `Store -> `Store
+          | (`Component | `All), Some Definition_Component -> `Component
+          | (`Page | `All), Some Definition_Page -> `Page
+          | (`Library | `All), Some (Definition_Library _) -> `Library
+          | (`Store | `All), Some (Definition_Store _) -> `Store
           | _, None ->
               Pinc_Diagnostics.(
                 error Location.none ("definition \"" ^ name ^ "\" does not exist"))

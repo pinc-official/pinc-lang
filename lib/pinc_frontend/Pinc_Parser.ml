@@ -251,18 +251,19 @@ module Rules = struct
     in
     let tag =
       match name with
-      | "String" -> `String
-      | "Int" -> `Int
-      | "Float" -> `Float
-      | "Boolean" -> `Boolean
-      | "Array" -> `Array
-      | "Record" -> `Record
-      | "Slot" -> `Slot
-      | "SetContext" -> `SetContext
-      | "GetContext" -> `GetContext
-      | "CreatePortal" -> `CreatePortal
-      | "Portal" -> `Portal
-      | other -> `Custom other
+      | "String" -> Ast.Tag_String
+      | "Int" -> Ast.Tag_Int
+      | "Float" -> Ast.Tag_Float
+      | "Boolean" -> Ast.Tag_Boolean
+      | "Array" -> Ast.Tag_Array
+      | "Record" -> Ast.Tag_Record
+      | "Slot" -> Ast.Tag_Slot
+      | "Store" -> Ast.Tag_Store
+      | "SetContext" -> Ast.Tag_SetContext
+      | "GetContext" -> Ast.Tag_GetContext
+      | "CreatePortal" -> Ast.Tag_CreatePortal
+      | "Portal" -> Ast.Tag_Portal
+      | other -> Ast.Tag_Custom other
     in
     let tag_loc =
       Location.make ~s:start_token.location.loc_start ~e:t.token.location.loc_end ()
@@ -761,9 +762,9 @@ module Rules = struct
                 |> StringMap.of_seq
               in
               t |> expect Token.RIGHT_PAREN;
-              Some attributes)
+              attributes)
             else
-              None
+              StringMap.empty
           in
           let declaration_body = t |> parse_expression in
           match declaration_body with

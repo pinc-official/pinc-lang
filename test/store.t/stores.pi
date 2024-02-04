@@ -1,0 +1,16 @@
+store Settings(single: true) {
+	footerLinks: #Array(of: #Record(of: {
+		title: #String,
+		url: #String,
+	})),
+	contact: #Record(of: {
+		phone: #String,
+		email: #String,
+		address: #String :: v -> v ++ " ... or am I??",
+	});
+};
+
+store Products {
+	title: #String,
+	code: #Int :: v -> v * 2,
+};

@@ -29,21 +29,23 @@ and tag = {
   tag_desc : tag_desc;
 }
 
+and tag_typ =
+  | Tag_String
+  | Tag_Int
+  | Tag_Float
+  | Tag_Boolean
+  | Tag_Array
+  | Tag_Record
+  | Tag_Slot
+  | Tag_Store
+  | Tag_SetContext
+  | Tag_GetContext
+  | Tag_CreatePortal
+  | Tag_Portal
+  | Tag_Custom of string
+
 and tag_desc = {
-  tag :
-    [ `String
-    | `Int
-    | `Float
-    | `Boolean
-    | `Array
-    | `Record
-    | `Slot
-    | `SetContext
-    | `GetContext
-    | `CreatePortal
-    | `Portal
-    | `Custom of string
-    ];
+  tag : tag_typ;
   attributes : expression StringMap.t;
   transformer : (lowercase_identifier * expression) option;
 }
@@ -128,7 +130,7 @@ and declaration_type =
   | Declaration_Store of declaration_desc
 
 and declaration_desc = {
-  declaration_attributes : expression StringMap.t option;
+  declaration_attributes : expression StringMap.t;
   declaration_body : expression;
 }
 

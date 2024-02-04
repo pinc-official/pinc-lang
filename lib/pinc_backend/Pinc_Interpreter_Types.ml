@@ -22,10 +22,13 @@ module rec Value : sig
     | ComponentTemplateNode of
         (value StringMap.t -> value) * string * value StringMap.t * value
 
-  and definition_info =
-    string
-    * [ `Component | `Page | `Store | `Library of Library.t ] option
-    * [ `Negated | `NotNegated ]
+  and definition_typ =
+    | Definition_Component
+    | Definition_Page
+    | Definition_Store of Store.t
+    | Definition_Library of Library.t
+
+  and definition_info = string * definition_typ option * [ `Negated | `NotNegated ]
 
   and function_info = {
     parameters : string list;
@@ -34,15 +37,15 @@ module rec Value : sig
   }
 
   and external_tag =
-    [ `String
-    | `Int
-    | `Float
-    | `Boolean
-    | `Array
-    | `Record
-    | `Slot
-    | `Custom of string
-    ]
+    | Tag_String
+    | Tag_Int
+    | Tag_Float
+    | Tag_Boolean
+    | Tag_Array
+    | Tag_Record
+    | Tag_Slot
+    | Tag_Store
+    | Tag_Custom of string
 end =
   Value
 
@@ -91,6 +94,23 @@ end = struct
   let get_binding id t = t.bindings |> StringMap.find_opt id
   let get_includes t = t.includes
   let get_include id t = t.includes |> StringMap.find_opt id
+end
+
+and Store : sig
+  type t
+
+  val make : singleton:bool -> body:Ast.expression -> t
+  val is_singleton : t -> bool
+  val body : t -> Ast.expression
+end = struct
+  type t = {
+    singleton : bool;
+    body : Ast.expression;
+  }
+
+  let make ~singleton ~body = { singleton; body }
+  let is_singleton t = t.singleton
+  let body t = t.body
 end
 
 include State

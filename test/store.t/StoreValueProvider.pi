@@ -1,0 +1,37 @@
+component StoreValueProvider {
+  let settings = {
+    footerLinks: [{
+      title: "Imprint",
+      url: "/imprint",
+    }],
+    contact: {
+      phone: "+1 111 000 111",
+      email: "some@email.invalid",
+      address: "Somewhere in the World",
+    };
+  };
+
+  let products = [
+    {
+      title: "Product A",
+      code: 21004,
+    },
+    {
+      title: "Product B",
+      code: 11065,
+    },
+  ];
+
+  <StoreConsumer settings={settings} products={products} />
+}
+
+component StoreConsumer {
+  let settings = #Store(id: Settings);
+  let products = #Store(id: Products);
+
+  <div>
+    {settings}
+
+    {products}
+  </div>
+}

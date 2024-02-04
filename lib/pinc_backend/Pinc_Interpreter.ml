@@ -8,6 +8,8 @@ exception Loop_Continue of state
 
 let libraries = Hashtbl.create 100
 let add_library ~ident ~library = Hashtbl.add libraries ident library
+let stores = Hashtbl.create 100
+let add_store ~ident ~store = Hashtbl.add stores ident store
 
 module Value = struct
   let null ?(value_loc = Pinc_Diagnostics.Location.none) () =
@@ -320,12 +322,39 @@ let rec get_uppercase_identifier_typ ~state ident =
   let declaration = state.declarations |> StringMap.find_opt ident in
   match declaration with
   | None -> (state, None)
-  | Some { declaration_type = Ast.Declaration_Component _; _ } -> (state, Some `Component)
-  | Some { declaration_type = Ast.Declaration_Page _; _ } -> (state, Some `Page)
-  | Some { declaration_type = Ast.Declaration_Store _; _ } -> (state, Some `Store)
+  | Some { declaration_type = Ast.Declaration_Component _; _ } ->
+      (state, Some Definition_Component)
+  | Some { declaration_type = Ast.Declaration_Page _; _ } -> (state, Some Definition_Page)
+  | Some
+      {
+        declaration_type =
+          Ast.Declaration_Store { declaration_attributes; declaration_body };
+        _;
+      } -> (
+      match Hashtbl.find_opt stores ident with
+      | Some store -> (state, Some (Definition_Store store))
+      | None ->
+          let singleton =
+            declaration_attributes
+            |> StringMap.find_opt "single"
+            |> Option.map (fun expr ->
+                   expr
+                   |> eval_expression ~state:(State.make state.declarations)
+                   |> State.get_output
+                   |> function
+                   | { value_desc = Bool b; _ } -> b
+                   | { value_loc; _ } ->
+                       Pinc_Diagnostics.error
+                         value_loc
+                         "The attribute `single` has to be a boolean.")
+            |> Option.value ~default:false
+          in
+          let store = Store.make ~singleton ~body:declaration_body in
+          add_store ~store ~ident;
+          (state, Some (Definition_Store store)))
   | Some { declaration_type = Ast.Declaration_Library { declaration_body; _ }; _ } -> (
       match Hashtbl.find_opt libraries ident with
-      | Some library -> (state, Some (`Library library))
+      | Some library -> (state, Some (Definition_Library library))
       | None ->
           let s =
             eval_expression
@@ -336,7 +365,7 @@ let rec get_uppercase_identifier_typ ~state ident =
           let includes = s |> State.get_used_values in
           let library = Library.make ~bindings ~includes in
           add_library ~library ~ident;
-          (state, Some (`Library library)))
+          (state, Some (Definition_Library library)))
 
 and eval_statement ~state statement =
   match statement.Ast.statement_desc with
@@ -430,16 +459,17 @@ and eval_expression ~state expression =
             |> State.get_used_values
             |> StringMap.find_opt hd
             |> Option.fold
-                 ~some:(fun l -> (state, Some (`Library l)))
+                 ~some:(fun l -> (state, Some (Definition_Library l)))
                  ~none:(get_uppercase_identifier_typ ~state hd)
           in
           match library with
-          | Some (`Library l) ->
+          | Some (Definition_Library l) ->
               let state, name, library = eval_library_path ~state (hd, l) tl in
               let output =
                 {
                   value_loc = expression.expression_loc;
-                  value_desc = DefinitionInfo (name, Some (`Library library), `NotNegated);
+                  value_desc =
+                    DefinitionInfo (name, Some (Definition_Library library), `NotNegated);
                 }
               in
               state |> State.add_output ~output
@@ -460,7 +490,7 @@ and eval_expression ~state expression =
         |> State.get_used_values
         |> StringMap.find_opt id
         |> Option.fold
-             ~some:(fun l -> (state, Some (`Library l)))
+             ~some:(fun l -> (state, Some (Definition_Library l)))
              ~none:(get_uppercase_identifier_typ ~state id)
       in
       let output =
@@ -1019,7 +1049,7 @@ and eval_binary_dot_access ~state left right =
         "Expected right hand side of record access to be a lowercase identifier."
   | DefinitionInfo (_, maybe_library, _), Ast.LowercaseIdentifierExpression b -> (
       match maybe_library with
-      | Some (`Library l) ->
+      | Some (Definition_Library l) ->
           let output =
             l
             |> Library.get_binding b
@@ -1253,7 +1283,7 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
 and eval_use ~state ~ident expression =
   let value = expression |> eval_expression ~state |> State.get_output in
   match value with
-  | { value_desc = DefinitionInfo (_, Some (`Library library), _); _ } -> (
+  | { value_desc = DefinitionInfo (_, Some (Definition_Library library), _); _ } -> (
       match ident with
       | Some (Uppercase_Id ident) ->
           let ident, _ident_location = ident in
@@ -1459,6 +1489,71 @@ and eval_block ~state statements =
   let state = statements |> List.fold_left (fun state -> eval_statement ~state) state in
   state |> State.remove_scope
 
+and eval_store ~state ~tag ~attributes key =
+  let name, store =
+    match attributes |> StringMap.find_opt "id" with
+    | None ->
+        Pinc_Diagnostics.error tag.Ast.tag_loc "Attribute `id` is required on #Store."
+    | Some
+        {
+          value_desc = DefinitionInfo (name, Some (Definition_Store store), `NotNegated);
+          _;
+        } -> (name, store)
+    | Some
+        {
+          value_loc;
+          value_desc = DefinitionInfo (_, Some (Definition_Store _), `Negated);
+          _;
+        } -> Pinc_Diagnostics.error value_loc "Expected store id to not be negated."
+    | Some { value_loc; _ } ->
+        Pinc_Diagnostics.error
+          value_loc
+          "Expected attribute `id` to be a Store definition."
+  in
+  let is_singleton = store |> Store.is_singleton in
+  let value = state.tag_environment |> StringMap.find_opt key in
+  match value with
+  | None -> Value.null ~value_loc:tag.Ast.tag_loc ()
+  | Some { value_desc = Record record; _ } when is_singleton -> (
+      let state = { state with tag_environment = record } in
+      store |> Store.body |> eval_expression ~state |> State.get_output |> function
+      | { value_desc = Record _; _ } as v -> v
+      | { value_desc = _; value_loc } ->
+          Pinc_Diagnostics.error
+            value_loc
+            (Printf.sprintf
+               "The definition of store `%s` needs to be a record describing the shape \
+                and type of values in this store."
+               name))
+  | Some { value_desc = _; value_loc } when is_singleton ->
+      Pinc_Diagnostics.error
+        value_loc
+        (Printf.sprintf "Expected attribute %s to be a record." key)
+  | Some { value_desc = Array array; _ } ->
+      array
+      |> Array.map (function
+             | { value_desc = Record record; _ } -> (
+                 let state = { state with tag_environment = record } in
+                 store |> Store.body |> eval_expression ~state |> State.get_output
+                 |> function
+                 | { value_desc = Record _; _ } as v -> v
+                 | { value_desc = _; value_loc } ->
+                     Pinc_Diagnostics.error
+                       value_loc
+                       (Printf.sprintf
+                          "The definition of store `%s` needs to be a record describing \
+                           the shape and type of values in this store."
+                          name))
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf "Expected attribute %s to be an array of records." key))
+      |> Value.of_array ~value_loc:tag.Ast.tag_loc
+  | Some { value_desc = _; value_loc } ->
+      Pinc_Diagnostics.error
+        value_loc
+        (Printf.sprintf "Expected attribute %s to be an array." key)
+
 and eval_slot ~state ~tag ~attributes key =
   let find_slot_key attributes =
     attributes
@@ -1497,7 +1592,7 @@ and eval_slot ~state ~tag ~attributes key =
            | { value_loc; _ } ->
                Pinc_Diagnostics.error
                  value_loc
-                 "Expected attribute min to be of tyoe int.")
+                 "Expected attribute min to be of type int.")
     |> Option.value ~default:0
   in
   let max =
@@ -1508,7 +1603,7 @@ and eval_slot ~state ~tag ~attributes key =
            | { value_loc; _ } ->
                Pinc_Diagnostics.error
                  value_loc
-                 "Expected attribute max to be of tyoe int.")
+                 "Expected attribute max to be of type int.")
     |> Option.value ~default:Int.max_int
   in
   let num_slotted_elements = List.length slotted_elements in
@@ -1541,8 +1636,10 @@ and eval_slot ~state ~tag ~attributes key =
                   allowed or disallowed")
     |> Option.map
          (Array.map (function
-             | { value_desc = DefinitionInfo (name, Some `Component, negated); _ } ->
-                 (`Component, name, negated)
+             | {
+                 value_desc = DefinitionInfo (name, Some Definition_Component, negated);
+                 _;
+               } -> (name, negated)
              | { value_desc = DefinitionInfo (name, None, _negated); value_loc } ->
                  Pinc_Diagnostics.error
                    value_loc
@@ -1574,7 +1671,7 @@ and eval_slot ~state ~tag ~attributes key =
         let allowed, disallowed =
           restrictions
           |> Array.to_list
-          |> List.partition_map (fun (_typ, name, negated) ->
+          |> List.partition_map (fun (name, negated) ->
                  if name = tag then
                    is_in_list := true;
                  if negated = `Negated then
@@ -1595,7 +1692,7 @@ and eval_slot ~state ~tag ~attributes key =
             constraints
             |> Option.map Array.to_list
             |> Option.value ~default:[]
-            |> List.map (fun (_typ, name, negated) ->
+            |> List.map (fun (name, negated) ->
                    if negated = `Negated then
                      "!" ^ name
                    else
@@ -1666,12 +1763,12 @@ and eval_tag ~state t =
   in
   let value =
     match tag with
-    | `CreatePortal ->
+    | Tag_CreatePortal ->
         {
           value_desc = Portal (Hashtbl.find_all state.portals key);
           value_loc = t.tag_loc;
         }
-    | `SetContext ->
+    | Tag_SetContext ->
         let value =
           attributes |> StringMap.find_opt "value" |> function
           | None ->
@@ -1684,10 +1781,10 @@ and eval_tag ~state t =
         in
         Hashtbl.add state.context key value;
         Value.null ~value_loc:t.tag_loc ()
-    | `GetContext ->
+    | Tag_GetContext ->
         Hashtbl.find_opt state.context key
         |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | `Portal ->
+    | Tag_Portal ->
         let push =
           match attributes |> StringMap.find_opt "push" with
           | None ->
@@ -1700,12 +1797,13 @@ and eval_tag ~state t =
         in
         Hashtbl.add state.portals key push;
         Value.null ~value_loc:t.tag_loc ()
-    | `Slot -> key |> eval_slot ~state ~tag:t ~attributes
-    | `Custom _ ->
+    | Tag_Slot -> key |> eval_slot ~state ~tag:t ~attributes
+    | Tag_Store -> key |> eval_store ~state ~tag:t ~attributes
+    | Tag_Custom _ ->
         state.tag_environment
         |> StringMap.find_opt key
         |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | `String ->
+    | Tag_String ->
         state.tag_environment
         |> StringMap.find_opt key
         |> Option.map (function
@@ -1715,7 +1813,7 @@ and eval_tag ~state t =
                      value_loc
                      (Printf.sprintf "Expected attribute %s to be of type string." key))
         |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | `Int ->
+    | Tag_Int ->
         state.tag_environment
         |> StringMap.find_opt key
         |> Option.map (function
@@ -1725,7 +1823,7 @@ and eval_tag ~state t =
                      value_loc
                      (Printf.sprintf "Expected attribute %s to be of type int." key))
         |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | `Float ->
+    | Tag_Float ->
         state.tag_environment
         |> StringMap.find_opt key
         |> Option.map (function
@@ -1735,7 +1833,7 @@ and eval_tag ~state t =
                      value_loc
                      (Printf.sprintf "Expected attribute %s to be of type float." key))
         |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | `Boolean ->
+    | Tag_Boolean ->
         state.tag_environment
         |> StringMap.find_opt key
         |> Option.map (function
@@ -1745,7 +1843,7 @@ and eval_tag ~state t =
                      value_loc
                      (Printf.sprintf "Expected attribute %s to be of type bool." key))
         |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | `Array ->
+    | Tag_Array ->
         state.tag_environment
         |> StringMap.find_opt key
         |> Option.map (function
@@ -1769,7 +1867,7 @@ and eval_tag ~state t =
                           children |> eval_expression ~state |> State.get_output)
                    |> Value.of_array ~value_loc:t.tag_loc)
         |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | `Record ->
+    | Tag_Record ->
         state.tag_environment
         |> StringMap.find_opt key
         |> Option.map (function
@@ -1886,9 +1984,7 @@ and eval_declaration ~state declaration =
 let eval_meta declarations =
   let state = State.make declarations in
   let eval attrs =
-    attrs
-    |> Option.value ~default:StringMap.empty
-    |> StringMap.map (fun e -> eval_expression ~state e |> State.get_output)
+    attrs |> StringMap.map (fun e -> eval_expression ~state e |> State.get_output)
   in
   let open Ast in
   declarations
