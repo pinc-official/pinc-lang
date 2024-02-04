@@ -28,7 +28,6 @@ val eval_meta :
   [> `Component of value StringMap.t
   | `Library of value StringMap.t
   | `Page of value StringMap.t
-  | `Site of value StringMap.t
   | `Store of value StringMap.t
   ]
   StringMap.t

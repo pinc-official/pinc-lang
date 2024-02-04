@@ -20,7 +20,7 @@ module Expect : sig
     Pinc_Interpreter_Types.value -> Pinc_Interpreter_Types.value StringMap.t option
 
   val definition_info :
-    ?typ:[< `All | `Component | `Library | `Page | `Site | `Store > `All ] ->
+    ?typ:[< `All | `Component | `Library | `Page | `Store > `All ] ->
     Pinc_Interpreter_Types.value ->
-    ([> `Component | `Library | `Page | `Site | `Store ] * string * bool) option
+    ([> `Component | `Library | `Page | `Store ] * string * bool) option
 end

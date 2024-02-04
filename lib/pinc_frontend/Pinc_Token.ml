@@ -62,7 +62,6 @@ type token_type =
   | KEYWORD_CONTINUE
   | KEYWORD_COMPONENT
   | KEYWORD_LIBRARY
-  | KEYWORD_SITE
   | KEYWORD_PAGE
   | KEYWORD_STORE
   | HTML_OPEN_FRAGMENT
@@ -146,7 +145,6 @@ let to_string = function
   | KEYWORD_CONTINUE -> "continue"
   | KEYWORD_COMPONENT -> "component"
   | KEYWORD_LIBRARY -> "library"
-  | KEYWORD_SITE -> "site"
   | KEYWORD_PAGE -> "page"
   | KEYWORD_STORE -> "store"
   | COMMENT s -> "/* " ^ s ^ " */"
@@ -176,7 +174,6 @@ let is_keyword = function
   | KEYWORD_CONTINUE
   | KEYWORD_COMPONENT
   | KEYWORD_LIBRARY
-  | KEYWORD_SITE
   | KEYWORD_PAGE
   | KEYWORD_STORE -> true
   | COMMENT _
@@ -253,7 +250,6 @@ let keyword_of_string = function
   | "continue" -> Some KEYWORD_CONTINUE
   | "component" -> Some KEYWORD_COMPONENT
   | "library" -> Some KEYWORD_LIBRARY
-  | "site" -> Some KEYWORD_SITE
   | "page" -> Some KEYWORD_PAGE
   | "store" -> Some KEYWORD_STORE
   | _ -> None

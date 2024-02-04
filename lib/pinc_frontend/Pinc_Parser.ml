@@ -747,8 +747,7 @@ module Rules = struct
     let declaration_start = t.token.location.loc_start in
     let* identifier, declaration_type =
       match t.token.typ with
-      | ( Token.KEYWORD_SITE
-        | Token.KEYWORD_PAGE
+      | ( Token.KEYWORD_PAGE
         | Token.KEYWORD_COMPONENT
         | Token.KEYWORD_LIBRARY
         | Token.KEYWORD_STORE ) as typ -> (
@@ -773,8 +772,6 @@ module Rules = struct
           | Some declaration_body -> (
               let declaration_desc = Ast.{ declaration_attributes; declaration_body } in
               match typ with
-              | Token.KEYWORD_SITE ->
-                  Some (identifier, Ast.Declaration_Site declaration_desc)
               | Token.KEYWORD_PAGE ->
                   Some (identifier, Ast.Declaration_Page declaration_desc)
               | Token.KEYWORD_COMPONENT ->
@@ -788,7 +785,7 @@ module Rules = struct
       | _ ->
           Diagnostics.error
             t.token.location
-            "Expected to see a declaration (site, page, component, store or library)."
+            "Expected to see a declaration (page, component, store or library)."
     in
     let declaration_end = t.token.location.loc_end in
     let declaration_loc = Location.make ~s:declaration_start ~e:declaration_end () in

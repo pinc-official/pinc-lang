@@ -202,7 +202,6 @@ module Expect = struct
           match (typ, def_typ) with
           | (`Component | `All), Some `Component -> `Component
           | (`Page | `All), Some `Page -> `Page
-          | (`Site | `All), Some `Site -> `Site
           | (`Library | `All), Some (`Library _) -> `Library
           | (`Store | `All), Some `Store -> `Store
           | _, None ->
@@ -212,8 +211,6 @@ module Expect = struct
               Pinc_Diagnostics.(error Location.none "expected a component definition")
           | `Page, _ ->
               Pinc_Diagnostics.(error Location.none "expected a page definition")
-          | `Site, _ ->
-              Pinc_Diagnostics.(error Location.none "expected a site definition")
           | `Library, _ ->
               Pinc_Diagnostics.(error Location.none "expected a library definition")
           | `Store, _ ->

@@ -322,7 +322,6 @@ let rec get_uppercase_identifier_typ ~state ident =
   | None -> (state, None)
   | Some { declaration_type = Ast.Declaration_Component _; _ } -> (state, Some `Component)
   | Some { declaration_type = Ast.Declaration_Page _; _ } -> (state, Some `Page)
-  | Some { declaration_type = Ast.Declaration_Site _; _ } -> (state, Some `Site)
   | Some { declaration_type = Ast.Declaration_Store _; _ } -> (state, Some `Store)
   | Some { declaration_type = Ast.Declaration_Library { declaration_body; _ }; _ } -> (
       match Hashtbl.find_opt libraries ident with
@@ -1875,7 +1874,6 @@ and eval_declaration ~state declaration =
   state.declarations |> StringMap.find_opt declaration |> function
   | Some Ast.{ declaration_type = Declaration_Component { declaration_body; _ }; _ }
   | Some Ast.{ declaration_type = Declaration_Library { declaration_body; _ }; _ }
-  | Some Ast.{ declaration_type = Declaration_Site { declaration_body; _ }; _ }
   | Some Ast.{ declaration_type = Declaration_Page { declaration_body; _ }; _ }
   | Some Ast.{ declaration_type = Declaration_Store { declaration_body; _ }; _ } ->
       eval_expression ~state declaration_body
@@ -1899,8 +1897,6 @@ let eval_meta declarations =
            -> `Component (eval declaration_attributes)
          | { declaration_type = Declaration_Library { declaration_attributes; _ }; _ } ->
              `Library (eval declaration_attributes)
-         | { declaration_type = Declaration_Site { declaration_attributes; _ }; _ } ->
-             `Site (eval declaration_attributes)
          | { declaration_type = Declaration_Page { declaration_attributes; _ }; _ } ->
              `Page (eval declaration_attributes)
          | { declaration_type = Declaration_Store { declaration_attributes; _ }; _ } ->

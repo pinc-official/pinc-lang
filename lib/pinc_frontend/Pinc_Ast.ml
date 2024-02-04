@@ -124,7 +124,6 @@ and declaration = {
 and declaration_type =
   | Declaration_Component of declaration_desc
   | Declaration_Library of declaration_desc
-  | Declaration_Site of declaration_desc
   | Declaration_Page of declaration_desc
   | Declaration_Store of declaration_desc
 

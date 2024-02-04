@@ -24,7 +24,7 @@ module rec Value : sig
 
   and definition_info =
     string
-    * [ `Component | `Site | `Page | `Store | `Library of Library.t ] option
+    * [ `Component | `Page | `Store | `Library of Library.t ] option
     * [ `Negated | `NotNegated ]
 
   and function_info = {
