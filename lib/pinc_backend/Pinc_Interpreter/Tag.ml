@@ -3,9 +3,9 @@ open Value
 open Pinc_Frontend.Ast
 
 module Tag_Store = struct
-  let eval ~eval_expression ~state ~attributes:attrs tag key =
+  let eval ~eval_expression ~state ~attributes tag key =
     let name, store =
-      match attrs |> StringMap.find_opt "id" with
+      match attributes |> StringMap.find_opt "id" with
       | None -> Pinc_Diagnostics.error tag.tag_loc "Attribute `id` is required on #Store."
       | Some
           {
@@ -24,7 +24,7 @@ module Tag_Store = struct
             "Expected attribute `id` to be a Store definition."
     in
     let is_singleton = store |> Types.Type_Store.is_singleton in
-    let value = state.State.tag_data_provider ~tag:Tag_Record ~key ~attrs in
+    let value = state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes in
     match value with
     | None -> Value.null ~value_loc:tag.tag_loc ()
     | Some { value_desc = Record record; _ } when is_singleton -> (
@@ -32,7 +32,7 @@ module Tag_Store = struct
           {
             state with
             tag_data_provider =
-              (fun ~tag:_ ~attrs:_ ~key -> StringMap.find_opt key record);
+              (fun ~tag:_ ~attributes:_ ~key -> StringMap.find_opt key record);
           }
         in
         store |> Types.Type_Store.body |> eval_expression ~state |> State.get_output
@@ -57,7 +57,7 @@ module Tag_Store = struct
                      {
                        state with
                        tag_data_provider =
-                         (fun ~tag:_ ~attrs:_ ~key -> StringMap.find_opt key record);
+                         (fun ~tag:_ ~attributes:_ ~key -> StringMap.find_opt key record);
                      }
                    in
                    store
@@ -88,25 +88,23 @@ module Tag_Store = struct
 end
 
 module Tag_Slot = struct
-  let find_slot_key tag attributes =
-    attributes
-    |> StringMap.find_opt "slot"
-    |> Option.value ~default:(Value.of_string ~value_loc:tag.tag_loc "")
+  let find_slot_key attributes =
+    attributes |> StringMap.find_opt "slot" |> Option.value ~default:(Value.of_string "")
     |> function
     | { value_desc = String s; _ } -> s
     | { value_loc; _ } ->
         Pinc_Diagnostics.error value_loc "Expected slot attribute to be of type string"
   ;;
 
-  let rec keep_slotted ~tag ~key acc el =
+  let rec keep_slotted ~key acc el =
     match el with
     | ( { value_desc = HtmlTemplateNode (_, attributes, _, _); _ }
       | { value_desc = ComponentTemplateNode (_, _, attributes, _); _ } ) as v ->
-        if find_slot_key tag attributes = key then
+        if find_slot_key attributes = key then
           v :: acc
         else
           acc
-    | { value_desc = Array l; _ } -> l |> Array.fold_left (keep_slotted ~tag ~key) acc
+    | { value_desc = Array l; _ } -> l |> Array.fold_left (keep_slotted ~key) acc
     | { value_desc = String s; _ } when String.trim s = "" -> acc
     | { value_loc; _ } ->
         Pinc_Diagnostics.error
@@ -169,9 +167,13 @@ module Tag_Slot = struct
 
   let eval ~state ~attributes tag key =
     let slotted_elements =
-      state.State.slot_environment
-      |> List.fold_left (keep_slotted ~tag ~key) []
-      |> List.rev
+      match state.State.tag_data_provider ~tag:Tag_Slot ~key ~attributes with
+      | None -> []
+      | Some { value_desc = Array a; _ } -> a |> Array.to_list
+      | Some { value_loc; _ } ->
+          Pinc_Diagnostics.error
+            value_loc
+            (Printf.sprintf "Expected attribute %s to be an array of elements." key)
     in
 
     let min =
@@ -271,8 +273,8 @@ module Tag_Slot = struct
 end
 
 module Tag_Record = struct
-  let eval ~eval_expression ~state ~attributes:attrs ~of' t key =
-    state.State.tag_data_provider ~tag:Tag_Record ~key ~attrs
+  let eval ~eval_expression ~state ~attributes ~of' t key =
+    state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes
     |> Option.map (function
            | { value_desc = Record r; _ } -> r
            | { value_desc = _; value_loc } ->
@@ -284,7 +286,7 @@ module Tag_Record = struct
              {
                state with
                tag_data_provider =
-                 (fun ~tag:_ ~attrs:_ ~key -> StringMap.find_opt key record);
+                 (fun ~tag:_ ~attributes:_ ~key -> StringMap.find_opt key record);
              }
            in
            match of' with
@@ -303,8 +305,8 @@ module Tag_Record = struct
 end
 
 module Tag_Array = struct
-  let eval ~eval_expression ~state ~attributes:attrs ~of' t key =
-    state.State.tag_data_provider ~tag:Tag_Array ~key ~attrs
+  let eval ~eval_expression ~state ~attributes ~of' t key =
+    state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes
     |> Option.map (function
            | { value_desc = Array a; _ } -> a
            | { value_desc = _; value_loc } ->
@@ -321,7 +323,8 @@ module Tag_Array = struct
                       let state =
                         {
                           state with
-                          tag_data_provider = (fun ~tag:_ ~attrs:_ ~key:_ -> Some value);
+                          tag_data_provider =
+                            (fun ~tag:_ ~attributes:_ ~key:_ -> Some value);
                         }
                       in
                       children |> eval_expression ~state |> State.get_output)
@@ -331,8 +334,8 @@ module Tag_Array = struct
 end
 
 module Tag_String = struct
-  let eval ~state ~attributes:attrs t key =
-    state.State.tag_data_provider ~tag:Tag_String ~key ~attrs
+  let eval ~state ~attributes t key =
+    state.State.tag_data_provider ~tag:Tag_String ~key ~attributes
     |> Option.map (function
            | { value_desc = String _; _ } as value -> value
            | { value_desc = _; value_loc } ->
@@ -344,8 +347,8 @@ module Tag_String = struct
 end
 
 module Tag_Int = struct
-  let eval ~state ~attributes:attrs t key =
-    state.State.tag_data_provider ~tag:Tag_Int ~key ~attrs
+  let eval ~state ~attributes t key =
+    state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes
     |> Option.map (function
            | { value_desc = Int _; _ } as value -> value
            | { value_desc = _; value_loc } ->
@@ -357,8 +360,8 @@ module Tag_Int = struct
 end
 
 module Tag_Float = struct
-  let eval ~state ~attributes:attrs t key =
-    state.State.tag_data_provider ~tag:Tag_Float ~key ~attrs
+  let eval ~state ~attributes t key =
+    state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes
     |> Option.map (function
            | { value_desc = Float _; _ } as value -> value
            | { value_desc = _; value_loc } ->
@@ -370,8 +373,8 @@ module Tag_Float = struct
 end
 
 module Tag_Boolean = struct
-  let eval ~(state : State.state) ~attributes:attrs t key =
-    state.tag_data_provider ~tag:Tag_Boolean ~key ~attrs
+  let eval ~(state : State.state) ~attributes t key =
+    state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes
     |> Option.map (function
            | { value_desc = Bool _; _ } as value -> value
            | { value_desc = _; value_loc } ->
@@ -383,8 +386,8 @@ module Tag_Boolean = struct
 end
 
 module Tag_Custom = struct
-  let eval ~state ~attributes:attrs ~name t key =
-    state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attrs
+  let eval ~state ~attributes ~name t key =
+    state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attributes
     |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
   ;;
 end

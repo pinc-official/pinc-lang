@@ -14,8 +14,4 @@ val eval_meta :
   StringMap.t
 
 val eval :
-  ?slot_environment:Types.value list ->
-  tag_data_provider:Types.Type_Tag.data_provider ->
-  root:StringMap.key ->
-  Ast.t ->
-  string
+  tag_data_provider:Types.Type_Tag.data_provider -> root:StringMap.key -> Ast.t -> string

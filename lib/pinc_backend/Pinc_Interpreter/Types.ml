@@ -44,7 +44,6 @@ and Type_State : sig
     declarations : Ast.t;
     output : Type_Value.value;
     environment : environment;
-    slot_environment : Type_Value.value list;
     tag_data_provider : Type_Tag.data_provider;
     tag_cache : (string, Type_Value.value Queue.t) Hashtbl.t;
     context : (string, Type_Value.value) Hashtbl.t;
@@ -116,7 +115,7 @@ and Type_Tag : sig
 
   type data_provider =
     tag:kind ->
-    attrs:Type_Value.value StringMap.t ->
+    attributes:Type_Value.value StringMap.t ->
     key:string ->
     Type_Value.value option
 end =
