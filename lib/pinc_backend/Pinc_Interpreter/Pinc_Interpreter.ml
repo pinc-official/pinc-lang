@@ -1238,13 +1238,20 @@ and eval_template ~state template =
         |> List.map State.get_output
       in
       let render_fn component_tag_attributes =
-        let tag_data_provider ~tag:_ ~attrs:_ ~key =
+        let tag_data_provider ~tag ~attributes:_ ~key =
           (*
              TODO: Should we check the type here?
               ... Probably not, because we will implement
               a type checker which will to this at compile time anyways :)
           *)
-          StringMap.find_opt key component_tag_attributes
+          match tag with
+          | Type_Tag.Tag_Slot ->
+              component_tag_children
+              |> List.fold_left (Tag.Tag_Slot.keep_slotted ~key) []
+              |> List.rev
+              |> Value.of_list ~value_loc:template.template_node_loc
+              |> Option.some
+          | _ -> StringMap.find_opt key component_tag_attributes
         in
 
         let state =
@@ -1253,7 +1260,6 @@ and eval_template ~state template =
             ~portals:state.portals
             ~tag_cache:state.tag_cache
             ~tag_data_provider
-            ~slot_environment:component_tag_children
             state.declarations
         in
         eval_declaration ~state component_tag_identifier |> State.get_output
@@ -1282,7 +1288,7 @@ and eval_declaration ~state declaration =
         ("Declaration with name `" ^ declaration ^ "` was not found.")
 ;;
 
-let noop_data_provider ~tag:_ ~attrs:_ ~key:_ = None
+let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = None
 
 let eval_meta declarations =
   let state = State.make ~tag_data_provider:noop_data_provider declarations in
@@ -1319,10 +1325,10 @@ let get_stdlib () =
        StringMap.empty
 ;;
 
-let eval ?slot_environment ~tag_data_provider ~root declarations =
+let eval ~tag_data_provider ~root declarations =
   let base_lib = get_stdlib () in
   let declarations = StringMap.union (fun _key _x y -> Some y) base_lib declarations in
-  let state = State.make ?slot_environment ~tag_data_provider declarations in
+  let state = State.make ~tag_data_provider declarations in
   let state = eval_declaration ~state root in
   let state =
     if state.portals |> Hashtbl.length > 0 then
