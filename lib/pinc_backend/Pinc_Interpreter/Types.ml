@@ -1,6 +1,6 @@
 module Ast = Pinc_Frontend.Ast
 
-module rec Value : sig
+module rec Type_Value : sig
   type value = {
     value_loc : Pinc_Diagnostics.Location.t;
     value_desc : value_desc;
@@ -25,67 +25,56 @@ module rec Value : sig
   and definition_typ =
     | Definition_Component
     | Definition_Page
-    | Definition_Store of Store.t
-    | Definition_Library of Library.t
+    | Definition_Store of Type_Store.t
+    | Definition_Library of Type_Library.t
 
   and definition_info = string * definition_typ option * [ `Negated | `NotNegated ]
 
   and function_info = {
     parameters : string list;
-    state : State.state;
-    exec : arguments:value StringMap.t -> state:State.state -> unit -> value;
+    state : Type_State.state;
+    exec : arguments:value StringMap.t -> state:Type_State.state -> unit -> value;
   }
-
-  and external_tag =
-    | Tag_String
-    | Tag_Int
-    | Tag_Float
-    | Tag_Boolean
-    | Tag_Array
-    | Tag_Record
-    | Tag_Slot
-    | Tag_Store
-    | Tag_Custom of string
 end =
-  Value
+  Type_Value
 
-and State : sig
+and Type_State : sig
   type state = {
     binding_identifier : (bool * string) option;
     declarations : Ast.t;
-    output : Value.value;
+    output : Type_Value.value;
     environment : environment;
-    slot_environment : Value.value list;
-    tag_environment : Value.value StringMap.t;
-    tag_cache : (string, Value.value Queue.t) Hashtbl.t;
-    context : (string, Value.value) Hashtbl.t;
-    portals : (string, Value.value) Hashtbl.t;
+    slot_environment : Type_Value.value list;
+    tag_data_provider : Type_Tag.data_provider;
+    tag_cache : (string, Type_Value.value Queue.t) Hashtbl.t;
+    context : (string, Type_Value.value) Hashtbl.t;
+    portals : (string, Type_Value.value) Hashtbl.t;
   }
 
   and environment = {
     mutable scope : binding StringMap.t list;
-    mutable use_scope : Library.t StringMap.t;
+    mutable use_scope : Type_Library.t StringMap.t;
   }
 
   and binding = {
     is_mutable : bool;
     is_optional : bool;
-    value : Value.value;
+    value : Type_Value.value;
   }
 end =
-  State
+  Type_State
 
-and Library : sig
+and Type_Library : sig
   type t
 
-  val make : bindings:State.binding StringMap.t -> includes:t StringMap.t -> t
-  val get_bindings : t -> State.binding StringMap.t
-  val get_binding : string -> t -> State.binding option
+  val make : bindings:Type_State.binding StringMap.t -> includes:t StringMap.t -> t
+  val get_bindings : t -> Type_State.binding StringMap.t
+  val get_binding : string -> t -> Type_State.binding option
   val get_includes : t -> t StringMap.t
   val get_include : string -> t -> t option
 end = struct
   type t = {
-    bindings : State.binding StringMap.t;
+    bindings : Type_State.binding StringMap.t;
     includes : t StringMap.t;
   }
 
@@ -96,7 +85,7 @@ end = struct
   let get_include id t = t.includes |> StringMap.find_opt id
 end
 
-and Store : sig
+and Type_Store : sig
   type t
 
   val make : singleton:bool -> body:Ast.expression -> t
@@ -113,5 +102,25 @@ end = struct
   let body t = t.body
 end
 
-include State
-include Value
+and Type_Tag : sig
+  type kind =
+    | Tag_String
+    | Tag_Int
+    | Tag_Float
+    | Tag_Boolean
+    | Tag_Array
+    | Tag_Record
+    | Tag_Slot
+    | Tag_Store
+    | Tag_Custom of string
+
+  type data_provider =
+    tag:kind ->
+    attrs:Type_Value.value StringMap.t ->
+    key:string ->
+    Type_Value.value option
+end =
+  Type_Tag
+
+include Type_Value
+include Type_State

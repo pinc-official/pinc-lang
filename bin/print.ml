@@ -36,15 +36,13 @@ let get_declarations_from ~directory () =
 ;;
 
 let main =
-  Printexc.record_backtrace true;
+  Printexc.record_backtrace false;
 
   let directory = Sys.argv.(1) in
   let root = Sys.argv.(2) in
   let declarations = get_declarations_from ~directory () in
   declarations
-  |> Interpreter.eval ~root
-  |> Interpreter.State.get_output
-  |> Interpreter.Value.to_string
+  |> Interpreter.eval ~root ~tag_data_provider:Interpreter.noop_data_provider
   |> print_endline
 ;;
 

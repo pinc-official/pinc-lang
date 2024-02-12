@@ -1,4 +1,4 @@
-open Pinc_Interpreter_Types
+open Pinc_Interpreter.Types
 
 module Expect = struct
   let required fn value =

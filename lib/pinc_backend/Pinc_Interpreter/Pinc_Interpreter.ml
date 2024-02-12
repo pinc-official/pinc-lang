@@ -1,4 +1,5 @@
-open Pinc_Interpreter_Types
+open Types
+module Types = Types
 module Ast = Pinc_Frontend.Ast
 module Parser = Pinc_Frontend.Parser
 module Location = Pinc_Diagnostics.Location
@@ -10,313 +11,6 @@ let libraries = Hashtbl.create 100
 let add_library ~ident ~library = Hashtbl.add libraries ident library
 let stores = Hashtbl.create 100
 let add_store ~ident ~store = Hashtbl.add stores ident store
-
-module Value = struct
-  let null ?(value_loc = Pinc_Diagnostics.Location.none) () =
-    { value_loc; value_desc = Null }
-  ;;
-
-  let of_char ?(value_loc = Pinc_Diagnostics.Location.none) c =
-    { value_loc; value_desc = Char c }
-  ;;
-
-  let of_string ?(value_loc = Pinc_Diagnostics.Location.none) s =
-    { value_loc; value_desc = String s }
-  ;;
-
-  let of_bool ?(value_loc = Pinc_Diagnostics.Location.none) b =
-    { value_loc; value_desc = Bool b }
-  ;;
-
-  let of_int ?(value_loc = Pinc_Diagnostics.Location.none) i =
-    { value_loc; value_desc = Int i }
-  ;;
-
-  let of_float ?(value_loc = Pinc_Diagnostics.Location.none) f =
-    { value_loc; value_desc = Float f }
-  ;;
-
-  let of_array ?(value_loc = Pinc_Diagnostics.Location.none) l =
-    { value_loc; value_desc = Array l }
-  ;;
-
-  let of_list ?(value_loc = Pinc_Diagnostics.Location.none) l =
-    { value_loc; value_desc = Array (Array.of_list l) }
-  ;;
-
-  let of_string_map ?(value_loc = Pinc_Diagnostics.Location.none) m =
-    { value_loc; value_desc = Record m }
-  ;;
-
-  let make_component ~render ~tag ~attributes =
-    let result = render attributes in
-    {
-      value_loc = Location.none;
-      value_desc = ComponentTemplateNode (render, tag, attributes, result);
-    }
-  ;;
-
-  let rec to_string value =
-    match value.value_desc with
-    | Portal list -> list |> List.rev_map to_string |> String.concat "\n"
-    | Null -> ""
-    | String s -> s
-    | Char c ->
-        let buf = Buffer.create 32 in
-        c |> Buffer.add_utf_8_uchar buf;
-        Buffer.contents buf
-    | Int i -> string_of_int i
-    | Float f when Float.is_integer f -> string_of_int (int_of_float f)
-    | Float f -> string_of_float f
-    | Bool b ->
-        if b then
-          "true"
-        else
-          "false"
-    | Array l ->
-        let buf = Buffer.create 200 in
-        l
-        |> Array.iteri (fun i it ->
-               if i <> 0 then
-                 Buffer.add_char buf '\n';
-               Buffer.add_string buf (to_string it));
-        Buffer.contents buf
-    | Record m ->
-        let b = Buffer.create 1024 in
-        m
-        |> StringMap.to_seq
-        |> Seq.iter (fun (_key, value) ->
-               Buffer.add_string b (to_string value);
-               Buffer.add_char b '\n');
-        Buffer.contents b
-    | HtmlTemplateNode (tag, attributes, children, self_closing) ->
-        let buf = Buffer.create 128 in
-        Buffer.add_char buf '<';
-        Buffer.add_string buf tag;
-        if not (StringMap.is_empty attributes) then
-          attributes
-          |> StringMap.iter (fun key value ->
-                 match value.value_desc with
-                 | Null -> ()
-                 | Portal _
-                 | Function _
-                 | String _
-                 | Int _
-                 | Char _
-                 | Float _
-                 | Bool _
-                 | Array _
-                 | Record _
-                 | HtmlTemplateNode _
-                 | ComponentTemplateNode _
-                 | DefinitionInfo _ ->
-                     Buffer.add_char buf ' ';
-                     Buffer.add_string buf key;
-                     Buffer.add_char buf '=';
-                     Buffer.add_char buf '"';
-                     Buffer.add_string buf (value |> to_string);
-                     Buffer.add_char buf '"');
-        if self_closing && Pinc_HTML.is_void_el tag then
-          Buffer.add_string buf " />"
-        else (
-          Buffer.add_char buf '>';
-          children |> List.iter (fun child -> Buffer.add_string buf (to_string child));
-          Buffer.add_char buf '<';
-          Buffer.add_char buf '/';
-          Buffer.add_string buf tag;
-          Buffer.add_char buf '>');
-        Buffer.contents buf
-    | ComponentTemplateNode (_render_fn, _tag, _attributes, result) -> result |> to_string
-    | Function _ -> ""
-    | DefinitionInfo _ -> ""
-  ;;
-
-  let is_true value =
-    match value.value_desc with
-    | Null -> false
-    | Bool b -> b
-    | String s -> s |> String.trim |> String.length > 0
-    | Char _ -> true
-    | Int _ -> true
-    | Float _ -> true
-    | HtmlTemplateNode _ -> true
-    | ComponentTemplateNode _ -> true
-    | Portal _ -> false
-    | DefinitionInfo (_name, Some _, _negated) -> true
-    | DefinitionInfo (_name, None, _negated) -> false
-    | Function _ -> true
-    | Array [||] -> false
-    | Array _ -> true
-    | Record m -> not (StringMap.is_empty m)
-  ;;
-
-  let rec equal a b =
-    match (a.value_desc, b.value_desc) with
-    | String a, String b -> String.equal a b
-    | Char a, Char b -> Uchar.equal a b
-    | Int a, Int b -> a = b
-    | Float a, Float b -> a = b
-    | Float a, Int b -> a = float_of_int b
-    | Int a, Float b -> float_of_int a = b
-    | Bool a, Bool b -> a = b
-    | Array a, Array b -> Array.combine a b |> Array.for_all (fun (a, b) -> equal a b)
-    | Record a, Record b -> StringMap.equal equal a b
-    | Function _, Function _ -> false
-    | DefinitionInfo (a, _, _), DefinitionInfo (b, _, _) -> String.equal a b
-    | ( HtmlTemplateNode (a_tag, a_attrs, a_children, a_self_closing),
-        HtmlTemplateNode (b_tag, b_attrs, b_children, b_self_closing) ) ->
-        a_tag = b_tag
-        && a_self_closing = b_self_closing
-        && StringMap.equal equal a_attrs b_attrs
-        && a_children = b_children
-    | ( ComponentTemplateNode (_, a_tag, a_attributes, _),
-        ComponentTemplateNode (_, b_tag, b_attributes, _) ) ->
-        a_tag = b_tag && StringMap.equal equal a_attributes b_attributes
-    | Null, Null -> true
-    | _ -> false
-  ;;
-
-  let compare a b =
-    match (a.value_desc, b.value_desc) with
-    | String a, String b -> String.compare a b
-    | Char a, Char b -> Uchar.compare a b
-    | Char a, Int b -> Int.compare (Uchar.to_int a) b
-    | Int a, Char b -> Int.compare a (Uchar.to_int b)
-    | Int a, Int b -> Int.compare a b
-    | Float a, Float b -> Float.compare a b
-    | Float a, Int b -> Float.compare a (float_of_int b)
-    | Int a, Float b -> Float.compare (float_of_int a) b
-    | Bool a, Bool b -> Bool.compare a b
-    | Array a, Array b -> Int.compare (Array.length a) (Array.length b)
-    | Record a, Record b -> StringMap.compare compare a b
-    | Null, Null -> 0
-    | ComponentTemplateNode _, ComponentTemplateNode _ -> 0
-    | HtmlTemplateNode _, HtmlTemplateNode _ -> 0
-    | DefinitionInfo _, DefinitionInfo _ -> 0
-    | Function _, Function _ -> 0
-    | Portal _, _ -> 0
-    | _, Portal _ -> 0
-    | _ -> 0
-  ;;
-end
-
-module State = struct
-  let make
-      ?(context = Hashtbl.create 10)
-      ?(portals = Hashtbl.create 10)
-      ?(tag_cache = Hashtbl.create 10)
-      ?(tag_environment = StringMap.empty)
-      ?(slot_environment = [])
-      declarations =
-    {
-      binding_identifier = None;
-      declarations;
-      output = { value_desc = Null; value_loc = Location.none };
-      environment = { scope = []; use_scope = StringMap.empty };
-      slot_environment;
-      tag_environment;
-      tag_cache;
-      context;
-      portals;
-    }
-  ;;
-
-  let add_scope t =
-    {
-      t with
-      environment = { t.environment with scope = StringMap.empty :: t.environment.scope };
-    }
-  ;;
-
-  let remove_scope t =
-    let new_scope =
-      match t.environment.scope with
-      | [] -> []
-      | [ hd ] -> [ hd ]
-      | _hd :: tl -> tl
-    in
-    { t with environment = { t.environment with scope = new_scope } }
-  ;;
-
-  let add_value_to_scope ~ident ~value ~is_optional ~is_mutable t =
-    let update_scope t =
-      match t.environment.scope with
-      | [] -> assert false
-      | scope :: rest ->
-          StringMap.add ident { is_mutable; is_optional; value } scope :: rest
-    in
-    let environment = { t.environment with scope = update_scope t } in
-    { t with environment }
-  ;;
-
-  let add_value_to_use_scope ~ident ~value t =
-    let use_scope = StringMap.add ident value t.environment.use_scope in
-    let environment = { t.environment with use_scope } in
-    { t with environment }
-  ;;
-
-  let update_value_in_scope ~ident ~value t =
-    let updated = ref false in
-    let rec update_scope state =
-      state.environment.scope
-      |> List.map
-           (StringMap.mapi (fun key binding ->
-                match binding with
-                | binding when key = ident && binding.is_mutable -> { binding with value }
-                | {
-                    value =
-                      { value_desc = Function { state = fn_state; parameters; exec }; _ };
-                    _;
-                  } as binding
-                  when not !updated ->
-                    updated := true;
-                    fn_state.environment.scope <- update_scope fn_state;
-                    {
-                      binding with
-                      value =
-                        {
-                          value with
-                          value_desc = Function { state = fn_state; parameters; exec };
-                        };
-                    }
-                | v -> v))
-    in
-    let new_scope = update_scope t in
-    t.environment.scope <- new_scope
-  ;;
-
-  let add_value_to_function_scopes ~ident ~value ~is_optional ~is_mutable t =
-    let update_scope state =
-      List.map
-        (StringMap.map (function
-            | { value = { value_desc = Function { state; parameters; exec }; _ }; _ } as
-              binding ->
-                let new_state =
-                  add_value_to_scope ~ident ~value ~is_optional ~is_mutable state
-                in
-                {
-                  binding with
-                  value =
-                    {
-                      value with
-                      value_desc = Function { state = new_state; parameters; exec };
-                    };
-                }
-            | v -> v))
-        state.environment.scope
-    in
-    t.environment.scope <- update_scope t
-  ;;
-
-  let get_value_from_scope ~ident t =
-    t.environment.scope |> List.find_map (StringMap.find_opt ident)
-  ;;
-
-  let get_output t = t.output
-  let add_output ~output t = { t with output }
-  let get_bindings t = t.environment.scope |> List.hd
-  let get_used_values t = t.environment.use_scope
-end
 
 let rec get_uppercase_identifier_typ ~state ident =
   let declaration = state.declarations |> StringMap.find_opt ident in
@@ -339,7 +33,11 @@ let rec get_uppercase_identifier_typ ~state ident =
             |> StringMap.find_opt "single"
             |> Option.map (fun expr ->
                    expr
-                   |> eval_expression ~state:(State.make state.declarations)
+                   |> eval_expression
+                        ~state:
+                          (State.make
+                             ~tag_data_provider:state.tag_data_provider
+                             state.declarations)
                    |> State.get_output
                    |> function
                    | { value_desc = Bool b; _ } -> b
@@ -349,7 +47,7 @@ let rec get_uppercase_identifier_typ ~state ident =
                          "The attribute `single` has to be a boolean.")
             |> Option.value ~default:false
           in
-          let store = Store.make ~singleton ~body:declaration_body in
+          let store = Type_Store.make ~singleton ~body:declaration_body in
           add_store ~store ~ident;
           (state, Some (Definition_Store store)))
   | Some { declaration_type = Ast.Declaration_Library { declaration_body; _ }; _ } -> (
@@ -363,7 +61,7 @@ let rec get_uppercase_identifier_typ ~state ident =
           in
           let bindings = s |> State.get_bindings in
           let includes = s |> State.get_used_values in
-          let library = Library.make ~bindings ~includes in
+          let library = Type_Library.make ~bindings ~includes in
           add_library ~library ~ident;
           (state, Some (Definition_Library library)))
 
@@ -441,7 +139,7 @@ and eval_expression ~state expression =
         match path with
         | [] -> (state, name, library)
         | hd :: tl -> (
-            match library |> Library.get_include hd with
+            match library |> Type_Library.get_include hd with
             | Some l -> eval_library_path ~state (hd, l) tl
             | None ->
                 Pinc_Diagnostics.error
@@ -502,7 +200,7 @@ and eval_expression ~state expression =
       state |> State.add_output ~output
   | Ast.LowercaseIdentifierExpression id ->
       eval_lowercase_identifier ~loc:expression.expression_loc ~state id
-  | Ast.TagExpression tag -> eval_tag ~state tag
+  | Ast.TagExpression tag -> Tag.eval ~eval_expression ~state tag
   | Ast.ForInExpression { index; iterator = Lowercase_Id ident; reverse; iterable; body }
     -> eval_for_in ~state ~index_ident:index ~ident ~reverse ~iterable body
   | Ast.TemplateExpression nodes ->
@@ -1052,7 +750,7 @@ and eval_binary_dot_access ~state left right =
       | Some (Definition_Library l) ->
           let output =
             l
-            |> Library.get_binding b
+            |> Type_Library.get_binding b
             |> Option.map (fun b -> b.value)
             |> Option.value
                  ~default:
@@ -1293,12 +991,12 @@ and eval_use ~state ~ident expression =
             StringMap.fold
               (fun ident { is_optional; value; _ } ->
                 State.add_value_to_scope ~ident ~is_mutable:false ~is_optional ~value)
-              (Library.get_bindings library)
+              (Type_Library.get_bindings library)
               state
           in
           StringMap.fold
             (fun ident value -> State.add_value_to_use_scope ~ident ~value)
-            (Library.get_includes library)
+            (Type_Library.get_includes library)
             state)
   | _ ->
       Pinc_Diagnostics.error
@@ -1489,412 +1187,6 @@ and eval_block ~state statements =
   let state = statements |> List.fold_left (fun state -> eval_statement ~state) state in
   state |> State.remove_scope
 
-and eval_store ~state ~tag ~attributes key =
-  let name, store =
-    match attributes |> StringMap.find_opt "id" with
-    | None ->
-        Pinc_Diagnostics.error tag.Ast.tag_loc "Attribute `id` is required on #Store."
-    | Some
-        {
-          value_desc = DefinitionInfo (name, Some (Definition_Store store), `NotNegated);
-          _;
-        } -> (name, store)
-    | Some
-        {
-          value_loc;
-          value_desc = DefinitionInfo (_, Some (Definition_Store _), `Negated);
-          _;
-        } -> Pinc_Diagnostics.error value_loc "Expected store id to not be negated."
-    | Some { value_loc; _ } ->
-        Pinc_Diagnostics.error
-          value_loc
-          "Expected attribute `id` to be a Store definition."
-  in
-  let is_singleton = store |> Store.is_singleton in
-  let value = state.tag_environment |> StringMap.find_opt key in
-  match value with
-  | None -> Value.null ~value_loc:tag.Ast.tag_loc ()
-  | Some { value_desc = Record record; _ } when is_singleton -> (
-      let state = { state with tag_environment = record } in
-      store |> Store.body |> eval_expression ~state |> State.get_output |> function
-      | { value_desc = Record _; _ } as v -> v
-      | { value_desc = _; value_loc } ->
-          Pinc_Diagnostics.error
-            value_loc
-            (Printf.sprintf
-               "The definition of store `%s` needs to be a record describing the shape \
-                and type of values in this store."
-               name))
-  | Some { value_desc = _; value_loc } when is_singleton ->
-      Pinc_Diagnostics.error
-        value_loc
-        (Printf.sprintf "Expected attribute %s to be a record." key)
-  | Some { value_desc = Array array; _ } ->
-      array
-      |> Array.map (function
-             | { value_desc = Record record; _ } -> (
-                 let state = { state with tag_environment = record } in
-                 store |> Store.body |> eval_expression ~state |> State.get_output
-                 |> function
-                 | { value_desc = Record _; _ } as v -> v
-                 | { value_desc = _; value_loc } ->
-                     Pinc_Diagnostics.error
-                       value_loc
-                       (Printf.sprintf
-                          "The definition of store `%s` needs to be a record describing \
-                           the shape and type of values in this store."
-                          name))
-             | { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf "Expected attribute %s to be an array of records." key))
-      |> Value.of_array ~value_loc:tag.Ast.tag_loc
-  | Some { value_desc = _; value_loc } ->
-      Pinc_Diagnostics.error
-        value_loc
-        (Printf.sprintf "Expected attribute %s to be an array." key)
-
-and eval_slot ~state ~tag ~attributes key =
-  let find_slot_key attributes =
-    attributes
-    |> StringMap.find_opt "slot"
-    |> Option.value ~default:(Value.of_string ~value_loc:tag.Ast.tag_loc "")
-    |> function
-    | { value_desc = String s; _ } -> s
-    | { value_loc; _ } ->
-        Pinc_Diagnostics.error value_loc "Expected slot attribute to be of type string"
-  in
-  let rec keep_slotted acc el =
-    match el with
-    | ( { value_desc = HtmlTemplateNode (_, attributes, _, _); _ }
-      | { value_desc = ComponentTemplateNode (_, _, attributes, _); _ } ) as v ->
-        if find_slot_key attributes = key then
-          v :: acc
-        else
-          acc
-    | { value_desc = Array l; _ } -> l |> Array.fold_left keep_slotted acc
-    | { value_desc = String s; _ } when String.trim s = "" -> acc
-    | { value_loc; _ } ->
-        Pinc_Diagnostics.error
-          value_loc
-          "Only template nodes are allowed inside slots. If you want to put another \
-           value (like a string) into a slot, you have to wrap it in some html tag or \
-           component."
-  in
-  let slotted_elements =
-    state.slot_environment |> List.fold_left keep_slotted [] |> List.rev
-  in
-  let min =
-    attributes
-    |> StringMap.find_opt "min"
-    |> Option.map (function
-           | { value_desc = Int i; _ } -> i
-           | { value_loc; _ } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 "Expected attribute min to be of type int.")
-    |> Option.value ~default:0
-  in
-  let max =
-    attributes
-    |> StringMap.find_opt "max"
-    |> Option.map (function
-           | { value_desc = Int i; _ } -> i
-           | { value_loc; _ } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 "Expected attribute max to be of type int.")
-    |> Option.value ~default:Int.max_int
-  in
-  let num_slotted_elements = List.length slotted_elements in
-  let () =
-    match (num_slotted_elements < min, num_slotted_elements > max) with
-    | true, _ ->
-        Pinc_Diagnostics.error
-          tag.Ast.tag_loc
-          (Printf.sprintf
-             "This #Slot did not reach the minimum amount of nodes (specified as %i)."
-             min)
-    | _, true ->
-        Pinc_Diagnostics.error
-          tag.Ast.tag_loc
-          (Printf.sprintf
-             "This #Slot was provided more than the maximum amount of nodes (specified \
-              as %i)."
-             max)
-    | false, false -> ()
-  in
-  let constraints =
-    attributes
-    |> StringMap.find_opt "constraints"
-    |> Option.map (function
-           | { value_desc = Array a; _ } -> a
-           | { value_desc = _; value_loc } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 "slot contraints need to be an array of definitions which are either \
-                  allowed or disallowed")
-    |> Option.map
-         (Array.map (function
-             | {
-                 value_desc = DefinitionInfo (name, Some Definition_Component, negated);
-                 _;
-               } -> (name, negated)
-             | { value_desc = DefinitionInfo (name, None, _negated); value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   ("definition `" ^ name ^ "` does not exist")
-             | { value_desc = DefinitionInfo (name, _typ, _negated); value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   ("definition `"
-                   ^ name
-                   ^ "` is not a component. Expected to see a component definition at \
-                      this point.")
-             | { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   "Expected to see a component definition at this point"))
-  in
-  let check_instance_restriction tag =
-    match constraints with
-    | None -> Result.ok ()
-    | Some [||] ->
-        Result.error
-          (Printf.sprintf
-             "Child with tag `%s` may not be used inside this #Slot. \n\
-              It has an empty array set as constrints, which leads to nothing being \
-              allowed to be placed inside."
-             tag)
-    | Some restrictions ->
-        let is_in_list = ref false in
-        let allowed, disallowed =
-          restrictions
-          |> Array.to_list
-          |> List.partition_map (fun (name, negated) ->
-                 if name = tag then
-                   is_in_list := true;
-                 if negated = `Negated then
-                   Either.right name
-                 else
-                   Either.left name)
-        in
-        let is_allowed =
-          match (allowed, disallowed) with
-          | [], _disallowed -> not !is_in_list
-          | _allowed, [] -> !is_in_list
-          | allowed, _disallowed -> List.mem tag allowed
-        in
-        if is_allowed then
-          Result.ok ()
-        else (
-          let contraints =
-            constraints
-            |> Option.map Array.to_list
-            |> Option.value ~default:[]
-            |> List.map (fun (name, negated) ->
-                   if negated = `Negated then
-                     "!" ^ name
-                   else
-                     name)
-            |> String.concat ","
-          in
-          Result.error
-            (Printf.sprintf
-               "Child with tag `%s` may not be used inside this #Slot. The following \
-                restrictions are set: [ %s ]"
-               tag
-               contraints))
-  in
-  slotted_elements
-  |> List.map (function
-         | ( { value_desc = HtmlTemplateNode (tag_name, _, _, _); value_loc }
-           | { value_desc = ComponentTemplateNode (_, tag_name, _, _); value_loc } ) as v
-           -> (
-             match check_instance_restriction tag_name with
-             | Ok () -> v
-             | Error e -> Pinc_Diagnostics.error value_loc e)
-         | { value_desc = _; value_loc } ->
-             Pinc_Diagnostics.error
-               value_loc
-               "Tried to assign a non node value to a #Slot. Only template nodes are \
-                allowed inside slots. If you want to put another value (like a string) \
-                into a slot, you have to wrap it in some html tag or component.")
-  |> Value.of_list ~value_loc:tag.Ast.tag_loc
-
-and eval_tag ~state t =
-  let Ast.{ tag; attributes; transformer } = t.tag_desc in
-  let key =
-    attributes
-    |> StringMap.find_opt "key"
-    |> Option.map (fun it -> it |> eval_expression ~state |> State.get_output)
-  in
-  let key, state =
-    match (key, state.binding_identifier) with
-    | None, Some (_optional, ident) -> (ident, { state with binding_identifier = None })
-    | Some { value_desc = String key; _ }, _ -> (key, state)
-    | Some { value_desc = _; value_loc }, _ ->
-        Pinc_Diagnostics.error
-          value_loc
-          "Expected attribute `key` on tag to be of type string"
-    | None, None -> ("", state)
-  in
-
-  let apply_transformer ~transformer value =
-    match transformer with
-    | Some transformer ->
-        let Ast.Lowercase_Id (ident, _ident_location), expr = transformer in
-        let state =
-          state
-          |> State.add_scope
-          |> State.add_value_to_scope ~ident ~value ~is_optional:false ~is_mutable:false
-        in
-        let state = eval_expression ~state expr in
-        let state = state |> State.remove_scope in
-        state |> State.get_output
-    | _ -> value
-  in
-
-  let of' = attributes |> StringMap.find_opt "of" in
-  let attributes =
-    attributes
-    |> StringMap.remove "of"
-    |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
-  in
-  let value =
-    match tag with
-    | Tag_CreatePortal ->
-        {
-          value_desc = Portal (Hashtbl.find_all state.portals key);
-          value_loc = t.tag_loc;
-        }
-    | Tag_SetContext ->
-        let value =
-          attributes |> StringMap.find_opt "value" |> function
-          | None ->
-              Pinc_Diagnostics.error
-                t.tag_loc
-                "attribute value is required when setting a context."
-          | Some { value_desc = Function _; value_loc } ->
-              Pinc_Diagnostics.error value_loc "a function can not be put into a context."
-          | Some value -> value
-        in
-        Hashtbl.add state.context key value;
-        Value.null ~value_loc:t.tag_loc ()
-    | Tag_GetContext ->
-        Hashtbl.find_opt state.context key
-        |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | Tag_Portal ->
-        let push =
-          match attributes |> StringMap.find_opt "push" with
-          | None ->
-              Pinc_Diagnostics.error
-                t.tag_loc
-                "The attribute `push` is required when pushing a value into a portal."
-          | Some { value_desc = Function _; value_loc } ->
-              Pinc_Diagnostics.error value_loc "A function can not be put into a portal."
-          | Some value -> value
-        in
-        Hashtbl.add state.portals key push;
-        Value.null ~value_loc:t.tag_loc ()
-    | Tag_Slot -> key |> eval_slot ~state ~tag:t ~attributes
-    | Tag_Store -> key |> eval_store ~state ~tag:t ~attributes
-    | Tag_Custom _ ->
-        state.tag_environment
-        |> StringMap.find_opt key
-        |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | Tag_String ->
-        state.tag_environment
-        |> StringMap.find_opt key
-        |> Option.map (function
-               | { value_desc = String _; _ } as value -> value
-               | { value_desc = _; value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     (Printf.sprintf "Expected attribute %s to be of type string." key))
-        |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | Tag_Int ->
-        state.tag_environment
-        |> StringMap.find_opt key
-        |> Option.map (function
-               | { value_desc = Int _; _ } as value -> value
-               | { value_desc = _; value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     (Printf.sprintf "Expected attribute %s to be of type int." key))
-        |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | Tag_Float ->
-        state.tag_environment
-        |> StringMap.find_opt key
-        |> Option.map (function
-               | { value_desc = Float _; _ } as value -> value
-               | { value_desc = _; value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     (Printf.sprintf "Expected attribute %s to be of type float." key))
-        |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | Tag_Boolean ->
-        state.tag_environment
-        |> StringMap.find_opt key
-        |> Option.map (function
-               | { value_desc = Bool _; _ } as value -> value
-               | { value_desc = _; value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     (Printf.sprintf "Expected attribute %s to be of type bool." key))
-        |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | Tag_Array ->
-        state.tag_environment
-        |> StringMap.find_opt key
-        |> Option.map (function
-               | { value_desc = Array a; _ } -> a
-               | { value_desc = _; value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     (Printf.sprintf "Expected attribute %s to be an array." key))
-        |> Option.map (fun array ->
-               match of' with
-               | None ->
-                   Pinc_Diagnostics.error
-                     t.tag_loc
-                     "Attribute `of` is required on #Array."
-               | Some children ->
-                   array
-                   |> Array.map (fun value ->
-                          let state =
-                            { state with tag_environment = StringMap.singleton "" value }
-                          in
-                          children |> eval_expression ~state |> State.get_output)
-                   |> Value.of_array ~value_loc:t.tag_loc)
-        |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-    | Tag_Record ->
-        state.tag_environment
-        |> StringMap.find_opt key
-        |> Option.map (function
-               | { value_desc = Record r; _ } -> r
-               | { value_desc = _; value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     (Printf.sprintf "Expected attribute %s to be a record." key))
-        |> Option.map (fun record ->
-               let state = { state with tag_environment = record } in
-               match of' with
-               | None ->
-                   Pinc_Diagnostics.error
-                     t.tag_loc
-                     "Attribute `of` is required on #Record."
-               | Some children -> (
-                   children |> eval_expression ~state |> State.get_output |> function
-                   | { value_desc = Record _; _ } as v -> v
-                   | { value_desc = _; value_loc } ->
-                       Pinc_Diagnostics.error
-                         value_loc
-                         "Attribute `of` needs to be a record describing the shape and \
-                          type of values in this record."))
-        |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
-  in
-  state |> State.add_output ~output:(value |> apply_transformer ~transformer)
-
 and eval_template ~state template =
   match template.template_node_desc with
   | Ast.TextTemplateNode text ->
@@ -1946,12 +1238,21 @@ and eval_template ~state template =
         |> List.map State.get_output
       in
       let render_fn component_tag_attributes =
+        let tag_data_provider ~tag:_ ~attrs:_ ~key =
+          (*
+             TODO: Should we check the type here?
+              ... Probably not, because we will implement
+              a type checker which will to this at compile time anyways :)
+          *)
+          StringMap.find_opt key component_tag_attributes
+        in
+
         let state =
           State.make
             ~context:state.context
             ~portals:state.portals
             ~tag_cache:state.tag_cache
-            ~tag_environment:component_tag_attributes
+            ~tag_data_provider
             ~slot_environment:component_tag_children
             state.declarations
         in
@@ -1981,8 +1282,10 @@ and eval_declaration ~state declaration =
         ("Declaration with name `" ^ declaration ^ "` was not found.")
 ;;
 
+let noop_data_provider ~tag:_ ~attrs:_ ~key:_ = None
+
 let eval_meta declarations =
-  let state = State.make declarations in
+  let state = State.make ~tag_data_provider:noop_data_provider declarations in
   let eval attrs =
     attrs |> StringMap.map (fun e -> eval_expression ~state e |> State.get_output)
   in
@@ -2016,18 +1319,16 @@ let get_stdlib () =
        StringMap.empty
 ;;
 
-let eval ?tag_environment ?slot_environment ~root declarations =
+let eval ?slot_environment ~tag_data_provider ~root declarations =
   let base_lib = get_stdlib () in
   let declarations = StringMap.union (fun _key _x y -> Some y) base_lib declarations in
-  let state = State.make ?tag_environment ?slot_environment declarations in
+  let state = State.make ?slot_environment ~tag_data_provider declarations in
   let state = eval_declaration ~state root in
-  if state.portals |> Hashtbl.length > 0 then
-    eval_declaration ~state root
-  else
-    state
-;;
-
-let from_source ?(filename = "") ~source root =
-  let declarations = Parser.parse ~filename source in
-  eval ~root declarations
+  let state =
+    if state.portals |> Hashtbl.length > 0 then
+      eval_declaration ~state root
+    else
+      state
+  in
+  state |> State.get_output |> Value.to_string
 ;;
