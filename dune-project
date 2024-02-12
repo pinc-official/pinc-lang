@@ -1,6 +1,8 @@
-(lang dune 3.7)
+(lang dune 3.8)
 
 (using action-plugin 0.1)
+
+(using melange 0.1)
 
 (name pinc-lang)
 
@@ -24,11 +26,12 @@
  (synopsis "The PiNC Language as Syntax and Interpreter")
  (depends
   (ocaml
-   (>= 4.12))
+   (< 5.2))
   fmt
   dune
   crunch
   containers
+  melange
   (bisect_ppx :with-test)
   ; (ocaml-lsp-server :with-dev-setup)
   ; (ocamlformat :with-dev-setup)

@@ -1,5 +1,6 @@
 (library
  (name Pinc_Includes)
+ (modes native melange)
  (public_name pinc-lang.includes))
 
 (rule

@@ -1,6 +1,7 @@
 (library
  (name Pinc_Diagnostics)
  (public_name pinc-lang.diagnostics)
- (libraries fmt)
+ (modes native melange)
+ (libraries)
  (instrumentation
   (backend bisect_ppx)))

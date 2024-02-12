@@ -7,11 +7,12 @@ license: "MIT"
 homepage: "https://github.com/pinc-lang/pinc-lang"
 bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
 depends: [
-  "ocaml" {>= "4.12"}
+  "ocaml" {< "5.2"}
   "fmt"
-  "dune" {>= "3.7"}
+  "dune" {>= "3.8"}
   "crunch"
   "containers"
+  "melange"
   "bisect_ppx" {with-test}
   "odoc" {with-doc}
 ]

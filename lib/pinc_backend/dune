@@ -3,6 +3,7 @@
 (library
  (name Pinc_Backend)
  (public_name pinc-lang.backend)
- (libraries unix Pinc_Diagnostics Pinc_Frontend Pinc_Includes containers)
+ (modes native melange)
+ (libraries Pinc_Diagnostics Pinc_Frontend Pinc_Includes)
  (instrumentation
   (backend landmarks --auto)))

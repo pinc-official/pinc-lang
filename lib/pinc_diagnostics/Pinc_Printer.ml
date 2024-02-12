@@ -31,7 +31,7 @@ let seek_lines_after ~count ic pos =
   loop 1 0
 ;;
 
-let print_code ~color ~loc ic =
+let print_code ~color:_ ~loc ic =
   let context_lines = 1 in
   let start_pos = loc.Location.loc_start in
   let end_pos = loc.Location.loc_end in
@@ -56,18 +56,15 @@ let print_code ~color ~loc ic =
   in
   let buf = Buffer.create 100 in
   let ppf = Format.formatter_of_buffer buf in
-  Fmt.set_style_renderer ppf `Ansi_tty;
   lines
   |> List.iter (fun (line_number, line) ->
          if line_number >= highlight_line_start && line_number <= highlight_line_end then
-           Fmt.pf
-             ppf
-             "%a"
-             Fmt.(styled `Bold (styled (`Fg color) (fun ppf -> Fmt.pf ppf "%4d")))
-             line_number
+           Format.fprintf ppf "@{<bold>@{<red>%4d@}@}" line_number
          else
-           Fmt.pf ppf "%4d" line_number;
-         Fmt.pf ppf " %a " Fmt.(styled `Faint string) "│";
+           Format.fprintf ppf "%4d" line_number;
+
+         Format.fprintf ppf "@{<gray> | @}";
+
          line
          |> String.iteri (fun column_index ch ->
                 let column_number = column_index + 1 in
@@ -87,9 +84,9 @@ let print_code ~color ~loc ic =
                   || (between_lines && between_columns)
                   || (on_line_end && (not on_line_start) && before_column_start)
                 then
-                  Fmt.pf ppf "%a" Fmt.(styled `Bold (styled (`Fg color) char)) ch
+                  Format.fprintf ppf "@{<bold>@{<red>%c@}@}" ch
                 else
-                  Fmt.pf ppf "%a" Fmt.(styled `None char) ch);
+                  Format.fprintf ppf "%c" ch);
          Format.pp_print_newline ppf ());
   Buffer.contents buf
 ;;
@@ -116,16 +113,10 @@ let print_loc ppf (loc : Location.t) =
           loc.loc_end.line
           loc.loc_end.column
     in
-    Fmt.pf
-      ppf
-      "%a"
-      Fmt.(styled `Faint string)
-      (Printf.sprintf "in file %s:%s" loc.loc_start.filename loc_string))
+    Format.fprintf ppf "in file %s:%s" loc.loc_start.filename loc_string)
 ;;
 
-let print_header ppf ~color text =
-  Fmt.pf ppf "%a" Fmt.(styled `Bold (styled color string)) text
-;;
+let print_header ppf ~color:_ text = Format.fprintf ppf "@{<bold>@{<red>%s@}@}" text
 
 let print ~kind ppf (loc : Location.t) =
   let color, header =
@@ -133,10 +124,10 @@ let print ~kind ppf (loc : Location.t) =
     | `warning -> (`Yellow, "WARNING")
     | `error -> (`Red, "ERROR")
   in
-  Fmt.pf ppf "@[%a@] " (print_header ~color) header;
-  Fmt.pf ppf "@[%a@]@," print_loc loc;
+  Format.fprintf ppf "@[%a@] " (print_header ~color) header;
+  Format.fprintf ppf "@[%a@]@," print_loc loc;
   try
     In_channel.with_open_bin loc.loc_start.filename (fun ic ->
-        Fmt.pf ppf "@,%s" (print_code ~color ~loc ic))
+        Format.fprintf ppf "@,%s" (print_code ~color ~loc ic))
   with Sys_error _ -> ()
 ;;

@@ -1,6 +1,7 @@
 (library
  (name pinc)
  (public_name pinc-lang)
+ (modes native melange)
  (libraries Pinc_Backend Pinc_Includes)
  (instrumentation
   (backend bisect_ppx)))

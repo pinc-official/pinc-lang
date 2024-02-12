@@ -802,9 +802,12 @@ and eval_binary_bracket_access ~state left right =
       let output =
         try
           a
-          |> CCUtf8_string.of_string_exn
-          |> CCUtf8_string.to_list
+          (* |> CCUtf8_string.of_string_exn
+             |> CCUtf8_string.to_list *)
+          |> String.to_seq
+          |> List.of_seq
           |> Fun.flip List.nth b
+          |> Uchar.of_char
           |> Value.of_char
                ~value_loc:
                  (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
@@ -1098,16 +1101,19 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       let map s =
         if reverse then
           s
-          |> CCUtf8_string.to_seq
-          |> CCSeq.to_rev_list
-          |> List.to_seq
-          |> Seq.map (fun c -> c |> Value.of_char ~value_loc:iterable_value.value_loc)
+          (* |> CCUtf8_string.to_seq
+             |> CCSeq.to_rev_list *)
+          |> String.to_seq
+          |> Seq.map (fun c ->
+                 c |> Uchar.of_char |> Value.of_char ~value_loc:iterable_value.value_loc)
         else
           s
-          |> CCUtf8_string.to_seq
-          |> Seq.map (fun c -> c |> Value.of_char ~value_loc:iterable_value.value_loc)
+          (* |> CCUtf8_string.to_seq *)
+          |> String.to_seq
+          |> Seq.map (fun c ->
+                 c |> Uchar.of_char |> Value.of_char ~value_loc:iterable_value.value_loc)
       in
-      let state, res = s |> CCUtf8_string.of_string_exn |> map |> loop ~state [] in
+      let state, res = s |> map |> loop ~state [] in
       state
       |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.expression_loc)
   | Null -> state |> State.add_output ~output:iterable_value

@@ -1,0 +1,4 @@
+(melange.emit
+ (module_systems es6)
+ (target js)
+ (libraries pinc-lang))
