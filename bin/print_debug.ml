@@ -16,10 +16,7 @@ let main =
   let ast = src |> Parser.parse ~filename in
   let end_time_parser = Unix.gettimeofday () in
   let result =
-    ast
-    |> Interpreter.eval ~root
-    |> Interpreter.State.get_output
-    |> Interpreter.Value.to_string
+    ast |> Interpreter.eval ~tag_data_provider:Interpreter.noop_data_provider ~root
   in
   let end_time = Unix.gettimeofday () in
   Printf.printf "Lexer & Parser: %fms\n" ((end_time_parser -. start_time) *. 1000.);
