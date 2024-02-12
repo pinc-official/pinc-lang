@@ -175,7 +175,13 @@ end = struct
       | Interp root ->
           let ast = Pinc.Parser.parse ~filename src in
           fun _ ->
-            let _ = Sys.opaque_identity (Pinc.Interpreter.eval ~root ast) in
+            let _ =
+              Sys.opaque_identity
+                (Pinc.Interpreter.eval
+                   ~tag_data_provider:Pinc.Interpreter.noop_data_provider
+                   ~root
+                   ast)
+            in
             ()
     in
     let name = filename ^ " " ^ string_of_action action in
