@@ -5,7 +5,9 @@ component SubComponent {
   
   let num = #Int :: val -> val ** 2;
   
-  let array_things = #Array(of: #Int :: i -> i + 2);
+  let array_things = #Array(of: #Record(of: {
+    i: #Int :: i -> i + 2
+  }));
   
   let record = #Record(of: {
     a: #Int(default: 12) :: val -> if (val == 12) "NEEEEIN" else "JAP",
@@ -17,7 +19,7 @@ component SubComponent {
   <div class="SubComponent" data-foo={num}>
     {content}
 
-    {array_things}
+    {array_things |> Base.Array.map(fn r -> r.i)}
 
     {record.a}
     {record.b}

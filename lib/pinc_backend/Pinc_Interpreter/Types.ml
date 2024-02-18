@@ -45,6 +45,7 @@ and Type_State : sig
     output : Type_Value.value;
     environment : environment;
     tag_data_provider : Type_Tag.data_provider;
+    tag_path : string list;
     tag_cache : (string, Type_Value.value Queue.t) Hashtbl.t;
     context : (string, Type_Value.value) Hashtbl.t;
     portals : (string, Type_Value.value) Hashtbl.t;
@@ -113,10 +114,24 @@ and Type_Tag : sig
     | Tag_Store
     | Tag_Custom of string
 
+  (* type meta =
+     string
+     * [ `String
+       | `Int
+       | `Float
+       | `Boolean
+       | `Array of meta
+       | `Record of meta
+       | `Slot
+       | `Store
+       | `Custom of string
+       ]
+       list *)
+
   type data_provider =
     tag:kind ->
     attributes:Type_Value.value StringMap.t ->
-    key:string ->
+    key:string list ->
     Type_Value.value option
 end =
   Type_Tag
