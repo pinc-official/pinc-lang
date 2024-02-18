@@ -1242,16 +1242,26 @@ and eval_template ~state template =
           (*
              TODO: Should we check the type here?
               ... Probably not, because we will implement
-              a type checker which will to this at compile time anyways :)
+              a type checker which will do this at compile time anyways :)
           *)
           match tag with
           | Type_Tag.Tag_Slot ->
               component_tag_children
-              |> List.fold_left (Tag.Tag_Slot.keep_slotted ~key) []
+              |> List.fold_left
+                   (Tag.Tag_Slot.keep_slotted ~key:(key |> List.rev |> List.hd))
+                   []
               |> List.rev
               |> Value.of_list ~value_loc:template.template_node_loc
               |> Option.some
-          | _ -> StringMap.find_opt key component_tag_attributes
+          | Type_Tag.Tag_Array ->
+              StringMap.find_opt (key |> List.rev |> List.hd) component_tag_attributes
+              |> Fun.flip Option.bind (function
+                     | { value_desc = Array a; _ } ->
+                         a |> Array.length |> Value.of_int |> Option.some
+                     | _ -> None)
+          | _ ->
+              StringMap.find_opt (key |> List.hd) component_tag_attributes
+              |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
         in
 
         let state =

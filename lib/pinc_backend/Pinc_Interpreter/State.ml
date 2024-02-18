@@ -5,6 +5,7 @@ let make
     ?(context = Hashtbl.create 10)
     ?(portals = Hashtbl.create 10)
     ?(tag_cache = Hashtbl.create 10)
+    ?(tag_path = [])
     ~tag_data_provider
     declarations =
   {
@@ -13,6 +14,7 @@ let make
     output = { value_desc = Null; value_loc = Pinc_Diagnostics.Location.none };
     environment = { scope = []; use_scope = StringMap.empty };
     tag_data_provider;
+    tag_path;
     tag_cache;
     context;
     portals;

@@ -2,7 +2,74 @@ open State
 open Value
 open Pinc_Frontend.Ast
 
+let find_path path value =
+  let rec aux path value =
+    match (path, value) with
+    | key :: rest, { value_desc = Record r; _ } ->
+        r |> StringMap.find_opt key |> Fun.flip Option.bind (aux rest)
+    | key :: rest, { value_desc = Array a; _ } -> (
+        try Array.get a (int_of_string key) |> aux rest
+        with Failure _ | Invalid_argument _ -> None)
+    | _, value -> value |> Option.some
+  in
+  aux path value
+;;
+
+module Utils = struct
+  let apply_transformer ~eval_expression ~state ~transformer value =
+    match transformer with
+    | Some transformer ->
+        let Lowercase_Id (ident, _ident_location), expr = transformer in
+        let state =
+          state
+          |> State.add_scope
+          |> State.add_value_to_scope ~ident ~value ~is_optional:false ~is_mutable:false
+        in
+        let state = eval_expression ~state expr in
+        let state = state |> State.remove_scope in
+        state |> State.get_output
+    | _ -> value
+  ;;
+
+  let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = None
+end
+
 module Tag_Store = struct
+  let eval_body ~name ~state ~eval_expression ~value store =
+    let tag_data_provider ~tag ~attributes:_ ~key =
+      match tag with
+      | Types.Type_Tag.Tag_Array ->
+          value
+          |> StringMap.find_opt (key |> List.rev |> List.hd)
+          |> Fun.flip Option.bind (function
+                 | { value_desc = Array a; _ } ->
+                     a |> Array.length |> Value.of_int |> Option.some
+                 | _ -> None)
+      | _ ->
+          value
+          |> StringMap.find_opt (key |> List.hd)
+          |> Fun.flip Option.bind (find_path (key |> List.tl))
+    in
+    let state =
+      State.make
+        ~context:state.context
+        ~portals:state.portals
+        ~tag_cache:state.tag_cache
+        ~tag_data_provider
+        state.declarations
+    in
+    store |> Types.Type_Store.body |> eval_expression ~state |> State.get_output
+    |> function
+    | { value_desc = Record _; _ } as v -> v
+    | { value_desc = _; value_loc } ->
+        Pinc_Diagnostics.error
+          value_loc
+          (Printf.sprintf
+             "The definition of store `%s` needs to be a record describing the shape and \
+              type of values in this store."
+             name)
+  ;;
+
   let eval ~eval_expression ~state ~attributes tag key =
     let name, store =
       match attributes |> StringMap.find_opt "id" with
@@ -27,16 +94,8 @@ module Tag_Store = struct
     let value = state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes in
     match value with
     | None -> Value.null ~value_loc:tag.tag_loc ()
-    | Some { value_desc = Record record; _ } when is_singleton -> (
-        let state =
-          {
-            state with
-            tag_data_provider =
-              (fun ~tag:_ ~attributes:_ ~key -> StringMap.find_opt key record);
-          }
-        in
-        store |> Types.Type_Store.body |> eval_expression ~state |> State.get_output
-        |> function
+    | Some { value_desc = Record value; _ } when is_singleton -> (
+        store |> eval_body ~name ~value ~eval_expression ~state |> function
         | { value_desc = Record _; _ } as v -> v
         | { value_desc = _; value_loc } ->
             Pinc_Diagnostics.error
@@ -48,42 +107,27 @@ module Tag_Store = struct
     | Some { value_desc = _; value_loc } when is_singleton ->
         Pinc_Diagnostics.error
           value_loc
-          (Printf.sprintf "Expected attribute %s to be a record." key)
+          (Printf.sprintf
+             "Expected attribute %s to be a record."
+             (key |> List.rev |> List.hd))
     | Some { value_desc = Array array; _ } ->
         array
         |> Array.map (function
-               | { value_desc = Record record; _ } -> (
-                   let state =
-                     {
-                       state with
-                       tag_data_provider =
-                         (fun ~tag:_ ~attributes:_ ~key -> StringMap.find_opt key record);
-                     }
-                   in
-                   store
-                   |> Types.Type_Store.body
-                   |> eval_expression ~state
-                   |> State.get_output
-                   |> function
-                   | { value_desc = Record _; _ } as v -> v
-                   | { value_desc = _; value_loc } ->
-                       Pinc_Diagnostics.error
-                         value_loc
-                         (Printf.sprintf
-                            "The definition of store `%s` needs to be a record \
-                             describing the shape and type of values in this store."
-                            name))
+               | { value_desc = Record value; _ } ->
+                   store |> eval_body ~name ~value ~eval_expression ~state
                | { value_desc = _; value_loc } ->
                    Pinc_Diagnostics.error
                      value_loc
                      (Printf.sprintf
                         "Expected attribute %s to be an array of records."
-                        key))
+                        (key |> List.rev |> List.hd)))
         |> Value.of_array ~value_loc:tag.tag_loc
     | Some { value_desc = _; value_loc } ->
         Pinc_Diagnostics.error
           value_loc
-          (Printf.sprintf "Expected attribute %s to be an array." key)
+          (Printf.sprintf
+             "Expected attribute %s to be an array."
+             (key |> List.rev |> List.hd))
   ;;
 end
 
@@ -173,7 +217,9 @@ module Tag_Slot = struct
       | Some { value_loc; _ } ->
           Pinc_Diagnostics.error
             value_loc
-            (Printf.sprintf "Expected attribute %s to be an array of elements." key)
+            (Printf.sprintf
+               "Expected attribute %s to be an array of elements."
+               (key |> List.rev |> List.hd))
     in
 
     let min =
@@ -280,15 +326,11 @@ module Tag_Record = struct
            | { value_desc = _; value_loc } ->
                Pinc_Diagnostics.error
                  value_loc
-                 (Printf.sprintf "Expected attribute %s to be a record." key))
-    |> Option.map (fun record ->
-           let state =
-             {
-               state with
-               tag_data_provider =
-                 (fun ~tag:_ ~attributes:_ ~key -> StringMap.find_opt key record);
-             }
-           in
+                 (Printf.sprintf
+                    "Expected attribute %s to be a record."
+                    (key |> List.rev |> List.hd)))
+    |> Option.map (fun _ ->
+           let state = { state with tag_path = key } in
            match of' with
            | None ->
                Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Record."
@@ -308,27 +350,25 @@ module Tag_Array = struct
   let eval ~eval_expression ~state ~attributes ~of' t key =
     state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes
     |> Option.map (function
-           | { value_desc = Array a; _ } -> a
+           | { value_desc = Int i; _ } -> i
            | { value_desc = _; value_loc } ->
                Pinc_Diagnostics.error
                  value_loc
-                 (Printf.sprintf "Expected attribute %s to be an array." key))
-    |> Option.map (fun array ->
+                 (Printf.sprintf
+                    "Expected attribute %s to be an int (the length of the array)."
+                    (key |> List.rev |> List.hd)))
+    |> Option.map (fun len ->
            match of' with
            | None ->
                Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Array."
            | Some children ->
-               array
-               |> Array.map (fun value ->
-                      let state =
-                        {
-                          state with
-                          tag_data_provider =
-                            (fun ~tag:_ ~attributes:_ ~key:_ -> Some value);
-                        }
-                      in
-                      children |> eval_expression ~state |> State.get_output)
-               |> Value.of_array ~value_loc:t.tag_loc)
+               let state = { state with tag_path = key } in
+               List.init len (fun i ->
+                   let binding_identifier = Some (false, string_of_int i) in
+                   children
+                   |> eval_expression ~state:{ state with binding_identifier }
+                   |> State.get_output)
+               |> Value.of_list ~value_loc:t.tag_loc)
     |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
   ;;
 end
@@ -341,7 +381,9 @@ module Tag_String = struct
            | { value_desc = _; value_loc } ->
                Pinc_Diagnostics.error
                  value_loc
-                 (Printf.sprintf "Expected attribute %s to be of type string." key))
+                 (Printf.sprintf
+                    "Expected attribute %s to be of type string."
+                    (key |> List.rev |> List.hd)))
     |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
   ;;
 end
@@ -354,7 +396,9 @@ module Tag_Int = struct
            | { value_desc = _; value_loc } ->
                Pinc_Diagnostics.error
                  value_loc
-                 (Printf.sprintf "Expected attribute %s to be of type int." key))
+                 (Printf.sprintf
+                    "Expected attribute %s to be of type int."
+                    (key |> List.rev |> List.hd)))
     |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
   ;;
 end
@@ -367,7 +411,9 @@ module Tag_Float = struct
            | { value_desc = _; value_loc } ->
                Pinc_Diagnostics.error
                  value_loc
-                 (Printf.sprintf "Expected attribute %s to be of type float." key))
+                 (Printf.sprintf
+                    "Expected attribute %s to be of type float."
+                    (key |> List.rev |> List.hd)))
     |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
   ;;
 end
@@ -380,7 +426,9 @@ module Tag_Boolean = struct
            | { value_desc = _; value_loc } ->
                Pinc_Diagnostics.error
                  value_loc
-                 (Printf.sprintf "Expected attribute %s to be of type bool." key))
+                 (Printf.sprintf
+                    "Expected attribute %s to be of type bool."
+                    (key |> List.rev |> List.hd)))
     |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
   ;;
 end
@@ -436,23 +484,6 @@ module Tag_Context = struct
   ;;
 end
 
-module Utils = struct
-  let apply_transformer ~eval_expression ~state ~transformer value =
-    match transformer with
-    | Some transformer ->
-        let Lowercase_Id (ident, _ident_location), expr = transformer in
-        let state =
-          state
-          |> State.add_scope
-          |> State.add_value_to_scope ~ident ~value ~is_optional:false ~is_mutable:false
-        in
-        let state = eval_expression ~state expr in
-        let state = state |> State.remove_scope in
-        state |> State.get_output
-    | _ -> value
-  ;;
-end
-
 let eval ~eval_expression ~state t =
   let { tag; attributes; transformer } = t.tag_desc in
   let key =
@@ -470,6 +501,7 @@ let eval ~eval_expression ~state t =
           "Expected attribute `key` on tag to be of type string"
     | None, None -> ("", state)
   in
+  let path = state.tag_path @ [ key ] in
   let of' = attributes |> StringMap.find_opt "of" in
   let attributes =
     attributes
@@ -482,15 +514,15 @@ let eval ~eval_expression ~state t =
     | Tag_Portal -> key |> Tag_Portal.eval_push ~state ~attributes t
     | Tag_SetContext -> key |> Tag_Context.eval_set ~state ~attributes t
     | Tag_GetContext -> key |> Tag_Context.eval_get ~state ~attributes t
-    | Tag_Slot -> key |> Tag_Slot.eval ~state ~attributes t
-    | Tag_Store -> key |> Tag_Store.eval ~eval_expression ~state ~attributes t
-    | Tag_String -> key |> Tag_String.eval ~state ~attributes t
-    | Tag_Int -> key |> Tag_Int.eval ~state ~attributes t
-    | Tag_Float -> key |> Tag_Float.eval ~state ~attributes t
-    | Tag_Boolean -> key |> Tag_Boolean.eval ~state ~attributes t
-    | Tag_Array -> key |> Tag_Array.eval ~eval_expression ~state ~attributes ~of' t
-    | Tag_Record -> key |> Tag_Record.eval ~eval_expression ~state ~attributes ~of' t
-    | Tag_Custom name -> key |> Tag_Custom.eval ~state ~attributes ~name t
+    | Tag_Slot -> path |> Tag_Slot.eval ~state ~attributes t
+    | Tag_Store -> path |> Tag_Store.eval ~eval_expression ~state ~attributes t
+    | Tag_String -> path |> Tag_String.eval ~state ~attributes t
+    | Tag_Int -> path |> Tag_Int.eval ~state ~attributes t
+    | Tag_Float -> path |> Tag_Float.eval ~state ~attributes t
+    | Tag_Boolean -> path |> Tag_Boolean.eval ~state ~attributes t
+    | Tag_Array -> path |> Tag_Array.eval ~eval_expression ~state ~attributes ~of' t
+    | Tag_Record -> path |> Tag_Record.eval ~eval_expression ~state ~attributes ~of' t
+    | Tag_Custom name -> path |> Tag_Custom.eval ~state ~attributes ~name t
   in
 
   let transformed_value =
