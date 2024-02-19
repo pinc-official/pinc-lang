@@ -101,7 +101,7 @@ let rec to_string value =
                    Buffer.add_char buf '"';
                    Buffer.add_string buf (value |> to_string);
                    Buffer.add_char buf '"');
-      if self_closing && Pinc_HTML.is_void_el tag then
+      if self_closing && HTML.is_void_el tag then
         Buffer.add_string buf " />"
       else (
         Buffer.add_char buf '>';
