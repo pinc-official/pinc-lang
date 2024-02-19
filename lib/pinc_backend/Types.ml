@@ -49,6 +49,7 @@ and Type_State : sig
     tag_cache : (string, Type_Value.value Queue.t) Hashtbl.t;
     context : (string, Type_Value.value) Hashtbl.t;
     portals : (string, Type_Value.value) Hashtbl.t;
+    mode : [ `Portal_Collection | `Portal_Render ];
   }
 
   and environment = {

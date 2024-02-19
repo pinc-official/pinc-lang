@@ -1,12 +1,26 @@
 component Main {
-  let stylesheets = #CreatePortal;
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/base.css" />);
 
   <html>
-    <head>
-      {stylesheets}
-    </head>
+    <Head />
     <body>
       <Section foo="Ah" />
     </body>
   </html>
+}
+
+component Head {
+  let stylesheets = #CreatePortal;
+
+  <head>
+    {stylesheets}
+  </head>
+}
+
+component Section {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/section.css" />);
+
+  let foo = #String;
+
+  <section>{foo}</section>
 }
