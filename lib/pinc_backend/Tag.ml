@@ -91,7 +91,7 @@ module Tag_Store = struct
             "Expected attribute `id` to be a Store definition."
     in
     let is_singleton = store |> Types.Type_Store.is_singleton in
-    let value = state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes in
+    let value = state.State.tag_data_provider ~tag:Tag_Store ~key ~attributes in
     match value with
     | None -> Value.null ~value_loc:tag.tag_loc ()
     | Some { value_desc = Record value; _ } when is_singleton -> (
