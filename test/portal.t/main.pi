@@ -4,7 +4,9 @@ component Main {
   <html>
     <Head />
     <body>
-      <Section foo="Ah" />
+      <Section foo="Ah">
+        <Text text="LOREM!" />
+      </Section>
     </body>
   </html>
 }
@@ -21,6 +23,15 @@ component Section {
   #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/section.css" />);
 
   let foo = #String;
+  let content = #Slot(key: "");
 
-  <section>{foo}</section>
+  <section class={foo}>{content}</section>
+}
+
+component Text {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/text.css" />);
+
+  let text = #String;
+
+  <p>{text}</p>
 }
