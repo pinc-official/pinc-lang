@@ -7,6 +7,7 @@ let make
     ?(tag_cache = Hashtbl.create 10)
     ?(tag_path = [])
     ~tag_data_provider
+    ~mode
     declarations =
   {
     binding_identifier = None;
@@ -18,6 +19,7 @@ let make
     tag_cache;
     context;
     portals;
+    mode;
   }
 ;;
 

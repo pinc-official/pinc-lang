@@ -37,6 +37,7 @@ let rec get_uppercase_identifier_typ ~state ident =
                         ~state:
                           (State.make
                              ~tag_data_provider:state.tag_data_provider
+                             ~mode:state.mode
                              state.declarations)
                    |> State.get_output
                    |> function
@@ -1269,6 +1270,7 @@ and eval_template ~state template =
             ~context:state.context
             ~portals:state.portals
             ~tag_cache:state.tag_cache
+            ~mode:state.mode
             ~tag_data_provider
             state.declarations
         in
@@ -1301,7 +1303,9 @@ and eval_declaration ~state declaration =
 let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = None
 
 let eval_meta declarations =
-  let state = State.make ~tag_data_provider:noop_data_provider declarations in
+  let state =
+    State.make ~mode:`Portal_Collection ~tag_data_provider:noop_data_provider declarations
+  in
   let eval attrs =
     attrs |> StringMap.map (fun e -> eval_expression ~state e |> State.get_output)
   in
@@ -1338,11 +1342,11 @@ let get_stdlib () =
 let eval ~tag_data_provider ~root declarations =
   let base_lib = get_stdlib () in
   let declarations = StringMap.union (fun _key _x y -> Some y) base_lib declarations in
-  let state = State.make ~tag_data_provider declarations in
+  let state = State.make ~tag_data_provider ~mode:`Portal_Collection declarations in
   let state = eval_declaration ~state root in
   let state =
     if state.portals |> Hashtbl.length > 0 then
-      eval_declaration ~state root
+      eval_declaration ~state:{ state with mode = `Portal_Render } root
     else
       state
   in

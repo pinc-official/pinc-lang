@@ -55,6 +55,7 @@ module Tag_Store = struct
         ~context:state.context
         ~portals:state.portals
         ~tag_cache:state.tag_cache
+        ~mode:state.mode
         ~tag_data_provider
         state.declarations
     in
@@ -442,17 +443,18 @@ end
 
 module Tag_Portal = struct
   let eval_push ~state ~attributes t key =
-    let push =
-      match attributes |> StringMap.find_opt "push" with
-      | None ->
-          Pinc_Diagnostics.error
-            t.tag_loc
-            "The attribute `push` is required when pushing a value into a portal."
-      | Some { value_desc = Function _; value_loc } ->
-          Pinc_Diagnostics.error value_loc "A function can not be put into a portal."
-      | Some value -> value
-    in
-    Hashtbl.add state.portals key push;
+    if state.mode = `Portal_Collection then (
+      let push =
+        match attributes |> StringMap.find_opt "push" with
+        | None ->
+            Pinc_Diagnostics.error
+              t.tag_loc
+              "The attribute `push` is required when pushing a value into a portal."
+        | Some { value_desc = Function _; value_loc } ->
+            Pinc_Diagnostics.error value_loc "A function can not be put into a portal."
+        | Some value -> value
+      in
+      Hashtbl.add state.portals key push);
     Value.null ~value_loc:t.tag_loc ()
   ;;
 
