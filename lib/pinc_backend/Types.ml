@@ -46,7 +46,7 @@ and Type_State : sig
     environment : environment;
     tag_data_provider : Type_Tag.data_provider;
     tag_path : string list;
-    context : (string, Type_Value.value) Hashtbl.t;
+    context : Type_Value.value StringMap.t;
     mode : [ `Portal_Collection | `Portal_Render ];
   }
 
