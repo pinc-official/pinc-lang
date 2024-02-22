@@ -3,8 +3,6 @@ include Types.Type_State
 
 let make
     ?(context = Hashtbl.create 10)
-    ?(portals = Hashtbl.create 10)
-    ?(tag_cache = Hashtbl.create 10)
     ?(tag_path = [])
     ~tag_data_provider
     ~mode
@@ -16,9 +14,7 @@ let make
     environment = { scope = []; use_scope = StringMap.empty };
     tag_data_provider;
     tag_path;
-    tag_cache;
     context;
-    portals;
     mode;
   }
 ;;
