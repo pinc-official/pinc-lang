@@ -1,4 +1,6 @@
 component HeadlineSecondary {
+  #SetContext(key: "test", value: "should never be displayed!");
+
   let class? = #String :: value -> if (!value) "";
 
   let tag? = #String :: value -> if (!value) "h3";

@@ -91,42 +91,46 @@ module Tag_Store = struct
     in
     let is_singleton = store |> Types.Type_Store.is_singleton in
     let value = state.State.tag_data_provider ~tag:Tag_Store ~key ~attributes in
-    match value with
-    | None -> Value.null ~value_loc:tag.tag_loc ()
-    | Some { value_desc = Record value; _ } when is_singleton -> (
-        store |> eval_body ~name ~value ~eval_expression ~state |> function
-        | { value_desc = Record _; _ } as v -> v
-        | { value_desc = _; value_loc } ->
-            Pinc_Diagnostics.error
-              value_loc
-              (Printf.sprintf
-                 "The definition of store `%s` needs to be a record describing the shape \
-                  and type of values in this store."
-                 name))
-    | Some { value_desc = _; value_loc } when is_singleton ->
-        Pinc_Diagnostics.error
-          value_loc
-          (Printf.sprintf
-             "Expected attribute %s to be a record."
-             (key |> List.rev |> List.hd))
-    | Some { value_desc = Array array; _ } ->
-        array
-        |> Array.map (function
-               | { value_desc = Record value; _ } ->
-                   store |> eval_body ~name ~value ~eval_expression ~state
-               | { value_desc = _; value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     (Printf.sprintf
-                        "Expected attribute %s to be an array of records."
-                        (key |> List.rev |> List.hd)))
-        |> Value.of_array ~value_loc:tag.tag_loc
-    | Some { value_desc = _; value_loc } ->
-        Pinc_Diagnostics.error
-          value_loc
-          (Printf.sprintf
-             "Expected attribute %s to be an array."
-             (key |> List.rev |> List.hd))
+    let output =
+      match value with
+      | None -> Value.null ~value_loc:tag.tag_loc ()
+      | Some { value_desc = Record value; _ } when is_singleton -> (
+          store |> eval_body ~name ~value ~eval_expression ~state |> function
+          | { value_desc = Record _; _ } as v -> v
+          | { value_desc = _; value_loc } ->
+              Pinc_Diagnostics.error
+                value_loc
+                (Printf.sprintf
+                   "The definition of store `%s` needs to be a record describing the \
+                    shape and type of values in this store."
+                   name))
+      | Some { value_desc = _; value_loc } when is_singleton ->
+          Pinc_Diagnostics.error
+            value_loc
+            (Printf.sprintf
+               "Expected attribute %s to be a record."
+               (key |> List.rev |> List.hd))
+      | Some { value_desc = Array array; _ } ->
+          array
+          |> Array.map (function
+                 | { value_desc = Record value; _ } ->
+                     store |> eval_body ~name ~value ~eval_expression ~state
+                 | { value_desc = _; value_loc } ->
+                     Pinc_Diagnostics.error
+                       value_loc
+                       (Printf.sprintf
+                          "Expected attribute %s to be an array of records."
+                          (key |> List.rev |> List.hd)))
+          |> Value.of_array ~value_loc:tag.tag_loc
+      | Some { value_desc = _; value_loc } ->
+          Pinc_Diagnostics.error
+            value_loc
+            (Printf.sprintf
+               "Expected attribute %s to be an array."
+               (key |> List.rev |> List.hd))
+    in
+
+    state |> State.add_output ~output
   ;;
 end
 
@@ -314,129 +318,159 @@ module Tag_Slot = struct
                 into a slot, you have to wrap it in some html tag or component."
     in
 
-    slotted_elements |> Value.of_list ~value_loc:tag.tag_loc
+    let output = slotted_elements |> Value.of_list ~value_loc:tag.tag_loc in
+
+    state |> State.add_output ~output
   ;;
 end
 
 module Tag_Record = struct
   let eval ~eval_expression ~state ~attributes ~of' t key =
-    state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes
-    |> Option.map (function
-           | { value_desc = Record r; _ } -> r
-           | { value_desc = _; value_loc } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 (Printf.sprintf
-                    "Expected attribute %s to be a record."
-                    (key |> List.rev |> List.hd)))
-    |> Option.map (fun _ ->
-           let state = { state with tag_path = key } in
-           match of' with
-           | None ->
-               Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Record."
-           | Some children -> (
-               children |> eval_expression ~state |> State.get_output |> function
-               | { value_desc = Record _; _ } as v -> v
-               | { value_desc = _; value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     "Attribute `of` needs to be a record describing the shape and type \
-                      of values in this record."))
-    |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    let output =
+      state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes
+      |> Option.map (function
+             | { value_desc = Record r; _ } -> r
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf
+                      "Expected attribute %s to be a record."
+                      (key |> List.rev |> List.hd)))
+      |> Option.map (fun _ ->
+             let state = { state with tag_path = key } in
+             match of' with
+             | None ->
+                 Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Record."
+             | Some children -> (
+                 children |> eval_expression ~state |> State.get_output |> function
+                 | { value_desc = Record _; _ } as v -> v
+                 | { value_desc = _; value_loc } ->
+                     Pinc_Diagnostics.error
+                       value_loc
+                       "Attribute `of` needs to be a record describing the shape and \
+                        type of values in this record."))
+      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    in
+
+    state |> State.add_output ~output
   ;;
 end
 
 module Tag_Array = struct
   let eval ~eval_expression ~state ~attributes ~of' t key =
-    state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes
-    |> Option.map (function
-           | { value_desc = Int i; _ } -> i
-           | { value_desc = _; value_loc } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 (Printf.sprintf
-                    "Expected attribute %s to be an int (the length of the array)."
-                    (key |> List.rev |> List.hd)))
-    |> Option.map (fun len ->
-           match of' with
-           | None ->
-               Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Array."
-           | Some children ->
-               let state = { state with tag_path = key } in
-               List.init len (fun i ->
-                   let binding_identifier = Some (false, string_of_int i) in
-                   children
-                   |> eval_expression ~state:{ state with binding_identifier }
-                   |> State.get_output)
-               |> Value.of_list ~value_loc:t.tag_loc)
-    |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    let output =
+      state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes
+      |> Option.map (function
+             | { value_desc = Int i; _ } -> i
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf
+                      "Expected attribute %s to be an int (the length of the array)."
+                      (key |> List.rev |> List.hd)))
+      |> Option.map (fun len ->
+             match of' with
+             | None ->
+                 Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Array."
+             | Some children ->
+                 let state = { state with tag_path = key } in
+                 List.init len (fun i ->
+                     let binding_identifier = Some (false, string_of_int i) in
+                     children
+                     |> eval_expression ~state:{ state with binding_identifier }
+                     |> State.get_output)
+                 |> Value.of_list ~value_loc:t.tag_loc)
+      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    in
+
+    state |> State.add_output ~output
   ;;
 end
 
 module Tag_String = struct
   let eval ~state ~attributes t key =
-    state.State.tag_data_provider ~tag:Tag_String ~key ~attributes
-    |> Option.map (function
-           | { value_desc = String _; _ } as value -> value
-           | { value_desc = _; value_loc } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 (Printf.sprintf
-                    "Expected attribute %s to be of type string."
-                    (key |> List.rev |> List.hd)))
-    |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    let output =
+      state.State.tag_data_provider ~tag:Tag_String ~key ~attributes
+      |> Option.map (function
+             | { value_desc = String _; _ } as value -> value
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf
+                      "Expected attribute %s to be of type string."
+                      (key |> List.rev |> List.hd)))
+      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    in
+
+    state |> State.add_output ~output
   ;;
 end
 
 module Tag_Int = struct
   let eval ~state ~attributes t key =
-    state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes
-    |> Option.map (function
-           | { value_desc = Int _; _ } as value -> value
-           | { value_desc = _; value_loc } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 (Printf.sprintf
-                    "Expected attribute %s to be of type int."
-                    (key |> List.rev |> List.hd)))
-    |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    let output =
+      state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes
+      |> Option.map (function
+             | { value_desc = Int _; _ } as value -> value
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf
+                      "Expected attribute %s to be of type int."
+                      (key |> List.rev |> List.hd)))
+      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    in
+
+    state |> State.add_output ~output
   ;;
 end
 
 module Tag_Float = struct
   let eval ~state ~attributes t key =
-    state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes
-    |> Option.map (function
-           | { value_desc = Float _; _ } as value -> value
-           | { value_desc = _; value_loc } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 (Printf.sprintf
-                    "Expected attribute %s to be of type float."
-                    (key |> List.rev |> List.hd)))
-    |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    let output =
+      state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes
+      |> Option.map (function
+             | { value_desc = Float _; _ } as value -> value
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf
+                      "Expected attribute %s to be of type float."
+                      (key |> List.rev |> List.hd)))
+      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    in
+
+    state |> State.add_output ~output
   ;;
 end
 
 module Tag_Boolean = struct
   let eval ~(state : State.state) ~attributes t key =
-    state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes
-    |> Option.map (function
-           | { value_desc = Bool _; _ } as value -> value
-           | { value_desc = _; value_loc } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 (Printf.sprintf
-                    "Expected attribute %s to be of type bool."
-                    (key |> List.rev |> List.hd)))
-    |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    let output =
+      state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes
+      |> Option.map (function
+             | { value_desc = Bool _; _ } as value -> value
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf
+                      "Expected attribute %s to be of type bool."
+                      (key |> List.rev |> List.hd)))
+      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    in
+
+    state |> State.add_output ~output
   ;;
 end
 
 module Tag_Custom = struct
   let eval ~state ~attributes ~name t key =
-    state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attributes
-    |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    let output =
+      state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attributes
+      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    in
+
+    state |> State.add_output ~output
   ;;
 end
 
@@ -456,12 +490,17 @@ module Tag_Portal = struct
         | Some value -> value
       in
       Hashtbl.add portals key push);
-    Value.null ~value_loc:t.tag_loc ()
+
+    let output = Value.null ~value_loc:t.tag_loc () in
+    state |> State.add_output ~output
   ;;
 
-  let eval_create ~state:_ ~attributes:_ t key =
-    Types.Type_Value.
-      { value_desc = Portal (Hashtbl.find_all portals key); value_loc = t.tag_loc }
+  let eval_create ~state ~attributes:_ t key =
+    let output =
+      Types.Type_Value.
+        { value_desc = Portal (Hashtbl.find_all portals key); value_loc = t.tag_loc }
+    in
+    state |> State.add_output ~output
   ;;
 end
 
@@ -477,13 +516,19 @@ module Tag_Context = struct
           Pinc_Diagnostics.error value_loc "a function can not be put into a context."
       | Some value -> value
     in
-    Hashtbl.add state.context key value;
-    Value.null ~value_loc:t.tag_loc ()
+
+    let state = { state with context = state.context |> StringMap.add key value } in
+    state |> State.add_output ~output:(Value.null ~value_loc:t.tag_loc ())
   ;;
 
   let eval_get ~state ~attributes:_ t key =
-    Hashtbl.find_opt state.context key
-    |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    let output =
+      state.context
+      |> StringMap.find_opt key
+      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+    in
+
+    state |> State.add_output ~output
   ;;
 end
 
@@ -511,12 +556,12 @@ let eval ~eval_expression ~state t =
     |> StringMap.remove "of"
     |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
   in
-  let value =
+  let state =
     match tag with
-    | Tag_CreatePortal -> key |> Tag_Portal.eval_create ~state ~attributes t
-    | Tag_Portal -> key |> Tag_Portal.eval_push ~state ~attributes t
     | Tag_SetContext -> key |> Tag_Context.eval_set ~state ~attributes t
     | Tag_GetContext -> key |> Tag_Context.eval_get ~state ~attributes t
+    | Tag_CreatePortal -> key |> Tag_Portal.eval_create ~state ~attributes t
+    | Tag_Portal -> key |> Tag_Portal.eval_push ~state ~attributes t
     | Tag_Slot -> path |> Tag_Slot.eval ~state ~attributes t
     | Tag_Store -> path |> Tag_Store.eval ~eval_expression ~state ~attributes t
     | Tag_String -> path |> Tag_String.eval ~state ~attributes t
@@ -528,8 +573,11 @@ let eval ~eval_expression ~state t =
     | Tag_Custom name -> path |> Tag_Custom.eval ~state ~attributes ~name t
   in
 
+  let value = state |> State.get_output in
+
   let transformed_value =
     Utils.apply_transformer ~eval_expression ~state ~transformer value
   in
+
   state |> State.add_output ~output:transformed_value
 ;;

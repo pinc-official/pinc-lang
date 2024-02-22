@@ -2,7 +2,7 @@ open Types
 include Types.Type_State
 
 let make
-    ?(context = Hashtbl.create 10)
+    ?(context = StringMap.empty)
     ?(tag_path = [])
     ~tag_data_provider
     ~mode
