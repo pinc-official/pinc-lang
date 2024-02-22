@@ -1268,8 +1268,6 @@ and eval_template ~state template =
         let state =
           State.make
             ~context:state.context
-            ~portals:state.portals
-            ~tag_cache:state.tag_cache
             ~mode:state.mode
             ~tag_data_provider
             state.declarations
@@ -1340,15 +1338,20 @@ let get_stdlib () =
 ;;
 
 let eval ~tag_data_provider ~root declarations =
+  Hashtbl.reset Tag.Tag_Portal.portals;
+
   let base_lib = get_stdlib () in
   let declarations = StringMap.union (fun _key _x y -> Some y) base_lib declarations in
+
   let state = State.make ~tag_data_provider ~mode:`Portal_Collection declarations in
   let state = eval_declaration ~state root in
+
   let state =
-    if state.portals |> Hashtbl.length > 0 then
+    if Tag.Tag_Portal.portals |> Hashtbl.length > 0 then
       eval_declaration ~state:{ state with mode = `Portal_Render } root
     else
       state
   in
+
   state |> State.get_output |> Value.to_string
 ;;

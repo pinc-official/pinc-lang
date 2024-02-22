@@ -46,9 +46,7 @@ and Type_State : sig
     environment : environment;
     tag_data_provider : Type_Tag.data_provider;
     tag_path : string list;
-    tag_cache : (string, Type_Value.value Queue.t) Hashtbl.t;
     context : (string, Type_Value.value) Hashtbl.t;
-    portals : (string, Type_Value.value) Hashtbl.t;
     mode : [ `Portal_Collection | `Portal_Render ];
   }
 

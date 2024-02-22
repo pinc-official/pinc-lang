@@ -53,8 +53,6 @@ module Tag_Store = struct
     let state =
       State.make
         ~context:state.context
-        ~portals:state.portals
-        ~tag_cache:state.tag_cache
         ~mode:state.mode
         ~tag_data_provider
         state.declarations
@@ -301,21 +299,22 @@ module Tag_Slot = struct
                      "Expected to see a component definition at this point"))
     in
 
-    slotted_elements
-    |> List.map (function
-           | ( { value_desc = HtmlTemplateNode (tag_name, _, _, _); value_loc }
-             | { value_desc = ComponentTemplateNode (_, tag_name, _, _); value_loc } ) as
-             v -> (
-               match check_instance_restriction ~constraints tag_name with
-               | Ok () -> v
-               | Error e -> Pinc_Diagnostics.error value_loc e)
-           | { value_desc = _; value_loc } ->
-               Pinc_Diagnostics.error
-                 value_loc
-                 "Tried to assign a non node value to a #Slot. Only template nodes are \
-                  allowed inside slots. If you want to put another value (like a string) \
-                  into a slot, you have to wrap it in some html tag or component.")
-    |> Value.of_list ~value_loc:tag.tag_loc
+    let () =
+      slotted_elements
+      |> List.iter @@ function
+         | { value_desc = HtmlTemplateNode (tag_name, _, _, _); value_loc }
+         | { value_desc = ComponentTemplateNode (_, tag_name, _, _); value_loc } ->
+             check_instance_restriction ~constraints tag_name
+             |> Result.iter_error (Pinc_Diagnostics.error value_loc)
+         | { value_desc = _; value_loc } ->
+             Pinc_Diagnostics.error
+               value_loc
+               "Tried to assign a non node value to a #Slot. Only template nodes are \
+                allowed inside slots. If you want to put another value (like a string) \
+                into a slot, you have to wrap it in some html tag or component."
+    in
+
+    slotted_elements |> Value.of_list ~value_loc:tag.tag_loc
   ;;
 end
 
@@ -442,6 +441,8 @@ module Tag_Custom = struct
 end
 
 module Tag_Portal = struct
+  let portals = Hashtbl.create 100
+
   let eval_push ~state ~attributes t key =
     if state.mode = `Portal_Collection then (
       let push =
@@ -454,13 +455,13 @@ module Tag_Portal = struct
             Pinc_Diagnostics.error value_loc "A function can not be put into a portal."
         | Some value -> value
       in
-      Hashtbl.add state.portals key push);
+      Hashtbl.add portals key push);
     Value.null ~value_loc:t.tag_loc ()
   ;;
 
-  let eval_create ~state ~attributes:_ t key =
+  let eval_create ~state:_ ~attributes:_ t key =
     Types.Type_Value.
-      { value_desc = Portal (Hashtbl.find_all state.portals key); value_loc = t.tag_loc }
+      { value_desc = Portal (Hashtbl.find_all portals key); value_loc = t.tag_loc }
   ;;
 end
 
