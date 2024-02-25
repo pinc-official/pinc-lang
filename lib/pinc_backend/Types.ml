@@ -109,7 +109,8 @@ and Type_Tag : sig
     | Tag_Boolean
     | Tag_Array
     | Tag_Record
-    | Tag_Slot
+    | Tag_Slot of
+        (tag:string -> attributes:(string * Type_Value.value) list -> Type_Value.value)
     | Tag_Store
     | Tag_Custom of string
 

@@ -1246,22 +1246,24 @@ and eval_template ~state template =
               a type checker which will do this at compile time anyways :)
           *)
           match tag with
-          | Type_Tag.Tag_Slot ->
+          | Type_Tag.Tag_Slot _ ->
+              let key = key |> List.rev |> List.hd in
               component_tag_children
-              |> List.fold_left
-                   (Tag.Tag_Slot.keep_slotted ~key:(key |> List.rev |> List.hd))
-                   []
+              |> List.fold_left (Tag.Tag_Slot.keep_slotted ~key) []
               |> List.rev
-              |> Value.of_list ~value_loc:template.template_node_loc
+              |> Value.of_list
               |> Option.some
           | Type_Tag.Tag_Array ->
-              StringMap.find_opt (key |> List.rev |> List.hd) component_tag_attributes
+              let key = key |> List.rev |> List.hd in
+              component_tag_attributes
+              |> StringMap.find_opt key
               |> Fun.flip Option.bind (function
                      | { value_desc = Array a; _ } ->
                          a |> Array.length |> Value.of_int |> Option.some
                      | _ -> None)
           | _ ->
-              StringMap.find_opt (key |> List.hd) component_tag_attributes
+              component_tag_attributes
+              |> StringMap.find_opt (key |> List.hd)
               |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
         in
 
@@ -1272,7 +1274,8 @@ and eval_template ~state template =
             ~tag_data_provider
             state.declarations
         in
-        eval_declaration ~state component_tag_identifier |> State.get_output
+        DeclarationEvaluator.eval ~eval_expression ~state component_tag_identifier
+        |> State.get_output
       in
       let result = render_fn component_tag_attributes in
       state
@@ -1284,18 +1287,6 @@ and eval_template ~state template =
                  ComponentTemplateNode
                    (render_fn, component_tag_identifier, component_tag_attributes, result);
              }
-
-and eval_declaration ~state declaration =
-  state.declarations |> StringMap.find_opt declaration |> function
-  | Some Ast.{ declaration_type = Declaration_Component { declaration_body; _ }; _ }
-  | Some Ast.{ declaration_type = Declaration_Library { declaration_body; _ }; _ }
-  | Some Ast.{ declaration_type = Declaration_Page { declaration_body; _ }; _ }
-  | Some Ast.{ declaration_type = Declaration_Store { declaration_body; _ }; _ } ->
-      eval_expression ~state declaration_body
-  | None ->
-      Pinc_Diagnostics.error
-        Location.none
-        ("Declaration with name `" ^ declaration ^ "` was not found.")
 ;;
 
 let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = None
@@ -1344,11 +1335,14 @@ let eval ~tag_data_provider ~root declarations =
   let declarations = StringMap.union (fun _key _x y -> Some y) base_lib declarations in
 
   let state = State.make ~tag_data_provider ~mode:`Portal_Collection declarations in
-  let state = eval_declaration ~state root in
+  let state = DeclarationEvaluator.eval ~eval_expression ~state root in
 
   let state =
     if Tag.Tag_Portal.portals |> Hashtbl.length > 0 then
-      eval_declaration ~state:{ state with mode = `Portal_Render } root
+      DeclarationEvaluator.eval
+        ~eval_expression
+        ~state:{ state with mode = `Portal_Render }
+        root
     else
       state
   in
