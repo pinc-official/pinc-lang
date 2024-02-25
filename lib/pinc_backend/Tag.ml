@@ -1,6 +1,7 @@
 open State
-open Value
 open Pinc_Frontend.Ast
+open Types.Type_Value
+module VC = Value_Constructors
 
 let find_path path value =
   let rec aux path value =
@@ -43,7 +44,7 @@ module Tag_Store = struct
           |> StringMap.find_opt (key |> List.rev |> List.hd)
           |> Fun.flip Option.bind (function
                  | { value_desc = Array a; _ } ->
-                     a |> Array.length |> Value.of_int |> Option.some
+                     a |> Array.length |> VC.of_int |> Option.some
                  | _ -> None)
       | _ ->
           value
@@ -93,7 +94,7 @@ module Tag_Store = struct
     let value = state.State.tag_data_provider ~tag:Tag_Store ~key ~attributes in
     let output =
       match value with
-      | None -> Value.null ~value_loc:tag.tag_loc ()
+      | None -> VC.null ~value_loc:tag.tag_loc ()
       | Some { value_desc = Record value; _ } when is_singleton -> (
           store |> eval_body ~name ~value ~eval_expression ~state |> function
           | { value_desc = Record _; _ } as v -> v
@@ -121,7 +122,7 @@ module Tag_Store = struct
                        (Printf.sprintf
                           "Expected attribute %s to be an array of records."
                           (key |> List.rev |> List.hd)))
-          |> Value.of_array ~value_loc:tag.tag_loc
+          |> VC.of_array ~value_loc:tag.tag_loc
       | Some { value_desc = _; value_loc } ->
           Pinc_Diagnostics.error
             value_loc
@@ -136,7 +137,7 @@ end
 
 module Tag_Slot = struct
   let find_slot_key attributes =
-    attributes |> StringMap.find_opt "slot" |> Option.value ~default:(Value.of_string "")
+    attributes |> StringMap.find_opt "slot" |> Option.value ~default:(VC.of_string "")
     |> function
     | { value_desc = String s; _ } -> s
     | { value_loc; _ } ->
@@ -212,14 +213,61 @@ module Tag_Slot = struct
                contraints))
   ;;
 
-  let eval ~state ~attributes tag key =
+  let eval ~eval_expression ~state ~attributes tag_value key =
+    let tag =
+      Types.Type_Tag.Tag_Slot
+        (fun ~tag ~attributes ->
+          let render component_tag_attributes =
+            let tag_data_provider ~tag ~attributes:_ ~key =
+              match tag with
+              | Types.Type_Tag.Tag_Slot _ ->
+                  let key = key |> List.rev |> List.hd in
+                  []
+                  |> List.fold_left (keep_slotted ~key) []
+                  |> List.rev
+                  |> Value.of_list
+                  |> Option.some
+              | Types.Type_Tag.Tag_Array ->
+                  let key = key |> List.rev |> List.hd in
+                  component_tag_attributes
+                  |> StringMap.find_opt key
+                  |> Fun.flip Option.bind (function
+                         | { value_desc = Array a; _ } ->
+                             a |> Array.length |> Value.of_int |> Option.some
+                         | _ -> None)
+              | _ ->
+                  component_tag_attributes
+                  |> StringMap.find_opt (key |> List.hd)
+                  |> Fun.flip Option.bind (find_path (key |> List.tl))
+            in
+
+            let state =
+              State.make
+                ~context:state.context
+                ~mode:state.mode
+                ~tag_data_provider
+                state.declarations
+            in
+
+            tag |> DeclarationEvaluator.eval ~eval_expression ~state |> State.get_output
+          in
+
+          let attributes = attributes |> StringMap.of_list in
+          let result = render attributes in
+
+          {
+            value_desc = ComponentTemplateNode (render, tag, attributes, result);
+            value_loc = tag_value.tag_loc;
+          })
+    in
+
     let slotted_elements =
-      match state.State.tag_data_provider ~tag:Tag_Slot ~key ~attributes with
-      | None -> []
-      | Some { value_desc = Array a; _ } -> a |> Array.to_list
-      | Some { value_loc; _ } ->
+      match state.State.tag_data_provider ~tag ~key ~attributes with
+      | None -> [||]
+      | Some { value_desc = Array a; _ } -> a
+      | _ ->
           Pinc_Diagnostics.error
-            value_loc
+            tag_value.tag_loc
             (Printf.sprintf
                "Expected attribute %s to be an array of elements."
                (key |> List.rev |> List.hd))
@@ -249,19 +297,19 @@ module Tag_Slot = struct
       |> Option.value ~default:Int.max_int
     in
 
-    let num_slotted_elements = List.length slotted_elements in
+    let num_slotted_elements = Array.length slotted_elements in
 
     let () =
       match (num_slotted_elements < min, num_slotted_elements > max) with
       | true, _ ->
           Pinc_Diagnostics.error
-            tag.tag_loc
+            tag_value.tag_loc
             (Printf.sprintf
                "This #Slot did not reach the minimum amount of nodes (specified as %i)."
                min)
       | _, true ->
           Pinc_Diagnostics.error
-            tag.tag_loc
+            tag_value.tag_loc
             (Printf.sprintf
                "This #Slot was provided more than the maximum amount of nodes (specified \
                 as %i)."
@@ -281,11 +329,10 @@ module Tag_Slot = struct
                     allowed or disallowed")
       |> Option.map
            (Array.map (function
-               | Value.
-                   {
-                     value_desc = DefinitionInfo (name, Some Definition_Component, negated);
-                     _;
-                   } -> (name, negated)
+               | {
+                   value_desc = DefinitionInfo (name, Some Definition_Component, negated);
+                   _;
+                 } -> (name, negated)
                | { value_desc = DefinitionInfo (name, None, _negated); value_loc } ->
                    Pinc_Diagnostics.error
                      value_loc
@@ -305,7 +352,7 @@ module Tag_Slot = struct
 
     let () =
       slotted_elements
-      |> List.iter @@ function
+      |> Array.iter @@ function
          | { value_desc = HtmlTemplateNode (tag_name, _, _, _); value_loc }
          | { value_desc = ComponentTemplateNode (_, tag_name, _, _); value_loc } ->
              check_instance_restriction ~constraints tag_name
@@ -318,7 +365,7 @@ module Tag_Slot = struct
                 into a slot, you have to wrap it in some html tag or component."
     in
 
-    let output = slotted_elements |> Value.of_list ~value_loc:tag.tag_loc in
+    let output = slotted_elements |> VC.of_array ~value_loc:tag_value.tag_loc in
 
     state |> State.add_output ~output
   ;;
@@ -349,7 +396,7 @@ module Tag_Record = struct
                        value_loc
                        "Attribute `of` needs to be a record describing the shape and \
                         type of values in this record."))
-      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -379,8 +426,8 @@ module Tag_Array = struct
                      children
                      |> eval_expression ~state:{ state with binding_identifier }
                      |> State.get_output)
-                 |> Value.of_list ~value_loc:t.tag_loc)
-      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+                 |> VC.of_list ~value_loc:t.tag_loc)
+      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -399,7 +446,7 @@ module Tag_String = struct
                    (Printf.sprintf
                       "Expected attribute %s to be of type string."
                       (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -418,7 +465,7 @@ module Tag_Int = struct
                    (Printf.sprintf
                       "Expected attribute %s to be of type int."
                       (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -437,7 +484,7 @@ module Tag_Float = struct
                    (Printf.sprintf
                       "Expected attribute %s to be of type float."
                       (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -456,7 +503,7 @@ module Tag_Boolean = struct
                    (Printf.sprintf
                       "Expected attribute %s to be of type bool."
                       (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -467,7 +514,7 @@ module Tag_Custom = struct
   let eval ~state ~attributes ~name t key =
     let output =
       state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attributes
-      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -491,14 +538,13 @@ module Tag_Portal = struct
       in
       Hashtbl.add portals key push);
 
-    let output = Value.null ~value_loc:t.tag_loc () in
+    let output = VC.null ~value_loc:t.tag_loc () in
     state |> State.add_output ~output
   ;;
 
   let eval_create ~state ~attributes:_ t key =
     let output =
-      Types.Type_Value.
-        { value_desc = Portal (Hashtbl.find_all portals key); value_loc = t.tag_loc }
+      { value_desc = Portal (Hashtbl.find_all portals key); value_loc = t.tag_loc }
     in
     state |> State.add_output ~output
   ;;
@@ -518,14 +564,14 @@ module Tag_Context = struct
     in
 
     let state = { state with context = state.context |> StringMap.add key value } in
-    state |> State.add_output ~output:(Value.null ~value_loc:t.tag_loc ())
+    state |> State.add_output ~output:(VC.null ~value_loc:t.tag_loc ())
   ;;
 
   let eval_get ~state ~attributes:_ t key =
     let output =
       state.context
       |> StringMap.find_opt key
-      |> Option.value ~default:(Value.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -562,7 +608,7 @@ let eval ~eval_expression ~state t =
     | Tag_GetContext -> key |> Tag_Context.eval_get ~state ~attributes t
     | Tag_CreatePortal -> key |> Tag_Portal.eval_create ~state ~attributes t
     | Tag_Portal -> key |> Tag_Portal.eval_push ~state ~attributes t
-    | Tag_Slot -> path |> Tag_Slot.eval ~state ~attributes t
+    | Tag_Slot -> path |> Tag_Slot.eval ~eval_expression ~state ~attributes t
     | Tag_Store -> path |> Tag_Store.eval ~eval_expression ~state ~attributes t
     | Tag_String -> path |> Tag_String.eval ~state ~attributes t
     | Tag_Int -> path |> Tag_Int.eval ~state ~attributes t
