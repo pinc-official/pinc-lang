@@ -1239,13 +1239,20 @@ and eval_template ~state template =
         |> List.map State.get_output
       in
       let render_fn component_tag_attributes =
-        let tag_data_provider ~tag ~attributes:_ ~key =
+        let tag_data_provider ~tag ~attributes ~key =
           (*
              TODO: Should we check the type here?
               ... Probably not, because we will implement
               a type checker which will do this at compile time anyways :)
           *)
           match tag with
+          | Type_Tag.Tag_Store -> (
+              component_tag_attributes
+              |> StringMap.find_opt (key |> List.hd)
+              |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
+              |> function
+              | None -> state.tag_data_provider ~tag ~attributes ~key
+              | value -> value)
           | Type_Tag.Tag_Slot _ ->
               let key = key |> List.rev |> List.hd in
               component_tag_children

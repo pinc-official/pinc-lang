@@ -22,7 +22,19 @@ component StoreValueProvider {
     },
   ];
 
-  <StoreConsumer settings={settings} products={products} />
+  <MiddlewareA settings={settings} products={products} />
+}
+
+component MiddlewareA {
+  <MiddlewareB />
+}
+
+component MiddlewareB {
+  <MiddlewareC />
+}
+
+component MiddlewareC {
+  <StoreConsumer />
 }
 
 component StoreConsumer {

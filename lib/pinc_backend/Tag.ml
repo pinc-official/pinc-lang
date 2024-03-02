@@ -37,8 +37,15 @@ end
 
 module Tag_Store = struct
   let eval_body ~name ~state ~eval_expression ~value store =
-    let tag_data_provider ~tag ~attributes:_ ~key =
+    let tag_data_provider ~tag ~attributes ~key =
       match tag with
+      | Types.Type_Tag.Tag_Store -> (
+          value
+          |> StringMap.find_opt (key |> List.hd)
+          |> Fun.flip Option.bind (find_path (key |> List.tl))
+          |> function
+          | None -> state.tag_data_provider ~tag ~attributes ~key
+          | value -> value)
       | Types.Type_Tag.Tag_Array ->
           value
           |> StringMap.find_opt (key |> List.rev |> List.hd)
@@ -218,8 +225,15 @@ module Tag_Slot = struct
       Types.Type_Tag.Tag_Slot
         (fun ~tag ~attributes ->
           let render component_tag_attributes =
-            let tag_data_provider ~tag ~attributes:_ ~key =
+            let tag_data_provider ~tag ~attributes ~key =
               match tag with
+              | Types.Type_Tag.Tag_Store -> (
+                  component_tag_attributes
+                  |> StringMap.find_opt (key |> List.hd)
+                  |> Fun.flip Option.bind (find_path (key |> List.tl))
+                  |> function
+                  | None -> state.tag_data_provider ~tag ~attributes ~key
+                  | value -> value)
               | Types.Type_Tag.Tag_Slot _ ->
                   let key = key |> List.rev |> List.hd in
                   []
