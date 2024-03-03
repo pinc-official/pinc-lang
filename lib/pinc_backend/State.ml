@@ -5,6 +5,7 @@ let make
     ?(context = StringMap.empty)
     ?(tag_path = [])
     ~tag_data_provider
+    ~root_tag_data_provider
     ~mode
     declarations =
   {
@@ -13,6 +14,7 @@ let make
     output = { value_desc = Null; value_loc = Pinc_Diagnostics.Location.none };
     environment = { scope = []; use_scope = StringMap.empty };
     tag_data_provider;
+    root_tag_data_provider;
     tag_path;
     context;
     mode;

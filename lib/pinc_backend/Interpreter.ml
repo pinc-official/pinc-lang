@@ -36,6 +36,7 @@ let rec get_uppercase_identifier_typ ~state ident =
                    |> eval_expression
                         ~state:
                           (State.make
+                             ~root_tag_data_provider:state.root_tag_data_provider
                              ~tag_data_provider:state.tag_data_provider
                              ~mode:state.mode
                              state.declarations)
@@ -1251,7 +1252,7 @@ and eval_template ~state template =
               |> StringMap.find_opt (key |> List.hd)
               |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
               |> function
-              | None -> state.tag_data_provider ~tag ~attributes ~key
+              | None -> state.root_tag_data_provider ~tag ~attributes ~key
               | value -> value)
           | Type_Tag.Tag_Slot _ ->
               let key = key |> List.rev |> List.hd in
@@ -1278,6 +1279,7 @@ and eval_template ~state template =
           State.make
             ~context:state.context
             ~mode:state.mode
+            ~root_tag_data_provider:state.root_tag_data_provider
             ~tag_data_provider
             state.declarations
         in
@@ -1300,7 +1302,11 @@ let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = None
 
 let eval_meta declarations =
   let state =
-    State.make ~mode:`Portal_Collection ~tag_data_provider:noop_data_provider declarations
+    State.make
+      ~mode:`Portal_Collection
+      ~root_tag_data_provider:noop_data_provider
+      ~tag_data_provider:noop_data_provider
+      declarations
   in
   let eval attrs =
     attrs |> StringMap.map (fun e -> eval_expression ~state e |> State.get_output)
@@ -1341,7 +1347,13 @@ let eval ~tag_data_provider ~root declarations =
   let base_lib = get_stdlib () in
   let declarations = StringMap.union (fun _key _x y -> Some y) base_lib declarations in
 
-  let state = State.make ~tag_data_provider ~mode:`Portal_Collection declarations in
+  let state =
+    State.make
+      ~root_tag_data_provider:tag_data_provider
+      ~tag_data_provider
+      ~mode:`Portal_Collection
+      declarations
+  in
   let state = DeclarationEvaluator.eval ~eval_expression ~state root in
 
   let state =
