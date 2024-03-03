@@ -268,7 +268,7 @@ module Tag_Slot = struct
             tag |> DeclarationEvaluator.eval ~eval_expression ~state |> State.get_output
           in
 
-          let attributes = attributes |> StringMap.of_list in
+          let attributes = attributes |> List.to_seq |> StringMap.of_seq in
           let result = render attributes in
 
           {
