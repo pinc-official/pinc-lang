@@ -531,7 +531,8 @@ module Rules = struct
             let attrs =
               t
               |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field
-              |> StringMap.of_list
+              |> List.to_seq
+              |> StringMap.of_seq
             in
             t |> expect Token.RIGHT_BRACE;
             Ast.Record attrs |> Option.some)
