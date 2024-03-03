@@ -45,6 +45,7 @@ and Type_State : sig
     output : Type_Value.value;
     environment : environment;
     tag_data_provider : Type_Tag.data_provider;
+    root_tag_data_provider : Type_Tag.data_provider;
     tag_path : string list;
     context : Type_Value.value StringMap.t;
     mode : [ `Portal_Collection | `Portal_Render ];

@@ -62,6 +62,7 @@ module Tag_Store = struct
       State.make
         ~context:state.context
         ~mode:state.mode
+        ~root_tag_data_provider:state.root_tag_data_provider
         ~tag_data_provider
         state.declarations
     in
@@ -259,6 +260,7 @@ module Tag_Slot = struct
               State.make
                 ~context:state.context
                 ~mode:state.mode
+                ~root_tag_data_provider:state.root_tag_data_provider
                 ~tag_data_provider
                 state.declarations
             in
