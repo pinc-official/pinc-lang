@@ -727,8 +727,7 @@ and eval_binary_dot_access ~state left right =
             ("Unknown property "
             ^ s
             ^ " on template node. Known properties are: `tag` and `attributes`."))
-  | ComponentTemplateNode (_, tag, attributes, _), Ast.LowercaseIdentifierExpression b
-    -> (
+  | ComponentTemplateNode (tag, attributes, _), Ast.LowercaseIdentifierExpression b -> (
       match b with
       | "tag" ->
           state
@@ -892,14 +891,10 @@ and eval_binary_merge ~state left_expression right_expression =
         Pinc_Diagnostics.error
           right_expression.expression_loc
           "Trying to merge a non record value onto tag attributes."
-    | ComponentTemplateNode (fn, tag, attributes, _), Record right ->
-        let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
-        let result = fn attributes in
-        { left with value_desc = ComponentTemplateNode (fn, tag, attributes, result) }
     | ComponentTemplateNode _, _ ->
         Pinc_Diagnostics.error
           right_expression.expression_loc
-          "Trying to merge a non record value onto component attributes."
+          "Component attributes can't be modified."
     | Array _, _ ->
         Pinc_Diagnostics.error
           right_expression.expression_loc
@@ -1247,7 +1242,7 @@ and eval_template ~state template =
               a type checker which will do this at compile time anyways :)
           *)
           match tag with
-          | Type_Tag.Tag_Store -> (
+          | Type_Tag.Tag_Store _ -> (
               component_tag_attributes
               |> StringMap.find_opt (key |> List.hd)
               |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
@@ -1294,7 +1289,7 @@ and eval_template ~state template =
                value_loc = template.template_node_loc;
                value_desc =
                  ComponentTemplateNode
-                   (render_fn, component_tag_identifier, component_tag_attributes, result);
+                   (component_tag_identifier, component_tag_attributes, result);
              }
 ;;
 

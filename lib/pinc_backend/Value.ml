@@ -33,14 +33,6 @@ let of_string_map ?(value_loc = Diagnostics.Location.none) m =
   { value_loc; value_desc = Record m }
 ;;
 
-let make_component ~render ~tag ~attributes =
-  let result = render attributes in
-  {
-    value_loc = Diagnostics.Location.none;
-    value_desc = ComponentTemplateNode (render, tag, attributes, result);
-  }
-;;
-
 let rec to_string value =
   match value.value_desc with
   | Portal list -> list |> List.rev_map to_string |> String.concat "\n"
@@ -111,7 +103,7 @@ let rec to_string value =
         Buffer.add_string buf tag;
         Buffer.add_char buf '>');
       Buffer.contents buf
-  | ComponentTemplateNode (_render_fn, _tag, _attributes, result) -> result |> to_string
+  | ComponentTemplateNode (_tag, _attributes, result) -> result |> to_string
   | Function _ -> ""
   | DefinitionInfo _ -> ""
 ;;
@@ -154,8 +146,8 @@ let rec equal a b =
       && a_self_closing = b_self_closing
       && StringMap.equal equal a_attrs b_attrs
       && a_children = b_children
-  | ( ComponentTemplateNode (_, a_tag, a_attributes, _),
-      ComponentTemplateNode (_, b_tag, b_attributes, _) ) ->
+  | ( ComponentTemplateNode (a_tag, a_attributes, _),
+      ComponentTemplateNode (b_tag, b_attributes, _) ) ->
       a_tag = b_tag && StringMap.equal equal a_attributes b_attributes
   | Null, Null -> true
   | _ -> false
