@@ -19,8 +19,7 @@ module rec Type_Value : sig
     | Function of function_info
     | DefinitionInfo of definition_info
     | HtmlTemplateNode of string * value StringMap.t * value list * bool
-    | ComponentTemplateNode of
-        (value StringMap.t -> value) * string * value StringMap.t * value
+    | ComponentTemplateNode of string * value StringMap.t * value
 
   and definition_typ =
     | Definition_Component
@@ -111,8 +110,8 @@ and Type_Tag : sig
     | Tag_Array
     | Tag_Record
     | Tag_Slot of
-        (tag:string -> attributes:(string * Type_Value.value) list -> Type_Value.value)
-    | Tag_Store
+        (tag:string -> tag_data_provider:Type_Tag.data_provider -> Type_Value.value)
+    | Tag_Store of Type_Store.t
     | Tag_Custom of string
 
   (* type meta =

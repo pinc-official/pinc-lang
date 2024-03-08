@@ -39,7 +39,7 @@ module Tag_Store = struct
   let eval_body ~name ~state ~eval_expression ~value store =
     let tag_data_provider ~tag ~attributes ~key =
       match tag with
-      | Types.Type_Tag.Tag_Store -> (
+      | Types.Type_Tag.Tag_Store _ -> (
           value
           |> StringMap.find_opt (key |> List.hd)
           |> Fun.flip Option.bind (find_path (key |> List.tl))
@@ -99,7 +99,7 @@ module Tag_Store = struct
             "Expected attribute `id` to be a Store definition."
     in
     let is_singleton = store |> Types.Type_Store.is_singleton in
-    let value = state.State.tag_data_provider ~tag:Tag_Store ~key ~attributes in
+    let value = state.State.tag_data_provider ~tag:(Tag_Store store) ~key ~attributes in
     let output =
       match value with
       | None -> VC.null ~value_loc:tag.tag_loc ()
@@ -155,7 +155,7 @@ module Tag_Slot = struct
   let rec keep_slotted ~key acc el =
     match el with
     | ( { value_desc = HtmlTemplateNode (_, attributes, _, _); _ }
-      | { value_desc = ComponentTemplateNode (_, _, attributes, _); _ } ) as v ->
+      | { value_desc = ComponentTemplateNode (_, attributes, _); _ } ) as v ->
         if find_slot_key attributes = key then
           v :: acc
         else
@@ -224,56 +224,23 @@ module Tag_Slot = struct
   let eval ~eval_expression ~state ~attributes tag_value key =
     let tag =
       Types.Type_Tag.Tag_Slot
-        (fun ~tag ~attributes ->
-          let render component_tag_attributes =
-            let tag_data_provider ~tag ~attributes ~key =
-              match tag with
-              | Types.Type_Tag.Tag_Store -> (
-                  component_tag_attributes
-                  |> StringMap.find_opt (key |> List.hd)
-                  |> Fun.flip Option.bind (find_path (key |> List.tl))
-                  |> function
-                  | None -> state.tag_data_provider ~tag ~attributes ~key
-                  | value -> value)
-              | Types.Type_Tag.Tag_Slot _ ->
-                  let key = key |> List.rev |> List.hd in
-                  []
-                  |> List.fold_left (keep_slotted ~key) []
-                  |> List.rev
-                  |> Value.of_list
-                  |> Option.some
-              | Types.Type_Tag.Tag_Array ->
-                  let key = key |> List.rev |> List.hd in
-                  component_tag_attributes
-                  |> StringMap.find_opt key
-                  |> Fun.flip Option.bind (function
-                         | { value_desc = Array a; _ } ->
-                             a |> Array.length |> Value.of_int |> Option.some
-                         | _ -> None)
-              | _ ->
-                  component_tag_attributes
-                  |> StringMap.find_opt (key |> List.hd)
-                  |> Fun.flip Option.bind (find_path (key |> List.tl))
-            in
+        (fun ~tag ~tag_data_provider ->
+          let state =
+            State.make
+              ~context:state.context
+              ~mode:state.mode
+              ~root_tag_data_provider:state.root_tag_data_provider
+              ~tag_data_provider
+              state.declarations
+          in
 
-            let state =
-              State.make
-                ~context:state.context
-                ~mode:state.mode
-                ~root_tag_data_provider:state.root_tag_data_provider
-                ~tag_data_provider
-                state.declarations
-            in
-
+          let evaluated =
             tag |> DeclarationEvaluator.eval ~eval_expression ~state |> State.get_output
           in
 
-          let attributes = attributes |> List.to_seq |> StringMap.of_seq in
-          let result = render attributes in
-
           {
-            value_desc = ComponentTemplateNode (render, tag, attributes, result);
-            value_loc = tag_value.tag_loc;
+            value_loc = Location.none;
+            value_desc = Value.ComponentTemplateNode (tag, StringMap.empty, evaluated);
           })
     in
 
@@ -370,7 +337,7 @@ module Tag_Slot = struct
       slotted_elements
       |> Array.iter @@ function
          | { value_desc = HtmlTemplateNode (tag_name, _, _, _); value_loc }
-         | { value_desc = ComponentTemplateNode (_, tag_name, _, _); value_loc } ->
+         | { value_desc = ComponentTemplateNode (tag_name, _, _); value_loc } ->
              check_instance_restriction ~constraints tag_name
              |> Result.iter_error (Pinc_Diagnostics.error value_loc)
          | { value_desc = _; value_loc } ->
