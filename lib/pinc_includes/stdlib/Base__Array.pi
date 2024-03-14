@@ -212,4 +212,19 @@ library Base__Array {
         merge(sort(first_half, f), sort(second_half, f));
     }
   }
+
+  let unique = fn (array) -> {
+    let isSorted = false;
+    let mutable result = [];
+    let mutable seen = [];
+
+    for (index, value in array) {
+      if (index == 0 || !exists(seen, fn (item) -> item == value)) {
+        seen := seen <- value;
+        result := result <- value;
+      }
+    }
+
+    result
+  }
 }

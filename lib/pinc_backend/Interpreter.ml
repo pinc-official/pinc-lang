@@ -1107,13 +1107,22 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       let state, res = s |> CCUtf8_string.of_string_exn |> map |> loop ~state [] in
       state
       |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.expression_loc)
+  | Portal l ->
+      let to_seq array =
+        if reverse then (
+          array |> Array.stable_sort (fun _ _ -> 1);
+          array |> Array.to_seq)
+        else
+          array |> Array.to_seq
+      in
+      let state, res = l |> Array.of_list |> to_seq |> loop ~state [] in
+      state
+      |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.expression_loc)
   | Null -> state |> State.add_output ~output:iterable_value
   | HtmlTemplateNode _ ->
       Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over template node"
   | ComponentTemplateNode _ ->
       Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over template node"
-  | Portal _ ->
-      Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over portal value"
   | Record _ ->
       Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over record value"
   | Int _ ->

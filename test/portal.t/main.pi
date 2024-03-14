@@ -6,13 +6,14 @@ component Main {
     <body>
       <Section foo="Ah">
         <Text text="LOREM!" />
+        <Text text="Ipsum!" />
       </Section>
     </body>
   </html>
 }
 
 component Head {
-  let stylesheets = #CreatePortal;
+  let stylesheets = #CreatePortal :: v -> Base.Array.unique(v);
 
   <head>
     {stylesheets}
