@@ -1108,14 +1108,13 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       state
       |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.expression_loc)
   | Portal l ->
-      let to_seq array =
-        if reverse then (
-          array |> Array.stable_sort (fun _ _ -> 1);
-          array |> Array.to_seq)
+      let to_seq list =
+        if reverse then
+          list |> List.to_seq
         else
-          array |> Array.to_seq
+          list |> List.rev |> List.to_seq
       in
-      let state, res = l |> Array.of_list |> to_seq |> loop ~state [] in
+      let state, res = l |> to_seq |> loop ~state [] in
       state
       |> State.add_output ~output:(res |> Value.of_list ~value_loc:body.expression_loc)
   | Null -> state |> State.add_output ~output:iterable_value
