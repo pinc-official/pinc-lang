@@ -10,7 +10,7 @@ component Section(
   let displayIntro = #Boolean(
     label: "Display intro",
     description: "Check this, when the section should have an intro"
-  ) :: v -> v |> Base.Fn.default(false);
+  ) :: fn v -> v |> Base.Fn.default(false);
 
   let intro? = if displayIntro {
     #Record(label: "Intro", of: {
@@ -23,7 +23,7 @@ component Section(
     label: "Section Content",
     description: "The components, which should be placed inside this section.",
     constraints: [!Section]
-  ) :: v -> v |> Base.Fn.default([]);
+  ) :: fn v -> v |> Base.Fn.default([]);
 
   <section class="Section">
     {if (intro) {

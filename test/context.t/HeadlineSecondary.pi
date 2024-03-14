@@ -1,9 +1,9 @@
 component HeadlineSecondary {
   #SetContext(key: "test", value: "should never be displayed!");
 
-  let class? = #String :: value -> if (!value) "";
+  let class? = #String :: fn value -> if (!value) "";
 
-  let tag? = #String :: value -> if (!value) "h3";
+  let tag? = #String :: fn value -> if (!value) "h3";
   let data = {
     text: #String,
     subheadline?: #String

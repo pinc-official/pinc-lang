@@ -1,5 +1,5 @@
 component Component {
-  let fail = #String :: _ -> ;
+  let fail = #String :: fn _ -> ;
 
   <div class="Section">
     {fail}

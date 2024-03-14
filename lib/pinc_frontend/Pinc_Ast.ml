@@ -47,7 +47,7 @@ and tag_typ =
 and tag_desc = {
   tag : tag_typ;
   attributes : expression StringMap.t;
-  transformer : (lowercase_identifier * expression) option;
+  transformer : expression option;
 }
 
 and string_template = {

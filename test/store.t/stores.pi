@@ -6,11 +6,11 @@ store Settings(single: true) {
 	contact: #Record(of: {
 		phone: #String,
 		email: #String,
-		address: #String :: v -> v ++ " ... or am I??",
+		address: #String :: fn v -> v ++ " ... or am I??",
 	});
 };
 
 store Products {
 	title: #String,
-	code: #Int :: v -> v * 2,
+	code: #Int :: fn v -> v * 2,
 };

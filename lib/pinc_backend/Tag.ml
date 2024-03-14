@@ -17,19 +17,52 @@ let find_path path value =
 ;;
 
 module Utils = struct
-  let apply_transformer ~eval_expression ~state ~transformer value =
+  let apply_transformer
+      ~eval_expression
+      ~state
+      ~(transformer : Pinc_Frontend.Ast.expression option)
+      (value : Value.value) =
+    let aux (transformer : Pinc_Frontend.Ast.expression) =
+      let arguments = [ value ] in
+      let maybe_fn = transformer |> eval_expression ~state |> State.get_output in
+      match maybe_fn.value_desc with
+      | Function { parameters; state = _; exec = _ }
+        when List.compare_lengths parameters arguments > 0 ->
+          let arguments_len = List.length arguments in
+          let missing =
+            parameters
+            |> List.filteri (fun index _ -> index > arguments_len - 1)
+            |> List.map (fun item -> "`" ^ item ^ "`")
+            |> String.concat ", "
+          in
+          Pinc_Diagnostics.error
+            transformer.expression_loc
+            ("This transformer was provided too few arguments. The following parameters \
+              are missing: "
+            ^ missing)
+      | Function { parameters; state = _; exec = _ }
+        when List.compare_lengths parameters arguments < 0 ->
+          Pinc_Diagnostics.error
+            transformer.expression_loc
+            ("This transformer only accepts "
+            ^ string_of_int (List.length parameters)
+            ^ " arguments, but was provided "
+            ^ string_of_int (List.length arguments)
+            ^ " here.")
+      | Function { parameters; state = fn_state; exec } ->
+          let arguments =
+            List.combine parameters arguments |> List.to_seq |> StringMap.of_seq
+          in
+          state |> State.add_output ~output:(exec ~arguments ~state:fn_state ())
+      | _ ->
+          Pinc_Diagnostics.error
+            transformer.expression_loc
+            "Trying to assign a non function value to a transformer."
+    in
+
     match transformer with
-    | Some transformer ->
-        let Lowercase_Id (ident, _ident_location), expr = transformer in
-        let state =
-          state
-          |> State.add_scope
-          |> State.add_value_to_scope ~ident ~value ~is_optional:false ~is_mutable:false
-        in
-        let state = eval_expression ~state expr in
-        let state = state |> State.remove_scope in
-        state |> State.get_output
-    | _ -> value
+    | None -> value
+    | Some transformer -> aux transformer |> State.get_output
   ;;
 
   let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = None

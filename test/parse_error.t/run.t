@@ -15,10 +15,10 @@
 
   $ print ./tag_transformer_function.pi Component
   
-  ERROR in file ./tag_transformer_function.pi:2:22-31
+  ERROR in file ./tag_transformer_function.pi:2:22-34
   
      1 │ component Component {
-     2 │   let fail = #String :: _ -> ;
+     2 │   let fail = #String :: fn _ -> ;
      3 │ 
   
   This tag transformer does not have a valid body.

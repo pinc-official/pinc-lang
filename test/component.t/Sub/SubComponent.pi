@@ -1,7 +1,7 @@
 component HeadlineSecondary {
   let class? = #String;
 
-  let tag? = #String :: (value) -> value |> Base.Fn.default("h3");
+  let tag? = #String :: fn (value) -> value |> Base.Fn.default("h3");
 
   let data = #Record(of: {
     text: if (tag == "h2") #String else "No no no ... make h2 when you want text",

@@ -229,23 +229,15 @@ module Rules = struct
     let transformer =
       let start_token = t.token in
       if t |> optional Token.DOUBLE_COLON then (
-        let open_paren = t |> optional Token.LEFT_PAREN in
-        let bind = t |> Helpers.expect_identifier ~typ:`Lower in
-        if open_paren then
-          t |> expect Token.RIGHT_PAREN;
-        t |> expect Token.ARROW;
-        let body =
-          match parse_expression t with
-          | None ->
-              Diagnostics.error
-                (Location.make
-                   ~s:start_token.location.loc_start
-                   ~e:t.token.location.loc_end
-                   ())
-                "This tag transformer does not have a valid body."
-          | Some expr -> expr
-        in
-        Some (Ast.Lowercase_Id bind, body))
+        let expr = parse_expression t in
+        if Option.is_none expr then
+          Diagnostics.error
+            (Location.make
+               ~s:start_token.location.loc_start
+               ~e:t.token.location.loc_end
+               ())
+            "This tag transformer does not have a valid body.";
+        expr)
       else
         None
     in

@@ -1,16 +1,16 @@
 component SubComponent {
   let content = #String;
 
-  let shouter = #String :: val -> if(val) val ++ "!!" else "NOTHING!!!";
+  let shouter = #String :: fn val -> if(val) val ++ "!!" else "NOTHING!!!";
   
-  let num = #Int :: val -> val ** 2;
+  let num = #Int :: fn val -> val ** 2;
   
   let array_things = #Array(of: #Record(of: {
-    i: #Int :: i -> i + 2
+    i: #Int :: fn i -> i + 2
   }));
   
   let record = #Record(of: {
-    a: #Int(default: 12) :: val -> if (val == 12) "NEEEEIN" else "JAP",
+    a: #Int(default: 12) :: fn val -> if (val == 12) "NEEEEIN" else "JAP",
     b?: #Boolean,
     c: #String,
     d: "Some Constant",

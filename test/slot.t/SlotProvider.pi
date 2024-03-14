@@ -3,7 +3,7 @@ component SlotProvider {
 
   let restricted = #Slot(max: 1, constraints: [SubComponent]);
   
-  let multi = #Slot :: els -> for (el in els) {
+  let multi = #Slot :: fn els -> for (el in els) {
     <div>{el @@ { class: "item" }}</div>
   };
 
