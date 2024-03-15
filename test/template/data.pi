@@ -1,0 +1,45 @@
+page Template(
+  label: "Page",
+  icon: "/images/icons/page.svg",
+  group: "pages",
+) {
+  let intro = true;
+  let name = if (intro) "String Template" else "World";
+  let content = "Hello, $(name)!";
+
+  <>
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>FOO</title>
+
+        <link rel="icon" type="image/svg+xml" href="/favicons/favicon.svg" />
+        <link rel="icon" type="image/png" href="/favicons/favicon.png" />
+
+        <link rel="stylesheet" href="/css/main.css" />
+      </head>
+      <body>
+        <section class="Section">
+          <div />
+          {if (intro) {
+            let foobar = "foo";
+            if (foobar) {
+              <div />
+            } else {
+              let barfoo = "3";
+              <span />
+            }
+          }}
+          <div class="Section-content">
+            {content}
+          </div>
+          <div class="Section-footer">
+            Lorem Ipsum dolor sit amet!!
+          </div>
+        </section>
+      </body>
+    </html>
+  </>
+}
