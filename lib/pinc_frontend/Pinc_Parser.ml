@@ -357,6 +357,9 @@ module Rules = struct
                  component_tag_attributes;
                  component_tag_children;
                })
+      | Token.HTML_DOCTYPE s ->
+          next t;
+          Some (Ast.TextTemplateNode s)
       | _ -> None
     in
     let node_end = t.prev_token in
@@ -597,7 +600,15 @@ module Rules = struct
       | Token.TAG name ->
           next t;
           parse_tag ~name t
-      (* PARSING TEMPLATE EXPRESSION *)
+      (* PARSING DOCTYPE *)
+      | Token.HTML_DOCTYPE s ->
+          let doctype_loc = t.token.location in
+          next t;
+          let template_nodes =
+            Ast.
+              { template_node_desc = TextTemplateNode s; template_node_loc = doctype_loc }
+          in
+          Ast.TemplateExpression [ template_nodes ] |> Option.some
       | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
           let template_nodes = t |> Helpers.list ~fn:parse_template_node in
           Ast.TemplateExpression template_nodes |> Option.some

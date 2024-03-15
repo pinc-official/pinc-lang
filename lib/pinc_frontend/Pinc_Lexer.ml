@@ -29,13 +29,32 @@ let make_position t =
   Location.Position.make ~filename:t.filename ~line:t.line ~column:(t.column + 1)
 ;;
 
-(* let show_mode = function
-     | Normal -> "NORMAL"
-     | String -> "String"
-     | TemplateAttributes -> "TemplateAttributes"
-     | ComponentAttributes -> "ComponentAttributes"
-     | Template -> "Template"
-   ;; *)
+(* module Debug = struct
+     [@@@warning "-unused-value-declaration"]
+
+     let print_current t =
+       let aux = function
+         | `Chr ' ' -> "(SPACE)"
+         | `Chr '\t' -> "(TAB)"
+         | `Chr '\n' -> "(NEWLINE)"
+         | `Chr c -> String.make 1 c
+         | `EOF -> "(EOF)"
+       in
+       print_endline (aux t.current)
+     ;;
+
+     let print_mode t =
+       let aux = function
+         | Normal -> "NORMAL"
+         | String -> "String"
+         | TemplateAttributes -> "TemplateAttributes"
+         | ComponentAttributes -> "ComponentAttributes"
+         | Template -> "Template"
+       in
+
+       aux (List.hd t.mode)
+     ;;
+   end *)
 
 let current_mode t =
   match t.mode with
@@ -47,22 +66,19 @@ let current_mode t =
   | ComponentAttributes :: _ -> ComponentAttributes
 ;;
 
-(* let previous_mode t =
-     match t.mode with
-     | [] | [ _ ] -> Normal
-     | _ :: Normal :: _ -> Normal
-     | _ :: String :: _ -> String
-     | _ :: Template :: _ -> Template
-     | _ :: TemplateAttributes :: _ -> TemplateAttributes
-     | _ :: ComponentAttributes :: _ -> ComponentAttributes
-   ;; *)
-
 let setMode mode t = t.mode <- mode :: t.mode
 
 let popMode mode t =
   match t.mode with
   | current_mode :: tl when current_mode = mode -> t.mode <- tl
   | _ -> ()
+;;
+
+let peek t = try `Chr (String.get t.src (t.offset + 1)) with Invalid_argument _ -> `EOF
+let peek2 t = try `Chr (String.get t.src (t.offset + 2)) with Invalid_argument _ -> `EOF
+
+let peek_n n t =
+  try `Chr (String.get t.src (t.offset + n)) with Invalid_argument _ -> `EOF
 ;;
 
 let eat t =
@@ -90,8 +106,30 @@ let eat3 t =
   eat t
 ;;
 
-let peek t = try `Chr (String.get t.src (t.offset + 1)) with Invalid_argument _ -> `EOF
-let peek2 t = try `Chr (String.get t.src (t.offset + 2)) with Invalid_argument _ -> `EOF
+let eat_n n t =
+  for _ = 1 to n do
+    eat t
+  done
+;;
+
+let eat_sequence ?(case_sensitive = false) seq t =
+  let rec aux seq t len =
+    match (seq, peek_n len t) with
+    | [], _ -> (true, len)
+    | hd :: rest, `Chr c when (not case_sensitive) && hd = c -> aux rest t (succ len)
+    | hd :: rest, `Chr c
+      when case_sensitive && (Char.uppercase_ascii hd = c || Char.lowercase_ascii hd = c)
+      -> aux rest t (succ len)
+    | _ -> (false, 0)
+  in
+
+  let ok, len = aux seq t 0 in
+
+  if ok then
+    eat_n len t;
+
+  ok
+;;
 
 let make ~filename src =
   {
@@ -337,6 +375,53 @@ let scan_component_open_tag t =
         (Location.make ~s:start_pos ~e:(make_position t) ())
         "Your Template was not closed correctly. You probably mismatched or forgot a \
          closing tag."
+;;
+
+let scan_doctype t =
+  let start_pos = make_position t in
+
+  let invalid_doctype_error t =
+    Diagnostics.error
+      (Location.make ~s:start_pos ~e:(make_position t) ())
+      "Invalid DOCTYPE. Currently only the html5 doctype is supported. (<!DOCTYPE html>)"
+  in
+
+  (* 1. A string that is an ASCII case-insensitive match for the string "<!DOCTYPE". *)
+  if
+    not
+    @@ eat_sequence ~case_sensitive:true [ '<'; '!'; 'D'; 'O'; 'C'; 'T'; 'Y'; 'P'; 'E' ] t
+  then
+    invalid_doctype_error t;
+
+  (* 2. One or more ASCII whitespace. *)
+  skip_whitespace t;
+
+  (* 3. A string that is an ASCII case-insensitive match for the string "html". *)
+  let valid_doctype = eat_sequence ~case_sensitive:true [ 'h'; 't'; 'm'; 'l' ] t in
+  if not valid_doctype then
+    invalid_doctype_error t;
+
+  (* 4. Optionally, a DOCTYPE legacy string. NOTE: currently not supported. *)
+  ();
+
+  (* 5. Zero or more ASCII whitespace. *)
+  skip_whitespace t;
+
+  (* 6. A U+003E GREATER-THAN SIGN character (>). *)
+  match t.current with
+  | `Chr '>' ->
+      eat t;
+      Token.HTML_DOCTYPE "<!DOCTYPE html>"
+  | `Chr c ->
+      Diagnostics.error
+        (Location.make ~s:(make_position t) ())
+        (Printf.sprintf
+           "Expected to see `>` (GREATER-THAN SIGN) at this point. Instead saw: %c"
+           c)
+  | `EOF ->
+      Diagnostics.error
+        (Location.make ~s:start_pos ~e:(make_position t) ())
+        "Your DOCTYPE was not closed correctly. You probably forgot the > at the end."
 ;;
 
 let scan_open_tag t =
@@ -615,6 +700,9 @@ let rec scan_template_token ~start_pos t =
           eat2 t;
           setMode Template t;
           Token.HTML_OPEN_FRAGMENT
+      | `Chr '!' ->
+          (* NOTE: not sure, if we should setMode Template t; here... *)
+          scan_doctype t
       | `Chr 'a' .. 'z' ->
           setMode Template t;
           setMode TemplateAttributes t;
@@ -937,6 +1025,9 @@ and scan_normal_token ~start_pos t =
       | `Chr '=' ->
           eat2 t;
           Token.LESS_EQUAL
+      | `Chr '!' ->
+          (* NOTE: not sure, if we should setMode Template t; here... *)
+          scan_doctype t
       | `Chr 'a' .. 'z' ->
           setMode Template t;
           setMode TemplateAttributes t;
