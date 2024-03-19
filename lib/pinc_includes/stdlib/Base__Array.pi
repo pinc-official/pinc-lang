@@ -15,6 +15,17 @@ library Base__Array {
     len
   }
 
+  let first = fn (array) -> {
+    array[0]
+  }
+
+  let last = fn (array) -> {
+    let len = length(array);
+    if len > 0 {
+      array[len - 1]
+    }
+  }
+
   let take_until = fn (array, condition) -> {
     for (item in array) {
       if(condition(item)) break;
