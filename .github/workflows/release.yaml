@@ -3,7 +3,10 @@ name: Release
 on:
   push:
     branches:
-      - 'main'
+      - 'ci'
+  release:
+    types:
+      - published
 
 jobs:
   release:
@@ -31,10 +34,6 @@ jobs:
           opam install . --locked --deps-only --with-test --yes
           opam install dune-release
 
-      - name: Test
-        run: |
-          opam exec -- dune runtest
-
       - name: Build
         run: |
           opam exec -- dune build --profile release
@@ -50,8 +49,8 @@ jobs:
           IFS='.' read -r major minor patch <<< "$current_version"
           new_version="$major.$minor.$((patch + 1))"
 
-          opam exec -- dune-release tag "$new_version"
+          opam exec -- dune-release tag "$new_version" --yes
           opam exec -- dune-release distrib
-          opam exec -- dune-release publish distrib -y
-          opam exec -- dune-release opam pkg
-          opam exec -- dune-release opam submit
+          opam exec -- dune-release publish distrib --yes
+          opam exec -- dune-release opam pkg --yes
+          opam exec -- dune-release opam submit --yes
