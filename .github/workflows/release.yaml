@@ -17,19 +17,16 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    env:
-      ocaml-compiler: '5.1'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set-up OCaml
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v2
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-          allow-prerelease-opam: true
 
-      - name: Install
+      - name: Install dependencies
         run: |
           opam install . --locked --deps-only --with-test --yes
           opam install dune-release
