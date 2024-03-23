@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+        ocaml-compiler:
+          - 5.0.x
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      ocaml-compiler: '5.1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set-up OCaml
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          allow-prerelease-opam: true
+
+      - name: Install
+        run: |
+          opam install . --locked --deps-only --with-test --yes
+          opam install dune-release
+
+      - name: Test
+        run: |
+          opam exec -- dune runtest
+
+      - name: Build
+        run: |
+          opam exec -- dune build --profile release
+
+      - name: Bump version and create release
+        shell: bash
+        env:
+          DUNE_RELEASE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DUNE_RELEASE_OPAM_REPO: 'pinc-official/opam-repository'
+        run: |
+          git pull --tags --force
+          current_version=$(git describe --tags $(git rev-list --tags --max-count=1))
+          IFS='.' read -r major minor patch <<< "$current_version"
+          new_version="$major.$minor.$((patch + 1))"
+
+          opam exec -- dune-release tag "$new_version"
+          opam exec -- dune-release distrib
+          opam exec -- dune-release publish distrib -y
+          opam exec -- dune-release opam pkg
+          opam exec -- dune-release opam submit

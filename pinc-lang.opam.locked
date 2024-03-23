@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "pinc-lang"
-version: "~dev"
+version: "dev"
 synopsis: "The PiNC Language as Syntax and Interpreter"
 maintainer: "torben@ewert-online.com"
 authors: "Torben Ewert"
@@ -15,23 +15,22 @@ depends: [
   "base-unix" {= "base"}
   "bisect_ppx" {= "2.8.3" & with-test}
   "cmdliner" {= "1.2.0"}
-  "containers" {= "3.12"}
+  "containers" {= "3.13.1"}
   "crunch" {= "3.3.1"}
   "csexp" {= "1.5.2"}
-  "dune" {= "3.10.0"}
-  "dune-configurator" {= "3.10.0"}
+  "dune" {= "3.14.2"}
+  "dune-configurator" {= "3.14.2"}
   "either" {= "1.0.0"}
   "fmt" {= "0.9.0"}
   "ocaml" {= "5.0.0"}
   "ocaml-compiler-libs" {= "v0.12.4" & with-test}
   "ocaml-config" {= "3"}
   "ocaml-system" {= "5.0.0"}
-  "ocamlbuild" {= "0.14.2"}
+  "ocamlbuild" {= "0.14.3"}
   "ocamlfind" {= "1.9.6"}
   "ppx_derivers" {= "1.2.1" & with-test}
-  "ppxlib" {= "0.30.0" & with-test}
+  "ppxlib" {= "0.32.0" & with-test}
   "ptime" {= "1.1.0"}
-  "seq" {= "base"}
   "sexplib0" {= "v0.16.0" & with-test}
   "stdlib-shims" {= "0.3.0" & with-test}
   "topkg" {= "1.0.7"}
