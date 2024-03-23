@@ -49,6 +49,7 @@ jobs:
           IFS='.' read -r major minor patch <<< "$current_version"
           new_version="$major.$minor.$((patch + 1))"
 
+          git config --global url."https://github.com/".pushInsteadOf "git@github.com:"
           git config --global user.name "$GITHUB_ACTOR"
           git config --global user.email "github@actions.ci"
 
