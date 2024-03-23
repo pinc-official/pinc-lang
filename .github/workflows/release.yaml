@@ -41,7 +41,7 @@ jobs:
       - name: Bump version and create release
         shell: bash
         env:
-          DUNE_RELEASE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DUNE_RELEASE_GITHUB_TOKEN: ${{ secrets.OPAM_RELEASE_GITHUB_TOKEN }}
           DUNE_RELEASE_OPAM_REPO: 'pinc-official/opam-repository'
         run: |
           git pull --tags --force
