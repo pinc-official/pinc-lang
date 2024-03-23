@@ -41,13 +41,16 @@ jobs:
       - name: Bump version and create release
         shell: bash
         env:
-          DUNE_RELEASE_GITHUB_TOKEN: ${{ secrets.OPAM_RELEASE_GITHUB_TOKEN }}
+          DUNE_RELEASE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DUNE_RELEASE_OPAM_REPO: 'pinc-official/opam-repository'
         run: |
           git pull --tags --force
           current_version=$(git describe --tags $(git rev-list --tags --max-count=1))
           IFS='.' read -r major minor patch <<< "$current_version"
           new_version="$major.$minor.$((patch + 1))"
+
+          git config --global user.name "$GITHUB_ACTOR"
+          git config --global user.email "github@actions.ci"
 
           opam exec -- dune-release tag "$new_version" --yes
           opam exec -- dune-release distrib
