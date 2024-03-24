@@ -33,11 +33,11 @@ test-update:
 	dune runtest --auto-promote
 
 test-coverage:
-	if [ -d /tmp/pinc-lang ]; then rm -r /tmp/pinc-lang; fi
-	mkdir -p /tmp/pinc-lang
+	if [ -d /tmp/pinc-official ]; then rm -r /tmp/pinc-official; fi
+	mkdir -p /tmp/pinc-official
 	BISECT_FILE=/tmp/pinc-official/pinc-lang dune runtest --no-print-directory --instrument-with bisect_ppx --force
-	bisect-ppx-report html --coverage-path /tmp/pinc-lang
-	bisect-ppx-report summary --coverage-path /tmp/pinc-lang
+	bisect-ppx-report html --coverage-path /tmp/pinc-official
+	bisect-ppx-report summary --coverage-path /tmp/pinc-official
 
 clean:
 	rm -rf _build
