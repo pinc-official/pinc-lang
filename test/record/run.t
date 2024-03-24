@@ -1,4 +1,4 @@
-  $ print . Component
+  $ NO_COLOR="1" print . Component
   <section>
       
       1

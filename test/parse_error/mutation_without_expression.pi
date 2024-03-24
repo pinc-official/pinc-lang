@@ -1,8 +1,6 @@
 component Component {
   let mutable fail = "";
-  fail := 
-   
-  ;
+  fail := ;
 
   <div class="Section">
     {fail}

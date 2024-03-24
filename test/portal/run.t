@@ -1,4 +1,4 @@
-  $ print . Main
+  $ NO_COLOR="1" print . Main
   <html>
       <head>
       <link href="path/to/base.css" rel="stylesheet" />

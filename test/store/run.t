@@ -1,4 +1,4 @@
-  $ print . StoreValueProvider
+  $ NO_COLOR="1" print . StoreValueProvider
   <div>
       Somewhere in the World ... or am I??
   some@email.invalid

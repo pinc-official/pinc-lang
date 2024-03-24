@@ -1,4 +1,4 @@
-  $ print . Docs
+  $ NO_COLOR="1" print . Docs
   ⌘
   apples
   oranges

@@ -1,4 +1,4 @@
-  $ print . Component
+  $ NO_COLOR="1" print . Component
   <section class="Section">
       <h3 class="HeadlineSecondary ">
   Hello, Headline Secondary!</h3>

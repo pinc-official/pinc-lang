@@ -1,4 +1,4 @@
-  $ print . Component
+  $ NO_COLOR="1" print . Component
   <div class="SlotProvider">
       <area class="slot_default"><div>Hello Default</div></area>
       <area class="slot_restricted"><div class="SubComponent" data-foo="9">
@@ -35,12 +35,13 @@
       <area class="slot_nothing"></area>
     </div>
 
-  $ print . ErrorComponent
+  $ NO_COLOR="1" print . ErrorComponent
   
   ERROR in file ./data.pi:38:5-44
   
     37 │   <SlotProvider>
     38 │     <div slot="nothing">Hello Default</div>
+       │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     39 │   </SlotProvider>
   
   Child with tag `div` may not be used inside this #Slot. 

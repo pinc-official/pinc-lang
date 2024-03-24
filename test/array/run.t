@@ -1,4 +1,4 @@
-  $ print . C
+  $ NO_COLOR="1" print . C
   <section>
       0
   1

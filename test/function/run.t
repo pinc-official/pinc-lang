@@ -1,4 +1,4 @@
-  $ print . Component
+  $ NO_COLOR="1" print . Component
   <section>
       max(1, 5) = 5
       min(1, 5) = 1
@@ -27,4 +27,3 @@
   9
   16
     </section>
-

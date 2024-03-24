@@ -1,4 +1,4 @@
-  $ print . C
+  $ NO_COLOR="1" print . C
   <section>
       String.uppercase_ascii("abcàäöüß"): ABCàäöüß
       String.lowercase_ascii("ABCÁÄÖÜß"): abcÁÄÖÜß

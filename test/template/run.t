@@ -1,4 +1,4 @@
-  $ print . Template
+  $ NO_COLOR="1" print . Template
   <!DOCTYPE html>
   <html lang="en">
         <head>
