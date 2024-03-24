@@ -3,5 +3,5 @@ module Location = Pinc_Diagnostics.Location
 
 type t
 
-val make : filename:string -> string -> t
-val parse : filename:string -> string -> Ast.t
+val make : Pinc_Core.Source.t -> t
+val parse : Pinc_Core.Source.t -> Ast.t

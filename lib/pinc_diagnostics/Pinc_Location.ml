@@ -15,7 +15,7 @@ let make ?e ~s () =
 
 let none =
   {
-    loc_start = Position.make ~filename:"" ~line:0 ~column:0;
-    loc_end = Position.make ~filename:"" ~line:0 ~column:0;
+    loc_start = Position.make ~source:Pinc_Core.Source.empty ~line:0 ~column:0;
+    loc_end = Position.make ~source:Pinc_Core.Source.empty ~line:0 ~column:0;
   }
 ;;

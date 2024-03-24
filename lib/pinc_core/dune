@@ -1,0 +1,5 @@
+(library
+ (name Pinc_Core)
+ (public_name pinc-lang.core)
+ (instrumentation
+  (backend bisect_ppx)))

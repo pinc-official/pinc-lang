@@ -52,9 +52,9 @@ let expect token t =
          (Token.to_string t.token.typ))
 ;;
 
-let make ~filename src =
-  let lexer = Lexer.make ~filename src in
-  let initial_pos = Location.Position.make ~filename ~line:0 ~column:0 in
+let make source =
+  let lexer = Lexer.make source in
+  let initial_pos = Location.Position.make ~source ~line:0 ~column:0 in
   let loc = Location.make ~s:initial_pos () in
   let initial_token = Token.make ~loc Token.END_OF_INPUT in
   let t =
@@ -802,7 +802,7 @@ let scan : t -> Ast.t =
  fun t -> t |> Helpers.list ~fn:Rules.parse_declaration |> List.to_seq |> StringMap.of_seq
 ;;
 
-let parse ~filename source =
-  let parser = make ~filename source in
+let parse source =
+  let parser = make source in
   scan parser
 ;;

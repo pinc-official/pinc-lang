@@ -1,37 +1,36 @@
+module Source = Pinc_Core.Source
 module Location = Pinc_Location
 module Position = Pinc_Position
 
-let seek_lines_before ~count ic pos =
+let _seek_lines_before ~count source_code pos =
   let original_line = pos.Position.line in
-  In_channel.seek ic 0L;
-  let rec loop current_line current_char =
-    if current_line + count >= original_line then
-      (current_char, current_line)
-    else (
-      match In_channel.input_char ic with
-      | Some '\n' -> loop (current_line + 1) (current_char + 1)
-      | Some _ -> loop current_line (current_char + 1)
-      | None -> (current_char, current_line))
-  in
-  loop 1 0
+  source_code
+  |> String.fold_left
+       (fun (current_line, current_char) curr ->
+         if current_line + count >= original_line then
+           (current_line, current_char)
+         else (
+           match curr with
+           | '\n' -> (current_line + 1, current_char + 1)
+           | _ -> (current_line, current_char + 1)))
+       (1, 0)
 ;;
 
-let seek_lines_after ~count ic pos =
+let _seek_lines_after ~count source_code pos =
   let original_line = pos.Position.line in
-  In_channel.seek ic 0L;
-  let rec loop current_line current_char =
-    if current_line - count - 1 >= original_line then
-      (current_char - 1, current_line)
-    else (
-      match In_channel.input_char ic with
-      | Some '\n' -> loop (current_line + 1) (current_char + 1)
-      | Some _ -> loop current_line (current_char + 1)
-      | None -> (current_char, current_line))
-  in
-  loop 1 0
+  source_code
+  |> String.fold_left
+       (fun (line_number, char_number) curr ->
+         if line_number - count - 1 >= original_line then
+           (line_number, char_number)
+         else (
+           match curr with
+           | '\n' -> (line_number + 1, char_number + 1)
+           | _ -> (line_number, char_number + 1)))
+       (1, 0)
 ;;
 
-let print_code ~color ~loc ic =
+let print_code ~color ~loc source_code =
   let context_lines = 1 in
   let start_pos = loc.Location.loc_start in
   let end_pos = loc.Location.loc_end in
@@ -39,22 +38,29 @@ let print_code ~color ~loc ic =
   let highlight_line_end = end_pos.line in
   let highlight_column_start = start_pos.column in
   let highlight_column_end = end_pos.column in
-  let start_char_offset, first_shown_line =
-    seek_lines_before ~count:context_lines ic start_pos
-  in
-  let end_char_offset, _last_shown_line =
-    seek_lines_after ~count:context_lines ic end_pos
-  in
-  In_channel.seek ic (Int64.of_int start_char_offset);
+
+  let first_shown_line = start_pos.line - context_lines |> Int.max 0 in
+  let last_shown_line = end_pos.line + context_lines in
+
   let lines =
-    In_channel.really_input_string ic (end_char_offset - start_char_offset)
-    |> Option.value ~default:""
+    source_code
     |> String.split_on_char '\n'
+    |> List.filteri (fun index _line ->
+           let line_number = succ index in
+           line_number >= first_shown_line && line_number <= last_shown_line)
     |> List.mapi (fun i line ->
            let line_number = i + first_shown_line in
            (line_number, line))
+    (* try
+         String.sub source_code start_char_offset (end_char_offset - start_char_offset)
+         |> String.split_on_char '\n'
+         |> List.mapi (fun i line ->
+                let line_number = i + first_shown_line in
+                (line_number, line))
+       with Invalid_argument _ -> [] *)
   in
-  let buf = Buffer.create 100 in
+
+  let buf = Buffer.create 400 in
   let ppf = Format.formatter_of_buffer buf in
   Fmt.set_style_renderer ppf `Ansi_tty;
   lines
@@ -91,36 +97,37 @@ let print_code ~color ~loc ic =
                 else
                   Fmt.pf ppf "%a" Fmt.(styled `None char) ch);
          Format.pp_print_newline ppf ());
+
   Buffer.contents buf
 ;;
 
 let print_loc ppf (loc : Location.t) =
-  if loc = Location.none then
-    ()
-  else (
-    let loc_string =
-      if loc.loc_start.line = loc.loc_end.line then
-        if loc.loc_start.column = loc.loc_end.column then
-          Format.sprintf "%i:%i" loc.loc_start.line loc.loc_start.column
+  match (Source.name loc.loc_start.source, loc = Location.none) with
+  | None, _ | _, true -> ()
+  | Some filename, _ ->
+      let loc_string =
+        if loc.loc_start.line = loc.loc_end.line then
+          if loc.loc_start.column = loc.loc_end.column then
+            Format.sprintf "%i:%i" loc.loc_start.line loc.loc_start.column
+          else
+            Format.sprintf
+              "%i:%i-%i"
+              loc.loc_start.line
+              loc.loc_start.column
+              loc.loc_end.column
         else
           Format.sprintf
-            "%i:%i-%i"
+            "%i:%i-%i:%i"
             loc.loc_start.line
             loc.loc_start.column
+            loc.loc_end.line
             loc.loc_end.column
-      else
-        Format.sprintf
-          "%i:%i-%i:%i"
-          loc.loc_start.line
-          loc.loc_start.column
-          loc.loc_end.line
-          loc.loc_end.column
-    in
-    Fmt.pf
-      ppf
-      "%a"
-      Fmt.(styled `Faint string)
-      (Printf.sprintf "in file %s:%s" loc.loc_start.filename loc_string))
+      in
+      Fmt.pf
+        ppf
+        "%a"
+        Fmt.(styled `Faint string)
+        (Printf.sprintf "in file %s:%s" filename loc_string)
 ;;
 
 let print_header ppf ~color text =
@@ -135,8 +142,8 @@ let print ~kind ppf (loc : Location.t) =
   in
   Fmt.pf ppf "@[%a@] " (print_header ~color) header;
   Fmt.pf ppf "@[%a@]@," print_loc loc;
-  try
-    In_channel.with_open_bin loc.loc_start.filename (fun ic ->
-        Fmt.pf ppf "@,%s" (print_code ~color ~loc ic))
-  with Sys_error _ -> ()
+
+  let source_code = Source.content loc.loc_start.source in
+  if source_code <> "" then
+    Fmt.pf ppf "@,%s" (print_code ~color ~loc source_code)
 ;;

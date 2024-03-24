@@ -1,6 +1,7 @@
 module Diagnostics = Pinc_Diagnostics
 module Location = Diagnostics.Location
 module Token = Pinc_Token
+module Source = Pinc_Core.Source
 
 type mode =
   | Normal
@@ -15,7 +16,7 @@ type char' =
   ]
 
 type t = {
-  filename : string;
+  source : Source.t;
   src : string;
   mutable current : char';
   mutable offset : int;
@@ -25,8 +26,25 @@ type t = {
   mutable mode : mode list;
 }
 
+let make source =
+  let src = Source.content source in
+  {
+    source;
+    src;
+    current =
+      (match src with
+      | "" -> `EOF
+      | src -> `Chr (String.unsafe_get src 0));
+    offset = 0;
+    line_offset = 0;
+    column = 0;
+    line = 1;
+    mode = [ Normal ];
+  }
+;;
+
 let make_position t =
-  Location.Position.make ~filename:t.filename ~line:t.line ~column:(t.column + 1)
+  Location.Position.make ~source:t.source ~line:t.line ~column:(t.column + 1)
 ;;
 
 (* module Debug = struct
@@ -129,23 +147,6 @@ let eat_sequence ?(case_sensitive = false) seq t =
     eat_n len t;
 
   ok
-;;
-
-let make ~filename src =
-  {
-    filename;
-    src;
-    current =
-      (if src = "" then
-         `EOF
-       else
-         `Chr (String.unsafe_get src 0));
-    offset = 0;
-    line_offset = 0;
-    column = 0;
-    line = 1;
-    mode = [ Normal ];
-  }
 ;;
 
 let rec skip_whitespace t =

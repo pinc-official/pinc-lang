@@ -1,3 +1,4 @@
+module Source = Pinc_Core.Source
 module Ast = Pinc_Frontend.Ast
 module Parser = Pinc_Frontend.Parser
 

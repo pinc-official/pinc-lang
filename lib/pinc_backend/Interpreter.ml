@@ -3,6 +3,7 @@ module Types = Types
 module Ast = Pinc_Frontend.Ast
 module Parser = Pinc_Frontend.Parser
 module Location = Pinc_Diagnostics.Location
+module Source = Pinc_Core.Source
 
 exception Loop_Break of state
 exception Loop_Continue of state
@@ -1303,7 +1304,24 @@ and eval_template ~state template =
 
 let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = None
 
-let eval_meta declarations =
+let declarations_of_sources sources =
+  ListLabels.fold_left sources ~init:StringMap.empty ~f:(fun acc source ->
+      let decls = Parser.parse source in
+      let f key _ _ =
+        Pinc_Diagnostics.error
+          (Pinc_Diagnostics.Location.make
+             ~s:(Pinc_Diagnostics.Location.Position.make ~source ~line:0 ~column:0)
+             ())
+          (Printf.sprintf
+             "Found multiple declarations with identifier `%s`.\n\
+              Every declaration has to have a unique name in pinc."
+             key)
+      in
+      StringMap.union f acc decls)
+;;
+
+let eval_meta sources =
+  let declarations = declarations_of_sources sources in
   let state =
     State.make
       ~mode:`Portal_Collection
@@ -1330,13 +1348,15 @@ let eval_meta declarations =
 let get_stdlib () =
   let open Pinc_Includes in
   Includes.file_list
+  |> List.map (fun filename ->
+         filename |> Includes.read |> Option.get |> Source.of_string ~filename)
   |> List.fold_left
-       (fun acc filename ->
-         let decls = filename |> Includes.read |> Option.get |> Parser.parse ~filename in
+       (fun acc source ->
+         let decls = source |> Parser.parse in
          let f key _ _ =
            Pinc_Diagnostics.error
              (Pinc_Diagnostics.Location.make
-                ~s:(Pinc_Diagnostics.Location.Position.make ~filename ~line:0 ~column:0)
+                ~s:(Pinc_Diagnostics.Location.Position.make ~source ~line:0 ~column:0)
                 ())
              ("Found multiple declarations with identifier " ^ key)
          in
@@ -1344,11 +1364,20 @@ let get_stdlib () =
        StringMap.empty
 ;;
 
-let eval ~tag_data_provider ~root declarations =
+let eval ~tag_data_provider ~root sources =
   Hashtbl.reset Tag.Tag_Portal.portals;
 
-  let base_lib = get_stdlib () in
-  let declarations = StringMap.union (fun _key _x y -> Some y) base_lib declarations in
+  let declarations =
+    StringMap.union
+      (fun _key _x y -> Some y)
+      (get_stdlib ())
+      (declarations_of_sources sources)
+  in
+
+  (match declarations |> StringMap.find_opt root with
+  | Some { declaration_type = Declaration_Library _ | Declaration_Store _; _ } ->
+      raise_notrace (Invalid_argument (root ^ " can not be evaluated"))
+  | _ -> ());
 
   let state =
     State.make
