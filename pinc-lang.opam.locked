@@ -5,8 +5,8 @@ synopsis: "The PiNC Language as Syntax and Interpreter"
 maintainer: "torben@ewert-online.com"
 authors: "Torben Ewert"
 license: "MIT"
-homepage: "https://github.com/pinc-lang/pinc-lang"
-bug-reports: "https://github.com/pinc-lang/pinc-lang/issues"
+homepage: "https://github.com/pinc-official/pinc-lang"
+bug-reports: "https://github.com/pinc-official/pinc-lang/issues"
 depends: [
   "base-bigarray" {= "base"}
   "base-domains" {= "base"}
@@ -49,4 +49,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/pinc-lang/pinc-lang.git"
+dev-repo: "git+https://github.com/pinc-official/pinc-lang.git"

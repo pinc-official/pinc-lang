@@ -11,7 +11,7 @@
 (map_workspace_root false)
 
 (source
- (github pinc-lang/pinc-lang))
+ (github pinc-official/pinc-lang))
 
 (license MIT)
 

@@ -35,7 +35,7 @@ test-update:
 test-coverage:
 	if [ -d /tmp/pinc-lang ]; then rm -r /tmp/pinc-lang; fi
 	mkdir -p /tmp/pinc-lang
-	BISECT_FILE=/tmp/pinc-lang/pinc-lang dune runtest --no-print-directory --instrument-with bisect_ppx --force
+	BISECT_FILE=/tmp/pinc-official/pinc-lang dune runtest --no-print-directory --instrument-with bisect_ppx --force
 	bisect-ppx-report html --coverage-path /tmp/pinc-lang
 	bisect-ppx-report summary --coverage-path /tmp/pinc-lang
 
