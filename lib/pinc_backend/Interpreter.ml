@@ -1,9 +1,9 @@
 open Types
 module Types = Types
-module Ast = Pinc_Frontend.Ast
-module Parser = Pinc_Frontend.Parser
+module Ast = Pinc_Parser.Ast
+module Parser = Pinc_Parser
 module Location = Pinc_Diagnostics.Location
-module Source = Pinc_Core.Source
+module Source = Pinc_Source
 
 exception Loop_Break of state
 exception Loop_Continue of state
@@ -288,8 +288,7 @@ and eval_string_template ~state template =
                     |> State.get_output
                     |> Value.to_string)
          |> String.concat ""
-         |> Value.of_string
-              ~value_loc:(Location.make ~s:!start_loc.loc_start ~e:!end_loc.loc_end ()))
+         |> Value.of_string ~value_loc:(Location.merge ~s:!start_loc ~e:!end_loc ()))
 
 and eval_function_declaration ~state ~loc ~parameters body =
   let ident = state.binding_identifier in
@@ -906,9 +905,9 @@ and eval_binary_merge ~state left_expression right_expression =
           "Trying to merge an array value onto a non array."
     | _ ->
         Pinc_Diagnostics.error
-          (Location.make
-             ~s:left_expression.expression_loc.loc_start
-             ~e:right_expression.expression_loc.loc_end
+          (Location.merge
+             ~s:left_expression.expression_loc
+             ~e:right_expression.expression_loc
              ())
           "Trying to merge two non array values."
   in
@@ -1346,10 +1345,9 @@ let eval_meta sources =
 ;;
 
 let get_stdlib () =
-  let open Pinc_Includes in
-  Includes.file_list
+  Pinc_stdlib.file_list
   |> List.map (fun filename ->
-         filename |> Includes.read |> Option.get |> Source.of_string ~filename)
+         filename |> Pinc_stdlib.read |> Option.get |> Source.of_string ~filename)
   |> List.fold_left
        (fun acc source ->
          let decls = source |> Parser.parse in

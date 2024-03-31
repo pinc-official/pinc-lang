@@ -1,0 +1,6 @@
+(library
+ (name Pinc_Source)
+ (public_name pinc-lang.source)
+ (libraries)
+ (instrumentation
+  (backend landmarks --auto)))

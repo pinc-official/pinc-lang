@@ -1,18 +1,17 @@
-module Source = Pinc_Core.Source
-module Location = Pinc_Location
-module Position = Pinc_Position
+module Location = Location
+module Source = Pinc_Source
 
 let print_code ~color ~loc source_code =
   let context_lines = 1 in
-  let start_pos = loc.Location.loc_start in
-  let end_pos = loc.Location.loc_end in
-  let highlight_line_start = start_pos.line in
-  let highlight_line_end = end_pos.line in
-  let highlight_column_start = start_pos.column in
-  let highlight_column_end = end_pos.column in
+  let start_pos = loc |> Location.get_start in
+  let end_pos = loc |> Location.get_end in
+  let highlight_line_start = start_pos |> Location.Position.get_line in
+  let highlight_line_end = end_pos |> Location.Position.get_line in
+  let highlight_column_start = start_pos |> Location.Position.get_column in
+  let highlight_column_end = end_pos |> Location.Position.get_column in
 
-  let first_shown_line = start_pos.line - context_lines |> Int.max 0 in
-  let last_shown_line = end_pos.line + context_lines in
+  let first_shown_line = highlight_line_start - context_lines |> Int.max 0 in
+  let last_shown_line = highlight_line_end + context_lines in
 
   let lines =
     source_code
@@ -97,35 +96,6 @@ let print_code ~color ~loc source_code =
   Buffer.contents buf
 ;;
 
-let print_loc ppf (loc : Location.t) =
-  match (Source.name loc.loc_start.source, loc = Location.none) with
-  | None, _ | _, true -> ()
-  | Some filename, _ ->
-      let loc_string =
-        if loc.loc_start.line = loc.loc_end.line then
-          if loc.loc_start.column = loc.loc_end.column then
-            Format.sprintf "%i:%i" loc.loc_start.line loc.loc_start.column
-          else
-            Format.sprintf
-              "%i:%i-%i"
-              loc.loc_start.line
-              loc.loc_start.column
-              loc.loc_end.column
-        else
-          Format.sprintf
-            "%i:%i-%i:%i"
-            loc.loc_start.line
-            loc.loc_start.column
-            loc.loc_end.line
-            loc.loc_end.column
-      in
-      Fmt.pf
-        ppf
-        "%a"
-        Fmt.(styled `Faint string)
-        (Printf.sprintf "in file %s:%s" filename loc_string)
-;;
-
 let print_header ppf ~color text =
   Fmt.pf ppf "%a" Fmt.(styled `Bold (styled color string)) text
 ;;
@@ -144,9 +114,28 @@ let print ~kind ppf (loc : Location.t) =
     | `error -> "ERROR"
   in
   Fmt.pf ppf "@[%a@] " (print_header ~color) header;
-  Fmt.pf ppf "@[%a@]@," print_loc loc;
+  Fmt.pf ppf "@[%a@]@," Location.pp loc;
 
-  let source_code = Source.content loc.loc_start.source in
+  let source_code = loc |> Location.get_source |> Source.content in
   if source_code <> "" then
     Fmt.pf ppf "@,%s" (print_code ~color ~loc source_code)
+;;
+
+let set_renderer ppf =
+  match Sys.getenv_opt "NO_COLOR" with
+  | None | Some "" -> Fmt.set_style_renderer ppf `Ansi_tty
+  | Some _ -> Fmt.set_style_renderer ppf `None
+;;
+
+let error location message =
+  let ppf = Format.err_formatter in
+  set_renderer ppf;
+  Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`error) location message;
+  exit 1
+;;
+
+let warn location message =
+  let ppf = Format.err_formatter in
+  set_renderer ppf;
+  Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`warning) location message
 ;;

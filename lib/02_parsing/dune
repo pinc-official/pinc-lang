@@ -1,6 +1,6 @@
 (library
- (name Pinc_Frontend)
- (public_name pinc-lang.frontend)
+ (name Pinc_Parser)
+ (public_name pinc-lang.parser)
  (libraries Pinc_Diagnostics)
  (instrumentation
   (backend bisect_ppx)))

@@ -1,4 +1,4 @@
-module Ast = Pinc_Frontend.Ast
+module Ast = Pinc_Parser.Ast
 
 module rec Type_Value : sig
   type value = {

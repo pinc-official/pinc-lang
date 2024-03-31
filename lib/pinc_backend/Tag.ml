@@ -1,6 +1,7 @@
 open State
-open Pinc_Frontend.Ast
+open Pinc_Parser.Ast
 open Types.Type_Value
+module Ast = Pinc_Parser.Ast
 module VC = Value_Constructors
 
 let find_path path value =
@@ -20,9 +21,9 @@ module Utils = struct
   let apply_transformer
       ~eval_expression
       ~state
-      ~(transformer : Pinc_Frontend.Ast.expression option)
+      ~(transformer : Ast.expression option)
       (value : Value.value) =
-    let aux (transformer : Pinc_Frontend.Ast.expression) =
+    let aux (transformer : Ast.expression) =
       let arguments = [ value ] in
       let maybe_fn = transformer |> eval_expression ~state |> State.get_output in
       match maybe_fn.value_desc with
@@ -272,7 +273,7 @@ module Tag_Slot = struct
           in
 
           {
-            value_loc = Location.none;
+            value_loc = Pinc_Diagnostics.Location.none;
             value_desc = Value.ComponentTemplateNode (tag, StringMap.empty, evaluated);
           })
     in

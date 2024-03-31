@@ -1,5 +1,3 @@
-module Token = Pinc_Token
-
 type precedence = int
 
 type associativity =

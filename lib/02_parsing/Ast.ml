@@ -1,11 +1,10 @@
-module Location = Pinc_Diagnostics.Location
-module Operators = Pinc_Operators
+module Operators = Operators
 
-type uppercase_identifier = Uppercase_Id of (string * Location.t)
-and lowercase_identifier = Lowercase_Id of (string * Location.t)
+type uppercase_identifier = Uppercase_Id of (string * Pinc_Diagnostics.Location.t)
+and lowercase_identifier = Lowercase_Id of (string * Pinc_Diagnostics.Location.t)
 
 and template_node = {
-  template_node_loc : Location.t;
+  template_node_loc : Pinc_Diagnostics.Location.t;
   template_node_desc : template_node_desc;
 }
 
@@ -25,7 +24,7 @@ and template_node_desc =
   | TextTemplateNode of string
 
 and tag = {
-  tag_loc : Location.t;
+  tag_loc : Pinc_Diagnostics.Location.t;
   tag_desc : tag_desc;
 }
 
@@ -51,7 +50,7 @@ and tag_desc = {
 }
 
 and string_template = {
-  string_template_loc : Location.t;
+  string_template_loc : Pinc_Diagnostics.Location.t;
   string_template_desc : string_template_desc;
 }
 
@@ -60,7 +59,7 @@ and string_template_desc =
   | StringText of string
 
 and expression = {
-  expression_loc : Location.t;
+  expression_loc : Pinc_Diagnostics.Location.t;
   expression_desc : expression_desc;
 }
 
@@ -103,7 +102,7 @@ and expression_desc =
   | BinaryExpression of expression * Operators.Binary.t * expression
 
 and statement = {
-  statement_loc : Location.t;
+  statement_loc : Pinc_Diagnostics.Location.t;
   statement_desc : statement_desc;
 }
 
@@ -119,7 +118,7 @@ and statement_desc =
   | ExpressionStatement of expression
 
 and declaration = {
-  declaration_loc : Location.t;
+  declaration_loc : Pinc_Diagnostics.Location.t;
   declaration_type : declaration_type;
 }
 

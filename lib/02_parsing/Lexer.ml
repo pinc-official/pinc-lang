@@ -1,7 +1,6 @@
 module Diagnostics = Pinc_Diagnostics
 module Location = Diagnostics.Location
-module Token = Pinc_Token
-module Source = Pinc_Core.Source
+module Source = Pinc_Source
 
 type mode =
   | Normal

@@ -1,9 +1,6 @@
-module Ast = Pinc_Ast
-module Operators = Ast.Operators
+module Ast = Ast
 module Diagnostics = Pinc_Diagnostics
-module Location = Diagnostics.Location
-module Token = Pinc_Token
-module Lexer = Pinc_Lexer
+open Diagnostics
 
 type t = {
   lexer : Lexer.t;
@@ -66,9 +63,7 @@ let make source =
 
 module Helpers = struct
   let expect_identifier ?error_message ?(typ = `All) t =
-    let location =
-      Location.make ~s:t.token.location.loc_start ~e:t.token.location.loc_end ()
-    in
+    let location = Location.merge ~s:t.token.location ~e:t.token.location () in
     match t.token.typ with
     | Token.IDENT_UPPER i when typ = `Upper || typ = `All ->
         next t;
@@ -140,7 +135,7 @@ end
 
 module Rules = struct
   let rec parse_string_template t =
-    let string_template_start = t.token.location.loc_start in
+    let string_template_start = t.token.location in
     let* string_template_desc =
       match t.token.typ with
       | Token.STRING s ->
@@ -162,9 +157,9 @@ module Rules = struct
           Some (Ast.StringInterpolation (Lowercase_Id identifier))
       | _ -> None
     in
-    let string_template_end = t.token.location.loc_end in
+    let string_template_end = t.token.location in
     let string_template_loc =
-      Location.make ~s:string_template_start ~e:string_template_end ()
+      Location.merge ~s:string_template_start ~e:string_template_end ()
     in
     Ast.{ string_template_desc; string_template_loc } |> Option.some
 
@@ -195,7 +190,7 @@ module Rules = struct
     | _ -> None
 
   and parse_block t =
-    let expr_start = t.token.location.loc_start in
+    let expr_start = t.token.location in
     let* expression_desc =
       match t.token.typ with
       | Token.LEFT_BRACE ->
@@ -207,8 +202,8 @@ module Rules = struct
           let* statement = parse_statement t in
           Ast.BlockExpression [ statement ] |> Option.some
     in
-    let expr_end = t.token.location.loc_end in
-    let expression_loc = Location.make ~s:expr_start ~e:expr_end () in
+    let expr_end = t.token.location in
+    let expression_loc = Location.merge ~s:expr_start ~e:expr_end () in
     Ast.{ expression_desc; expression_loc } |> Option.some
 
   and parse_tag ~name t =
@@ -232,10 +227,7 @@ module Rules = struct
         let expr = parse_expression t in
         if Option.is_none expr then
           Diagnostics.error
-            (Location.make
-               ~s:start_token.location.loc_start
-               ~e:t.token.location.loc_end
-               ())
+            (Location.merge ~s:start_token.location ~e:t.token.location ())
             "This tag transformer does not have a valid body.";
         expr)
       else
@@ -257,9 +249,7 @@ module Rules = struct
       | "Portal" -> Ast.Tag_Portal
       | other -> Ast.Tag_Custom other
     in
-    let tag_loc =
-      Location.make ~s:start_token.location.loc_start ~e:t.token.location.loc_end ()
-    in
+    let tag_loc = Location.merge ~s:start_token.location ~e:t.token.location () in
     let tag_desc = Ast.{ tag; attributes; transformer } in
     Ast.TagExpression Ast.{ tag_loc; tag_desc } |> Option.some
 
@@ -283,10 +273,7 @@ module Rules = struct
             | Some e -> Ast.ExpressionTemplateNode e
             | None ->
                 let location =
-                  Location.make
-                    ~s:start_token.location.loc_start
-                    ~e:t.token.location.loc_end
-                    ()
+                  Location.merge ~s:start_token.location ~e:t.token.location ()
                 in
                 if not has_comment then
                   Diagnostics.warn
@@ -364,7 +351,7 @@ module Rules = struct
     in
     let node_end = t.prev_token in
     let template_node_loc =
-      Location.make ~s:node_start.location.loc_start ~e:node_end.location.loc_end ()
+      Location.merge ~s:node_start.location ~e:node_end.location ()
     in
     Ast.{ template_node_desc; template_node_loc } |> Option.some
 
@@ -418,10 +405,7 @@ module Rules = struct
               Some (Ast.MutableLetStatement (Lowercase_Id identifier, expression))
           | _, _, None ->
               Diagnostics.error
-                (Location.make
-                   ~s:start_token.location.loc_start
-                   ~e:end_token.location.loc_end
-                   ())
+                (Location.merge ~s:start_token.location ~e:end_token.location ())
                 "Expected expression as right hand side of let declaration")
       (* PARSING MUTATION STATEMENT *)
       | Token.IDENT_LOWER identifier when peek t = Token.COLON_EQUAL ->
@@ -435,10 +419,7 @@ module Rules = struct
             | Some expression -> expression
             | None ->
                 Diagnostics.error
-                  (Location.make
-                     ~s:start_token.location.loc_start
-                     ~e:end_token.location.loc_end
-                     ())
+                  (Location.merge ~s:start_token.location ~e:end_token.location ())
                   "Expected expression as right hand side of mutation statement"
           in
           let _ = optional Token.SEMICOLON t in
@@ -479,10 +460,7 @@ module Rules = struct
     in
     let statement_end = t.token in
     let statement_loc =
-      Location.make
-        ~s:statement_start.location.loc_start
-        ~e:statement_end.location.loc_end
-        ()
+      Location.merge ~s:statement_start.location ~e:statement_end.location ()
     in
     Ast.{ statement_desc; statement_loc } |> Option.some
 
@@ -498,7 +476,7 @@ module Rules = struct
     Ast.UnaryExpression (operator, argument) |> Option.some
 
   and parse_expression_part t =
-    let expr_start = t.token.location.loc_start in
+    let expr_start = t.token.location in
     let* expression_desc =
       match t.token.typ with
       (* PARSING COMMENT EXPRESSION *)
@@ -669,8 +647,8 @@ module Rules = struct
           Ast.(Array expressions) |> Option.some
       | _ -> parse_unary_expression t
     in
-    let expr_end = t.token.location.loc_end in
-    let expression_loc = Location.make ~s:expr_start ~e:expr_end () in
+    let expr_end = t.token.location in
+    let expression_loc = Location.merge ~s:expr_start ~e:expr_end () in
     Ast.{ expression_desc; expression_loc } |> Option.some
 
   and parse_binary_operator t =
@@ -712,7 +690,7 @@ module Rules = struct
             if precedence < prio then
               left
             else (
-              let expression_start = t.token.location.loc_start in
+              let expression_start = t.token.location in
               next t;
               let expression_desc =
                 match operator with
@@ -738,9 +716,9 @@ module Rules = struct
               in
               let expect_close token = expect token t in
               Operators.Binary.get_closing_token operator |> Option.iter expect_close;
-              let expression_end = t.token.location.loc_end in
+              let expression_end = t.token.location in
               let expression_loc =
-                Location.make ~s:expression_start ~e:expression_end ()
+                Location.merge ~s:expression_start ~e:expression_end ()
               in
               let left = Ast.{ expression_desc; expression_loc } in
               loop ~left ~prio t))
@@ -749,7 +727,7 @@ module Rules = struct
     Some (loop ~prio ~left t)
 
   and parse_declaration t =
-    let declaration_start = t.token.location.loc_start in
+    let declaration_start = t.token.location in
     let* identifier, declaration_type =
       match t.token.typ with
       | ( Token.KEYWORD_PAGE
@@ -792,8 +770,8 @@ module Rules = struct
             t.token.location
             "Expected to see a declaration (page, component, store or library)."
     in
-    let declaration_end = t.token.location.loc_end in
-    let declaration_loc = Location.make ~s:declaration_start ~e:declaration_end () in
+    let declaration_end = t.token.location in
+    let declaration_loc = Location.merge ~s:declaration_start ~e:declaration_end () in
     (identifier, Ast.{ declaration_loc; declaration_type }) |> Option.some
   ;;
 end

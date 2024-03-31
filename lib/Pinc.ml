@@ -1,6 +1,6 @@
-module Source = Pinc_Core.Source
-module Ast = Pinc_Frontend.Ast
-module Parser = Pinc_Frontend.Parser
+module Source = Pinc_Source
+module Ast = Pinc_Parser.Ast
+module Parser = Pinc_Parser
 
 module Interpreter = struct
   include Pinc_Backend.Interpreter
