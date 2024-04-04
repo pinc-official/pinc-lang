@@ -10,3 +10,4 @@ margin=90
 parens-ite=true
 type-decl=sparse
 wrap-fun-args=false
+doc-comments=before

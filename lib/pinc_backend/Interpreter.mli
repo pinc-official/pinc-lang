@@ -13,10 +13,10 @@ val eval_meta :
   ]
   StringMap.t
 
+(** [eval ~tag_data_provider ~root sources] evaluates definition {!root} found in {!sources}, getting its data from the {!tag_data_provider}.
+  @raise Invalid_argument if the given root can't be evaluated (store, library). *)
 val eval :
   tag_data_provider:Types.Type_Tag.data_provider ->
   root:string ->
   Pinc_Source.t list ->
   string
-(** [eval ~tag_data_provider ~root sources] evaluates definition {!root} found in {!sources}, getting its data from the {!tag_data_provider}.
-  @raise Invalid_argument if the given root can't be evaluated (store, library). *)
