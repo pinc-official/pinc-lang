@@ -46,6 +46,7 @@ and Type_State : sig
     tag_data_provider : Type_Tag.data_provider;
     root_tag_data_provider : Type_Tag.data_provider;
     tag_path : string list;
+    tag_meta : Type_Tag.meta StringMap.t;
     context : Type_Value.value StringMap.t;
     mode : [ `Portal_Collection | `Portal_Render ];
   }
@@ -114,25 +115,20 @@ and Type_Tag : sig
     | Tag_Store of Type_Store.t
     | Tag_Custom of string
 
-  (* type meta =
-     string
-     * [ `String
-       | `Int
-       | `Float
-       | `Boolean
-       | `Array of meta
-       | `Record of meta
-       | `Slot
-       | `Store
-       | `Custom of string
-       ]
-       list *)
+  type meta =
+    [ `String of string
+    | `Int of int
+    | `Float of float
+    | `Boolean of bool
+    | `Array of meta list
+    | `Record of (string * meta) list
+    ]
 
   type data_provider =
     tag:kind ->
     attributes:Type_Value.value StringMap.t ->
     key:string list ->
-    Type_Value.value option
+    Type_Value.value option * meta option
 end =
   Type_Tag
 

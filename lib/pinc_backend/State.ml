@@ -4,6 +4,7 @@ include Types.Type_State
 let make
     ?(context = StringMap.empty)
     ?(tag_path = [])
+    ~tag_meta
     ~tag_data_provider
     ~root_tag_data_provider
     ~mode
@@ -15,6 +16,7 @@ let make
     environment = { scope = []; use_scope = StringMap.empty };
     tag_data_provider;
     root_tag_data_provider;
+    tag_meta;
     tag_path;
     context;
     mode;
@@ -116,3 +118,17 @@ let get_output t = t.output
 let add_output ~output t = { t with output }
 let get_bindings t = t.environment.scope |> List.hd
 let get_used_values t = t.environment.use_scope
+
+let add_tag_meta ~meta key t =
+  match meta with
+  | None -> t
+  | Some meta ->
+      {
+        t with
+        tag_meta =
+          StringMap.union
+            (fun _ a b -> Some (Helpers.TagMeta.merge a b))
+            t.tag_meta
+            (StringMap.singleton key meta);
+      }
+;;

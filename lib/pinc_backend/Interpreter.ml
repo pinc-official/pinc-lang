@@ -39,6 +39,7 @@ let rec get_uppercase_identifier_typ ~state ident =
                           (State.make
                              ~root_tag_data_provider:state.root_tag_data_provider
                              ~tag_data_provider:state.tag_data_provider
+                             ~tag_meta:state.tag_meta
                              ~mode:state.mode
                              state.declarations)
                    |> State.get_output
@@ -1249,32 +1250,36 @@ and eval_template ~state template =
               |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
               |> function
               | None -> state.root_tag_data_provider ~tag ~attributes ~key
-              | value -> value)
+              | value -> (value, None))
           | Type_Tag.Tag_Slot _ ->
               let key = key |> List.rev |> List.hd in
-              component_tag_children
-              |> List.fold_left (Tag.Tag_Slot.keep_slotted ~key) []
-              |> List.rev
-              |> Helpers.Value.list
-              |> Option.some
+              ( component_tag_children
+                |> List.fold_left (Tag.Tag_Slot.keep_slotted ~key) []
+                |> List.rev
+                |> Helpers.Value.list
+                |> Option.some,
+                None )
           | Type_Tag.Tag_Array ->
               let key = key |> List.rev |> List.hd in
-              component_tag_attributes
-              |> StringMap.find_opt key
-              |> Fun.flip Option.bind (function
-                     | { value_desc = Array a; _ } ->
-                         a |> Array.length |> Helpers.Value.int |> Option.some
-                     | _ -> None)
+              ( component_tag_attributes
+                |> StringMap.find_opt key
+                |> Fun.flip Option.bind (function
+                       | { value_desc = Array a; _ } ->
+                           a |> Array.length |> Helpers.Value.int |> Option.some
+                       | _ -> None),
+                None )
           | _ ->
-              component_tag_attributes
-              |> StringMap.find_opt (key |> List.hd)
-              |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
+              ( component_tag_attributes
+                |> StringMap.find_opt (key |> List.hd)
+                |> Fun.flip Option.bind (Tag.find_path (key |> List.tl)),
+                None )
         in
 
         let state =
           State.make
             ~context:state.context
             ~mode:state.mode
+            ~tag_meta:state.tag_meta
             ~root_tag_data_provider:state.root_tag_data_provider
             ~tag_data_provider
             state.declarations
@@ -1294,7 +1299,7 @@ and eval_template ~state template =
              }
 ;;
 
-let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = None
+let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = (None, None)
 
 let declarations_of_sources sources =
   ListLabels.fold_left sources ~init:StringMap.empty ~f:(fun acc source ->
@@ -1317,6 +1322,7 @@ let eval_meta sources =
   let state =
     State.make
       ~mode:`Portal_Collection
+      ~tag_meta:StringMap.empty
       ~root_tag_data_provider:noop_data_provider
       ~tag_data_provider:noop_data_provider
       declarations
@@ -1374,6 +1380,7 @@ let eval ~tag_data_provider ~root sources =
     State.make
       ~root_tag_data_provider:tag_data_provider
       ~tag_data_provider
+      ~tag_meta:StringMap.empty
       ~mode:`Portal_Collection
       declarations
   in
@@ -1389,5 +1396,8 @@ let eval ~tag_data_provider ~root sources =
       state
   in
 
-  state |> State.get_output |> Value.to_string
+  let html = state |> State.get_output |> Value.to_string in
+  let meta_tree = state.tag_meta |> StringMap.to_seq |> List.of_seq in
+
+  (html, meta_tree)
 ;;

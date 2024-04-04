@@ -265,3 +265,29 @@ module Expect = struct
           error Location.none "expected definition info, got component template node")
   ;;
 end
+
+module TagMeta = struct
+  open Types.Type_Tag
+
+  let string s : meta = `String s
+  let int i : meta = `Int i
+  let float f : meta = `Float f
+  let boolean b : meta = `Boolean b
+  let array a : meta = `Array a
+  let record r : meta = `Record r
+
+  let rec merge (a : meta) (b : meta) =
+    match (a, b) with
+    | `Record a, `Record b ->
+        `Record
+          (List.fold_left
+             (fun acc (key, entry) ->
+               match List.assoc_opt key acc with
+               | None -> (key, entry) :: acc
+               | Some v -> (key, merge v entry) :: acc)
+             a
+             b)
+    | `Array a, `Array b -> `Array (a @ b)
+    | _a, b -> b
+  ;;
+end
