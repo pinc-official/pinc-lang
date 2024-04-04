@@ -8,5 +8,4 @@ module Interpreter = struct
 end
 
 module StringMap = Pinc_Backend.StringMap
-module Value = Pinc_Backend.Value
-module Typer = Pinc_Backend.Typer
+module Helpers = Pinc_Backend.Helpers

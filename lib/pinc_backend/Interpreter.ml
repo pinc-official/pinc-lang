@@ -90,32 +90,25 @@ and eval_expression ~state expression =
   | Ast.Comment _ -> state
   | Ast.Char c ->
       state
-      |> State.add_output
-           ~output:(Value_Constructors.of_char ~value_loc:expression.expression_loc c)
+      |> State.add_output ~output:(Helpers.Value.char ~loc:expression.expression_loc c)
   | Ast.Int i ->
       state
-      |> State.add_output
-           ~output:(Value_Constructors.of_int ~value_loc:expression.expression_loc i)
+      |> State.add_output ~output:(Helpers.Value.int ~loc:expression.expression_loc i)
   | Ast.Float f when Float.is_integer f ->
       state
       |> State.add_output
-           ~output:
-             (Value_Constructors.of_int
-                ~value_loc:expression.expression_loc
-                (int_of_float f))
+           ~output:(Helpers.Value.int ~loc:expression.expression_loc (int_of_float f))
   | Ast.Float f ->
       state
-      |> State.add_output
-           ~output:(Value_Constructors.of_float ~value_loc:expression.expression_loc f)
+      |> State.add_output ~output:(Helpers.Value.float ~loc:expression.expression_loc f)
   | Ast.Bool b ->
       state
-      |> State.add_output
-           ~output:(Value_Constructors.of_bool ~value_loc:expression.expression_loc b)
+      |> State.add_output ~output:(Helpers.Value.bool ~loc:expression.expression_loc b)
   | Ast.Array l ->
       let output =
         l
         |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)
-        |> Value_Constructors.of_array ~value_loc:expression.expression_loc
+        |> Helpers.Value.array ~loc:expression.expression_loc
       in
       state |> State.add_output ~output
   | Ast.Record map ->
@@ -138,7 +131,7 @@ and eval_expression ~state expression =
                               null value."
                              ident)
                     | value -> value)
-             |> Value_Constructors.of_string_map ~value_loc:expression.expression_loc)
+             |> Helpers.Value.record ~loc:expression.expression_loc)
   | Ast.String template -> eval_string_template ~state template
   | Ast.Function { parameters; body } ->
       eval_function_declaration ~loc:expression.expression_loc ~state ~parameters body
@@ -219,7 +212,7 @@ and eval_expression ~state expression =
            ~output:
              (nodes
              |> List.map (fun it -> it |> eval_template ~state |> State.get_output)
-             |> Value_Constructors.of_list ~value_loc:expression.expression_loc)
+             |> Helpers.Value.list ~loc:expression.expression_loc)
   | Ast.BlockExpression e -> eval_block ~state e
   | Ast.ConditionalExpression { condition; consequent; alternate } ->
       eval_if ~state ~condition ~alternate ~consequent
@@ -295,8 +288,7 @@ and eval_string_template ~state template =
                     |> State.get_output
                     |> Value.to_string)
          |> String.concat ""
-         |> Value_Constructors.of_string
-              ~value_loc:(Location.merge ~s:!start_loc ~e:!end_loc ()))
+         |> Helpers.Value.string ~loc:(Location.merge ~s:!start_loc ~e:!end_loc ()))
 
 and eval_function_declaration ~state ~loc ~parameters body =
   let ident = state.binding_identifier in
@@ -409,45 +401,32 @@ and eval_binary_plus ~state left right =
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_char
-                ~value_loc:merged_value_loc
+             (Helpers.Value.char
+                ~loc:merged_value_loc
                 Uchar.(of_int (to_int a + to_int b)))
   | Char a, Int b ->
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_char
-                ~value_loc:merged_value_loc
-                Uchar.(of_int (to_int a + b)))
+             (Helpers.Value.char ~loc:merged_value_loc Uchar.(of_int (to_int a + b)))
   | Int a, Char b ->
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_char
-                ~value_loc:merged_value_loc
-                Uchar.(of_int (a + to_int b)))
+             (Helpers.Value.char ~loc:merged_value_loc Uchar.(of_int (a + to_int b)))
   | Int a, Int b ->
-      state
-      |> State.add_output
-           ~output:(Value_Constructors.of_int ~value_loc:merged_value_loc (a + b))
+      state |> State.add_output ~output:(Helpers.Value.int ~loc:merged_value_loc (a + b))
   | Float a, Float b ->
       state
-      |> State.add_output
-           ~output:(Value_Constructors.of_float ~value_loc:merged_value_loc (a +. b))
+      |> State.add_output ~output:(Helpers.Value.float ~loc:merged_value_loc (a +. b))
   | Float a, Int b ->
       state
       |> State.add_output
-           ~output:
-             (Value_Constructors.of_float
-                ~value_loc:merged_value_loc
-                (a +. float_of_int b))
+           ~output:(Helpers.Value.float ~loc:merged_value_loc (a +. float_of_int b))
   | Int a, Float b ->
       state
       |> State.add_output
-           ~output:
-             (Value_Constructors.of_float
-                ~value_loc:merged_value_loc
-                (float_of_int a +. b))
+           ~output:(Helpers.Value.float ~loc:merged_value_loc (float_of_int a +. b))
   | (Int _ | Float _), _ ->
       Pinc_Diagnostics.error right.expression_loc "Trying to add non numeric literals."
   | _, (Int _ | Float _) ->
@@ -466,45 +445,32 @@ and eval_binary_minus ~state left right =
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_char
-                ~value_loc:merged_value_loc
+             (Helpers.Value.char
+                ~loc:merged_value_loc
                 Uchar.(of_int (to_int a - to_int b)))
   | Char a, Int b ->
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_char
-                ~value_loc:merged_value_loc
-                Uchar.(of_int (to_int a - b)))
+             (Helpers.Value.char ~loc:merged_value_loc Uchar.(of_int (to_int a - b)))
   | Int a, Char b ->
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_char
-                ~value_loc:merged_value_loc
-                Uchar.(of_int (a - to_int b)))
+             (Helpers.Value.char ~loc:merged_value_loc Uchar.(of_int (a - to_int b)))
   | Int a, Int b ->
-      state
-      |> State.add_output
-           ~output:(Value_Constructors.of_int ~value_loc:merged_value_loc (a - b))
+      state |> State.add_output ~output:(Helpers.Value.int ~loc:merged_value_loc (a - b))
   | Float a, Float b ->
       state
-      |> State.add_output
-           ~output:(Value_Constructors.of_float ~value_loc:merged_value_loc (a -. b))
+      |> State.add_output ~output:(Helpers.Value.float ~loc:merged_value_loc (a -. b))
   | Float a, Int b ->
       state
       |> State.add_output
-           ~output:
-             (Value_Constructors.of_float
-                ~value_loc:merged_value_loc
-                (a -. float_of_int b))
+           ~output:(Helpers.Value.float ~loc:merged_value_loc (a -. float_of_int b))
   | Int a, Float b ->
       state
       |> State.add_output
-           ~output:
-             (Value_Constructors.of_float
-                ~value_loc:merged_value_loc
-                (float_of_int a -. b))
+           ~output:(Helpers.Value.float ~loc:merged_value_loc (float_of_int a -. b))
   | (Int _ | Float _), _ ->
       Pinc_Diagnostics.error b.value_loc "Trying to subtract non numeric literals."
   | _, (Int _ | Float _) ->
@@ -521,45 +487,32 @@ and eval_binary_times ~state left right =
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_char
-                ~value_loc:merged_value_loc
+             (Helpers.Value.char
+                ~loc:merged_value_loc
                 Uchar.(of_int (to_int a * to_int b)))
   | Char a, Int b ->
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_char
-                ~value_loc:merged_value_loc
-                Uchar.(of_int (to_int a * b)))
+             (Helpers.Value.char ~loc:merged_value_loc Uchar.(of_int (to_int a * b)))
   | Int a, Char b ->
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_char
-                ~value_loc:merged_value_loc
-                Uchar.(of_int (a * to_int b)))
+             (Helpers.Value.char ~loc:merged_value_loc Uchar.(of_int (a * to_int b)))
   | Int a, Int b ->
-      state
-      |> State.add_output
-           ~output:(Value_Constructors.of_int ~value_loc:merged_value_loc (a * b))
+      state |> State.add_output ~output:(Helpers.Value.int ~loc:merged_value_loc (a * b))
   | Float a, Float b ->
       state
-      |> State.add_output
-           ~output:(Value_Constructors.of_float ~value_loc:merged_value_loc (a *. b))
+      |> State.add_output ~output:(Helpers.Value.float ~loc:merged_value_loc (a *. b))
   | Float a, Int b ->
       state
       |> State.add_output
-           ~output:
-             (Value_Constructors.of_float
-                ~value_loc:merged_value_loc
-                (a *. float_of_int b))
+           ~output:(Helpers.Value.float ~loc:merged_value_loc (a *. float_of_int b))
   | Int a, Float b ->
       state
       |> State.add_output
-           ~output:
-             (Value_Constructors.of_float
-                ~value_loc:merged_value_loc
-                (float_of_int a *. b))
+           ~output:(Helpers.Value.float ~loc:merged_value_loc (float_of_int a *. b))
   | (Int _ | Float _), _ ->
       Pinc_Diagnostics.error b.value_loc "Trying to multiply non numeric literals."
   | _, (Int _ | Float _) ->
@@ -589,12 +542,9 @@ and eval_binary_div ~state left right =
 
   if Float.is_integer r then
     state
-    |> State.add_output
-         ~output:(Value_Constructors.of_int ~value_loc:merged_value_loc (int_of_float r))
+    |> State.add_output ~output:(Helpers.Value.int ~loc:merged_value_loc (int_of_float r))
   else
-    state
-    |> State.add_output
-         ~output:(Value_Constructors.of_float ~value_loc:merged_value_loc r)
+    state |> State.add_output ~output:(Helpers.Value.float ~loc:merged_value_loc r)
 
 and eval_binary_pow ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -615,12 +565,9 @@ and eval_binary_pow ~state left right =
 
   if Float.is_integer r then
     state
-    |> State.add_output
-         ~output:(Value_Constructors.of_int ~value_loc:merged_value_loc (int_of_float r))
+    |> State.add_output ~output:(Helpers.Value.int ~loc:merged_value_loc (int_of_float r))
   else
-    state
-    |> State.add_output
-         ~output:(Value_Constructors.of_float ~value_loc:merged_value_loc r)
+    state |> State.add_output ~output:(Helpers.Value.float ~loc:merged_value_loc r)
 
 and eval_binary_modulo ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -651,9 +598,9 @@ and eval_binary_modulo ~state left right =
   |> State.add_output
        ~output:
          (if Float.is_integer r then
-            Value_Constructors.of_int ~value_loc:merged_value_loc (int_of_float r)
+            Helpers.Value.int ~loc:merged_value_loc (int_of_float r)
           else
-            Value_Constructors.of_float ~value_loc:merged_value_loc r)
+            Helpers.Value.float ~loc:merged_value_loc r)
 
 and eval_binary_and ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -662,9 +609,7 @@ and eval_binary_and ~state left right =
   state
   |> State.add_output
        ~output:
-         (Value_Constructors.of_bool
-            ~value_loc:merged_value_loc
-            (Value.is_true a && Value.is_true b))
+         (Helpers.Value.bool ~loc:merged_value_loc (Value.is_true a && Value.is_true b))
 
 and eval_binary_or ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -673,9 +618,7 @@ and eval_binary_or ~state left right =
   state
   |> State.add_output
        ~output:
-         (Value_Constructors.of_bool
-            ~value_loc:merged_value_loc
-            (Value.is_true a || Value.is_true b))
+         (Helpers.Value.bool ~loc:merged_value_loc (Value.is_true a || Value.is_true b))
 
 and eval_binary_less ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -683,8 +626,7 @@ and eval_binary_less ~state left right =
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
-       ~output:
-         (Value_Constructors.of_bool ~value_loc:merged_value_loc (Value.compare a b < 0))
+       ~output:(Helpers.Value.bool ~loc:merged_value_loc (Value.compare a b < 0))
 
 and eval_binary_less_equal ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -692,8 +634,7 @@ and eval_binary_less_equal ~state left right =
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
-       ~output:
-         (Value_Constructors.of_bool ~value_loc:merged_value_loc (Value.compare a b <= 0))
+       ~output:(Helpers.Value.bool ~loc:merged_value_loc (Value.compare a b <= 0))
 
 and eval_binary_greater ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -701,8 +642,7 @@ and eval_binary_greater ~state left right =
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
-       ~output:
-         (Value_Constructors.of_bool ~value_loc:merged_value_loc (Value.compare a b > 0))
+       ~output:(Helpers.Value.bool ~loc:merged_value_loc (Value.compare a b > 0))
 
 and eval_binary_greater_equal ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -710,16 +650,14 @@ and eval_binary_greater_equal ~state left right =
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
-       ~output:
-         (Value_Constructors.of_bool ~value_loc:merged_value_loc (Value.compare a b >= 0))
+       ~output:(Helpers.Value.bool ~loc:merged_value_loc (Value.compare a b >= 0))
 
 and eval_binary_equal ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
   let b = right |> eval_expression ~state |> State.get_output in
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
-  |> State.add_output
-       ~output:(Value_Constructors.of_bool ~value_loc:merged_value_loc (Value.equal a b))
+  |> State.add_output ~output:(Helpers.Value.bool ~loc:merged_value_loc (Value.equal a b))
 
 and eval_binary_not_equal ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -727,8 +665,7 @@ and eval_binary_not_equal ~state left right =
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   state
   |> State.add_output
-       ~output:
-         (Value_Constructors.of_bool ~value_loc:merged_value_loc (not (Value.equal a b)))
+       ~output:(Helpers.Value.bool ~loc:merged_value_loc (not (Value.equal a b)))
 
 and eval_binary_concat ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -757,38 +694,30 @@ and eval_binary_concat ~state left right =
   in
   state
   |> State.add_output
-       ~output:
-         (Value_Constructors.of_string ~value_loc:merged_value_loc (Buffer.contents buf))
+       ~output:(Helpers.Value.string ~loc:merged_value_loc (Buffer.contents buf))
 
 and eval_binary_dot_access ~state left right =
   let state = left |> eval_expression ~state in
   let left_value = state |> State.get_output in
   match (left_value.value_desc, right.expression_desc) with
   | Null, _ ->
-      state
-      |> State.add_output
-           ~output:(Value_Constructors.null ~value_loc:left_value.value_loc ())
+      state |> State.add_output ~output:(Helpers.Value.null ~loc:left_value.value_loc ())
   | Record a, Ast.LowercaseIdentifierExpression b ->
       let output =
         a
         |> StringMap.find_opt b
-        |> Option.value
-             ~default:(Value_Constructors.null ~value_loc:left.expression_loc ())
+        |> Option.value ~default:(Helpers.Value.null ~loc:left.expression_loc ())
       in
       state |> State.add_output ~output
   | HtmlTemplateNode (tag, attributes, _, _), Ast.LowercaseIdentifierExpression b -> (
       match b with
       | "tag" ->
           state
-          |> State.add_output
-               ~output:(Value_Constructors.of_string ~value_loc:left.expression_loc tag)
+          |> State.add_output ~output:(Helpers.Value.string ~loc:left.expression_loc tag)
       | "attributes" ->
           state
           |> State.add_output
-               ~output:
-                 (Value_Constructors.of_string_map
-                    ~value_loc:left.expression_loc
-                    attributes)
+               ~output:(Helpers.Value.record ~loc:left.expression_loc attributes)
       | s ->
           Pinc_Diagnostics.error
             right.expression_loc
@@ -799,15 +728,11 @@ and eval_binary_dot_access ~state left right =
       match b with
       | "tag" ->
           state
-          |> State.add_output
-               ~output:(Value_Constructors.of_string ~value_loc:left.expression_loc tag)
+          |> State.add_output ~output:(Helpers.Value.string ~loc:left.expression_loc tag)
       | "attributes" ->
           state
           |> State.add_output
-               ~output:
-                 (Value_Constructors.of_string_map
-                    ~value_loc:left.expression_loc
-                    attributes)
+               ~output:(Helpers.Value.record ~loc:left.expression_loc attributes)
       | s ->
           Pinc_Diagnostics.error
             right.expression_loc
@@ -827,8 +752,8 @@ and eval_binary_dot_access ~state left right =
             |> Option.map (fun b -> b.value)
             |> Option.value
                  ~default:
-                   (Value_Constructors.null
-                      ~value_loc:
+                   (Helpers.Value.null
+                      ~loc:
                         (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
                       ())
           in
@@ -837,8 +762,8 @@ and eval_binary_dot_access ~state left right =
           state
           |> State.add_output
                ~output:
-                 (Value_Constructors.null
-                    ~value_loc:
+                 (Helpers.Value.null
+                    ~loc:
                       (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
                     ())
       | _ ->
@@ -866,8 +791,8 @@ and eval_binary_bracket_access ~state left right =
       let output =
         try Array.get a b
         with Invalid_argument _ ->
-          Value_Constructors.null
-            ~value_loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
+          Helpers.Value.null
+            ~loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
             ()
       in
       state |> State.add_output ~output
@@ -878,12 +803,11 @@ and eval_binary_bracket_access ~state left right =
           |> CCUtf8_string.of_string_exn
           |> CCUtf8_string.to_list
           |> Fun.flip List.nth b
-          |> Value_Constructors.of_char
-               ~value_loc:
-                 (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
+          |> Helpers.Value.char
+               ~loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
         with Failure _ | Invalid_argument _ ->
-          Value_Constructors.null
-            ~value_loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
+          Helpers.Value.null
+            ~loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
             ()
       in
       state |> State.add_output ~output
@@ -893,9 +817,8 @@ and eval_binary_bracket_access ~state left right =
         |> StringMap.find_opt b
         |> Option.value
              ~default:
-               (Value_Constructors.null
-                  ~value_loc:
-                    (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
+               (Helpers.Value.null
+                  ~loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
                   ())
       in
       state |> State.add_output ~output
@@ -903,9 +826,8 @@ and eval_binary_bracket_access ~state left right =
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.null
-                ~value_loc:
-                  (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
+             (Helpers.Value.null
+                ~loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
                 ())
   | Array _, _ ->
       Pinc_Diagnostics.error
@@ -931,9 +853,8 @@ and eval_binary_array_add ~state left right =
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_array
-                ~value_loc:
-                  (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
+             (Helpers.Value.array
+                ~loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
                 new_array)
   | _ ->
       Pinc_Diagnostics.error
@@ -946,12 +867,12 @@ and eval_binary_merge ~state left_expression right_expression =
   let eval_merge left right =
     match (left.value_desc, right.value_desc) with
     | Array l, Array r ->
-        Value_Constructors.of_array
-          ~value_loc:(Location.merge ~s:left.value_loc ~e:right.value_loc ())
+        Helpers.Value.array
+          ~loc:(Location.merge ~s:left.value_loc ~e:right.value_loc ())
           (Array.append l r)
     | Record l, Record r ->
-        Value_Constructors.of_string_map
-          ~value_loc:(Location.merge ~s:left.value_loc ~e:right.value_loc ())
+        Helpers.Value.record
+          ~loc:(Location.merge ~s:left.value_loc ~e:right.value_loc ())
           (StringMap.union (fun _key _x y -> Some y) l r)
     | HtmlTemplateNode (tag, attributes, children, self_closing), Record right ->
         let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
@@ -1002,8 +923,8 @@ and eval_unary_not ~state expression =
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.of_bool
-                ~value_loc:expression.expression_loc
+             (Helpers.Value.bool
+                ~loc:expression.expression_loc
                 (not (Value.is_true expression_value)))
 
 and eval_unary_minus ~state expression =
@@ -1012,15 +933,11 @@ and eval_unary_minus ~state expression =
   | Int i ->
       state
       |> State.add_output
-           ~output:
-             (Value_Constructors.of_int ~value_loc:expression.expression_loc (Int.neg i))
+           ~output:(Helpers.Value.int ~loc:expression.expression_loc (Int.neg i))
   | Float f ->
       state
       |> State.add_output
-           ~output:
-             (Value_Constructors.of_float
-                ~value_loc:expression.expression_loc
-                (Float.neg f))
+           ~output:(Helpers.Value.float ~loc:expression.expression_loc (Float.neg f))
   | _ ->
       Pinc_Diagnostics.error
         expression.expression_loc
@@ -1049,8 +966,7 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
   | value ->
       state
       |> State.add_value_to_scope ~ident ~value ~is_mutable ~is_optional
-      |> State.add_output
-           ~output:(Value_Constructors.null ~value_loc:expression.expression_loc ())
+      |> State.add_output ~output:(Helpers.Value.null ~loc:expression.expression_loc ())
 
 and eval_use ~state ~ident expression =
   let value = expression |> eval_expression ~state |> State.get_output in
@@ -1106,8 +1022,7 @@ and eval_mutation ~state ~ident expression =
         | value -> state |> State.update_value_in_scope ~ident ~value
       in
       state
-      |> State.add_output
-           ~output:(Value_Constructors.null ~value_loc:expression.expression_loc ())
+      |> State.add_output ~output:(Helpers.Value.null ~loc:expression.expression_loc ())
 
 and eval_if ~state ~condition ~alternate ~consequent =
   let condition_matches =
@@ -1120,8 +1035,8 @@ and eval_if ~state ~condition ~alternate ~consequent =
       state
       |> State.add_output
            ~output:
-             (Value_Constructors.null
-                ~value_loc:
+             (Helpers.Value.null
+                ~loc:
                   (Location.merge
                      ~s:condition.expression_loc
                      ~e:consequent.statement_loc
@@ -1147,7 +1062,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
               state
               |> State.add_value_to_scope
                    ~ident
-                   ~value:(Value_Constructors.of_int ~value_loc:ident_location !index)
+                   ~value:(Helpers.Value.int ~loc:ident_location !index)
                    ~is_mutable:false
                    ~is_optional:false
           | None -> state
@@ -1168,8 +1083,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       in
       let state, res = l |> to_seq |> loop ~state [] in
       state
-      |> State.add_output
-           ~output:(res |> Value_Constructors.of_list ~value_loc:body.expression_loc)
+      |> State.add_output ~output:(res |> Helpers.Value.list ~loc:body.expression_loc)
   | String s ->
       let map s =
         if reverse then
@@ -1177,18 +1091,15 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
           |> CCUtf8_string.to_seq
           |> CCSeq.to_rev_list
           |> List.to_seq
-          |> Seq.map (fun c ->
-                 c |> Value_Constructors.of_char ~value_loc:iterable_value.value_loc)
+          |> Seq.map (fun c -> c |> Helpers.Value.char ~loc:iterable_value.value_loc)
         else
           s
           |> CCUtf8_string.to_seq
-          |> Seq.map (fun c ->
-                 c |> Value_Constructors.of_char ~value_loc:iterable_value.value_loc)
+          |> Seq.map (fun c -> c |> Helpers.Value.char ~loc:iterable_value.value_loc)
       in
       let state, res = s |> CCUtf8_string.of_string_exn |> map |> loop ~state [] in
       state
-      |> State.add_output
-           ~output:(res |> Value_Constructors.of_list ~value_loc:body.expression_loc)
+      |> State.add_output ~output:(res |> Helpers.Value.list ~loc:body.expression_loc)
   | Portal l ->
       let to_seq list =
         if reverse then
@@ -1198,8 +1109,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       in
       let state, res = l |> to_seq |> loop ~state [] in
       state
-      |> State.add_output
-           ~output:(res |> Value_Constructors.of_list ~value_loc:body.expression_loc)
+      |> State.add_output ~output:(res |> Helpers.Value.list ~loc:body.expression_loc)
   | Null -> state |> State.add_output ~output:iterable_value
   | HtmlTemplateNode _ ->
       Pinc_Diagnostics.error iterable.expression_loc "Cannot iterate over template node"
@@ -1259,15 +1169,15 @@ and eval_range ~state ~inclusive from_expression upto_expression =
           upto_int
       in
       Array.init (stop - start) (fun i ->
-          Value_Constructors.of_int
-            ~value_loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
+          Helpers.Value.int
+            ~loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
             (i + start)))
   in
   state
   |> State.add_output
        ~output:
-         (Value_Constructors.of_array
-            ~value_loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
+         (Helpers.Value.array
+            ~loc:(Location.merge ~s:from.value_loc ~e:upto.value_loc ())
             iter)
 
 and eval_block ~state statements =
@@ -1280,8 +1190,7 @@ and eval_template ~state template =
   | Ast.TextTemplateNode text ->
       state
       |> State.add_output
-           ~output:
-             (Value_Constructors.of_string ~value_loc:template.template_node_loc text)
+           ~output:(Helpers.Value.string ~loc:template.template_node_loc text)
   | Ast.HtmlTemplateNode
       {
         html_tag_identifier;
@@ -1346,7 +1255,7 @@ and eval_template ~state template =
               component_tag_children
               |> List.fold_left (Tag.Tag_Slot.keep_slotted ~key) []
               |> List.rev
-              |> Value_Constructors.of_list
+              |> Helpers.Value.list
               |> Option.some
           | Type_Tag.Tag_Array ->
               let key = key |> List.rev |> List.hd in
@@ -1354,7 +1263,7 @@ and eval_template ~state template =
               |> StringMap.find_opt key
               |> Fun.flip Option.bind (function
                      | { value_desc = Array a; _ } ->
-                         a |> Array.length |> Value_Constructors.of_int |> Option.some
+                         a |> Array.length |> Helpers.Value.int |> Option.some
                      | _ -> None)
           | _ ->
               component_tag_attributes

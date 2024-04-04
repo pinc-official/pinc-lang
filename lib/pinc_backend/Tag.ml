@@ -2,7 +2,6 @@ open State
 open Pinc_Parser.Ast
 open Types.Type_Value
 module Ast = Pinc_Parser.Ast
-module VC = Value_Constructors
 
 let find_path path value =
   let rec aux path value =
@@ -85,7 +84,7 @@ module Tag_Store = struct
           |> StringMap.find_opt (key |> List.rev |> List.hd)
           |> Fun.flip Option.bind (function
                  | { value_desc = Array a; _ } ->
-                     a |> Array.length |> VC.of_int |> Option.some
+                     a |> Array.length |> Helpers.Value.int |> Option.some
                  | _ -> None)
       | _ ->
           value
@@ -136,7 +135,7 @@ module Tag_Store = struct
     let value = state.State.tag_data_provider ~tag:(Tag_Store store) ~key ~attributes in
     let output =
       match value with
-      | None -> VC.null ~value_loc:tag.tag_loc ()
+      | None -> Helpers.Value.null ~loc:tag.tag_loc ()
       | Some { value_desc = Record value; _ } when is_singleton -> (
           store |> eval_body ~name ~value ~eval_expression ~state |> function
           | { value_desc = Record _; _ } as v -> v
@@ -164,7 +163,7 @@ module Tag_Store = struct
                        (Printf.sprintf
                           "Expected attribute %s to be an array of records."
                           (key |> List.rev |> List.hd)))
-          |> VC.of_array ~value_loc:tag.tag_loc
+          |> Helpers.Value.array ~loc:tag.tag_loc
       | Some { value_desc = _; value_loc } ->
           Pinc_Diagnostics.error
             value_loc
@@ -179,7 +178,9 @@ end
 
 module Tag_Slot = struct
   let find_slot_key attributes =
-    attributes |> StringMap.find_opt "slot" |> Option.value ~default:(VC.of_string "")
+    attributes
+    |> StringMap.find_opt "slot"
+    |> Option.value ~default:(Helpers.Value.string "")
     |> function
     | { value_desc = String s; _ } -> s
     | { value_loc; _ } ->
@@ -382,7 +383,7 @@ module Tag_Slot = struct
                 into a slot, you have to wrap it in some html tag or component."
     in
 
-    let output = slotted_elements |> VC.of_array ~value_loc:tag_value.tag_loc in
+    let output = slotted_elements |> Helpers.Value.array ~loc:tag_value.tag_loc in
 
     state |> State.add_output ~output
   ;;
@@ -413,7 +414,7 @@ module Tag_Record = struct
                        value_loc
                        "Attribute `of` needs to be a record describing the shape and \
                         type of values in this record."))
-      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -443,8 +444,8 @@ module Tag_Array = struct
                      children
                      |> eval_expression ~state:{ state with binding_identifier }
                      |> State.get_output)
-                 |> VC.of_list ~value_loc:t.tag_loc)
-      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
+                 |> Helpers.Value.list ~loc:t.tag_loc)
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -463,7 +464,7 @@ module Tag_String = struct
                    (Printf.sprintf
                       "Expected attribute %s to be of type string."
                       (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -482,7 +483,7 @@ module Tag_Int = struct
                    (Printf.sprintf
                       "Expected attribute %s to be of type int."
                       (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -501,7 +502,7 @@ module Tag_Float = struct
                    (Printf.sprintf
                       "Expected attribute %s to be of type float."
                       (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -520,7 +521,7 @@ module Tag_Boolean = struct
                    (Printf.sprintf
                       "Expected attribute %s to be of type bool."
                       (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -531,7 +532,7 @@ module Tag_Custom = struct
   let eval ~state ~attributes ~name t key =
     let output =
       state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attributes
-      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output
@@ -555,7 +556,7 @@ module Tag_Portal = struct
       in
       Hashtbl.add portals key push);
 
-    let output = VC.null ~value_loc:t.tag_loc () in
+    let output = Helpers.Value.null ~loc:t.tag_loc () in
     state |> State.add_output ~output
   ;;
 
@@ -581,14 +582,14 @@ module Tag_Context = struct
     in
 
     let state = { state with context = state.context |> StringMap.add key value } in
-    state |> State.add_output ~output:(VC.null ~value_loc:t.tag_loc ())
+    state |> State.add_output ~output:(Helpers.Value.null ~loc:t.tag_loc ())
   ;;
 
   let eval_get ~state ~attributes:_ t key =
     let output =
       state.context
       |> StringMap.find_opt key
-      |> Option.value ~default:(VC.null ~value_loc:t.tag_loc ())
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
     state |> State.add_output ~output

@@ -1,6 +1,46 @@
-open Interpreter.Types
+module Value = struct
+  open Types.Type_Value
+
+  let null ?(loc = Pinc_Diagnostics.Location.none) () =
+    { value_loc = loc; value_desc = Null }
+  ;;
+
+  let char ?(loc = Pinc_Diagnostics.Location.none) c =
+    { value_loc = loc; value_desc = Char c }
+  ;;
+
+  let string ?(loc = Pinc_Diagnostics.Location.none) s =
+    { value_loc = loc; value_desc = String s }
+  ;;
+
+  let bool ?(loc = Pinc_Diagnostics.Location.none) b =
+    { value_loc = loc; value_desc = Bool b }
+  ;;
+
+  let int ?(loc = Pinc_Diagnostics.Location.none) i =
+    { value_loc = loc; value_desc = Int i }
+  ;;
+
+  let float ?(loc = Pinc_Diagnostics.Location.none) f =
+    { value_loc = loc; value_desc = Float f }
+  ;;
+
+  let array ?(loc = Pinc_Diagnostics.Location.none) l =
+    { value_loc = loc; value_desc = Array l }
+  ;;
+
+  let list ?(loc = Pinc_Diagnostics.Location.none) l =
+    { value_loc = loc; value_desc = Array (Array.of_list l) }
+  ;;
+
+  let record ?(loc = Pinc_Diagnostics.Location.none) m =
+    { value_loc = loc; value_desc = Record m }
+  ;;
+end
 
 module Expect = struct
+  open Types.Type_Value
+
   let required fn value =
     match fn value with
     | None -> Pinc_Diagnostics.(error Location.none "required a value, but got null")
