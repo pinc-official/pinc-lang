@@ -68,6 +68,162 @@ module Utils = struct
   let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = None
 end
 
+module Tag_String = struct
+  let eval ~state ~attributes t key =
+    let value, meta = state.State.tag_data_provider ~tag:Tag_String ~key ~attributes in
+    let output =
+      value
+      |> Option.map (function
+             | { value_desc = String _; _ } as value -> value
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf
+                      "Expected attribute %s to be of type string."
+                      (key |> List.rev |> List.hd)))
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
+    in
+
+    state
+    |> State.add_output ~output
+    |> State.add_tag_meta ~meta (key |> String.concat ".")
+  ;;
+end
+
+module Tag_Int = struct
+  let eval ~state ~attributes t key =
+    let value, meta = state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes in
+    let output =
+      value
+      |> Option.map (function
+             | { value_desc = Int _; _ } as value -> value
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf
+                      "Expected attribute %s to be of type int."
+                      (key |> List.rev |> List.hd)))
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
+    in
+
+    state
+    |> State.add_output ~output
+    |> State.add_tag_meta ~meta (key |> String.concat ".")
+  ;;
+end
+
+module Tag_Float = struct
+  let eval ~state ~attributes t key =
+    let value, meta = state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes in
+    let output =
+      value
+      |> Option.map (function
+             | { value_desc = Float _; _ } as value -> value
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf
+                      "Expected attribute %s to be of type float."
+                      (key |> List.rev |> List.hd)))
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
+    in
+
+    state
+    |> State.add_output ~output
+    |> State.add_tag_meta ~meta (key |> String.concat ".")
+  ;;
+end
+
+module Tag_Boolean = struct
+  let eval ~(state : State.state) ~attributes t key =
+    let value, meta = state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes in
+    let output =
+      value
+      |> Option.map (function
+             | { value_desc = Bool _; _ } as value -> value
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   (Printf.sprintf
+                      "Expected attribute %s to be of type bool."
+                      (key |> List.rev |> List.hd)))
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
+    in
+
+    state
+    |> State.add_output ~output
+    |> State.add_tag_meta ~meta (key |> String.concat ".")
+  ;;
+end
+
+module Tag_Custom = struct
+  let eval ~state ~attributes ~name t key =
+    let value, meta = state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attributes in
+    let output = value |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ()) in
+
+    state
+    |> State.add_output ~output
+    |> State.add_tag_meta ~meta (key |> String.concat ".")
+  ;;
+end
+
+module Tag_Portal = struct
+  let portals = Hashtbl.create 100
+
+  let eval_push ~state ~attributes t key =
+    if state.mode = `Portal_Collection then (
+      let push =
+        match attributes |> StringMap.find_opt "push" with
+        | None ->
+            Pinc_Diagnostics.error
+              t.tag_loc
+              "The attribute `push` is required when pushing a value into a portal."
+        | Some { value_desc = Function _; value_loc } ->
+            Pinc_Diagnostics.error value_loc "A function can not be put into a portal."
+        | Some value -> value
+      in
+      Hashtbl.add portals key push);
+
+    let output = Helpers.Value.null ~loc:t.tag_loc () in
+    state |> State.add_output ~output
+  ;;
+
+  let eval_create ~state ~attributes:_ t key =
+    let output =
+      { value_desc = Portal (Hashtbl.find_all portals key); value_loc = t.tag_loc }
+    in
+    state |> State.add_output ~output
+  ;;
+end
+
+module Tag_Context = struct
+  let eval_set ~state ~attributes t key =
+    let value =
+      attributes |> StringMap.find_opt "value" |> function
+      | None ->
+          Pinc_Diagnostics.error
+            t.tag_loc
+            "attribute value is required when setting a context."
+      | Some { value_desc = Function _; value_loc } ->
+          Pinc_Diagnostics.error value_loc "a function can not be put into a context."
+      | Some value -> value
+    in
+
+    let state = { state with context = state.context |> StringMap.add key value } in
+    state |> State.add_output ~output:(Helpers.Value.null ~loc:t.tag_loc ())
+  ;;
+
+  let eval_get ~state ~attributes:_ t key =
+    let output =
+      state.context
+      |> StringMap.find_opt key
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
+    in
+
+    state |> State.add_output ~output
+  ;;
+end
+
 module Tag_Store = struct
   let eval_body ~name ~state ~eval_expression ~value store =
     let tag_data_provider ~tag ~attributes ~key =
@@ -77,24 +233,29 @@ module Tag_Store = struct
           |> StringMap.find_opt (key |> List.hd)
           |> Fun.flip Option.bind (find_path (key |> List.tl))
           |> function
-          | None -> state.tag_data_provider ~tag ~attributes ~key
-          | value -> value)
+          | None ->
+              let value, meta = state.tag_data_provider ~tag ~attributes ~key in
+              (value, meta)
+          | value -> (value, None))
       | Types.Type_Tag.Tag_Array ->
-          value
-          |> StringMap.find_opt (key |> List.rev |> List.hd)
-          |> Fun.flip Option.bind (function
-                 | { value_desc = Array a; _ } ->
-                     a |> Array.length |> Helpers.Value.int |> Option.some
-                 | _ -> None)
+          ( value
+            |> StringMap.find_opt (key |> List.rev |> List.hd)
+            |> Fun.flip Option.bind (function
+                   | { value_desc = Array a; _ } ->
+                       a |> Array.length |> Helpers.Value.int |> Option.some
+                   | _ -> None),
+            None )
       | _ ->
-          value
-          |> StringMap.find_opt (key |> List.hd)
-          |> Fun.flip Option.bind (find_path (key |> List.tl))
+          ( value
+            |> StringMap.find_opt (key |> List.hd)
+            |> Fun.flip Option.bind (find_path (key |> List.tl)),
+            None )
     in
     let state =
       State.make
         ~context:state.context
         ~mode:state.mode
+        ~tag_meta:state.tag_meta
         ~root_tag_data_provider:state.root_tag_data_provider
         ~tag_data_provider
         state.declarations
@@ -132,7 +293,9 @@ module Tag_Store = struct
             "Expected attribute `id` to be a Store definition."
     in
     let is_singleton = store |> Types.Type_Store.is_singleton in
-    let value = state.State.tag_data_provider ~tag:(Tag_Store store) ~key ~attributes in
+    let value, meta =
+      state.State.tag_data_provider ~tag:(Tag_Store store) ~key ~attributes
+    in
     let output =
       match value with
       | None -> Helpers.Value.null ~loc:tag.tag_loc ()
@@ -172,7 +335,9 @@ module Tag_Store = struct
                (key |> List.rev |> List.hd))
     in
 
-    state |> State.add_output ~output
+    state
+    |> State.add_output ~output
+    |> State.add_tag_meta ~meta (key |> String.concat ".")
   ;;
 end
 
@@ -264,6 +429,7 @@ module Tag_Slot = struct
             State.make
               ~context:state.context
               ~mode:state.mode
+              ~tag_meta:state.tag_meta
               ~root_tag_data_provider:state.root_tag_data_provider
               ~tag_data_provider
               state.declarations
@@ -279,10 +445,10 @@ module Tag_Slot = struct
           })
     in
 
-    let slotted_elements =
+    let slotted_elements, meta =
       match state.State.tag_data_provider ~tag ~key ~attributes with
-      | None -> [||]
-      | Some { value_desc = Array a; _ } -> a
+      | None, meta -> ([||], meta)
+      | Some { value_desc = Array a; _ }, meta -> (a, meta)
       | _ ->
           Pinc_Diagnostics.error
             tag_value.tag_loc
@@ -385,14 +551,17 @@ module Tag_Slot = struct
 
     let output = slotted_elements |> Helpers.Value.array ~loc:tag_value.tag_loc in
 
-    state |> State.add_output ~output
+    state
+    |> State.add_output ~output
+    |> State.add_tag_meta ~meta (key |> String.concat ".")
   ;;
 end
 
 module Tag_Record = struct
   let eval ~eval_expression ~state ~attributes ~of' t key =
-    let output =
-      state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes
+    let value, meta = state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes in
+    let output, child_meta =
+      value
       |> Option.map (function
              | { value_desc = Record r; _ } -> r
              | { value_desc = _; value_loc } ->
@@ -402,29 +571,47 @@ module Tag_Record = struct
                       "Expected attribute %s to be a record."
                       (key |> List.rev |> List.hd)))
       |> Option.map (fun _ ->
-             let state = { state with tag_path = key } in
+             let state = { state with tag_path = key; tag_meta = StringMap.empty } in
              match of' with
              | None ->
                  Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Record."
-             | Some children -> (
-                 children |> eval_expression ~state |> State.get_output |> function
-                 | { value_desc = Record _; _ } as v -> v
-                 | { value_desc = _; value_loc } ->
-                     Pinc_Diagnostics.error
-                       value_loc
-                       "Attribute `of` needs to be a record describing the shape and \
-                        type of values in this record."))
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
+             | Some children ->
+                 let state = children |> eval_expression ~state in
+                 let meta = state.tag_meta in
+                 let value =
+                   state |> State.get_output |> function
+                   | { value_desc = Record _; _ } as v -> v
+                   | { value_desc = _; value_loc } ->
+                       Pinc_Diagnostics.error
+                         value_loc
+                         "Attribute `of` needs to be a record describing the shape and \
+                          type of values in this record."
+                 in
+                 (value, meta))
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc (), StringMap.empty)
     in
 
-    state |> State.add_output ~output
+    let meta =
+      Helpers.TagMeta.record
+        [
+          ("__meta", meta |> Option.value ~default:(Helpers.TagMeta.record []));
+          ( "__children",
+            child_meta |> StringMap.to_seq |> List.of_seq |> Helpers.TagMeta.record );
+        ]
+      |> Option.some
+    in
+
+    state
+    |> State.add_output ~output
+    |> State.add_tag_meta ~meta (key |> String.concat ".")
   ;;
 end
 
 module Tag_Array = struct
   let eval ~eval_expression ~state ~attributes ~of' t key =
-    let output =
-      state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes
+    let value, meta = state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes in
+    let output, child_meta =
+      value
       |> Option.map (function
              | { value_desc = Int i; _ } -> i
              | { value_desc = _; value_loc } ->
@@ -438,161 +625,39 @@ module Tag_Array = struct
              | None ->
                  Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Array."
              | Some children ->
-                 let state = { state with tag_path = key } in
-                 List.init len (fun i ->
-                     let binding_identifier = Some (false, string_of_int i) in
-                     children
-                     |> eval_expression ~state:{ state with binding_identifier }
-                     |> State.get_output)
-                 |> Helpers.Value.list ~loc:t.tag_loc)
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
+                 let state = { state with tag_path = key; tag_meta = StringMap.empty } in
+                 let values, metas =
+                   List.init len (fun i ->
+                       let binding_identifier = Some (false, string_of_int i) in
+                       let state =
+                         children
+                         |> eval_expression ~state:{ state with binding_identifier }
+                       in
+                       let value = state |> State.get_output in
+                       let meta =
+                         state.tag_meta |> StringMap.min_binding_opt |> Option.map snd
+                       in
+                       (value, meta))
+                   |> List.split
+                 in
+                 let value = values |> Helpers.Value.list ~loc:t.tag_loc in
+                 let meta = metas |> List.filter_map Fun.id in
+                 (value, meta))
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc (), [])
     in
 
-    state |> State.add_output ~output
-  ;;
-end
-
-module Tag_String = struct
-  let eval ~state ~attributes t key =
-    let output =
-      state.State.tag_data_provider ~tag:Tag_String ~key ~attributes
-      |> Option.map (function
-             | { value_desc = String _; _ } as value -> value
-             | { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf
-                      "Expected attribute %s to be of type string."
-                      (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
+    let meta =
+      Helpers.TagMeta.record
+        [
+          ("__meta", meta |> Option.value ~default:(Helpers.TagMeta.record []));
+          ("__children", child_meta |> Helpers.TagMeta.array);
+        ]
+      |> Option.some
     in
 
-    state |> State.add_output ~output
-  ;;
-end
-
-module Tag_Int = struct
-  let eval ~state ~attributes t key =
-    let output =
-      state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes
-      |> Option.map (function
-             | { value_desc = Int _; _ } as value -> value
-             | { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf
-                      "Expected attribute %s to be of type int."
-                      (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
-    in
-
-    state |> State.add_output ~output
-  ;;
-end
-
-module Tag_Float = struct
-  let eval ~state ~attributes t key =
-    let output =
-      state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes
-      |> Option.map (function
-             | { value_desc = Float _; _ } as value -> value
-             | { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf
-                      "Expected attribute %s to be of type float."
-                      (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
-    in
-
-    state |> State.add_output ~output
-  ;;
-end
-
-module Tag_Boolean = struct
-  let eval ~(state : State.state) ~attributes t key =
-    let output =
-      state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes
-      |> Option.map (function
-             | { value_desc = Bool _; _ } as value -> value
-             | { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf
-                      "Expected attribute %s to be of type bool."
-                      (key |> List.rev |> List.hd)))
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
-    in
-
-    state |> State.add_output ~output
-  ;;
-end
-
-module Tag_Custom = struct
-  let eval ~state ~attributes ~name t key =
-    let output =
-      state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attributes
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
-    in
-
-    state |> State.add_output ~output
-  ;;
-end
-
-module Tag_Portal = struct
-  let portals = Hashtbl.create 100
-
-  let eval_push ~state ~attributes t key =
-    if state.mode = `Portal_Collection then (
-      let push =
-        match attributes |> StringMap.find_opt "push" with
-        | None ->
-            Pinc_Diagnostics.error
-              t.tag_loc
-              "The attribute `push` is required when pushing a value into a portal."
-        | Some { value_desc = Function _; value_loc } ->
-            Pinc_Diagnostics.error value_loc "A function can not be put into a portal."
-        | Some value -> value
-      in
-      Hashtbl.add portals key push);
-
-    let output = Helpers.Value.null ~loc:t.tag_loc () in
-    state |> State.add_output ~output
-  ;;
-
-  let eval_create ~state ~attributes:_ t key =
-    let output =
-      { value_desc = Portal (Hashtbl.find_all portals key); value_loc = t.tag_loc }
-    in
-    state |> State.add_output ~output
-  ;;
-end
-
-module Tag_Context = struct
-  let eval_set ~state ~attributes t key =
-    let value =
-      attributes |> StringMap.find_opt "value" |> function
-      | None ->
-          Pinc_Diagnostics.error
-            t.tag_loc
-            "attribute value is required when setting a context."
-      | Some { value_desc = Function _; value_loc } ->
-          Pinc_Diagnostics.error value_loc "a function can not be put into a context."
-      | Some value -> value
-    in
-
-    let state = { state with context = state.context |> StringMap.add key value } in
-    state |> State.add_output ~output:(Helpers.Value.null ~loc:t.tag_loc ())
-  ;;
-
-  let eval_get ~state ~attributes:_ t key =
-    let output =
-      state.context
-      |> StringMap.find_opt key
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
-    in
-
-    state |> State.add_output ~output
+    state
+    |> State.add_output ~output
+    |> State.add_tag_meta ~meta (key |> String.concat ".")
   ;;
 end
 

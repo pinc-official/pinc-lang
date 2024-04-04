@@ -27,6 +27,7 @@ let main =
   let declarations = get_declarations_from ~directory () in
   declarations
   |> Interpreter.eval ~root ~tag_data_provider:Interpreter.noop_data_provider
+  |> fst
   |> print_endline
 ;;
 
