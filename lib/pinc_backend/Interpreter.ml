@@ -1301,24 +1301,34 @@ and eval_template ~state template =
 
 let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = (None, None)
 
-let declarations_of_sources sources =
-  ListLabels.fold_left sources ~init:StringMap.empty ~f:(fun acc source ->
+let declarations_of_sources =
+  ListLabels.fold_left ~init:[] ~f:(fun acc source ->
       let decls = Parser.parse source in
-      let f key _ _ =
-        Pinc_Diagnostics.error
-          (Pinc_Diagnostics.Location.make
-             ~s:(Pinc_Diagnostics.Location.Position.make ~source ~line:0 ~column:0)
-             ())
-          (Printf.sprintf
-             "Found multiple declarations with identifier `%s`.\n\
-              Every declaration has to have a unique name in pinc."
-             key)
-      in
-      StringMap.union f acc decls)
+      decls
+      |> List.iter (fun (key, _) ->
+             if List.mem_assoc key acc then (
+               let loc =
+                 let s =
+                   Pinc_Diagnostics.Location.Position.make ~source ~line:0 ~column:0
+                 in
+                 Pinc_Diagnostics.Location.make ~s ()
+               in
+
+               let message =
+                 Printf.sprintf
+                   "Found multiple declarations with identifier `%s`.\n\
+                    Every declaration has to have a unique name in pinc."
+                   key
+               in
+
+               Pinc_Diagnostics.error loc message));
+      acc @ decls)
 ;;
 
 let eval_meta sources =
-  let declarations = declarations_of_sources sources in
+  let declarations =
+    sources |> declarations_of_sources |> List.to_seq |> StringMap.of_seq
+  in
   let state =
     State.make
       ~mode:`Portal_Collection
@@ -1349,7 +1359,7 @@ let get_stdlib () =
          filename |> Pinc_stdlib.read |> Option.get |> Source.of_string ~filename)
   |> List.fold_left
        (fun acc source ->
-         let decls = source |> Parser.parse in
+         let decls = source |> Parser.parse |> List.to_seq |> StringMap.of_seq in
          let f key _ _ =
            Pinc_Diagnostics.error
              (Pinc_Diagnostics.Location.make
@@ -1361,14 +1371,14 @@ let get_stdlib () =
        StringMap.empty
 ;;
 
-let eval ~tag_data_provider ~root sources =
+let eval_declarations ~tag_data_provider ~root declarations =
   Hashtbl.reset Tag.Tag_Portal.portals;
 
   let declarations =
-    StringMap.union
-      (fun _key _x y -> Some y)
-      (get_stdlib ())
-      (declarations_of_sources sources)
+    declarations
+    |> List.to_seq
+    |> StringMap.of_seq
+    |> StringMap.union (fun _key _x y -> Some y) (get_stdlib ())
   in
 
   (match declarations |> StringMap.find_opt root with
@@ -1400,4 +1410,8 @@ let eval ~tag_data_provider ~root sources =
   let meta_tree = state.tag_meta |> StringMap.to_seq |> List.of_seq in
 
   (html, meta_tree)
+;;
+
+let eval_sources ~tag_data_provider ~root sources =
+  sources |> declarations_of_sources |> eval_declarations ~tag_data_provider ~root
 ;;

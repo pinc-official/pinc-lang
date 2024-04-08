@@ -776,11 +776,7 @@ module Rules = struct
   ;;
 end
 
-let scan : t -> Ast.t =
- fun t -> t |> Helpers.list ~fn:Rules.parse_declaration |> List.to_seq |> StringMap.of_seq
-;;
-
 let parse source =
   let parser = make source in
-  scan parser
+  parser |> Helpers.list ~fn:Rules.parse_declaration
 ;;
