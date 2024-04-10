@@ -122,6 +122,7 @@ and Type_Tag : sig
     | `Boolean of bool
     | `Array of meta list
     | `Record of (string * meta) list
+    | `SubTagPlaceholder
     ]
 
   type data_provider =
