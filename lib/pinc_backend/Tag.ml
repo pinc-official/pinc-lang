@@ -68,7 +68,12 @@ end
 
 module Tag_String = struct
   let eval ~state ~attributes t key =
-    let value, meta = state.State.tag_data_provider ~tag:Tag_String ~key ~attributes in
+    let required =
+      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+    in
+    let value, meta =
+      state.State.tag_data_provider ~tag:Tag_String ~key ~attributes ~required
+    in
     let output =
       value
       |> Option.map (function
@@ -90,7 +95,12 @@ end
 
 module Tag_Int = struct
   let eval ~state ~attributes t key =
-    let value, meta = state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes in
+    let required =
+      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+    in
+    let value, meta =
+      state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes ~required
+    in
     let output =
       value
       |> Option.map (function
@@ -112,7 +122,12 @@ end
 
 module Tag_Float = struct
   let eval ~state ~attributes t key =
-    let value, meta = state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes in
+    let required =
+      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+    in
+    let value, meta =
+      state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes ~required
+    in
     let output =
       value
       |> Option.map (function
@@ -134,7 +149,12 @@ end
 
 module Tag_Boolean = struct
   let eval ~(state : State.state) ~attributes t key =
-    let value, meta = state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes in
+    let required =
+      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+    in
+    let value, meta =
+      state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes ~required
+    in
     let output =
       value
       |> Option.map (function
@@ -156,7 +176,12 @@ end
 
 module Tag_Custom = struct
   let eval ~state ~attributes ~name t key =
-    let value, meta = state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attributes in
+    let required =
+      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+    in
+    let value, meta =
+      state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attributes ~required
+    in
     let output = value |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ()) in
 
     state
@@ -224,7 +249,7 @@ end
 
 module Tag_Store = struct
   let eval_body ~name ~state ~eval_expression ~value store =
-    let tag_data_provider ~tag ~attributes ~key =
+    let tag_data_provider ~tag ~attributes ~required ~key =
       match tag with
       | Types.Type_Tag.Tag_Store _ -> (
           value
@@ -232,7 +257,7 @@ module Tag_Store = struct
           |> Fun.flip Option.bind (find_path (key |> List.tl))
           |> function
           | None ->
-              let value, meta = state.tag_data_provider ~tag ~attributes ~key in
+              let value, meta = state.tag_data_provider ~tag ~attributes ~key ~required in
               (value, meta)
           | value -> (value, None))
       | Types.Type_Tag.Tag_Array ->
@@ -291,8 +316,11 @@ module Tag_Store = struct
             "Expected attribute `id` to be a Store definition."
     in
     let is_singleton = store |> Types.Type_Store.is_singleton in
+    let required =
+      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+    in
     let value, meta =
-      state.State.tag_data_provider ~tag:(Tag_Store store) ~key ~attributes
+      state.State.tag_data_provider ~tag:(Tag_Store store) ~key ~attributes ~required
     in
     let output =
       match value with
@@ -443,8 +471,12 @@ module Tag_Slot = struct
           })
     in
 
+    let required =
+      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+    in
+
     let slotted_elements, meta =
-      match state.State.tag_data_provider ~tag ~key ~attributes with
+      match state.State.tag_data_provider ~tag ~key ~attributes ~required with
       | None, meta -> ([||], meta)
       | Some { value_desc = Array a; _ }, meta -> (a, meta)
       | _ ->
@@ -557,7 +589,12 @@ end
 
 module Tag_Record = struct
   let eval ~eval_expression ~state ~attributes ~of' t key =
-    let value, meta = state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes in
+    let required =
+      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+    in
+    let value, meta =
+      state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes ~required
+    in
     let output, child_meta =
       value
       |> Option.map (function
@@ -605,7 +642,12 @@ end
 
 module Tag_Array = struct
   let eval ~eval_expression ~state ~attributes ~of' t key =
-    let value, meta = state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes in
+    let required =
+      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+    in
+    let value, meta =
+      state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes ~required
+    in
     let output, child_meta =
       value
       |> Option.map (function
