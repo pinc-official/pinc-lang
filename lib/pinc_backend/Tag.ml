@@ -64,8 +64,6 @@ module Utils = struct
     | None -> value
     | Some transformer -> aux transformer |> State.get_output
   ;;
-
-  let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = None
 end
 
 module Tag_String = struct
@@ -702,10 +700,10 @@ let eval ~eval_expression ~state t =
     | Tag_Custom name -> path |> Tag_Custom.eval ~state ~attributes ~name t
   in
 
-  let value = state |> State.get_output in
-
   let transformed_value =
-    Utils.apply_transformer ~eval_expression ~state ~transformer value
+    state
+    |> State.get_output
+    |> Utils.apply_transformer ~eval_expression ~state ~transformer
   in
 
   state |> State.add_output ~output:transformed_value
