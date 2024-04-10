@@ -1341,7 +1341,7 @@ let eval_meta sources =
   let state =
     State.make
       ~mode:`Portal_Collection
-      ~tag_meta:StringMap.empty
+      ~tag_meta:[]
       ~root_tag_data_provider:noop_data_provider
       ~tag_data_provider:noop_data_provider
       declarations
@@ -1399,7 +1399,7 @@ let eval_declarations ~tag_data_provider ~root declarations =
     State.make
       ~root_tag_data_provider:tag_data_provider
       ~tag_data_provider
-      ~tag_meta:StringMap.empty
+      ~tag_meta:[]
       ~mode:`Portal_Collection
       declarations
   in
@@ -1416,7 +1416,7 @@ let eval_declarations ~tag_data_provider ~root declarations =
   in
 
   let html = state |> State.get_output |> Value.to_string in
-  let meta_tree = state.tag_meta |> StringMap.to_seq |> List.of_seq in
+  let meta_tree = state.tag_meta in
 
   (html, meta_tree)
 ;;
