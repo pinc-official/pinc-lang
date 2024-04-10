@@ -275,6 +275,7 @@ module TagMeta = struct
   let boolean b : meta = `Boolean b
   let array a : meta = `Array a
   let record r : meta = `Record r
+  let children () : meta = `SubTagPlaceholder
 
   let rec merge (a : meta) (b : meta) =
     match (a, b) with
@@ -289,5 +290,13 @@ module TagMeta = struct
              b)
     | `Array a, `Array b -> `Array (a @ b)
     | _a, b -> b
+  ;;
+
+  let rec map : (meta -> 'a) -> meta -> 'a =
+   fun fn meta ->
+    match meta with
+    | `Record a -> `Record (a |> List.map @@ fun (key, v) -> (key, map fn v))
+    | `Array a -> `Array (a |> List.map (map fn))
+    | value -> fn value
   ;;
 end

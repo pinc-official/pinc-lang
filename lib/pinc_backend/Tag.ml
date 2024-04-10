@@ -590,13 +590,12 @@ module Tag_Record = struct
     in
 
     let meta =
-      Helpers.TagMeta.record
-        [
-          ("__meta", meta |> Option.value ~default:(Helpers.TagMeta.record []));
-          ( "__children",
-            child_meta |> StringMap.to_seq |> List.of_seq |> Helpers.TagMeta.record );
-        ]
-      |> Option.some
+      meta
+      |> Option.map
+           (Helpers.TagMeta.map @@ function
+            | `SubTagPlaceholder ->
+                child_meta |> StringMap.to_seq |> List.of_seq |> Helpers.TagMeta.record
+            | v -> v)
     in
 
     state
@@ -645,12 +644,11 @@ module Tag_Array = struct
     in
 
     let meta =
-      Helpers.TagMeta.record
-        [
-          ("__meta", meta |> Option.value ~default:(Helpers.TagMeta.record []));
-          ("__children", child_meta |> Helpers.TagMeta.array);
-        ]
-      |> Option.some
+      meta
+      |> Option.map
+           (Helpers.TagMeta.map @@ function
+            | `SubTagPlaceholder -> child_meta |> Helpers.TagMeta.array
+            | v -> v)
     in
 
     state
