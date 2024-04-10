@@ -123,12 +123,14 @@ let add_tag_meta ~meta key t =
   match meta with
   | None -> t
   | Some meta ->
-      {
-        t with
-        tag_meta =
-          StringMap.union
-            (fun _ a b -> Some (Helpers.TagMeta.merge a b))
+      let merged =
+        match t.tag_meta |> List.mem_assoc key with
+        | false -> t.tag_meta @ [ (key, meta) ]
+        | true -> (
             t.tag_meta
-            (StringMap.singleton key meta);
-      }
+            |> List.map @@ function
+               | k, v when k = key -> (k, Helpers.TagMeta.merge v meta)
+               | v -> v)
+      in
+      { t with tag_meta = merged }
 ;;

@@ -46,7 +46,7 @@ and Type_State : sig
     tag_data_provider : Type_Tag.data_provider;
     root_tag_data_provider : Type_Tag.data_provider;
     tag_path : string list;
-    tag_meta : Type_Tag.meta StringMap.t;
+    tag_meta : (string * Type_Tag.meta) list;
     context : Type_Value.value StringMap.t;
     mode : [ `Portal_Collection | `Portal_Render ];
   }

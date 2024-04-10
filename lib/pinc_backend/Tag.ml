@@ -569,7 +569,7 @@ module Tag_Record = struct
                       "Expected attribute %s to be a record."
                       (key |> List.rev |> List.hd)))
       |> Option.map (fun _ ->
-             let state = { state with tag_path = key; tag_meta = StringMap.empty } in
+             let state = { state with tag_path = key; tag_meta = [] } in
              match of' with
              | None ->
                  Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Record."
@@ -586,15 +586,14 @@ module Tag_Record = struct
                           type of values in this record."
                  in
                  (value, meta))
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc (), StringMap.empty)
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc (), [])
     in
 
     let meta =
       meta
       |> Option.map
            (Helpers.TagMeta.map @@ function
-            | `SubTagPlaceholder ->
-                child_meta |> StringMap.to_seq |> List.of_seq |> Helpers.TagMeta.record
+            | `SubTagPlaceholder -> child_meta |> Helpers.TagMeta.record
             | v -> v)
     in
 
@@ -622,7 +621,7 @@ module Tag_Array = struct
              | None ->
                  Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Array."
              | Some children ->
-                 let state = { state with tag_path = key; tag_meta = StringMap.empty } in
+                 let state = { state with tag_path = key; tag_meta = [] } in
                  let values, metas =
                    List.init len (fun i ->
                        let binding_identifier = Some (false, string_of_int i) in
@@ -632,7 +631,9 @@ module Tag_Array = struct
                        in
                        let value = state |> State.get_output in
                        let meta =
-                         state.tag_meta |> StringMap.min_binding_opt |> Option.map snd
+                         match state.tag_meta with
+                         | (_, meta) :: _ -> Some meta
+                         | _ -> None
                        in
                        (value, meta))
                    |> List.split
