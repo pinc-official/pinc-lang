@@ -113,26 +113,35 @@ and eval_expression ~state expression =
       in
       state |> State.add_output ~output
   | Ast.Record map ->
-      state
-      |> State.add_output
-           ~output:
-             (map
-             |> StringMap.mapi (fun ident attr ->
-                    let optional, expression = attr in
-                    expression
-                    |> eval_expression
-                         ~state:{ state with binding_identifier = Some (optional, ident) }
-                    |> State.get_output
-                    |> function
-                    | { value_desc = Null; value_loc } when not optional ->
-                        Pinc_Diagnostics.error
-                          value_loc
-                          (Printf.sprintf
-                             "identifier %s is not marked as nullable, but was given a \
-                              null value."
-                             ident)
-                    | value -> value)
-             |> Helpers.Value.record ~loc:expression.expression_loc)
+      let state, seq =
+        map
+        |> StringMap.to_seq
+        |> Seq.fold_left
+             (fun (state, seq) (ident, (optional, expression)) ->
+               let state =
+                 expression
+                 |> eval_expression
+                      ~state:{ state with binding_identifier = Some (optional, ident) }
+               in
+               let output = state |> State.get_output in
+               let () =
+                 match output with
+                 | { value_desc = Null; value_loc } when not optional ->
+                     Pinc_Diagnostics.error
+                       value_loc
+                       (Printf.sprintf
+                          "identifier %s is not marked as nullable, but was given a null \
+                           value."
+                          ident)
+                 | _value -> ()
+               in
+               (state, seq |> Seq.cons (ident, output)))
+             (state, Seq.empty)
+      in
+      let output =
+        seq |> StringMap.of_seq |> Helpers.Value.record ~loc:expression.expression_loc
+      in
+      state |> State.add_output ~output
   | Ast.String template -> eval_string_template ~state template
   | Ast.Function { parameters; body } ->
       eval_function_declaration ~loc:expression.expression_loc ~state ~parameters body
