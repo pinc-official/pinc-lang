@@ -128,6 +128,7 @@ and Type_Tag : sig
   type data_provider =
     tag:kind ->
     attributes:Type_Value.value StringMap.t ->
+    required:bool ->
     key:string list ->
     Type_Value.value option * meta option
 end =

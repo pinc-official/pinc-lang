@@ -1246,7 +1246,7 @@ and eval_template ~state template =
         |> List.map State.get_output
       in
       let render_fn component_tag_attributes =
-        let tag_data_provider ~tag ~attributes ~key =
+        let tag_data_provider ~tag ~attributes ~required ~key =
           (*
              TODO: Should we check the type here?
               ... Probably not, because we will implement
@@ -1258,7 +1258,7 @@ and eval_template ~state template =
               |> StringMap.find_opt (key |> List.hd)
               |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
               |> function
-              | None -> state.root_tag_data_provider ~tag ~attributes ~key
+              | None -> state.root_tag_data_provider ~tag ~attributes ~required ~key
               | value -> (value, None))
           | Type_Tag.Tag_Slot _ ->
               let key = key |> List.rev |> List.hd in
@@ -1308,7 +1308,7 @@ and eval_template ~state template =
              }
 ;;
 
-let noop_data_provider ~tag:_ ~attributes:_ ~key:_ = (None, None)
+let noop_data_provider ~tag:_ ~attributes:_ ~required:_ ~key:_ = (None, None)
 
 let declarations_of_sources =
   ListLabels.fold_left ~init:[] ~f:(fun acc source ->
