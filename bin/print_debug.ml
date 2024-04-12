@@ -8,7 +8,7 @@ let main =
   let end_time_parser = Unix.gettimeofday () in
   let result =
     [ src ]
-    |> Interpreter.eval_sources ~tag_data_provider:Interpreter.noop_data_provider ~root
+    |> Interpreter.eval_sources ~tag_data_provider:Helpers.noop_data_provider ~root
   in
   let end_time = Unix.gettimeofday () in
   Printf.printf "Lexer & Parser: %fms\n" ((end_time_parser -. start_time) *. 1000.);

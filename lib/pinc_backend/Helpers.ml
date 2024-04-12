@@ -276,6 +276,7 @@ module TagMeta = struct
   let array a : meta = `Array a
   let record r : meta = `Record r
   let children () : meta = `SubTagPlaceholder
+  let template () : meta = `TemplatePlaceholder
 
   let rec merge (a : meta) (b : meta) =
     match (a, b) with
@@ -299,4 +300,26 @@ module TagMeta = struct
     | `Array a -> `Array (a |> List.map (map fn))
     | value -> fn value
   ;;
+
+  let rec filter_map : (meta -> 'a option) -> meta -> 'a option =
+   fun fn (meta : meta) ->
+    match meta with
+    | `Record a -> (
+        let result =
+          a
+          |> List.filter_map @@ fun (key, v) ->
+             filter_map fn v |> Option.map (fun v -> (key, v))
+        in
+        match result with
+        | [] -> None
+        | l -> Some (`Record l))
+    | `Array a -> (
+        match a |> List.filter_map (filter_map fn) with
+        | [] -> None
+        | l -> Some (`Array l))
+    | value -> fn value
+  ;;
 end
+
+let noop_data_provider ~tag:_ ~attributes:_ ~required:_ ~key:_ = None
+let noop_meta_provider ~tag:_ ~attributes:_ ~required:_ ~key:_ = None

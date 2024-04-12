@@ -39,6 +39,8 @@ let rec get_uppercase_identifier_typ ~state ident =
                           (State.make
                              ~root_tag_data_provider:state.root_tag_data_provider
                              ~tag_data_provider:state.tag_data_provider
+                             ~root_tag_meta_provider:state.root_tag_meta_provider
+                             ~tag_meta_provider:state.tag_meta_provider
                              ~tag_meta:state.tag_meta
                              ~mode:state.mode
                              state.declarations)
@@ -117,16 +119,16 @@ and eval_expression ~state expression =
         map
         |> StringMap.to_seq
         |> Seq.fold_left
-             (fun (state, seq) (ident, (optional, expression)) ->
+             (fun (state, seq) (ident, (requirement, expression)) ->
                let state =
                  expression
                  |> eval_expression
-                      ~state:{ state with binding_identifier = Some (optional, ident) }
+                      ~state:{ state with binding_identifier = Some (requirement, ident) }
                in
                let output = state |> State.get_output in
                let () =
                  match output with
-                 | { value_desc = Null; value_loc } when not optional ->
+                 | { value_desc = Null; value_loc } when requirement = `Required ->
                      Pinc_Diagnostics.error
                        value_loc
                        (Printf.sprintf
@@ -962,10 +964,16 @@ and eval_lowercase_identifier ~state ~loc ident =
 
 and eval_let ~state ~ident ~is_mutable ~is_optional expression =
   let ident, ident_location = ident in
+  let requirement =
+    if is_optional then
+      `Optional
+    else
+      `Required
+  in
   let state =
     expression
     |> eval_expression
-         ~state:{ state with binding_identifier = Some (is_optional, ident) }
+         ~state:{ state with binding_identifier = Some (requirement, ident) }
   in
   let value = State.get_output state in
   match value with
@@ -1015,10 +1023,16 @@ and eval_mutation ~state ~ident expression =
   | Some { is_mutable = false; _ } ->
       Pinc_Diagnostics.error ident_location "Trying to update a non mutable variable."
   | Some { value = _; is_mutable = true; is_optional } ->
+      let requirement =
+        if is_optional then
+          `Optional
+        else
+          `Required
+      in
       let output =
         expression
         |> eval_expression
-             ~state:{ state with binding_identifier = Some (is_optional, ident) }
+             ~state:{ state with binding_identifier = Some (requirement, ident) }
       in
       let () =
         output |> State.get_output |> function
@@ -1259,29 +1273,37 @@ and eval_template ~state template =
               |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
               |> function
               | None -> state.root_tag_data_provider ~tag ~attributes ~required ~key
-              | value -> (value, None))
+              | value -> value)
           | Type_Tag.Tag_Slot _ ->
               let key = key |> List.rev |> List.hd in
-              ( component_tag_children
-                |> List.fold_left (Tag.Tag_Slot.keep_slotted ~key) []
-                |> List.rev
-                |> Helpers.Value.list
-                |> Option.some,
-                None )
+              component_tag_children
+              |> List.fold_left (Tag.Tag_Slot.keep_slotted ~key) []
+              |> List.rev
+              |> Helpers.Value.list
+              |> Option.some
           | Type_Tag.Tag_Array ->
               let key = key |> List.rev |> List.hd in
-              ( component_tag_attributes
-                |> StringMap.find_opt key
-                |> Fun.flip Option.bind (function
-                       | { value_desc = Array a; _ } ->
-                           a |> Array.length |> Helpers.Value.int |> Option.some
-                       | _ -> None),
-                None )
+              component_tag_attributes
+              |> StringMap.find_opt key
+              |> Fun.flip Option.bind (function
+                     | { value_desc = Array a; _ } ->
+                         a |> Array.length |> Helpers.Value.int |> Option.some
+                     | _ -> None)
           | _ ->
-              ( component_tag_attributes
-                |> StringMap.find_opt (key |> List.hd)
-                |> Fun.flip Option.bind (Tag.find_path (key |> List.tl)),
-                None )
+              component_tag_attributes
+              |> StringMap.find_opt (key |> List.hd)
+              |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
+        in
+        let tag_meta_provider ~tag ~attributes ~required ~key =
+          match tag with
+          | Type_Tag.Tag_Store _ -> (
+              component_tag_attributes
+              |> StringMap.find_opt (key |> List.hd)
+              |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
+              |> function
+              | None -> state.root_tag_meta_provider ~tag ~attributes ~required ~key
+              | _ -> None)
+          | _ -> None
         in
 
         let state =
@@ -1289,8 +1311,10 @@ and eval_template ~state template =
             ~context:state.context
             ~mode:state.mode
             ~tag_meta:state.tag_meta
-            ~root_tag_data_provider:state.root_tag_data_provider
             ~tag_data_provider
+            ~root_tag_data_provider:state.root_tag_data_provider
+            ~tag_meta_provider
+            ~root_tag_meta_provider:state.root_tag_meta_provider
             state.declarations
         in
         DeclarationEvaluator.eval ~eval_expression ~state component_tag_identifier
@@ -1307,8 +1331,6 @@ and eval_template ~state template =
                    (component_tag_identifier, component_tag_attributes, result);
              }
 ;;
-
-let noop_data_provider ~tag:_ ~attributes:_ ~required:_ ~key:_ = (None, None)
 
 let declarations_of_sources =
   ListLabels.fold_left ~init:[] ~f:(fun acc source ->
@@ -1342,8 +1364,10 @@ let eval_meta sources =
     State.make
       ~mode:`Portal_Collection
       ~tag_meta:[]
-      ~root_tag_data_provider:noop_data_provider
-      ~tag_data_provider:noop_data_provider
+      ~root_tag_data_provider:Helpers.noop_data_provider
+      ~tag_data_provider:Helpers.noop_data_provider
+      ~root_tag_meta_provider:Helpers.noop_meta_provider
+      ~tag_meta_provider:Helpers.noop_data_provider
       declarations
   in
   let eval attrs =
@@ -1380,7 +1404,11 @@ let get_stdlib () =
        StringMap.empty
 ;;
 
-let eval_declarations ~tag_data_provider ~root declarations =
+let eval_declarations
+    ?(tag_meta_provider = Helpers.noop_meta_provider)
+    ~tag_data_provider
+    ~root
+    declarations =
   Hashtbl.reset Tag.Tag_Portal.portals;
 
   let declarations =
@@ -1399,6 +1427,8 @@ let eval_declarations ~tag_data_provider ~root declarations =
     State.make
       ~root_tag_data_provider:tag_data_provider
       ~tag_data_provider
+      ~root_tag_meta_provider:tag_meta_provider
+      ~tag_meta_provider
       ~tag_meta:[]
       ~mode:`Portal_Collection
       declarations
@@ -1421,6 +1451,8 @@ let eval_declarations ~tag_data_provider ~root declarations =
   (html, meta_tree)
 ;;
 
-let eval_sources ~tag_data_provider ~root sources =
-  sources |> declarations_of_sources |> eval_declarations ~tag_data_provider ~root
+let eval_sources ?tag_meta_provider ~tag_data_provider ~root sources =
+  sources
+  |> declarations_of_sources
+  |> eval_declarations ?tag_meta_provider ~tag_data_provider ~root
 ;;
