@@ -67,12 +67,7 @@ module Utils = struct
 end
 
 module Tag_String = struct
-  let eval ~state ~attributes t key =
-    let required =
-      state.binding_identifier
-      |> (Option.map @@ fun v -> fst v = `Required)
-      |> Option.value ~default:true
-    in
+  let eval ~state ~required ~attributes t key =
     let meta = state.State.tag_meta_provider ~tag:Tag_String ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_String ~key ~attributes ~required in
     let output =
@@ -95,12 +90,7 @@ module Tag_String = struct
 end
 
 module Tag_Int = struct
-  let eval ~state ~attributes t key =
-    let required =
-      state.binding_identifier
-      |> (Option.map @@ fun v -> fst v = `Required)
-      |> Option.value ~default:true
-    in
+  let eval ~state ~required ~attributes t key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Int ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes ~required in
     let output =
@@ -123,12 +113,7 @@ module Tag_Int = struct
 end
 
 module Tag_Float = struct
-  let eval ~state ~attributes t key =
-    let required =
-      state.binding_identifier
-      |> (Option.map @@ fun v -> fst v = `Required)
-      |> Option.value ~default:true
-    in
+  let eval ~state ~required ~attributes t key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Float ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes ~required in
     let output =
@@ -151,12 +136,7 @@ module Tag_Float = struct
 end
 
 module Tag_Boolean = struct
-  let eval ~(state : State.state) ~attributes t key =
-    let required =
-      state.binding_identifier
-      |> (Option.map @@ fun v -> fst v = `Required)
-      |> Option.value ~default:true
-    in
+  let eval ~state ~required ~attributes t key =
     let meta = state.tag_meta_provider ~tag:Tag_Boolean ~key ~attributes ~required in
     let data = state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes ~required in
     let output =
@@ -179,12 +159,7 @@ module Tag_Boolean = struct
 end
 
 module Tag_Custom = struct
-  let eval ~state ~attributes ~name t key =
-    let required =
-      state.binding_identifier
-      |> (Option.map @@ fun v -> fst v = `Required)
-      |> Option.value ~default:true
-    in
+  let eval ~state ~required ~attributes ~name t key =
     let meta =
       state.tag_meta_provider ~tag:(Tag_Custom name) ~key ~attributes ~required
     in
@@ -202,7 +177,7 @@ end
 module Tag_Portal = struct
   let portals = Hashtbl.create 100
 
-  let eval_push ~state ~attributes t key =
+  let eval_push ~state ~required:_ ~attributes t key =
     if state.mode = `Portal_Collection then (
       let push =
         match attributes |> StringMap.find_opt "push" with
@@ -220,7 +195,7 @@ module Tag_Portal = struct
     state |> State.add_output ~output
   ;;
 
-  let eval_create ~state ~attributes:_ t key =
+  let eval_create ~state ~required:_ ~attributes:_ t key =
     let output =
       { value_desc = Portal (Hashtbl.find_all portals key); value_loc = t.tag_loc }
     in
@@ -229,7 +204,7 @@ module Tag_Portal = struct
 end
 
 module Tag_Context = struct
-  let eval_set ~state ~attributes t key =
+  let eval_set ~state ~required:_ ~attributes t key =
     let value =
       attributes |> StringMap.find_opt "value" |> function
       | None ->
@@ -245,7 +220,7 @@ module Tag_Context = struct
     state |> State.add_output ~output:(Helpers.Value.null ~loc:t.tag_loc ())
   ;;
 
-  let eval_get ~state ~attributes:_ t key =
+  let eval_get ~state ~required:_ ~attributes:_ t key =
     let output =
       state.context
       |> StringMap.find_opt key
@@ -313,7 +288,7 @@ module Tag_Store = struct
              name)
   ;;
 
-  let eval ~eval_expression ~state ~attributes tag key =
+  let eval ~eval_expression ~state ~required ~attributes tag key =
     let name, store =
       match attributes |> StringMap.find_opt "id" with
       | None -> Pinc_Diagnostics.error tag.tag_loc "Attribute `id` is required on #Store."
@@ -334,11 +309,7 @@ module Tag_Store = struct
             "Expected attribute `id` to be a Store definition."
     in
     let is_singleton = store |> Types.Type_Store.is_singleton in
-    let required =
-      state.binding_identifier
-      |> (Option.map @@ fun v -> fst v = `Required)
-      |> Option.value ~default:true
-    in
+
     let meta =
       state.State.tag_meta_provider ~tag:(Tag_Store store) ~key ~attributes ~required
     in
@@ -470,7 +441,80 @@ module Tag_Slot = struct
                contraints))
   ;;
 
-  let eval ~eval_expression ~state ~attributes tag_value key =
+  let validate_element_count ~attributes slotted_elements =
+    let min =
+      attributes
+      |> StringMap.find_opt "min"
+      |> Option.map (function
+             | { value_desc = Int i; _ } -> i
+             | { value_loc; _ } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   "Expected attribute min to be of type int.")
+      |> Option.value ~default:0
+    in
+
+    let max =
+      attributes
+      |> StringMap.find_opt "max"
+      |> Option.map (function
+             | { value_desc = Int i; _ } -> i
+             | { value_loc; _ } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   "Expected attribute max to be of type int.")
+      |> Option.value ~default:Int.max_int
+    in
+    let num_slotted_elements = Array.length slotted_elements in
+
+    match (num_slotted_elements < min, num_slotted_elements > max) with
+    | true, _ ->
+        Result.error
+        @@ Printf.sprintf
+             "This #Slot did not reach the minimum amount of nodes (specified as %i)."
+             min
+    | _, true ->
+        Result.error
+        @@ Printf.sprintf
+             "This #Slot was provided more than the maximum amount of nodes (specified \
+              as %i)."
+             max
+    | false, false -> Result.ok ()
+  ;;
+
+  let eval ~eval_expression ~state ~required ~attributes tag_value key =
+    let constraints =
+      attributes
+      |> StringMap.find_opt "constraints"
+      |> (Option.map @@ function
+          | { value_desc = Array a; _ } -> a
+          | { value_desc = _; value_loc } ->
+              Pinc_Diagnostics.error
+                value_loc
+                "slot contraints need to be an array of definitions which are either \
+                 allowed or disallowed")
+      |> Option.map
+         @@ Array.map
+         @@ function
+         | { value_desc = DefinitionInfo (name, Some Definition_Component, negated); _ }
+           -> (name, negated)
+         | { value_desc = DefinitionInfo (name, None, _negated); value_loc } ->
+             Pinc_Diagnostics.error
+               value_loc
+               (Printf.sprintf "definition `%s` does not exist" name)
+         | { value_desc = DefinitionInfo (name, _typ, _negated); value_loc } ->
+             Pinc_Diagnostics.error
+               value_loc
+               (Printf.sprintf
+                  "definition `%s` is not a component. Expected to see a component \
+                   definition at this point."
+                  name)
+         | { value_desc = _; value_loc } ->
+             Pinc_Diagnostics.error
+               value_loc
+               "Expected to see a component definition at this point"
+    in
+
     let tag =
       Types.Type_Tag.Tag_Slot
         (fun ~tag ~tag_data_provider ->
@@ -496,15 +540,11 @@ module Tag_Slot = struct
           })
     in
 
-    let required =
-      state.binding_identifier
-      |> (Option.map @@ fun v -> fst v = `Required)
-      |> Option.value ~default:true
-    in
-
     let meta = state.State.tag_meta_provider ~tag ~key ~attributes ~required in
+    let data = state.State.tag_data_provider ~tag ~key ~attributes ~required in
+
     let slotted_elements =
-      match state.State.tag_data_provider ~tag ~key ~attributes ~required with
+      match data with
       | None -> [||]
       | Some { value_desc = Array a; _ } -> a
       | _ ->
@@ -515,81 +555,9 @@ module Tag_Slot = struct
                (key |> List.rev |> List.hd))
     in
 
-    let min =
-      attributes
-      |> StringMap.find_opt "min"
-      |> Option.map (function
-             | { value_desc = Int i; _ } -> i
-             | { value_loc; _ } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   "Expected attribute min to be of type int.")
-      |> Option.value ~default:0
-    in
-
-    let max =
-      attributes
-      |> StringMap.find_opt "max"
-      |> Option.map (function
-             | { value_desc = Int i; _ } -> i
-             | { value_loc; _ } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   "Expected attribute max to be of type int.")
-      |> Option.value ~default:Int.max_int
-    in
-
-    let num_slotted_elements = Array.length slotted_elements in
-
     let () =
-      match (num_slotted_elements < min, num_slotted_elements > max) with
-      | true, _ ->
-          Pinc_Diagnostics.error
-            tag_value.tag_loc
-            (Printf.sprintf
-               "This #Slot did not reach the minimum amount of nodes (specified as %i)."
-               min)
-      | _, true ->
-          Pinc_Diagnostics.error
-            tag_value.tag_loc
-            (Printf.sprintf
-               "This #Slot was provided more than the maximum amount of nodes (specified \
-                as %i)."
-               max)
-      | false, false -> ()
-    in
-
-    let constraints =
-      attributes
-      |> StringMap.find_opt "constraints"
-      |> Option.map (function
-             | { value_desc = Array a; _ } -> a
-             | { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   "slot contraints need to be an array of definitions which are either \
-                    allowed or disallowed")
-      |> Option.map
-           (Array.map (function
-               | {
-                   value_desc = DefinitionInfo (name, Some Definition_Component, negated);
-                   _;
-                 } -> (name, negated)
-               | { value_desc = DefinitionInfo (name, None, _negated); value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     ("definition `" ^ name ^ "` does not exist")
-               | { value_desc = DefinitionInfo (name, _typ, _negated); value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     ("definition `"
-                     ^ name
-                     ^ "` is not a component. Expected to see a component definition at \
-                        this point.")
-               | { value_desc = _; value_loc } ->
-                   Pinc_Diagnostics.error
-                     value_loc
-                     "Expected to see a component definition at this point"))
+      validate_element_count ~attributes slotted_elements
+      |> Result.iter_error (Pinc_Diagnostics.error tag_value.tag_loc)
     in
 
     let () =
@@ -616,12 +584,7 @@ module Tag_Slot = struct
 end
 
 module Tag_Record = struct
-  let eval ~eval_expression ~state ~attributes ~of' t key =
-    let required =
-      state.binding_identifier
-      |> (Option.map @@ fun v -> fst v = `Required)
-      |> Option.value ~default:true
-    in
+  let eval ~eval_expression ~state ~required ~attributes ~of' t key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Record ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes ~required in
     let output, child_meta =
@@ -670,12 +633,7 @@ module Tag_Record = struct
 end
 
 module Tag_Array = struct
-  let eval ~eval_expression ~state ~attributes ~of' t key =
-    let required =
-      state.binding_identifier
-      |> (Option.map @@ fun v -> fst v = `Required)
-      |> Option.value ~default:true
-    in
+  let eval ~eval_expression ~state ~required ~attributes ~of' t key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Array ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes ~required in
     let output, child_meta, template_meta =
@@ -766,21 +724,30 @@ let eval ~eval_expression ~state t =
     |> StringMap.remove "of"
     |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
   in
+
+  let required =
+    state.binding_identifier
+    |> (Option.map @@ fun v -> fst v = `Required)
+    |> Option.value ~default:true
+  in
+
   let state =
     match tag with
-    | Tag_SetContext -> key |> Tag_Context.eval_set ~state ~attributes t
-    | Tag_GetContext -> key |> Tag_Context.eval_get ~state ~attributes t
-    | Tag_CreatePortal -> key |> Tag_Portal.eval_create ~state ~attributes t
-    | Tag_Portal -> key |> Tag_Portal.eval_push ~state ~attributes t
-    | Tag_Slot -> path |> Tag_Slot.eval ~eval_expression ~state ~attributes t
-    | Tag_Store -> path |> Tag_Store.eval ~eval_expression ~state ~attributes t
-    | Tag_String -> path |> Tag_String.eval ~state ~attributes t
-    | Tag_Int -> path |> Tag_Int.eval ~state ~attributes t
-    | Tag_Float -> path |> Tag_Float.eval ~state ~attributes t
-    | Tag_Boolean -> path |> Tag_Boolean.eval ~state ~attributes t
-    | Tag_Array -> path |> Tag_Array.eval ~eval_expression ~state ~attributes ~of' t
-    | Tag_Record -> path |> Tag_Record.eval ~eval_expression ~state ~attributes ~of' t
-    | Tag_Custom name -> path |> Tag_Custom.eval ~state ~attributes ~name t
+    | Tag_SetContext -> key |> Tag_Context.eval_set ~state ~required ~attributes t
+    | Tag_GetContext -> key |> Tag_Context.eval_get ~state ~required ~attributes t
+    | Tag_CreatePortal -> key |> Tag_Portal.eval_create ~state ~required ~attributes t
+    | Tag_Portal -> key |> Tag_Portal.eval_push ~state ~required ~attributes t
+    | Tag_Slot -> path |> Tag_Slot.eval ~eval_expression ~state ~required ~attributes t
+    | Tag_Store -> path |> Tag_Store.eval ~eval_expression ~state ~required ~attributes t
+    | Tag_String -> path |> Tag_String.eval ~state ~required ~attributes t
+    | Tag_Int -> path |> Tag_Int.eval ~state ~required ~attributes t
+    | Tag_Float -> path |> Tag_Float.eval ~state ~required ~attributes t
+    | Tag_Boolean -> path |> Tag_Boolean.eval ~state ~required ~attributes t
+    | Tag_Array ->
+        path |> Tag_Array.eval ~eval_expression ~state ~required ~attributes ~of' t
+    | Tag_Record ->
+        path |> Tag_Record.eval ~eval_expression ~state ~required ~attributes ~of' t
+    | Tag_Custom name -> path |> Tag_Custom.eval ~state ~required ~attributes ~name t
   in
 
   let transformed_value =
