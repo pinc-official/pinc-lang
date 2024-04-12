@@ -177,7 +177,7 @@ end = struct
             let _ =
               Sys.opaque_identity
                 (Pinc.Interpreter.eval_sources
-                   ~tag_data_provider:Pinc.Interpreter.noop_data_provider
+                   ~tag_data_provider:Pinc.Helpers.noop_data_provider
                    ~root
                    [ src ])
             in

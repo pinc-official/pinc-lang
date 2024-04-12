@@ -26,7 +26,7 @@ let main =
   let root = Sys.argv.(2) in
   let declarations = get_declarations_from ~directory () in
   declarations
-  |> Interpreter.eval_sources ~root ~tag_data_provider:Interpreter.noop_data_provider
+  |> Interpreter.eval_sources ~root ~tag_data_provider:Helpers.noop_data_provider
   |> fst
   |> print_endline
 ;;

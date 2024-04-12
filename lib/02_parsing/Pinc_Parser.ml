@@ -183,10 +183,15 @@ module Rules = struct
     match t.token.typ with
     | Token.IDENT_LOWER key ->
         next t;
-        let nullable = optional Token.QUESTIONMARK t in
+        let requirement =
+          if optional Token.QUESTIONMARK t then
+            `Optional
+          else
+            `Required
+        in
         expect Token.COLON t;
         let value = parse_expression t in
-        value |> Option.map (fun value -> (key, (nullable, value)))
+        value |> Option.map (fun value -> (key, (requirement, value)))
     | _ -> None
 
   and parse_block t =

@@ -71,7 +71,7 @@ and expression_desc =
   | Float of float
   | Bool of bool
   | Array of expression array
-  | Record of (bool * expression) StringMap.t  (** nullable, value *)
+  | Record of ([ `Required | `Optional ] * expression) StringMap.t
   | Function of {
       parameters : string list;
       body : expression;

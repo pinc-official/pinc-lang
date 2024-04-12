@@ -7,6 +7,8 @@ let make
     ~tag_meta
     ~tag_data_provider
     ~root_tag_data_provider
+    ~tag_meta_provider
+    ~root_tag_meta_provider
     ~mode
     declarations =
   {
@@ -16,6 +18,8 @@ let make
     environment = { scope = []; use_scope = StringMap.empty };
     tag_data_provider;
     root_tag_data_provider;
+    tag_meta_provider;
+    root_tag_meta_provider;
     tag_meta;
     tag_path;
     context;

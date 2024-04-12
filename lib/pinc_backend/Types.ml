@@ -39,12 +39,14 @@ end =
 
 and Type_State : sig
   type state = {
-    binding_identifier : (bool * string) option;
+    binding_identifier : ([ `Required | `Optional ] * string) option;
     declarations : Ast.t;
     output : Type_Value.value;
     environment : environment;
     tag_data_provider : Type_Tag.data_provider;
     root_tag_data_provider : Type_Tag.data_provider;
+    tag_meta_provider : Type_Tag.meta_provider;
+    root_tag_meta_provider : Type_Tag.meta_provider;
     tag_path : string list;
     tag_meta : (string * Type_Tag.meta) list;
     context : Type_Value.value StringMap.t;
@@ -123,6 +125,7 @@ and Type_Tag : sig
     | `Array of meta list
     | `Record of (string * meta) list
     | `SubTagPlaceholder
+    | `TemplatePlaceholder
     ]
 
   type data_provider =
@@ -130,7 +133,14 @@ and Type_Tag : sig
     attributes:Type_Value.value StringMap.t ->
     required:bool ->
     key:string list ->
-    Type_Value.value option * meta option
+    Type_Value.value option
+
+  type meta_provider =
+    tag:kind ->
+    attributes:Type_Value.value StringMap.t ->
+    required:bool ->
+    key:string list ->
+    meta option
 end =
   Type_Tag
 

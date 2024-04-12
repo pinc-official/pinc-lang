@@ -69,13 +69,14 @@ end
 module Tag_String = struct
   let eval ~state ~attributes t key =
     let required =
-      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+      state.binding_identifier
+      |> (Option.map @@ fun v -> fst v = `Required)
+      |> Option.value ~default:true
     in
-    let value, meta =
-      state.State.tag_data_provider ~tag:Tag_String ~key ~attributes ~required
-    in
+    let meta = state.State.tag_meta_provider ~tag:Tag_String ~key ~attributes ~required in
+    let data = state.State.tag_data_provider ~tag:Tag_String ~key ~attributes ~required in
     let output =
-      value
+      data
       |> Option.map (function
              | { value_desc = String _; _ } as value -> value
              | { value_desc = _; value_loc } ->
@@ -96,13 +97,14 @@ end
 module Tag_Int = struct
   let eval ~state ~attributes t key =
     let required =
-      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+      state.binding_identifier
+      |> (Option.map @@ fun v -> fst v = `Required)
+      |> Option.value ~default:true
     in
-    let value, meta =
-      state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes ~required
-    in
+    let meta = state.State.tag_meta_provider ~tag:Tag_Int ~key ~attributes ~required in
+    let data = state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes ~required in
     let output =
-      value
+      data
       |> Option.map (function
              | { value_desc = Int _; _ } as value -> value
              | { value_desc = _; value_loc } ->
@@ -123,13 +125,14 @@ end
 module Tag_Float = struct
   let eval ~state ~attributes t key =
     let required =
-      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+      state.binding_identifier
+      |> (Option.map @@ fun v -> fst v = `Required)
+      |> Option.value ~default:true
     in
-    let value, meta =
-      state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes ~required
-    in
+    let meta = state.State.tag_meta_provider ~tag:Tag_Float ~key ~attributes ~required in
+    let data = state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes ~required in
     let output =
-      value
+      data
       |> Option.map (function
              | { value_desc = Float _; _ } as value -> value
              | { value_desc = _; value_loc } ->
@@ -150,13 +153,14 @@ end
 module Tag_Boolean = struct
   let eval ~(state : State.state) ~attributes t key =
     let required =
-      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+      state.binding_identifier
+      |> (Option.map @@ fun v -> fst v = `Required)
+      |> Option.value ~default:true
     in
-    let value, meta =
-      state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes ~required
-    in
+    let meta = state.tag_meta_provider ~tag:Tag_Boolean ~key ~attributes ~required in
+    let data = state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes ~required in
     let output =
-      value
+      data
       |> Option.map (function
              | { value_desc = Bool _; _ } as value -> value
              | { value_desc = _; value_loc } ->
@@ -177,12 +181,17 @@ end
 module Tag_Custom = struct
   let eval ~state ~attributes ~name t key =
     let required =
-      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+      state.binding_identifier
+      |> (Option.map @@ fun v -> fst v = `Required)
+      |> Option.value ~default:true
     in
-    let value, meta =
+    let meta =
+      state.tag_meta_provider ~tag:(Tag_Custom name) ~key ~attributes ~required
+    in
+    let data =
       state.tag_data_provider ~tag:(Tag_Custom name) ~key ~attributes ~required
     in
-    let output = value |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ()) in
+    let output = data |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ()) in
 
     state
     |> State.add_output ~output
@@ -256,31 +265,40 @@ module Tag_Store = struct
           |> StringMap.find_opt (key |> List.hd)
           |> Fun.flip Option.bind (find_path (key |> List.tl))
           |> function
-          | None ->
-              let value, meta = state.tag_data_provider ~tag ~attributes ~key ~required in
-              (value, meta)
-          | value -> (value, None))
+          | None -> state.tag_data_provider ~tag ~attributes ~key ~required
+          | value -> value)
       | Types.Type_Tag.Tag_Array ->
-          ( value
-            |> StringMap.find_opt (key |> List.rev |> List.hd)
-            |> Fun.flip Option.bind (function
-                   | { value_desc = Array a; _ } ->
-                       a |> Array.length |> Helpers.Value.int |> Option.some
-                   | _ -> None),
-            None )
+          value
+          |> StringMap.find_opt (key |> List.rev |> List.hd)
+          |> Fun.flip Option.bind (function
+                 | { value_desc = Array a; _ } ->
+                     a |> Array.length |> Helpers.Value.int |> Option.some
+                 | _ -> None)
       | _ ->
-          ( value
-            |> StringMap.find_opt (key |> List.hd)
-            |> Fun.flip Option.bind (find_path (key |> List.tl)),
-            None )
+          value
+          |> StringMap.find_opt (key |> List.hd)
+          |> Fun.flip Option.bind (find_path (key |> List.tl))
+    in
+    let tag_meta_provider ~tag ~attributes ~required ~key =
+      match tag with
+      | Types.Type_Tag.Tag_Store _ -> (
+          value
+          |> StringMap.find_opt (key |> List.hd)
+          |> Fun.flip Option.bind (find_path (key |> List.tl))
+          |> function
+          | None -> state.tag_meta_provider ~tag ~attributes ~key ~required
+          | _ -> None)
+      | _ -> None
     in
     let state =
       State.make
         ~context:state.context
         ~mode:state.mode
         ~tag_meta:state.tag_meta
-        ~root_tag_data_provider:state.root_tag_data_provider
         ~tag_data_provider
+        ~root_tag_data_provider:state.root_tag_data_provider
+        ~tag_meta_provider
+        ~root_tag_meta_provider:state.root_tag_meta_provider
         state.declarations
     in
     store |> Types.Type_Store.body |> eval_expression ~state |> State.get_output
@@ -317,13 +335,18 @@ module Tag_Store = struct
     in
     let is_singleton = store |> Types.Type_Store.is_singleton in
     let required =
-      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+      state.binding_identifier
+      |> (Option.map @@ fun v -> fst v = `Required)
+      |> Option.value ~default:true
     in
-    let value, meta =
+    let meta =
+      state.State.tag_meta_provider ~tag:(Tag_Store store) ~key ~attributes ~required
+    in
+    let data =
       state.State.tag_data_provider ~tag:(Tag_Store store) ~key ~attributes ~required
     in
     let output =
-      match value with
+      match data with
       | None -> Helpers.Value.null ~loc:tag.tag_loc ()
       | Some { value_desc = Record value; _ } when is_singleton -> (
           store |> eval_body ~name ~value ~eval_expression ~state |> function
@@ -458,6 +481,8 @@ module Tag_Slot = struct
               ~tag_meta:state.tag_meta
               ~root_tag_data_provider:state.root_tag_data_provider
               ~tag_data_provider
+              ~root_tag_meta_provider:state.root_tag_meta_provider
+              ~tag_meta_provider:state.root_tag_meta_provider
               state.declarations
           in
 
@@ -472,13 +497,16 @@ module Tag_Slot = struct
     in
 
     let required =
-      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+      state.binding_identifier
+      |> (Option.map @@ fun v -> fst v = `Required)
+      |> Option.value ~default:true
     in
 
-    let slotted_elements, meta =
+    let meta = state.State.tag_meta_provider ~tag ~key ~attributes ~required in
+    let slotted_elements =
       match state.State.tag_data_provider ~tag ~key ~attributes ~required with
-      | None, meta -> ([||], meta)
-      | Some { value_desc = Array a; _ }, meta -> (a, meta)
+      | None -> [||]
+      | Some { value_desc = Array a; _ } -> a
       | _ ->
           Pinc_Diagnostics.error
             tag_value.tag_loc
@@ -590,13 +618,14 @@ end
 module Tag_Record = struct
   let eval ~eval_expression ~state ~attributes ~of' t key =
     let required =
-      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+      state.binding_identifier
+      |> (Option.map @@ fun v -> fst v = `Required)
+      |> Option.value ~default:true
     in
-    let value, meta =
-      state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes ~required
-    in
+    let meta = state.State.tag_meta_provider ~tag:Tag_Record ~key ~attributes ~required in
+    let data = state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes ~required in
     let output, child_meta =
-      value
+      data
       |> Option.map (function
              | { value_desc = Record r; _ } -> r
              | { value_desc = _; value_loc } ->
@@ -643,13 +672,14 @@ end
 module Tag_Array = struct
   let eval ~eval_expression ~state ~attributes ~of' t key =
     let required =
-      state.binding_identifier |> Option.map fst |> Option.value ~default:true
+      state.binding_identifier
+      |> (Option.map @@ fun v -> fst v = `Required)
+      |> Option.value ~default:true
     in
-    let value, meta =
-      state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes ~required
-    in
-    let output, child_meta =
-      value
+    let meta = state.State.tag_meta_provider ~tag:Tag_Array ~key ~attributes ~required in
+    let data = state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes ~required in
+    let output, child_meta, template_meta =
+      data
       |> Option.map (function
              | { value_desc = Int i; _ } -> i
              | { value_desc = _; value_loc } ->
@@ -664,9 +694,19 @@ module Tag_Array = struct
                  Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Array."
              | Some children ->
                  let state = { state with tag_path = key; tag_meta = [] } in
+                 let template_meta =
+                   let state =
+                     children
+                     |> eval_expression
+                          ~state:{ state with binding_identifier = Some (`Optional, "0") }
+                   in
+                   match state.tag_meta with
+                   | (_, meta) :: _ -> Some meta
+                   | _ -> None
+                 in
                  let values, metas =
                    List.init len (fun i ->
-                       let binding_identifier = Some (false, string_of_int i) in
+                       let binding_identifier = Some (`Required, string_of_int i) in
                        let state =
                          children
                          |> eval_expression ~state:{ state with binding_identifier }
@@ -682,16 +722,18 @@ module Tag_Array = struct
                  in
                  let value = values |> Helpers.Value.list ~loc:t.tag_loc in
                  let meta = metas |> List.filter_map Fun.id in
-                 (value, meta))
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc (), [])
+                 (value, meta, template_meta))
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc (), [], None)
     in
 
     let meta =
       meta
-      |> Option.map
-           (Helpers.TagMeta.map @@ function
-            | `SubTagPlaceholder -> child_meta |> Helpers.TagMeta.array
-            | v -> v)
+      |> Fun.flip Option.bind
+         @@ Helpers.TagMeta.filter_map
+         @@ function
+         | `SubTagPlaceholder -> child_meta |> Helpers.TagMeta.array |> Option.some
+         | `TemplatePlaceholder -> template_meta
+         | v -> Some v
     in
 
     state
