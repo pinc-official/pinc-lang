@@ -1,0 +1,9 @@
+component BadTransformer_Typ {
+  <BadTransformer_Typ_Child text="Test" />
+}
+
+component BadTransformer_Typ_Child {
+  let text = #String :: "not a function";
+
+  text
+}

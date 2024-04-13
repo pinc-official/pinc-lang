@@ -17,43 +17,20 @@ let find_path path value =
 ;;
 
 module Utils = struct
-  let apply_transformer
-      ~eval_expression
-      ~state
-      ~(transformer : Ast.expression option)
-      (value : Value.value) =
-    let aux (transformer : Ast.expression) =
-      let arguments = [ value ] in
+  let apply_transformer ~eval_expression ~state ~transformer value =
+    let aux transformer =
       let maybe_fn = transformer |> eval_expression ~state |> State.get_output in
       match maybe_fn.value_desc with
-      | Function { parameters; state = _; exec = _ }
-        when List.compare_lengths parameters arguments > 0 ->
-          let arguments_len = List.length arguments in
-          let missing =
-            parameters
-            |> List.filteri (fun index _ -> index > arguments_len - 1)
-            |> List.map (fun item -> "`" ^ item ^ "`")
-            |> String.concat ", "
-          in
-          Pinc_Diagnostics.error
-            transformer.expression_loc
-            ("This transformer was provided too few arguments. The following parameters \
-              are missing: "
-            ^ missing)
-      | Function { parameters; state = _; exec = _ }
-        when List.compare_lengths parameters arguments < 0 ->
-          Pinc_Diagnostics.error
-            transformer.expression_loc
-            ("This transformer only accepts "
-            ^ string_of_int (List.length parameters)
-            ^ " arguments, but was provided "
-            ^ string_of_int (List.length arguments)
-            ^ " here.")
-      | Function { parameters; state = fn_state; exec } ->
-          let arguments =
-            List.combine parameters arguments |> List.to_seq |> StringMap.of_seq
-          in
+      | Function { parameters = [ value_param ]; state = fn_state; exec } ->
+          let arguments = StringMap.singleton value_param value in
           state |> State.add_output ~output:(exec ~arguments ~state:fn_state ())
+      | Function { parameters; state = _; exec = _ } ->
+          Pinc_Diagnostics.error
+            transformer.expression_loc
+            (Printf.sprintf
+               "A transformer has to accept exactly one argument (the tag value).\n\
+                Here it was provided %i."
+               (List.length parameters))
       | _ ->
           Pinc_Diagnostics.error
             transformer.expression_loc
