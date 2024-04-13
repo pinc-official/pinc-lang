@@ -1,0 +1,9 @@
+component BadTransformer_Arity {
+  <BadTransformer_Arity_Child text="Test" />
+}
+
+component BadTransformer_Arity_Child {
+  let text = #String :: fn (a, b) -> Base.String.uppercase(a);;
+
+  text
+}
