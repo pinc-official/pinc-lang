@@ -538,8 +538,7 @@ and eval_binary_div ~state left right =
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   let r =
     match (a.value_desc, b.value_desc) with
-    | Int _, Int 0 | Float _, Float 0. | Float _, Int 0 | Int _, Float 0. ->
-        Pinc_Diagnostics.error b.value_loc "Trying to divide by 0"
+    | Int _, Int 0 | Float _, Float 0. | Float _, Int 0 | Int _, Float 0. -> 0.
     | Int a, Int b -> float_of_int a /. float_of_int b
     | Float a, Float b -> a /. b
     | Float a, Int b -> a /. float_of_int b
@@ -588,8 +587,7 @@ and eval_binary_modulo ~state left right =
   let merged_value_loc = Location.merge ~s:a.value_loc ~e:b.value_loc () in
   let r =
     match (a.value_desc, b.value_desc) with
-    | Int _, Int 0 | Int _, Float 0. | Float _, Float 0. | Float _, Int 0 ->
-        Pinc_Diagnostics.error b.value_loc "Trying to modulo with 0 on right hand side."
+    | Int _, Int 0 | Int _, Float 0. | Float _, Float 0. | Float _, Int 0 -> 0.
     | Int a, Int b -> float_of_int (a % b)
     | Float a, Float b -> a -. (a /. b *. b)
     | Float a, Int 1 -> fst (Float.modf a)
