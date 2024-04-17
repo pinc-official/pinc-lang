@@ -277,6 +277,7 @@ module TagMeta = struct
   let record r : meta = `Record r
   let children () : meta = `SubTagPlaceholder
   let template () : meta = `TemplatePlaceholder
+  let errors ?(list = []) () : meta = `Errors list
 
   let rec merge (a : meta) (b : meta) =
     match (a, b) with

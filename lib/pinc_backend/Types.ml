@@ -126,6 +126,7 @@ and Type_Tag : sig
     | `Record of (string * meta) list
     | `SubTagPlaceholder
     | `TemplatePlaceholder
+    | `Errors of string list
     ]
 
   type data_provider =

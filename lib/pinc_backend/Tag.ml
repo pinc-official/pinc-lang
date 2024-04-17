@@ -41,6 +41,27 @@ module Utils = struct
     | None -> value
     | Some transformer -> aux transformer |> State.get_output
   ;;
+
+  let attach_or_report meta loc err =
+    (* TODO: Get a list of errors here and replace the `Errors meta with a `ErrorsPlaceholder meta *)
+    let attached = ref false in
+
+    let meta =
+      meta
+      |> Option.map
+         @@ Helpers.TagMeta.map
+         @@ function
+         | `Errors lst when not !attached ->
+             attached := true;
+             `Errors (err :: lst)
+         | v -> v
+    in
+
+    if not !attached then
+      Pinc_Diagnostics.error loc err;
+
+    meta
+  ;;
 end
 
 module Tag_String = struct
@@ -532,24 +553,29 @@ module Tag_Slot = struct
                (key |> List.rev |> List.hd))
     in
 
-    let () =
-      validate_element_count ~attributes slotted_elements
-      |> Result.iter_error (Pinc_Diagnostics.error tag_value.tag_loc)
+    let meta =
+      match validate_element_count ~attributes slotted_elements with
+      | Ok () -> meta
+      | Error e -> Utils.attach_or_report meta tag_value.tag_loc e
     in
 
-    let () =
+    let meta =
       slotted_elements
-      |> Array.iter @@ function
-         | { value_desc = HtmlTemplateNode (tag_name, _, _, _); value_loc }
-         | { value_desc = ComponentTemplateNode (tag_name, _, _); value_loc } ->
-             check_instance_restriction ~constraints tag_name
-             |> Result.iter_error (Pinc_Diagnostics.error value_loc)
-         | { value_desc = _; value_loc } ->
-             Pinc_Diagnostics.error
-               value_loc
-               "Tried to assign a non node value to a #Slot. Only template nodes are \
-                allowed inside slots. If you want to put another value (like a string) \
-                into a slot, you have to wrap it in some html tag or component."
+      |> Array.fold_left
+           (fun meta -> function
+             | { value_desc = HtmlTemplateNode (tag_name, _, _, _); value_loc }
+             | { value_desc = ComponentTemplateNode (tag_name, _, _); value_loc } -> (
+                 match check_instance_restriction ~constraints tag_name with
+                 | Ok () -> meta
+                 | Error e -> Utils.attach_or_report meta value_loc e)
+             | { value_desc = _; value_loc } ->
+                 Pinc_Diagnostics.error
+                   value_loc
+                   "Tried to assign a non node value to a #Slot. Only template nodes are \
+                    allowed inside slots. If you want to put another value (like a \
+                    string) into a slot, you have to wrap it in some html tag or \
+                    component.")
+           meta
     in
 
     let output = slotted_elements |> Helpers.Value.array ~loc:tag_value.tag_loc in
