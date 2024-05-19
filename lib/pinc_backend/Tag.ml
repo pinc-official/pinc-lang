@@ -515,27 +515,28 @@ module Tag_Slot = struct
 
     let tag =
       Types.Type_Tag.Tag_Slot
-        (fun ~tag ~tag_data_provider ->
+        (fun ~tag ~tag_data_provider ~tag_meta_provider ->
           let state =
             State.make
               ~context:state.context
               ~mode:state.mode
-              ~tag_meta:state.tag_meta
+              ~tag_meta:[]
               ~root_tag_data_provider:state.root_tag_data_provider
               ~tag_data_provider
               ~root_tag_meta_provider:state.root_tag_meta_provider
-              ~tag_meta_provider:state.root_tag_meta_provider
+              ~tag_meta_provider
               state.declarations
           in
 
-          let evaluated =
-            tag |> DeclarationEvaluator.eval ~eval_expression ~state |> State.get_output
-          in
+          let state = tag |> DeclarationEvaluator.eval ~eval_expression ~state in
+          let output = State.get_output state in
+          let meta = state.tag_meta in
 
-          {
-            value_loc = Pinc_Diagnostics.Location.none;
-            value_desc = Value.ComponentTemplateNode (tag, StringMap.empty, evaluated);
-          })
+          ( meta,
+            {
+              value_loc = Pinc_Diagnostics.Location.none;
+              value_desc = Value.ComponentTemplateNode (tag, StringMap.empty, output);
+            } ))
     in
 
     let meta = state.State.tag_meta_provider ~tag ~key ~attributes ~required in

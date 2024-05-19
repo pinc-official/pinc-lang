@@ -105,18 +105,6 @@ end = struct
 end
 
 and Type_Tag : sig
-  type kind =
-    | Tag_String
-    | Tag_Int
-    | Tag_Float
-    | Tag_Boolean
-    | Tag_Array
-    | Tag_Record
-    | Tag_Slot of
-        (tag:string -> tag_data_provider:Type_Tag.data_provider -> Type_Value.value)
-    | Tag_Store of Type_Store.t
-    | Tag_Custom of string
-
   type meta =
     [ `String of string
     | `Int of int
@@ -128,6 +116,21 @@ and Type_Tag : sig
     | `TemplatePlaceholder
     | `Errors of string list
     ]
+
+  type kind =
+    | Tag_String
+    | Tag_Int
+    | Tag_Float
+    | Tag_Boolean
+    | Tag_Array
+    | Tag_Record
+    | Tag_Slot of
+        (tag:string ->
+        tag_data_provider:Type_Tag.data_provider ->
+        tag_meta_provider:Type_Tag.meta_provider ->
+        (string * Type_Tag.meta) list * Type_Value.value)
+    | Tag_Store of Type_Store.t
+    | Tag_Custom of string
 
   type data_provider =
     tag:kind ->
