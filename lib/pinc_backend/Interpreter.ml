@@ -306,14 +306,7 @@ and eval_function_declaration ~state ~loc ~parameters body =
   let ident = state.binding_identifier in
   let self = ref { value_desc = Null; value_loc = loc } in
   let exec ~arguments ~state () =
-    let state =
-      state
-      |> State.add_scope
-      |> StringMap.fold
-           (fun ident value ->
-             State.add_value_to_scope ~ident ~value ~is_mutable:false ~is_optional:false)
-           arguments
-    in
+    let state = state |> State.add_scope in
     let state =
       match ident with
       | None -> state
@@ -324,6 +317,13 @@ and eval_function_declaration ~state ~loc ~parameters body =
                ~value:!self
                ~is_mutable:false
                ~is_optional:false
+    in
+    let state =
+      state
+      |> StringMap.fold
+           (fun ident value ->
+             State.add_value_to_scope ~ident ~value ~is_mutable:false ~is_optional:false)
+           arguments
     in
     let state = eval_expression ~state body in
     let state = state |> State.remove_scope in
