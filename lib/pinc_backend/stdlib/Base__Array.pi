@@ -169,24 +169,44 @@ library Base__Array {
     aux(true, 0)
   }
 
-  let every = for_all
+  let every = for_all;
 
-  let fold_left = fn(array, init, f) -> {
+  let fold_lefti = fn(array, init, f) -> {
     let len = Base.Array.length(array);
     let aux = fn (acc, index) -> {
-      if index == len || acc == false {
+      if (index == len || acc == false) {
         acc
       } else {
         let item = array[index];
-        let acc = f(acc, item);
+        let acc = f(acc, item, index);
         aux(acc, index + 1);
       }
     };
 
     aux(init, 0)
-  }
+  };
 
-  let reduce = fold_left
+  let reducei = fold_lefti;
+
+  let fold_left = fn(array, init, f) -> {
+    fold_lefti(array, init, fn (acc, curr, index) -> {
+      f(acc, curr);
+    });
+  };
+
+  let reduce = fold_left;
+
+  let group = fn (array, size) -> {
+    0..size |> fold_lefti([], fn (acc, curr, index) -> {
+      let array_length = Base.Array.length(array);
+      let group_size = Base.Math.floor(array_length / size);
+      acc <- Base.Array.slice(
+        array,
+        index * group_size,
+        if(index == size - 1) array_length else group_size
+      )
+    });
+  };
 
   let nth = fn (array, index) -> {
     array[index]
