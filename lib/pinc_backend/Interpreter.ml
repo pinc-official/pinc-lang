@@ -304,8 +304,7 @@ and eval_string_template ~state template =
 
 and eval_function_declaration ~state ~loc ~parameters body =
   let ident = state.binding_identifier in
-  let self = ref { value_desc = Null; value_loc = loc } in
-  let exec ~arguments ~state () =
+  let rec exec ~arguments ~state () =
     let state = state |> State.add_scope in
     let state =
       match ident with
@@ -314,7 +313,7 @@ and eval_function_declaration ~state ~loc ~parameters body =
           state
           |> State.add_value_to_scope
                ~ident
-               ~value:!self
+               ~value:fn
                ~is_mutable:false
                ~is_optional:false
     in
@@ -328,8 +327,8 @@ and eval_function_declaration ~state ~loc ~parameters body =
     let state = eval_expression ~state body in
     let state = state |> State.remove_scope in
     state |> State.get_output
-  in
-  let fn = { value_loc = loc; value_desc = Function { parameters; state; exec } } in
+  and fn = { value_loc = loc; value_desc = Function { parameters; state; exec } } in
+
   ident
   |> Option.iter (fun (_, ident) ->
          state
@@ -338,7 +337,7 @@ and eval_function_declaration ~state ~loc ~parameters body =
               ~value:fn
               ~is_optional:false
               ~is_mutable:false);
-  self := fn;
+
   state |> State.add_output ~output:fn
 
 and eval_function_call ~state ~arguments function_definition =
