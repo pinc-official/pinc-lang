@@ -197,14 +197,15 @@ library Base__Array {
   let reduce = fold_left;
 
   let group = fn (array, size) -> {
+    let array_length = Base.Array.length(array);
+    let group_size = Base.Math.floor(array_length / size);
+
     0..size |> fold_lefti([], fn (acc, curr, index) -> {
-      let array_length = Base.Array.length(array);
-      let group_size = Base.Math.floor(array_length / size);
       acc <- Base.Array.slice(
         array,
         index * group_size,
         if(index == size - 1) array_length else group_size
-      )
+      );
     });
   };
 

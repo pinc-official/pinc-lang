@@ -72,21 +72,24 @@ let rec get_uppercase_identifier_typ ~state ident =
           (state, Some (Definition_Library library)))
 
 and eval_statement ~state statement =
-  match statement.Ast.statement_desc with
-  | Ast.LetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
-  | Ast.OptionalLetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:false ~is_optional:true expression
-  | Ast.OptionalMutableLetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:true ~is_optional:true expression
-  | Ast.MutableLetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
-  | Ast.MutationStatement (Lowercase_Id ident, expression) ->
-      eval_mutation ~state ~ident expression
-  | Ast.UseStatement (ident, expression) -> eval_use ~state ~ident expression
-  | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
-  | Ast.ContinueStatement _ -> raise_notrace (Loop_Continue state)
-  | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
+  let result =
+    match statement.Ast.statement_desc with
+    | Ast.LetStatement (Lowercase_Id ident, expression) ->
+        eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
+    | Ast.OptionalLetStatement (Lowercase_Id ident, expression) ->
+        eval_let ~state ~ident ~is_mutable:false ~is_optional:true expression
+    | Ast.OptionalMutableLetStatement (Lowercase_Id ident, expression) ->
+        eval_let ~state ~ident ~is_mutable:true ~is_optional:true expression
+    | Ast.MutableLetStatement (Lowercase_Id ident, expression) ->
+        eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
+    | Ast.MutationStatement (Lowercase_Id ident, expression) ->
+        eval_mutation ~state ~ident expression
+    | Ast.UseStatement (ident, expression) -> eval_use ~state ~ident expression
+    | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
+    | Ast.ContinueStatement _ -> raise_notrace (Loop_Continue state)
+    | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
+  in
+  { result with binding_identifier = None }
 
 and eval_expression ~state expression =
   match expression.expression_desc with
@@ -1416,7 +1419,7 @@ let eval_declarations
   in
 
   (match declarations |> StringMap.find_opt root with
-  | Some { declaration_type = Declaration_Library _ | Declaration_Store _; _ } ->
+  | Some { Ast.declaration_type = Declaration_Library _ | Declaration_Store _; _ } ->
       raise_notrace (Invalid_argument (root ^ " can not be evaluated"))
   | _ -> ());
 
