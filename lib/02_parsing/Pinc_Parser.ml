@@ -24,8 +24,32 @@ let next t =
 ;;
 
 let peek t =
-  let token = get_next_token t in
-  Queue.add token t.next;
+  let token =
+    match Queue.peek_opt t.next with
+    | None ->
+        let token = Lexer.scan t.lexer in
+        Queue.add token t.next;
+        token
+    | Some token -> token
+  in
+  token.typ
+;;
+
+let peek_2 t =
+  let token =
+    match Queue.to_seq t.next |> List.of_seq with
+    | [] ->
+        let token = Lexer.scan t.lexer in
+        Queue.add token t.next;
+        let token = Lexer.scan t.lexer in
+        Queue.add token t.next;
+        token
+    | [ _ ] ->
+        let token = Lexer.scan t.lexer in
+        Queue.add token t.next;
+        token
+    | _ :: token :: _ -> token
+  in
   token.typ
 ;;
 
@@ -200,12 +224,20 @@ module Rules = struct
       match t.token.typ with
       | Token.LEFT_BRACE ->
           next t;
-          let statements = t |> Helpers.list ~fn:parse_statement in
+          let rec get_statements acc =
+            match parse_statement t with
+            | Some r when optional Token.SEMICOLON t -> get_statements (r :: acc)
+            | Some (Ast.{ statement_desc = CommentStatement _; _ } as r) ->
+                get_statements (r :: acc)
+            | Some r -> List.rev (r :: acc)
+            | _ -> List.rev acc
+          in
+          let statements = get_statements [] in
           t |> expect Token.RIGHT_BRACE;
           Ast.BlockExpression statements |> Option.some
       | _ ->
-          let* statement = parse_statement t in
-          Ast.BlockExpression [ statement ] |> Option.some
+          let* expr = parse_expression t in
+          expr.Ast.expression_desc |> Option.some
     in
     let expr_end = t.token.location in
     let expression_loc = Location.merge ~s:expr_start ~e:expr_end () in
@@ -364,6 +396,10 @@ module Rules = struct
     let statement_start = t.token in
     let* statement_desc =
       match t.token.typ with
+      (* PARSING COMMENT STATEMENT *)
+      | Token.COMMENT s ->
+          next t;
+          Some (Ast.CommentStatement s)
       (* PARSING BREAK STATEMENT *)
       | Token.KEYWORD_BREAK ->
           next t;
@@ -374,7 +410,6 @@ module Rules = struct
                 i
             | _ -> 1
           in
-          let _ = optional Token.SEMICOLON t in
           Some (Ast.BreakStatement num_loops)
       (* PARSING CONTINUE STATEMENT *)
       | Token.KEYWORD_CONTINUE ->
@@ -386,7 +421,6 @@ module Rules = struct
                 i
             | _ -> 1
           in
-          let _ = optional Token.SEMICOLON t in
           Some (Ast.ContinueStatement num_loops)
       (* PARSING LET STATEMENT *)
       | Token.KEYWORD_LET -> (
@@ -398,7 +432,6 @@ module Rules = struct
           t |> expect Token.EQUAL;
           let end_token = t.token in
           let expression = parse_expression t in
-          let _ = optional Token.SEMICOLON t in
           match (is_mutable, is_nullable, expression) with
           | false, true, Some expression ->
               Some (Ast.OptionalLetStatement (Lowercase_Id identifier, expression))
@@ -427,7 +460,6 @@ module Rules = struct
                   (Location.merge ~s:start_token.location ~e:end_token.location ())
                   "Expected expression as right hand side of mutation statement"
           in
-          let _ = optional Token.SEMICOLON t in
           Some
             (Ast.MutationStatement
                (Lowercase_Id (identifier, identifier_location), expression))
@@ -446,7 +478,6 @@ module Rules = struct
                     t.token.location
                     "Expected expression as right hand side of use statement"
             in
-            let _ = optional Token.SEMICOLON t in
             Some (Ast.UseStatement (Some (Uppercase_Id identifier), expression)))
           else (
             let expression =
@@ -457,7 +488,6 @@ module Rules = struct
                     t.token.location
                     "Expected to see a library next to the use keyword."
             in
-            let _ = optional Token.SEMICOLON t in
             Some (Ast.UseStatement (None, expression)))
       | _ ->
           let* expr = parse_expression t in
@@ -496,16 +526,14 @@ module Rules = struct
           expr |> Option.map (fun expr -> expr.Ast.expression_desc)
       (* PARSING RECORD or BLOCK EXPRESSION *)
       | Token.LEFT_BRACE ->
-          next t;
           let is_record =
-            match t.token.typ with
-            | Token.IDENT_LOWER _ ->
-                let token = peek t in
-                token = Token.COLON || token = Token.QUESTIONMARK
-            | Token.RIGHT_BRACE -> true
+            match (peek t, peek_2 t) with
+            | Token.IDENT_LOWER _, (Token.COLON | Token.QUESTIONMARK) -> true
+            | Token.RIGHT_BRACE, _ -> true
             | _ -> false
           in
           if is_record then (
+            next t;
             let attrs =
               t
               |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field
@@ -514,10 +542,9 @@ module Rules = struct
             in
             t |> expect Token.RIGHT_BRACE;
             Ast.Record attrs |> Option.some)
-          else (
-            let statements = t |> Helpers.list ~fn:parse_statement in
-            t |> expect Token.RIGHT_BRACE;
-            Ast.BlockExpression statements |> Option.some)
+          else
+            let* expr = parse_block t in
+            Some expr.Ast.expression_desc
       (* PARSING FOR IN EXPRESSION *)
       | Token.KEYWORD_FOR -> (
           next t;
@@ -685,7 +712,7 @@ module Rules = struct
 
   and parse_expression ?(prio = -999) t =
     let rec loop ~prio ~left t =
-      if optional Token.SEMICOLON t then
+      if t.token.typ = Token.SEMICOLON then
         left
       else (
         match parse_binary_operator t with

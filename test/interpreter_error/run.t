@@ -20,11 +20,11 @@
 
   $ NO_COLOR="1" print . BadTransformer_Arity
   
-  ERROR in file ./tag_transformer_arity.pi:6:25-64
+  ERROR in file ./tag_transformer_arity.pi:6:25-63
   
      5 │ component BadTransformer_Arity_Child {
-     6 │   let text = #String :: fn (a, b) -> Base.String.uppercase(a);;
-       │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     6 │   let text = #String :: fn (a, b) -> Base.String.uppercase(a);
+       │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      7 │ 
   
   A transformer has to accept exactly one argument (the tag value).

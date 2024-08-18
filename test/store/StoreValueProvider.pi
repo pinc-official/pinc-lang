@@ -8,7 +8,7 @@ component StoreValueProvider {
       phone: "+1 111 000 111",
       email: "some@email.invalid",
       address: "Somewhere in the World",
-    };
+    },
   };
 
   let products = [

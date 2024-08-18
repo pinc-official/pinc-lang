@@ -107,6 +107,7 @@ and statement = {
 }
 
 and statement_desc =
+  | CommentStatement of string
   | BreakStatement of int
   | ContinueStatement of int
   | UseStatement of uppercase_identifier option * expression

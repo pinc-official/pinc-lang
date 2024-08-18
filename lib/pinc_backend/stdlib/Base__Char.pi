@@ -1,9 +1,9 @@
 library Base__Char {
   let is_whitespace = fn (char) -> {
     char == ' ' || char == '\012' || char == '\n' || char == '\r' || char == '\t'
-  }
+  };
 
   let is_newline = fn (char) -> {
     char == '\n' || char == '\r'
-  }
+  };
 }

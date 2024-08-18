@@ -7,10 +7,10 @@ store Settings(single: true) {
 		phone: #String,
 		email: #String,
 		address: #String :: fn v -> v ++ " ... or am I??",
-	});
-};
+	}),
+}
 
 store Products {
 	title: #String,
 	code: #Int :: fn v -> v * 2,
-};
+}

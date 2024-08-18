@@ -3,7 +3,7 @@ component BadTransformer_Arity {
 }
 
 component BadTransformer_Arity_Child {
-  let text = #String :: fn (a, b) -> Base.String.uppercase(a);;
+  let text = #String :: fn (a, b) -> Base.String.uppercase(a);
 
   text
 }

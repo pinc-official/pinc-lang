@@ -6,7 +6,7 @@ library Base__Math {
     } else {
       n - (1 + mod)
     }
-  }
+  };
 
-  let ceil = fn n -> -(Base.Math.floor(-n))
+  let ceil = fn n -> -(Base.Math.floor(-n));
 }

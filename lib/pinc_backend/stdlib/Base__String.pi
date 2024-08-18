@@ -1,95 +1,98 @@
 library Base__String {
   let length = fn (string) -> {
     let mutable len = 0;
-    for (_ in string) len := len + 1;
+    for (_ in string) {
+      len := len + 1;
+    };
+
     len
-  }
+  };
 
   let map = fn (string, f) -> {
     let mutable result = "";
     for (char in string) {
-      result := result ++ f(char)
-    }
+      result := result ++ f(char);
+    };
     result
-  }
+  };
 
   let map_reverse = fn (string, f) -> {
     let mutable result = "";
     for (char in reverse string) {
-      result := result ++ f(char)
-    }
+      result := result ++ f(char);
+    };
     result
-  }
+  };
 
   let mapi = fn (string, f) -> {
     let mutable result = "";
     for (index, char in string) {
-      result := result ++ f(index, char)
-    }
+      result := result ++ f(index, char);
+    };
     result
-  }
+  };
 
   let mapi_reverse = fn (string, f) -> {
     let mutable result = "";
     for (index, char in reverse string) {
-      result := result ++ f(index, char)
-    }
+      result := result ++ f(index, char);
+    };
     result
-  }
+  };
 
   let iter = fn (string, f) -> {
     for (char in string) {
       f(char)
     }
-  }
+  };
 
   let iter_reverse = fn (string, f) -> {
     for (char in reverse string) {
       f(char)
     }
-  }
+  };
 
   let iteri = fn (string, f) -> {
     for (index, char in string) {
       f(index, char)
     }
-  }
+  };
 
   let iteri_reverse = fn (string, f) -> {
     for (index, char in reverse string) {
       f(index, char)
     }
-  }
+  };
 
   let uppercase_ascii = fn (string) -> {
     map(string, fn (c) -> {
       if (c >= 'a' && c <= 'z') c - 32 else c
     })
-  }
+  };
 
   let lowercase_ascii = fn (string) -> {
     map(string, fn (c) -> {
       if (c >= 'A' && c <= 'Z') c + 32 else c
-    });
-  }
+    })
+  };
 
   let capitalize_ascii = fn (string) -> {
     mapi(string, fn (index, c) -> {
       if (index == 0 && c >= 'a' && c <= 'z') c - 32 else c
     })
-  }
+  };
 
   let nl2br = fn (string) -> {
     let mutable result = "";
     for (char in string) {
       if (Base.Char.is_newline(char)) {
-        result := result ++ "<br>"
+        result := result ++ "<br>";
       } else {
-        result := result ++ char
+        result := result ++ char;
       }
-    }
+    };
     result
-  }
+  };
 
   let trim = fn (string) -> {
     let len = length(string);
@@ -101,7 +104,7 @@ library Base__String {
       } else {
         break;
       }
-    }
+    };
 
     for (char in reverse string) {
       if (Base.Char.is_whitespace(char)) {
@@ -109,14 +112,14 @@ library Base__String {
       } else {
         break;
       }
-    }
+    };
 
     if (j >= i) {
       sub(string, i, (j - i + 1))
     } else {
       ""
     }
-  }
+  };
 
   let sub = fn (string, ofs, len) -> {
     if (ofs < 0 || len < 0) {
@@ -127,11 +130,11 @@ library Base__String {
         if(index < ofs) continue;
         if(index >= ofs + len) continue;
 
-        result := result ++ char
-      }
+        result := result ++ char;
+      };
       result
     }
-  }
+  };
 
   let split = fn (string, sep) -> {
     let mutable result = [];
@@ -140,10 +143,10 @@ library Base__String {
     for (i in reverse 0...j) {
       if (string[i] == sep) {
         result := [sub(string, (i + 1), (j - i - 1))] @@ result;
-        j := i
+        j := i;
       }
     };
 
     [sub(string, 0, j)] @@ result
-  }
+  };
 }

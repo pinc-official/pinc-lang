@@ -1,46 +1,47 @@
 library Base__Array {
   let make = fn (length) -> {
     0..length
-  }
+  };
 
   let init = fn (length, f) -> {
     for (index in make(length)) {
       f(index)
     }
-  }
+  };
 
   let length = fn (array) -> {
     let mutable len = 0;
-    for (_ in array) len := len + 1;
+    for (_ in array) {
+      len := len + 1;
+    };
     len
-  }
+  };
 
   let first = fn (array) -> {
     array[0]
-  }
+  };
 
   let last = fn (array) -> {
     let len = length(array);
     if len > 0 {
       array[len - 1]
     }
-  }
+  };
 
   let take_until = fn (array, condition) -> {
     for (item in array) {
       if(condition(item)) break;
       item
     }
-  }
+  };
 
   let slice = fn (array, offset, length) -> {
     for (index, item in array) {
-      if(index < offset) { continue };
-      if(index == length + offset) { break };
-
+      if(index < offset) continue;
+      if(index == length + offset) break;
       item
     }
-  }
+  };
 
   let chunk = fn (array, size) -> {
     let len = Base.Array.length(array);
@@ -48,42 +49,42 @@ library Base__Array {
     0..x |> Base.Array.mapi(fn (index, item) -> {
       Base.Array.slice(array, index * size, size)
     });
-  }
+  };
 
   let join = fn (array, sep) -> {
     let mutable result = "";
     for (index, item in array) {
       if(index > 0) {
-        result := result ++ sep
-      }
-      result := result ++ item
-    }
+        result := result ++ sep;
+      };
+      result := result ++ item;
+    };
     result
-  }
+  };
 
   let map = fn (array, f) -> {
     for (item in array) {
       f(item)
     }
-  }
+  };
 
   let map_reverse = fn (array, f) -> {
     for (item in reverse array) {
       f(item)
     }
-  }
+  };
 
   let mapi = fn (array, f) -> {
     for (index, item in array) {
       f(index, item)
     }
-  }
+  };
 
   let mapi_reverse = fn (array, f) -> {
     for (index, item in reverse array) {
       f(index, item)
     }
-  }
+  };
 
   let partition = fn (array, condition) -> {
     let len = Base.Array.length(array);
@@ -100,7 +101,7 @@ library Base__Array {
       }
     };
     part([], [], 0)
-  }
+  };
 
   let filter = fn (array, condition) -> {
     let len = Base.Array.length(array);
@@ -116,10 +117,11 @@ library Base__Array {
         }
       }
     };
-    aux([], 0)
-  }
 
-  let keep = filter
+    aux([], 0)
+  };
+
+  let keep = filter;
 
   let find = fn (array, condition) -> {
     let len = Base.Array.length(array);
@@ -133,8 +135,9 @@ library Base__Array {
         }
       }
     };
+
     aux(0)
-  }
+  };
 
   let exists = fn (array, condition) -> {
     let len = Base.Array.length(array);
@@ -150,10 +153,11 @@ library Base__Array {
         false
       }
     };
-    aux(0)
-  }
 
-  let some = exists
+    aux(0);
+  };
+
+  let some = exists;
 
   let for_all = fn (array, condition) -> {
     let len = Base.Array.length(array);
@@ -167,7 +171,7 @@ library Base__Array {
     };
 
     aux(true, 0)
-  }
+  };
 
   let every = for_all;
 
@@ -211,7 +215,7 @@ library Base__Array {
 
   let nth = fn (array, index) -> {
     array[index]
-  }
+  };
 
   let sort = fn (array, f) -> {
     let merge = fn (a, b) -> {
@@ -232,7 +236,7 @@ library Base__Array {
           }
         }
       }
-    }
+    };
 
     let len = Base.Array.length(array);
     if len < 2 {
@@ -243,7 +247,7 @@ library Base__Array {
         let second_half = array |> Base.Array.slice(h, len);
         merge(sort(first_half, f), sort(second_half, f));
     }
-  }
+  };
 
   let unique = fn (array) -> {
     let isSorted = false;
@@ -255,8 +259,8 @@ library Base__Array {
         seen := seen <- value;
         result := result <- value;
       }
-    }
+    };
 
     result
-  }
+  };
 }

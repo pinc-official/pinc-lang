@@ -74,6 +74,7 @@ let rec get_uppercase_identifier_typ ~state ident =
 and eval_statement ~state statement =
   let result =
     match statement.Ast.statement_desc with
+    | Ast.CommentStatement _ -> state
     | Ast.LetStatement (Lowercase_Id ident, expression) ->
         eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
     | Ast.OptionalLetStatement (Lowercase_Id ident, expression) ->
