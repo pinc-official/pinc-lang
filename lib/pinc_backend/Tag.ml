@@ -72,12 +72,14 @@ module Tag_String = struct
       data
       |> Option.map (function
              | { value_desc = String _; _ } as value -> value
-             | { value_desc = _; value_loc } ->
+             | { value_desc = Null; _ } as value when not required -> value
+             | { value_desc = _; value_loc } as value ->
                  Pinc_Diagnostics.error
                    value_loc
                    (Printf.sprintf
-                      "Expected attribute %s to be of type string."
-                      (key |> List.rev |> List.hd)))
+                      "Expected attribute %s to be of type string,\ninstead got %s."
+                      (key |> List.rev |> List.hd)
+                      (Value.show value)))
       |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
@@ -95,12 +97,14 @@ module Tag_Int = struct
       data
       |> Option.map (function
              | { value_desc = Int _; _ } as value -> value
-             | { value_desc = _; value_loc } ->
+             | { value_desc = Null; _ } as value when not required -> value
+             | { value_desc = _; value_loc } as value ->
                  Pinc_Diagnostics.error
                    value_loc
                    (Printf.sprintf
-                      "Expected attribute %s to be of type int."
-                      (key |> List.rev |> List.hd)))
+                      "Expected attribute %s to be of type string,\ninstead got %s."
+                      (key |> List.rev |> List.hd)
+                      (Value.show value)))
       |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
@@ -118,12 +122,14 @@ module Tag_Float = struct
       data
       |> Option.map (function
              | { value_desc = Float _; _ } as value -> value
-             | { value_desc = _; value_loc } ->
+             | { value_desc = Null; _ } as value when not required -> value
+             | { value_desc = _; value_loc } as value ->
                  Pinc_Diagnostics.error
                    value_loc
                    (Printf.sprintf
-                      "Expected attribute %s to be of type float."
-                      (key |> List.rev |> List.hd)))
+                      "Expected attribute %s to be of type string,\ninstead got %s."
+                      (key |> List.rev |> List.hd)
+                      (Value.show value)))
       |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
@@ -141,12 +147,14 @@ module Tag_Boolean = struct
       data
       |> Option.map (function
              | { value_desc = Bool _; _ } as value -> value
-             | { value_desc = _; value_loc } ->
+             | { value_desc = Null; _ } as value when not required -> value
+             | { value_desc = _; value_loc } as value ->
                  Pinc_Diagnostics.error
                    value_loc
                    (Printf.sprintf
-                      "Expected attribute %s to be of type bool."
-                      (key |> List.rev |> List.hd)))
+                      "Expected attribute %s to be of type string,\ninstead got %s."
+                      (key |> List.rev |> List.hd)
+                      (Value.show value)))
       |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
@@ -317,6 +325,7 @@ module Tag_Store = struct
     let output =
       match data with
       | None -> Helpers.Value.null ~loc:tag.tag_loc ()
+      | Some ({ value_desc = Null; _ } as value) when not required -> value
       | Some { value_desc = Record value; _ } when is_singleton -> (
           store |> eval_body ~name ~value ~eval_expression ~state |> function
           | { value_desc = Record _; _ } as v -> v
@@ -545,6 +554,7 @@ module Tag_Slot = struct
     let slotted_elements =
       match data with
       | None -> [||]
+      | Some { value_desc = Null; _ } when not required -> [||]
       | Some { value_desc = Array a; _ } -> a
       | _ ->
           Pinc_Diagnostics.error
@@ -595,6 +605,7 @@ module Tag_Record = struct
       data
       |> Option.map (function
              | { value_desc = Record r; _ } -> r
+             | { value_desc = Null; _ } when not required -> StringMap.empty
              | { value_desc = _; value_loc } ->
                  Pinc_Diagnostics.error
                    value_loc
@@ -711,6 +722,11 @@ let eval ~eval_expression ~state t =
     |> StringMap.find_opt "key"
     |> Option.map (fun it -> it |> eval_expression ~state |> State.get_output)
   in
+  let required =
+    state.binding_identifier
+    |> (Option.map @@ fun v -> fst v = `Required)
+    |> Option.value ~default:true
+  in
   let key, state =
     match (key, state.binding_identifier) with
     | None, Some (_optional, ident) -> (ident, { state with binding_identifier = None })
@@ -727,12 +743,6 @@ let eval ~eval_expression ~state t =
     attributes
     |> StringMap.remove "of"
     |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
-  in
-
-  let required =
-    state.binding_identifier
-    |> (Option.map @@ fun v -> fst v = `Required)
-    |> Option.value ~default:true
   in
 
   let state =

@@ -143,3 +143,20 @@ let compare a b =
   | _, Portal _ -> 0
   | _ -> 0
 ;;
+
+let show value =
+  match value.value_desc with
+  | Null -> "null"
+  | Bool b -> Printf.sprintf "bool (%b)" b
+  | String s -> Printf.sprintf "string (%s)" s
+  | Char c -> Printf.sprintf "char (%i)" (Uchar.to_int c)
+  | Int i -> Printf.sprintf "int (%i)" i
+  | Float f -> Printf.sprintf "float (%f)" f
+  | HtmlTemplateNode _ -> Printf.sprintf "HtmlTemplateNode"
+  | ComponentTemplateNode _ -> Printf.sprintf "ComponentTemplateNode"
+  | Portal _ -> Printf.sprintf "Portal"
+  | DefinitionInfo (name, _, _) -> Printf.sprintf "Definition (%s)" name
+  | Function _ -> Printf.sprintf "function"
+  | Array _ -> Printf.sprintf "array"
+  | Record _ -> Printf.sprintf "record"
+;;
