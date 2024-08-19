@@ -684,6 +684,29 @@ let rec scan_block_comment t =
   found
 ;;
 
+let scan_external_function_symbol t =
+  let start_pos = make_position t in
+  eat2 t;
+  let rec loop buf t =
+    match t.current with
+    | `Chr '%' when peek t = `Chr '%' ->
+        eat2 t;
+        Buffer.contents buf
+    | `EOF ->
+        Diagnostics.error
+          (Location.make ~s:start_pos ())
+          "This external function symbol is not terminated. Please add a `%%%%` at the \
+           end."
+    | `Chr c ->
+        eat t;
+        Buffer.add_char buf c;
+        loop buf t
+  in
+  let buf = Buffer.create 512 in
+  let found = loop buf t in
+  found
+;;
+
 let rec scan_template_token ~start_pos t =
   match t.current with
   | `Chr '{' ->
@@ -916,9 +939,12 @@ and scan_normal_token ~start_pos t =
       | _ ->
           eat t;
           Token.PLUS)
-  | `Chr '%' ->
-      eat t;
-      Token.PERCENT
+  | `Chr '%' -> (
+      match peek t with
+      | `Chr '%' -> Token.EXTERNAL_FUNCTION_SYMBOL (scan_external_function_symbol t)
+      | _ ->
+          eat t;
+          Token.PERCENT)
   | `Chr '?' ->
       eat t;
       Token.QUESTIONMARK

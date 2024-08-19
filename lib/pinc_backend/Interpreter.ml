@@ -149,6 +149,12 @@ and eval_expression ~state expression =
       in
       state |> State.add_output ~output
   | Ast.String template -> eval_string_template ~state template
+  | Ast.ExternalFunction { parameters; name } ->
+      eval_external_function_declaration
+        ~loc:expression.expression_loc
+        ~state
+        ~parameters
+        name
   | Ast.Function { parameters; body } ->
       eval_function_declaration ~loc:expression.expression_loc ~state ~parameters body
   | Ast.FunctionCall { function_definition; arguments } ->
@@ -305,6 +311,32 @@ and eval_string_template ~state template =
                     |> Value.to_string)
          |> String.concat ""
          |> Helpers.Value.string ~loc:(Location.merge ~s:!start_loc ~e:!end_loc ()))
+
+and eval_external_function_declaration ~state ~loc ~parameters name =
+  let ident = state.binding_identifier in
+  let external_function =
+    match Externals.all |> StringMap.find_opt name with
+    | Some fn -> fn
+    | None ->
+        Pinc_Diagnostics.error
+          loc
+          (Printf.sprintf "The external function with name `%s` was not found." name)
+  in
+  let rec exec ~arguments ~state () =
+    let state = external_function ~arguments state in
+    state |> State.get_output
+  and fn = { value_loc = loc; value_desc = Function { parameters; state; exec } } in
+
+  ident
+  |> Option.iter (fun (_, ident) ->
+         state
+         |> State.add_value_to_function_scopes
+              ~ident
+              ~value:fn
+              ~is_optional:false
+              ~is_mutable:false);
+
+  state |> State.add_output ~output:fn
 
 and eval_function_declaration ~state ~loc ~parameters body =
   let ident = state.binding_identifier in

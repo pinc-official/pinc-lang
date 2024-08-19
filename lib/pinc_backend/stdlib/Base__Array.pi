@@ -9,13 +9,7 @@ library Base__Array {
     }
   };
 
-  let length = fn (array) -> {
-    let mutable len = 0;
-    for (_ in array) {
-      len := len + 1;
-    };
-    len
-  };
+  let length = fn (array) -> %%pinc_array_length%%;
 
   let first = fn (array) -> {
     array[0]

@@ -1,6 +1,7 @@
 module Location = Pinc_Diagnostics.Location
 
 type token_type =
+  | EXTERNAL_FUNCTION_SYMBOL of string
   | COMMENT of string
   | IDENT_LOWER of string
   | IDENT_UPPER of string
@@ -159,6 +160,7 @@ let to_string = function
   | HTML_OR_COMPONENT_TAG_SELF_CLOSING -> "/>"
   | HTML_OR_COMPONENT_TAG_END -> "> (TAG END)"
   | END_OF_INPUT -> "(EOF)"
+  | EXTERNAL_FUNCTION_SYMBOL s -> Printf.sprintf "%%%%%s%%%%" s
 ;;
 
 let is_keyword = function
@@ -178,6 +180,7 @@ let is_keyword = function
   | KEYWORD_LIBRARY
   | KEYWORD_PAGE
   | KEYWORD_STORE -> true
+  | EXTERNAL_FUNCTION_SYMBOL _
   | COMMENT _
   | LEFT_PAREN
   | RIGHT_PAREN

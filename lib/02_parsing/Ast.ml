@@ -72,6 +72,10 @@ and expression_desc =
   | Bool of bool
   | Array of expression array
   | Record of ([ `Required | `Optional ] * expression) StringMap.t
+  | ExternalFunction of {
+      parameters : string list;
+      name : string;
+    }
   | Function of {
       parameters : string list;
       body : expression;

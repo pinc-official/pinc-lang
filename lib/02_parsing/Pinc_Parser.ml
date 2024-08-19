@@ -570,7 +570,7 @@ module Rules = struct
               Ast.ForInExpression { index; iterator; reverse; iterable = expr1; body }
               |> Option.some)
       (* PARSING FN EXPRESSION *)
-      | Token.KEYWORD_FN ->
+      | Token.KEYWORD_FN -> (
           let fn_loc = t.token.location in
           next t;
           let open_paren = t |> optional Token.LEFT_PAREN in
@@ -587,11 +587,17 @@ module Rules = struct
               | None ->
                   Diagnostics.error
                     fn_loc
-                    "Expected this function to have exactly one parameter")
+                    "Expected this function to have exactly one parameter,\n\
+                     or a `()` if no parameter is needed.")
           in
           expect Token.ARROW t;
-          let* body = t |> parse_block in
-          Ast.Function { parameters; body } |> Option.some
+          match t.token.typ with
+          | Token.EXTERNAL_FUNCTION_SYMBOL name ->
+              next t;
+              Option.some @@ Ast.ExternalFunction { parameters; name }
+          | _ ->
+              let* body = t |> parse_block in
+              Option.some @@ Ast.Function { parameters; body })
       (* PARSING IF EXPRESSION *)
       | Token.KEYWORD_IF ->
           next t;

@@ -1,12 +1,5 @@
 library Base__String {
-  let length = fn (string) -> {
-    let mutable len = 0;
-    for (_ in string) {
-      len := len + 1;
-    };
-
-    len
-  };
+  let length = fn (string) -> %%pinc_string_length%%;
 
   let map = fn (string, f) -> {
     let mutable result = "";
@@ -121,20 +114,7 @@ library Base__String {
     }
   };
 
-  let sub = fn (string, ofs, len) -> {
-    if (ofs < 0 || len < 0) {
-      ""
-    } else {
-      let mutable result = "";
-      for (index, char in string) {
-        if(index < ofs) continue;
-        if(index >= ofs + len) continue;
-
-        result := result ++ char;
-      };
-      result
-    }
-  };
+  let sub = fn (string, ofs, len) -> %%pinc_string_sub%%;
 
   let split = fn (string, sep) -> {
     let mutable result = [];

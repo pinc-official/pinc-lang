@@ -1,6 +1,7 @@
 open Pinc_Diagnostics
 
 type token_type =
+  | EXTERNAL_FUNCTION_SYMBOL of string
   | COMMENT of string
   | IDENT_LOWER of string
   | IDENT_UPPER of string
