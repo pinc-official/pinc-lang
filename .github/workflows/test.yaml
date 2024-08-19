@@ -3,11 +3,11 @@ name: Test
 on:
   push:
     branches:
-      - 'main'
+      - "main"
 
   pull_request:
     branches:
-      - '*'
+      - "*"
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
         os:
           - ubuntu-latest
         ocaml-compiler:
-          - 5.0.x
+          - 5.2.x
 
     runs-on: ${{ matrix.os }}
 
