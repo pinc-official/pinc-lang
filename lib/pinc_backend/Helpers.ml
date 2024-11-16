@@ -264,6 +264,42 @@ module Expect = struct
         Pinc_Diagnostics.(
           error Location.none "expected definition info, got component template node")
   ;;
+
+  let constraints ~declarations ?(typ = `All) v =
+    let allowed, disallowed =
+      v
+      |> list (required (definition_info ~typ))
+      |> Option.value ~default:[]
+      |> List.map (fun (_, name, negated) -> (name, negated))
+      |> List.partition_map (fun (name, negated) ->
+             if negated then
+               Either.left name
+             else
+               Either.right name)
+    in
+    let declarations =
+      StringMap.fold
+        (fun id decl acc ->
+          match (typ, decl.Pinc_Parser.Ast.declaration_type) with
+          | (`All | `Component), Declaration_Component _ -> id :: acc
+          | (`All | `Library), Declaration_Library _ -> id :: acc
+          | (`All | `Page), Declaration_Page _ -> id :: acc
+          | (`All | `Store), Declaration_Store _ -> id :: acc
+          | _ -> acc)
+        declarations
+        []
+    in
+
+    let result =
+      match (allowed, disallowed) with
+      | [], [] -> declarations
+      | [], disallowed ->
+          declarations |> List.filter (fun id -> List.mem id disallowed |> not)
+      | allowed, _ -> declarations |> List.filter (fun id -> List.mem id allowed)
+    in
+
+    Some result
+  ;;
 end
 
 module TagMeta = struct
