@@ -13,7 +13,7 @@ install:
 	if ! [ -e _opam ]; then \
 		opam switch create . --empty ; \
 	fi
-	opam install . --deps-only --with-test --yes
+	opam install . --deps-only --with-test --with-dev-setup --yes
 	opam lock .
 
 update:

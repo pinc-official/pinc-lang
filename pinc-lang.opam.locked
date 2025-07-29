@@ -1,39 +1,80 @@
 opam-version: "2.0"
 name: "pinc-lang"
 version: "dev"
-synopsis: "The PiNC Language as Syntax and Interpreter"
+synopsis: "The pinc language as syntax and interpreter"
 maintainer: "torben@ewert-online.com"
 authors: "Torben Ewert"
 license: "MIT"
 homepage: "https://github.com/pinc-official/pinc-lang"
 bug-reports: "https://github.com/pinc-official/pinc-lang/issues"
 depends: [
+  "astring" {= "0.8.5" & with-dev-setup}
+  "base" {= "v0.17.1" & with-dev-setup}
   "base-bigarray" {= "base"}
+  "base-bytes" {= "base" & with-dev-setup}
   "base-domains" {= "base"}
+  "base-effects" {= "base"}
   "base-nnp" {= "base"}
   "base-threads" {= "base"}
   "base-unix" {= "base"}
   "bisect_ppx" {= "2.8.3" & with-test}
-  "cmdliner" {= "1.2.0"}
-  "containers" {= "3.13.1"}
+  "camlp-streams" {= "5.0.1" & with-dev-setup}
+  "chrome-trace" {= "3.17.2" & with-dev-setup}
+  "cmdliner" {= "1.3.0"}
+  "containers" {= "3.15"}
   "crunch" {= "3.3.1"}
   "csexp" {= "1.5.2"}
-  "dune" {= "3.14.2"}
-  "dune-configurator" {= "3.14.2"}
+  "dune" {= "3.17.2"}
+  "dune-build-info" {= "3.17.2" & with-dev-setup}
+  "dune-configurator" {= "3.17.2"}
+  "dune-rpc" {= "3.17.2" & with-dev-setup}
+  "dyn" {= "3.17.2" & with-dev-setup}
   "either" {= "1.0.0"}
+  "fiber" {= "3.7.0" & with-dev-setup}
+  "fix" {= "20230505" & with-dev-setup}
   "fmt" {= "0.9.0"}
-  "ocaml" {= "5.0.0"}
-  "ocaml-compiler-libs" {= "v0.12.4" & with-test}
+  "fpath" {= "0.7.3" & with-dev-setup}
+  "jsonrpc" {= "1.22.0" & with-dev-setup}
+  "lsp" {= "1.22.0" & with-dev-setup}
+  "menhir" {= "20240715" & with-dev-setup}
+  "menhirCST" {= "20240715" & with-dev-setup}
+  "menhirLib" {= "20240715" & with-dev-setup}
+  "menhirSdk" {= "20240715" & with-dev-setup}
+  "merlin-lib" {= "5.4.1-503" & with-dev-setup}
+  "ocaml" {= "5.3.0"}
+  "ocaml-compiler-libs" {= "v0.17.0" & with-test}
   "ocaml-config" {= "3"}
-  "ocaml-system" {= "5.0.0"}
-  "ocamlbuild" {= "0.14.3"}
-  "ocamlfind" {= "1.9.6"}
+  "ocaml-index" {= "5.4.1-503" & with-dev-setup}
+  "ocaml-lsp-server" {= "1.22.0" & with-dev-setup}
+  "ocaml-system" {= "5.3.0"}
+  "ocaml-version" {= "3.7.3" & with-dev-setup}
+  "ocaml_intrinsics_kernel" {= "v0.17.1" & with-dev-setup}
+  "ocamlbuild" {= "0.15.0"}
+  "ocamlc-loc" {= "3.17.2" & with-dev-setup}
+  "ocamlfind" {= "1.9.8"}
+  "ocamlformat" {= "0.27.0" & with-dev-setup}
+  "ocamlformat-lib" {= "0.27.0" & with-dev-setup}
+  "ocamlformat-rpc-lib" {= "0.27.0" & with-dev-setup}
+  "ocp-indent" {= "1.8.1" & with-dev-setup}
+  "ordering" {= "3.17.2" & with-dev-setup}
+  "pp" {= "2.0.0" & with-dev-setup}
   "ppx_derivers" {= "1.2.1" & with-test}
-  "ppxlib" {= "0.32.0" & with-test}
-  "ptime" {= "1.1.0"}
-  "sexplib0" {= "v0.16.0" & with-test}
+  "ppx_yojson_conv_lib" {= "v0.17.0" & with-dev-setup}
+  "ppxlib" {= "0.35.0" & with-test}
+  "ptime" {= "1.2.0"}
+  "re" {= "1.12.0" & with-dev-setup}
+  "seq" {= "base" & with-dev-setup}
+  "sexplib0" {= "v0.17.0" & with-test}
+  "spawn" {= "v0.17.0" & with-dev-setup}
+  "stdio" {= "v0.17.0" & with-dev-setup}
   "stdlib-shims" {= "0.3.0" & with-test}
+  "stdune" {= "3.17.2" & with-dev-setup}
   "topkg" {= "1.0.7"}
+  "uucp" {= "16.0.0" & with-dev-setup}
+  "uuseg" {= "16.0.0" & with-dev-setup}
+  "uutf" {= "1.0.3" & with-dev-setup}
+  "xdg" {= "3.17.2" & with-dev-setup}
+  "yojson" {= "2.2.2" & with-dev-setup}
 ]
 build: [
   ["dune" "subst"] {dev}

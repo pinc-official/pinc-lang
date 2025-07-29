@@ -1,4 +1,4 @@
-(lang dune 3.7)
+(lang dune 3.17)
 
 (using action-plugin 0.1)
 
@@ -21,7 +21,7 @@
 
 (package
  (name pinc-lang)
- (synopsis "The PiNC Language as Syntax and Interpreter")
+ (synopsis "The pinc language as syntax and interpreter")
  (depends
   (ocaml
    (>= 4.12))
@@ -30,6 +30,6 @@
   crunch
   containers
   (bisect_ppx :with-test)
-  ; (ocaml-lsp-server :with-dev-setup)
-  ; (ocamlformat :with-dev-setup)
+  (ocaml-lsp-server :with-dev-setup)
+  (ocamlformat :with-dev-setup)
   ))
