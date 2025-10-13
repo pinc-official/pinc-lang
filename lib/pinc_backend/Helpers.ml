@@ -266,7 +266,7 @@ module Expect = struct
   ;;
 
   let constraints ~declarations ?(typ = `All) v =
-    let allowed, disallowed =
+    let disallowed, allowed =
       v
       |> list (required (definition_info ~typ))
       |> Option.value ~default:[]
@@ -294,7 +294,7 @@ module Expect = struct
       match (allowed, disallowed) with
       | [], [] -> declarations
       | [], disallowed ->
-          declarations |> List.filter (fun id -> List.mem id disallowed |> not)
+          declarations |> List.filter (fun id -> not @@ List.mem id disallowed)
       | allowed, _ -> declarations |> List.filter (fun id -> List.mem id allowed)
     in
 
