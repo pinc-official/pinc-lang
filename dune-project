@@ -26,10 +26,12 @@
   (ocaml
    (>= 4.12))
   fmt
-  dune
+  (dune
+   (= 3.18.1))
   crunch
   containers
+  ppx_deriving
+  ppx_gen_rec
   (bisect_ppx :with-test)
   (ocaml-lsp-server :with-dev-setup)
-  (ocamlformat :with-dev-setup)
-  ))
+  (ocamlformat :with-dev-setup)))

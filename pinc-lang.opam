@@ -9,9 +9,11 @@ bug-reports: "https://github.com/pinc-official/pinc-lang/issues"
 depends: [
   "ocaml" {>= "4.12"}
   "fmt"
-  "dune" {>= "3.17"}
+  "dune" {>= "3.17" & = "3.18.1"}
   "crunch"
   "containers"
+  "ppx_deriving"
+  "ppx_gen_rec"
   "bisect_ppx" {with-test}
   "ocaml-lsp-server" {with-dev-setup}
   "ocamlformat" {with-dev-setup}

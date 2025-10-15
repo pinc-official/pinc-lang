@@ -1,6 +1,6 @@
 module Ast = Pinc_Parser.Ast
 
-module rec Type_Value : sig
+module%gen rec Type_Value : sig
   type value = {
     value_loc : Pinc_Diagnostics.Location.t;
     value_desc : value_desc;
@@ -116,6 +116,7 @@ and Type_Tag : sig
     | `TemplatePlaceholder
     | `Errors of string list
     ]
+  [@@deriving show]
 
   type kind =
     | Tag_String

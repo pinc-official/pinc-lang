@@ -1,13 +1,17 @@
+(dirs *)
+
 (library
  (name Pinc_Backend)
  (public_name pinc-lang.backend)
  (libraries unix Pinc_Diagnostics Pinc_Parser containers)
+ (preprocess
+  (pps ppx_deriving.show ppx_gen_rec))
  (instrumentation
   (backend landmarks --auto)))
 
 (rule
  (target pinc_stdlib.ml)
  (deps
-  (source_tree stdlib))
+  (source_tree ./stdlib))
  (action
   (run %{bin:ocaml-crunch} --mode=plain stdlib -o %{target})))
