@@ -71,15 +71,15 @@ module Tag_String = struct
     let output =
       data
       |> Option.map (function
-             | { value_desc = String _; _ } as value -> value
-             | { value_desc = Null; _ } as value when not required -> value
-             | { value_desc = _; value_loc } as value ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf
-                      "Expected attribute %s to be of type string,\ninstead got %s."
-                      (key |> List.rev |> List.hd)
-                      (Value.show value)))
+           | { value_desc = String _; _ } as value -> value
+           | { value_desc = Null; _ } as value when not required -> value
+           | { value_desc = _; value_loc } as value ->
+               Pinc_Diagnostics.error
+                 value_loc
+                 (Printf.sprintf
+                    "Expected attribute %s to be of type string,\ninstead got %s."
+                    (key |> List.rev |> List.hd)
+                    (Value.show value)))
       |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
@@ -96,15 +96,15 @@ module Tag_Int = struct
     let output =
       data
       |> Option.map (function
-             | { value_desc = Int _; _ } as value -> value
-             | { value_desc = Null; _ } as value when not required -> value
-             | { value_desc = _; value_loc } as value ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf
-                      "Expected attribute %s to be of type string,\ninstead got %s."
-                      (key |> List.rev |> List.hd)
-                      (Value.show value)))
+           | { value_desc = Int _; _ } as value -> value
+           | { value_desc = Null; _ } as value when not required -> value
+           | { value_desc = _; value_loc } as value ->
+               Pinc_Diagnostics.error
+                 value_loc
+                 (Printf.sprintf
+                    "Expected attribute %s to be of type string,\ninstead got %s."
+                    (key |> List.rev |> List.hd)
+                    (Value.show value)))
       |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
@@ -121,15 +121,15 @@ module Tag_Float = struct
     let output =
       data
       |> Option.map (function
-             | { value_desc = Float _; _ } as value -> value
-             | { value_desc = Null; _ } as value when not required -> value
-             | { value_desc = _; value_loc } as value ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf
-                      "Expected attribute %s to be of type string,\ninstead got %s."
-                      (key |> List.rev |> List.hd)
-                      (Value.show value)))
+           | { value_desc = Float _; _ } as value -> value
+           | { value_desc = Null; _ } as value when not required -> value
+           | { value_desc = _; value_loc } as value ->
+               Pinc_Diagnostics.error
+                 value_loc
+                 (Printf.sprintf
+                    "Expected attribute %s to be of type string,\ninstead got %s."
+                    (key |> List.rev |> List.hd)
+                    (Value.show value)))
       |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
@@ -146,15 +146,15 @@ module Tag_Boolean = struct
     let output =
       data
       |> Option.map (function
-             | { value_desc = Bool _; _ } as value -> value
-             | { value_desc = Null; _ } as value when not required -> value
-             | { value_desc = _; value_loc } as value ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf
-                      "Expected attribute %s to be of type string,\ninstead got %s."
-                      (key |> List.rev |> List.hd)
-                      (Value.show value)))
+           | { value_desc = Bool _; _ } as value -> value
+           | { value_desc = Null; _ } as value when not required -> value
+           | { value_desc = _; value_loc } as value ->
+               Pinc_Diagnostics.error
+                 value_loc
+                 (Printf.sprintf
+                    "Expected attribute %s to be of type string,\ninstead got %s."
+                    (key |> List.rev |> List.hd)
+                    (Value.show value)))
       |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc ())
     in
 
@@ -252,9 +252,9 @@ module Tag_Store = struct
           value
           |> StringMap.find_opt (key |> List.rev |> List.hd)
           |> Fun.flip Option.bind (function
-                 | { value_desc = Array a; _ } ->
-                     a |> Array.length |> Helpers.Value.int |> Option.some
-                 | _ -> None)
+               | { value_desc = Array a; _ } ->
+                   a |> Array.length |> Helpers.Value.int |> Option.some
+               | _ -> None)
       | _ ->
           value
           |> StringMap.find_opt (key |> List.hd)
@@ -345,14 +345,14 @@ module Tag_Store = struct
       | Some { value_desc = Array array; _ } ->
           array
           |> Array.map (function
-                 | { value_desc = Record value; _ } ->
-                     store |> eval_body ~name ~value ~eval_expression ~state
-                 | { value_desc = _; value_loc } ->
-                     Pinc_Diagnostics.error
-                       value_loc
-                       (Printf.sprintf
-                          "Expected attribute %s to be an array of records."
-                          (key |> List.rev |> List.hd)))
+               | { value_desc = Record value; _ } ->
+                   store |> eval_body ~name ~value ~eval_expression ~state
+               | { value_desc = _; value_loc } ->
+                   Pinc_Diagnostics.error
+                     value_loc
+                     (Printf.sprintf
+                        "Expected attribute %s to be an array of records."
+                        (key |> List.rev |> List.hd)))
           |> Helpers.Value.array ~loc:tag.tag_loc
       | Some { value_desc = _; value_loc } ->
           Pinc_Diagnostics.error
@@ -453,11 +453,11 @@ module Tag_Slot = struct
       attributes
       |> StringMap.find_opt "min"
       |> Option.map (function
-             | { value_desc = Int i; _ } -> i
-             | { value_loc; _ } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   "Expected attribute min to be of type int.")
+           | { value_desc = Int i; _ } -> i
+           | { value_loc; _ } ->
+               Pinc_Diagnostics.error
+                 value_loc
+                 "Expected attribute min to be of type int.")
       |> Option.value ~default:0
     in
 
@@ -465,11 +465,11 @@ module Tag_Slot = struct
       attributes
       |> StringMap.find_opt "max"
       |> Option.map (function
-             | { value_desc = Int i; _ } -> i
-             | { value_loc; _ } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   "Expected attribute max to be of type int.")
+           | { value_desc = Int i; _ } -> i
+           | { value_loc; _ } ->
+               Pinc_Diagnostics.error
+                 value_loc
+                 "Expected attribute max to be of type int.")
       |> Option.value ~default:Int.max_int
     in
     let num_slotted_elements = Array.length slotted_elements in
@@ -493,13 +493,13 @@ module Tag_Slot = struct
     let constraints =
       attributes
       |> StringMap.find_opt "constraints"
-      |> (Option.map @@ function
-          | { value_desc = Array a; _ } -> a
-          | { value_desc = _; value_loc } ->
-              Pinc_Diagnostics.error
-                value_loc
-                "slot contraints need to be an array of definitions which are either \
-                 allowed or disallowed")
+      |> ( Option.map @@ function
+           | { value_desc = Array a; _ } -> a
+           | { value_desc = _; value_loc } ->
+               Pinc_Diagnostics.error
+                 value_loc
+                 "slot contraints need to be an array of definitions which are either \
+                  allowed or disallowed" )
       |> Option.map
          @@ Array.map
          @@ function
@@ -604,14 +604,14 @@ module Tag_Record = struct
     let output, child_meta =
       data
       |> Option.map (function
-             | { value_desc = Record r; _ } -> r
-             | { value_desc = Null; _ } when not required -> StringMap.empty
-             | { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf
-                      "Expected attribute %s to be a record."
-                      (key |> List.rev |> List.hd)))
+           | { value_desc = Record r; _ } -> r
+           | { value_desc = Null; _ } when not required -> StringMap.empty
+           | { value_desc = _; value_loc } ->
+               Pinc_Diagnostics.error
+                 value_loc
+                 (Printf.sprintf
+                    "Expected attribute %s to be a record."
+                    (key |> List.rev |> List.hd)))
       |> Option.map (fun _ ->
              let state = { state with tag_path = key; tag_meta = [] } in
              match of' with
@@ -636,9 +636,9 @@ module Tag_Record = struct
     let meta =
       meta
       |> Option.map
-           (Helpers.TagMeta.map @@ function
-            | `SubTagPlaceholder -> child_meta |> Helpers.TagMeta.record
-            | v -> v)
+           ( Helpers.TagMeta.map @@ function
+             | `SubTagPlaceholder -> child_meta |> Helpers.TagMeta.record
+             | v -> v )
     in
 
     state
@@ -654,13 +654,13 @@ module Tag_Array = struct
     let output, child_meta, template_meta =
       data
       |> Option.map (function
-             | { value_desc = Int i; _ } -> i
-             | { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
-                   value_loc
-                   (Printf.sprintf
-                      "Expected attribute %s to be an int (the length of the array)."
-                      (key |> List.rev |> List.hd)))
+           | { value_desc = Int i; _ } -> i
+           | { value_desc = _; value_loc } ->
+               Pinc_Diagnostics.error
+                 value_loc
+                 (Printf.sprintf
+                    "Expected attribute %s to be an int (the length of the array)."
+                    (key |> List.rev |> List.hd)))
       |> Option.map (fun len ->
              match of' with
              | None ->
@@ -671,7 +671,11 @@ module Tag_Array = struct
                    let state =
                      children
                      |> eval_expression
-                          ~state:{ state with binding_identifier = Some (`Optional, "0") }
+                          ~state:
+                            {
+                              state with
+                              binding_identifier = Some (`Required, "template");
+                            }
                    in
                    match state.tag_meta with
                    | (_, meta) :: _ -> Some meta
