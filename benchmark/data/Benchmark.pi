@@ -1,0 +1,783 @@
+page Benchmark {
+  #SetContext(key: "settings", value: {
+    logo: "/public/images/logo.svg",
+    contact: {
+      title: "aute veniam",
+      address: "Lorem Ipsumstreet 22",
+      phone: "01234567890",
+      email: "lorem@ipsum.com",
+    },
+    footerLinks: [
+      {
+        url: "#0",
+        title: "sunt minim",
+      },
+      {
+        url: "#0",
+        title: "culpa incididunt",
+      },
+      {
+        url: "#0",
+        title: "deserunt",
+      },
+      {
+        url: "#0",
+        title: "tempor veniam",
+      }
+    ]
+  });
+
+  #SetContext(key: "projects", value: [
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+    {
+      jobs: ["", "", "", ""],
+      title: "",
+      intro: "",
+      url: "",
+      image: "",
+    },
+  ]);
+
+  <Home
+    title="Lorem"
+  >
+    <Masthead 
+      video="/public/videos/header.mp4"
+      title="Laboris dolore ullamco" 
+      subtitles={[
+        "dolore",
+        "ut nisi",
+        "minim esse",
+        "adipisicing",
+      ]}
+    />
+    <SectionStart />
+    <ProjectSlider />
+    <SectionStart />
+    <ProjectTeaserList />
+    <SectionStart />
+    <Gallery title="" items={[
+      {
+        type: "image",
+        url: "/public/images/teaser/Adidas.avif",
+      },
+      {
+        type: "image",
+        url: "/public/images/teaser/Aston_Martin.avif",
+        },
+      {
+        type: "image",
+        url: "/public/images/teaser/Audi.avif",
+        },
+      {
+        type: "video",
+        position: "top right",
+        url: "/projects/02_Dollhouse/02_VFX-BREAKDOWN/Dollhouse-Frame-rebuild.mp4",
+        },
+      {
+        type: "video",
+        url: "/projects/R+V/02_VFX-BREAKDOWN/r+v.mp4",
+        },
+      {
+        type: "image",
+        url: "/public/images/teaser/Tipico.avif",
+       },
+      { type: "image",
+        url: "/public/images/teaser/VW.avif",
+       },
+      { type: "image",
+        url: "/public/images/teaser/Zalando.avif",
+       },
+      { type: "image",
+        url: "/public/images/teaser/Edeka.avif",
+       },
+      { type: "image",
+        url: "/public/images/teaser/Glamira.avif",
+      }
+    ]} />
+
+    <SectionStart title="About me" />
+
+    <AboutMe
+      image_alignment="left"
+      image="/public/images/me.avif"
+    >
+      <Copytext
+        text="Non do est ad excepteur cillum ullamco qui duis Lorem tempor et qui eiusmod. Incididunt laborum irure culpa. Esse non ipsum irure non ipsum labore eu commodo aliquip."
+      />
+      <Bulletlist 
+        title="ad non cupidatat"
+        items={[
+          {
+            title: "",
+            text: "",
+          },
+          {
+            title: "",
+            text: "",
+          },
+          {
+            title: "",
+            text: "",
+          },
+          {
+            title: "",
+            text: "",
+          },
+          {
+            title: "",
+            text: "",
+          },
+          {
+            title: "",
+            text: "",
+          },
+        ]}
+      />
+    </AboutMe>
+
+  </Home>
+}
+
+page Home {
+  let title = #String;
+  let content = #Slot(key: "");
+
+  <>
+    <!DOCTYPE html>
+    <html lang="en">
+      <Head title={title} />
+      <body>
+        <main class="wrapper">
+          {content}
+        </main>
+        <Footer />
+      </body>
+    </html>
+  </>
+}
+
+component Footer {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/Footer.css" />);
+
+  let settings = #GetContext(key: "settings");
+
+  let contact = settings.contact;
+  let links = settings.footerLinks;
+
+  let email = contact.email;
+
+  <footer class="Footer">
+    <div class="Footer-container">
+      <div class="Footer-section">
+        <div class="Footer-contactWrapper">
+          <div class="Footer-contact">
+            <h4 class="Footer-contactTitle">
+              {Base.String.nl2br(contact.title)}
+            </h4>
+            <ButtonPrimary 
+              class="Footer-contactCta"
+              href={"mailto:$(email)"}
+              text="Send me an email"
+            />
+          </div>
+        </div>
+
+        <address class="Footer-address">
+          <p>
+            {{Base.String.nl2br(contact.address)}}
+          </p>
+          <p>
+            <a href="mailto:$(email)">{email}</a> <br />
+            {contact.phone}
+          </p>
+        </address>
+      </div>
+      <div class="Footer-links">
+        {for (link in links) {
+          <a class="Footer-link" href={link.url}>{link.title}</a>
+        }}
+      </div>
+    </div>
+  </footer>
+}
+
+component Head {
+  let title = #String;
+
+  let stylesheets = #CreatePortal :: Base.Array.unique;
+  let scripts = #CreatePortal :: Base.Array.unique;
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+
+    <link rel="icon" type="image/png" href="/public/favicons/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/public/favicons/favicon.svg" />
+    <link rel="shortcut icon" href="/public/favicons/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/favicons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="App Title" />
+    <link rel="manifest" href="/public/favicons/site.webmanifest" />
+
+    <link rel="stylesheet" href="/css/main.css" />
+    {stylesheets}
+
+    {scripts}
+  </head>
+}
+
+component Masthead {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/Masthead.css" />);
+
+  let settings = #GetContext(key: "settings");
+
+  let video = #String;
+  let title = #String;
+  let subtitles = #Array(of: #String :: Base.String.uppercase_ascii);
+
+  <ModuleContainer>
+    <div class="Masthead">
+      <div class="Masthead-videoWrapper">
+        <Video
+          class="Masthead-video"
+          url={video}
+          autoplay={true}
+          loop={true}
+          controls={false}
+        />
+      </div>
+      <div class="Masthead-container">
+        <div class="Masthead-content">
+          <img
+            class="Masthead-logo"
+            src={settings.logo}
+            alt=""
+          />
+          <h1 class="Masthead-heroTitle">
+            {for index, item in title |> Base.String.split(' ') {
+              if(index == 0) {
+                <>
+                  <span style="position: relative; z-index: -2">{item}</span>
+                  <br />
+                </>
+              } else {
+                item
+              }
+            }}
+          </h1>
+          <aside class="Masthead-heroSubtitle">
+            <ul>
+              {{
+                let base_fade_delay = 200;
+                for index, subtitle in subtitles {
+                  let delay = base_fade_delay * (index + 1) + 400 * index;
+                  <li class="fadeInUp" style="animation-delay: $(delay)ms">{subtitle}</li>
+                }
+              }}
+            </ul>
+          </aside>
+          <ul class="Masthead-socialIcons">
+            {for (social in settings.socials) {
+              <li class="Masthead-socialIconWrapper">
+                <a class="Masthead-socialIconLink" target="_blank" href={social.url}>
+                  <img
+                    class="Masthead-socialIcon"
+                    loading="eager"
+                    src={social.icon}
+                    alt={social.name}
+                    height="20"
+                    width="20"
+                  />
+                </a>
+              </li>
+            }}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </ModuleContainer>
+}
+
+component ButtonPrimary {
+	#Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/ButtonPrimary.css" />);
+
+  let class? = #String;
+  
+  let href = #String;
+  let text = #String;
+  
+	let title? = #String;
+  let target? = #String;
+
+	<a
+		class="ButtonPrimary $(class)"
+		href={href}
+		title={title}
+		target={target}
+		rel={if (target == "_blank") "noopener" else ""}
+	>
+		{text}
+
+		<aside class="ButtonPrimary-iconWrapper">
+			<svg 
+				class="ButtonPrimary-icon"
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none" viewBox="0 0 24 24"
+				stroke-width="1.5"
+				stroke="currentColor"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25"
+				/>
+			</svg>
+		</aside>
+	</a>
+}
+
+component ModuleContainer {
+	#Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/ModuleContainer.css" />);
+	
+	<div class="ModuleContainer">
+		{#Slot(key: "", min: 1)}
+	</div>
+}
+
+component Video {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/Video.css" />);
+
+  let class? = #String;
+  let style? = #String;
+
+  let url = #String;
+  let controls? = #Boolean;
+  let loop? = #Boolean;
+  let autoplay? = #Boolean;
+
+  let muted? = #Boolean :: fn v -> v |> Base.Fn.default(autoplay);
+  let playsinline? = #Boolean :: fn v -> v |> Base.Fn.default(autoplay);
+
+  <video
+    class="Video $(class)"
+    style={style}
+    src={url}
+    autoplay={autoplay}
+    controls={controls}
+    loop={loop}
+    muted={muted}
+    playsinline={playsinline}
+  ></video>
+}
+
+component SectionStart() {
+	#Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/SectionStart.css" />);
+
+  let class? = #String;
+  let anchor? = #String;
+  let title? = #String;
+  let align? = #String :: fn v -> v |> Base.Fn.default("center");
+	
+	<ModuleContainer>
+		<div class="SectionStart SectionStart--$(align) $(class)" id={anchor}>
+			{if (title) {
+				<h2 class="SectionStart-title">{title}</h2>
+			}}
+		</div>
+	</ModuleContainer>
+}
+
+component ProjectSlider {
+	#Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/ProjectSlider.css" />);
+	#Portal(key: "scripts", push: <script src="/js/ProjectSlider.js" defer={true} />);
+
+	let projects = #GetContext(key: "projects");
+
+	<ModuleContainer>
+		<div class="ProjectSlider">
+			<div class="ProjectSlider-container">
+				<aside class="ProjectSlider-autoplayProgress"></aside>
+				<div class="ProjectSlider-slider swiper">
+					<div class="swiper-wrapper">
+						{for project in projects {
+							<div
+								class="ProjectSlider-slide swiper-slide"
+							>
+								<div class="ProjectSlider-slideContent">
+									<ul class="ProjectSlider-slideBadges">
+										{for (job in project.jobs) {
+											<li class="ProjectSlider-slideBadge">{job}</li>
+										}}
+									</ul>
+									<h3 class="ProjectSlider-slideTitle">
+										{Base.String.nl2br(project.title)}
+									</h3>
+									<div class="ProjectSlider-slideText">
+										{Base.String.nl2br(project.intro)}
+									</div>
+									<ButtonSecondary 
+										class="ProjectSlider-slideButton swiper-no-swiping"
+										text="More Details"
+										href={project.url}
+									/>
+								</div>
+								<div class="ProjectSlider-slideImageWrapper">
+									<Image class="ProjectSlider-slideImage" src={project.image} />
+								</div>
+							</div>
+						}}
+					</div>
+					<ul class="ProjectSlider-navigation">
+						<li class="ProjectSlider-navigationButton ProjectSlider-navigationButton--prev swiper-button-prev">
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+							</svg>
+						</li>
+						<li class="ProjectSlider-navigationButton ProjectSlider-navigationButton--next swiper-button-next">
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+							</svg>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</ModuleContainer>
+}
+
+component ButtonSecondary {
+	#Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/ButtonSecondary.css" />);
+
+  let class? = #String;
+  
+  let href? = #String;
+  let text = #String;
+  
+	let title? = #String;
+  let target? = #String;
+
+	let content = <>
+		{text}
+
+		<aside class="ButtonSecondary-iconWrapper">
+			<svg
+				class="ButtonSecondary-icon"
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke-width="1.5"
+				stroke="currentColor"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+				/>
+			</svg>
+		</aside>
+	</>;
+
+	if (href) {	
+		<a
+			class="ButtonSecondary $(class)"
+			href={href}
+			title={title}
+			target={target}
+			rel={if (target == "_blank") "noopener" else ""}
+		>
+			{content}
+		</a>
+	} else {
+		<span class="ButtonSecondary $(class)">
+			{content}
+		</span>
+	}
+}
+
+component Image {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/Image.css" />);
+
+  let class? = #String;
+  let style? = #String;
+  
+  let src = #String;
+  let alt? = #String;
+  let width? = #Int;
+  let height? = #Int;
+  let caption? = #String;
+  let loading? = #String :: fn v -> v |> Base.Fn.default("lazy");
+
+  <figure class="Image $(class)" style={style}>
+    <picture class="Image-imageWrapper">
+      <img
+        class="Image-image"
+        width={width} 
+        height={height} 
+        src={src}
+        alt={alt}
+        loading={loading}
+      />
+    </picture>
+    {if (caption) {
+      <figcaption class="Image-caption">{caption}</figcaption>
+    }}
+  </figure>
+}
+component ProjectTeaserList {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/ProjectTeaserList.css" />);
+
+  let projects = #GetContext(key: "projects");
+
+  <ModuleContainer>
+    <div class="ProjectTeaserList">
+      {for project in projects {
+        <ProjectTeaser
+          url={project.url}
+          image={project.image}
+          title={Base.String.nl2br(project.title)}
+          jobs={project.jobs}
+        />
+      }}
+    </div>
+  </ModuleContainer>
+}
+
+component ProjectTeaser {
+  let url = #String;
+  let image = #String;
+  let title = #String;
+  let jobs = #Array(of: #String);
+  
+  let base_fade_delay = 200;
+
+  <a href={url} class="ProjectTeaser">
+    <img class="ProjectTeaser-image" src={image} alt="" />
+    <ul class="ProjectTeaser-badges">
+      {for index, job in jobs {
+        let delay = base_fade_delay * (index + 1) + 400 * index;
+        <li 
+          class="ProjectTeaser-badge"
+          style="animation-delay: $(delay)ms"
+        >
+          {job}
+        </li>
+      }}
+    </ul>
+    <div class="ProjectTeaser-content">
+      <h3 class="ProjectTeaser-title">
+        {title}
+      </h3>
+      <ButtonSecondary class="ProjectTeaser-button" text="More Details" />
+    </div>
+  </a>
+}
+
+component Gallery {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/Gallery.css" />);
+
+  let title = #String;
+  let items = #Array(of: #Record(of: {
+    position?: #String,
+    type: #String,
+    url: #String,
+  }));
+
+  let columns = items |> Base.Array.chunk(2);
+
+  let numColumnGroups = 5;
+  let centerColumnGroups = Base.Math.ceil(numColumnGroups / 2);
+  let columnGroups = {
+    let groups = columns |> Base.Array.group(numColumnGroups);
+    [groups[0], groups[1], groups[4], groups[2], groups[3]];
+  };
+
+  <ModuleContainer>
+    <div class="Gallery">
+      <h2 class="Gallery-title">
+        {title}
+      </h2>
+      <div class="Gallery-mediaRow">
+        {for index, columnGroup in columnGroups {
+          let offsetShift = if(index >= centerColumnGroups - 1) {
+            (centerColumnGroups - 1 - index) * 60
+          } else {
+            0
+          };
+          let offset = index * 60 + offsetShift * 2;
+
+          for column in columnGroup {
+            <div
+              class="Gallery-mediaColumn"
+              style="margin-top: $(offset)px;"
+            >
+              {for item in column {
+                let position = item.position |> Base.Fn.default("center center");
+                
+                <div class="Gallery-mediaWrapper">
+                  {if item.type == "video" {
+                    <Video 
+                      class="Gallery-media"
+                      style="object-position: $(position)"
+                      url={item.url}
+                      autoplay={true}
+                      muted={true}
+                      loop={true}
+                    />
+                  } else {
+                    <Image
+                      style="object-position: $(position)"
+                      class="Gallery-media"
+                      src={item.url}
+                      loading="lazy"
+                    />
+                  }}
+                </div>
+              }}
+            </div>
+          }
+        }}
+      </div>
+    </div>
+  </ModuleContainer>
+}
+
+component AboutMe {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/AboutMe.css" />);
+
+  let image = #String;
+  let image_alignment = #String :: fn v -> v |> Base.Fn.default("left");
+
+  let title? = #String;
+  let content = #Slot(
+    key: "",
+		min: 1,
+		constraints: [Copytext, Bulletlist],
+	);
+
+  <ModuleContainer>
+    <section class="AboutMe AboutMe--$(image_alignment)">
+      <div class="AboutMe-image">
+        <Image src={image} alt="" />
+      </div>
+      <div class="AboutMe-content">
+        {if title {
+          <h2 class="AboutMe-title">{title}</h2>
+        }}
+        <div class="AboutMe-modules">
+          {for (item in content) {
+            <div class="AboutMe-moduleItem">
+              {item}
+            </div>
+          }}
+        </div>
+      </div>
+    </section>
+  </ModuleContainer>
+}
+
+component Copytext {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/Copytext.css" />);
+
+  let text = #String :: Base.String.nl2br;
+
+	<div class="Copytext">
+		{text}
+	</div>
+}
+
+component Bulletlist {
+  #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/Bulletlist.css" />);
+
+	let title? = #String;
+
+	let items = #Array(of: #Record(of: {
+		title?: #String,
+		text: #String,
+	}));
+
+	<div class="Bulletlist">
+		{if (title) {
+			<h4 class="Bulletlist-title">{title}</h4>
+		}}
+		<ul class="Bulletlist-items">
+			{for (item in items) {
+				<li class="Bulletlist-item">
+					{if (item.title) {
+						<span class="Bulletlist-itemTitle">{item.title}</span>
+					}}
+					<span class="Bulletlist-itemText">{item.text}</span>
+				</li>
+			}}
+		</ul>
+	</div>
+}

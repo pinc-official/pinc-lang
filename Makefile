@@ -1,5 +1,5 @@
-.PHONY: all build dev install update fmt fmt-check test test-update test-coverage clean clear
-.SILENT: all build dev install update fmt fmt-check test test-update test-coverage clean clear
+.PHONY: all build dev install update fmt fmt-check benchmark test test-update test-coverage clean clear
+.SILENT: all build dev install update fmt fmt-check benchmark test test-update test-coverage clean clear
 
 all: build
 
@@ -25,6 +25,9 @@ fmt:
 
 fmt-check:
 	dune build @fmt
+
+benchmark:
+	dune exec -- benchmark
 
 test:
 	dune runtest

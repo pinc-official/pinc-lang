@@ -166,6 +166,7 @@ end = struct
 
   let benchmark filename action =
     let src = Pinc.Source.of_file filename in
+    let ast = Pinc.Parser.parse src in
     let benchmarkFn =
       match action with
       | Parse ->
@@ -176,10 +177,10 @@ end = struct
           fun _ ->
             let _ =
               Sys.opaque_identity
-                (Pinc.Interpreter.eval_sources
+                (Pinc.Interpreter.eval_declarations
                    ~tag_data_provider:Pinc.Helpers.noop_data_provider
                    ~root
-                   [ src ])
+                   ast)
             in
             ()
     in
@@ -190,8 +191,8 @@ end = struct
   ;;
 
   let run () =
-    benchmark "./benchmark/data/Section.pi" Parse;
-    benchmark "./benchmark/data/Section.pi" (Interp "Section")
+    benchmark "./benchmark/data/Benchmark.pi" Parse;
+    benchmark "./benchmark/data/Benchmark.pi" (Interp "Benchmark")
   ;;
 end
 
