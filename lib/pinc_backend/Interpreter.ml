@@ -1319,9 +1319,9 @@ and eval_template ~state template =
               component_tag_attributes
               |> StringMap.find_opt key
               |> Fun.flip Option.bind (function
-                     | { value_desc = Array a; _ } ->
-                         a |> Array.length |> Helpers.Value.int |> Option.some
-                     | _ -> None)
+                   | { value_desc = Array a; _ } ->
+                       a |> Array.length |> Helpers.Value.int |> Option.some
+                   | _ -> None)
           | _ ->
               component_tag_attributes
               |> StringMap.find_opt (key |> List.hd)
@@ -1365,34 +1365,8 @@ and eval_template ~state template =
              }
 ;;
 
-let declarations_of_sources =
-  ListLabels.fold_left ~init:[] ~f:(fun acc source ->
-      let decls = Parser.parse source in
-      decls
-      |> List.iter (fun (key, _) ->
-             if List.mem_assoc key acc then (
-               let loc =
-                 let s =
-                   Pinc_Diagnostics.Location.Position.make ~source ~line:0 ~column:0
-                 in
-                 Pinc_Diagnostics.Location.make ~s ()
-               in
-
-               let message =
-                 Printf.sprintf
-                   "Found multiple declarations with identifier `%s`.\n\
-                    Every declaration has to have a unique name in pinc."
-                   key
-               in
-
-               Pinc_Diagnostics.error loc message));
-      acc @ decls)
-;;
-
 let eval_meta sources =
-  let declarations =
-    sources |> declarations_of_sources |> List.to_seq |> StringMap.of_seq
-  in
+  let declarations = sources |> Parser.parse in
   let state =
     State.make
       ~mode:`Portal_Collection
@@ -1409,32 +1383,14 @@ let eval_meta sources =
   let open Ast in
   declarations
   |> StringMap.map (function
-         | { declaration_type = Declaration_Component { declaration_attributes; _ }; _ }
-           -> `Component (eval declaration_attributes)
-         | { declaration_type = Declaration_Library { declaration_attributes; _ }; _ } ->
-             `Library (eval declaration_attributes)
-         | { declaration_type = Declaration_Page { declaration_attributes; _ }; _ } ->
-             `Page (eval declaration_attributes)
-         | { declaration_type = Declaration_Store { declaration_attributes; _ }; _ } ->
-             `Store (eval declaration_attributes))
-;;
-
-let get_stdlib () =
-  Pinc_stdlib.file_list
-  |> List.map (fun filename ->
-         filename |> Pinc_stdlib.read |> Option.get |> Source.of_string ~filename)
-  |> List.fold_left
-       (fun acc source ->
-         let decls = source |> Parser.parse |> List.to_seq |> StringMap.of_seq in
-         let f key _ _ =
-           Pinc_Diagnostics.error
-             (Pinc_Diagnostics.Location.make
-                ~s:(Pinc_Diagnostics.Location.Position.make ~source ~line:0 ~column:0)
-                ())
-             ("Found multiple declarations with identifier " ^ key)
-         in
-         StringMap.union f acc decls)
-       StringMap.empty
+       | { declaration_type = Declaration_Component { declaration_attributes; _ }; _ } ->
+           `Component (eval declaration_attributes)
+       | { declaration_type = Declaration_Library { declaration_attributes; _ }; _ } ->
+           `Library (eval declaration_attributes)
+       | { declaration_type = Declaration_Page { declaration_attributes; _ }; _ } ->
+           `Page (eval declaration_attributes)
+       | { declaration_type = Declaration_Store { declaration_attributes; _ }; _ } ->
+           `Store (eval declaration_attributes))
 ;;
 
 let eval_declarations
@@ -1443,13 +1399,6 @@ let eval_declarations
     ~root
     declarations =
   Hashtbl.reset Tag.Tag_Portal.portals;
-
-  let declarations =
-    declarations
-    |> List.to_seq
-    |> StringMap.of_seq
-    |> StringMap.union (fun _key _x y -> Some y) (get_stdlib ())
-  in
 
   (match declarations |> StringMap.find_opt root with
   | Some { Ast.declaration_type = Declaration_Library _ | Declaration_Store _; _ } ->
@@ -1485,7 +1434,5 @@ let eval_declarations
 ;;
 
 let eval_sources ?tag_meta_provider ~tag_data_provider ~root sources =
-  sources
-  |> declarations_of_sources
-  |> eval_declarations ?tag_meta_provider ~tag_data_provider ~root
+  sources |> Parser.parse |> eval_declarations ?tag_meta_provider ~tag_data_provider ~root
 ;;

@@ -166,12 +166,12 @@ end = struct
 
   let benchmark filename action =
     let src = Pinc.Source.of_file filename in
-    let ast = Pinc.Parser.parse src in
+    let ast = Pinc.Parser.parse [ src ] in
     let benchmarkFn =
       match action with
       | Parse ->
           fun _ ->
-            let _ = Sys.opaque_identity (Pinc.Parser.parse src) in
+            let _ = Sys.opaque_identity (Pinc.Parser.parse [ src ]) in
             ()
       | Interp root ->
           fun _ ->
