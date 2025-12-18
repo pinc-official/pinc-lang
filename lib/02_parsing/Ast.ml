@@ -73,10 +73,12 @@ and expression_desc =
   | Array of expression array
   | Record of ([ `Required | `Optional ] * expression) StringMap.t
   | ExternalFunction of {
+      identifier : lowercase_identifier;
       parameters : string list;
       name : string;
     }
   | Function of {
+      identifier : lowercase_identifier option;
       parameters : string list;
       body : expression;
     }

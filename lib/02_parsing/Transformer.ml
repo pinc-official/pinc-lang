@@ -1,7 +1,15 @@
 open Ast
 
 module Env = struct
-  type t = { current_identifier : ([ `Required | `Optional ] * string) option }
+  type t = {
+    mutable current_identifier :
+      ([ `Required | `Optional ] * Parsetree.lowercase_identifier) option;
+  }
+
+  let env = { current_identifier = None }
+  let set_current_identifier identifier = env.current_identifier <- Some identifier
+  let clear_current_identifier () = env.current_identifier <- None
+  let get_current_identifier () = env.current_identifier
 end
 
 let rec transform_lowercase_id = function
@@ -37,10 +45,21 @@ and transform_record r =
   in
   Record r
 
-and transform_external_function parameters name = ExternalFunction { parameters; name }
+and transform_external_function ~loc parameters name =
+  let identifier = Env.get_current_identifier () in
+  match identifier with
+  | None -> Pinc_Diagnostics.error loc "This function is missing an identifier."
+  | Some (_, identifier) ->
+      let identifier = transform_lowercase_id identifier in
+      ExternalFunction { identifier; parameters; name }
 
 and transform_function parameters body =
-  Function { parameters; body = transform_expression body }
+  let identifier =
+    match Env.get_current_identifier () with
+    | None -> None
+    | Some (_, identifier) -> Some (transform_lowercase_id identifier)
+  in
+  Function { identifier; parameters; body = transform_expression body }
 
 and transform_function_call function_definition arguments =
   FunctionCall
@@ -177,7 +196,7 @@ and transform_expression (exression : Parsetree.expression) =
       | P_Array array -> transform_array array
       | P_Record record -> transform_record record
       | P_ExternalFunction { parameters; name } ->
-          transform_external_function parameters name
+          transform_external_function ~loc:exression.expression_loc parameters name
       | P_Function { parameters; body } -> transform_function parameters body
       | P_FunctionCall { function_definition; arguments } ->
           transform_function_call function_definition arguments
@@ -206,23 +225,31 @@ and transform_use_stmt id expr =
   UseStatement (id, expr)
 
 and transform_optional_mutable_let id expr =
+  Env.set_current_identifier (`Optional, id);
   let id = transform_lowercase_id id in
   let expr = transform_expression expr in
+  Env.clear_current_identifier ();
   OptionalMutableLetStatement (id, expr)
 
 and transform_optional_let id expr =
+  Env.set_current_identifier (`Optional, id);
   let id = transform_lowercase_id id in
   let expr = transform_expression expr in
+  Env.clear_current_identifier ();
   OptionalLetStatement (id, expr)
 
 and transform_mutable_let id expr =
+  Env.set_current_identifier (`Required, id);
   let id = transform_lowercase_id id in
   let expr = transform_expression expr in
+  Env.clear_current_identifier ();
   MutableLetStatement (id, expr)
 
 and transform_let id expr =
+  Env.set_current_identifier (`Required, id);
   let id = transform_lowercase_id id in
   let expr = transform_expression expr in
+  Env.clear_current_identifier ();
   LetStatement (id, expr)
 
 and transform_mutation id expr =
