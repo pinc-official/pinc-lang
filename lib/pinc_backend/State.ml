@@ -12,7 +12,6 @@ let make
     ~mode
     declarations =
   {
-    binding_identifier = None;
     declarations;
     output = { value_desc = Null; value_loc = Pinc_Diagnostics.Location.none };
     environment = { scope = []; use_scope = StringMap.empty };
@@ -95,20 +94,20 @@ let add_value_to_function_scopes ~ident ~value ~is_optional ~is_mutable t =
   let update_scope state =
     List.map
       (StringMap.map (function
-          | { value = { value_desc = Function { state; parameters; exec }; _ }; _ } as
-            binding ->
-              let new_state =
-                add_value_to_scope ~ident ~value ~is_optional ~is_mutable state
-              in
-              {
-                binding with
-                value =
-                  {
-                    value with
-                    value_desc = Function { state = new_state; parameters; exec };
-                  };
-              }
-          | v -> v))
+        | { value = { value_desc = Function { state; parameters; exec }; _ }; _ } as
+          binding ->
+            let new_state =
+              add_value_to_scope ~ident ~value ~is_optional ~is_mutable state
+            in
+            {
+              binding with
+              value =
+                {
+                  value with
+                  value_desc = Function { state = new_state; parameters; exec };
+                };
+            }
+        | v -> v))
       state.environment.scope
   in
   t.environment.scope <- update_scope t

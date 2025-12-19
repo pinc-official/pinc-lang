@@ -598,7 +598,7 @@ module Tag_Slot = struct
 end
 
 module Tag_Record = struct
-  let eval ~eval_expression ~state ~required ~attributes ~of' t key =
+  let eval ~eval_expression ~state ~required ~attributes ~children t key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Record ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes ~required in
     let output, child_meta =
@@ -614,7 +614,7 @@ module Tag_Record = struct
                     (key |> List.rev |> List.hd)))
       |> Option.map (fun _ ->
              let state = { state with tag_path = key; tag_meta = [] } in
-             match of' with
+             match children with
              | None ->
                  Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Record."
              | Some children ->
@@ -648,7 +648,7 @@ module Tag_Record = struct
 end
 
 module Tag_Array = struct
-  let eval ~eval_expression ~state ~required ~attributes ~of' t key =
+  let eval ~eval_expression ~state ~required ~attributes ~children t key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Array ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes ~required in
     let output, child_meta, template_meta =
@@ -662,7 +662,7 @@ module Tag_Array = struct
                     "Expected attribute %s to be an int (the length of the array)."
                     (key |> List.rev |> List.hd)))
       |> Option.map (fun len ->
-             match of' with
+             match children with
              | None ->
                  Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Array."
              | Some children ->
@@ -671,11 +671,7 @@ module Tag_Array = struct
                    let state =
                      children
                      |> eval_expression
-                          ~state:
-                            {
-                              state with
-                              binding_identifier = Some (`Required, "template");
-                            }
+                          ~state:{ state with tag_path = state.tag_path @ [ "template" ] }
                    in
                    match state.tag_meta with
                    | (_, meta) :: _ -> Some meta
@@ -683,10 +679,14 @@ module Tag_Array = struct
                  in
                  let values, metas =
                    List.init len (fun i ->
-                       let binding_identifier = Some (`Required, string_of_int i) in
                        let state =
                          children
-                         |> eval_expression ~state:{ state with binding_identifier }
+                         |> eval_expression
+                              ~state:
+                                {
+                                  state with
+                                  tag_path = state.tag_path @ [ string_of_int i ];
+                                }
                        in
                        let value = state |> State.get_output in
                        let meta =
@@ -720,32 +720,16 @@ module Tag_Array = struct
 end
 
 let eval ~eval_expression ~state t =
-  let { tag; attributes; transformer } = t.tag_desc in
-  let key =
-    attributes
-    |> StringMap.find_opt "key"
-    |> Option.map (fun it -> it |> eval_expression ~state |> State.get_output)
+  let { key; required; tag; attributes; children; transformer } = t.tag_desc in
+
+  let path =
+    match (state.tag_path, key) with
+    | [], key -> [ key ]
+    | path, "" -> path
+    | path, key -> path @ [ key ]
   in
-  let required =
-    state.binding_identifier
-    |> (Option.map @@ fun v -> fst v = `Required)
-    |> Option.value ~default:true
-  in
-  let key, state =
-    match (key, state.binding_identifier) with
-    | None, Some (_optional, ident) -> (ident, { state with binding_identifier = None })
-    | Some { value_desc = String key; _ }, _ -> (key, state)
-    | Some { value_desc = _; value_loc }, _ ->
-        Pinc_Diagnostics.error
-          value_loc
-          "Expected attribute `key` on tag to be of type string"
-    | None, None -> ("", state)
-  in
-  let path = state.tag_path @ [ key ] in
-  let of' = attributes |> StringMap.find_opt "of" in
   let attributes =
     attributes
-    |> StringMap.remove "of"
     |> StringMap.map (fun it -> it |> eval_expression ~state |> State.get_output)
   in
 
@@ -762,9 +746,9 @@ let eval ~eval_expression ~state t =
     | Tag_Float -> path |> Tag_Float.eval ~state ~required ~attributes t
     | Tag_Boolean -> path |> Tag_Boolean.eval ~state ~required ~attributes t
     | Tag_Array ->
-        path |> Tag_Array.eval ~eval_expression ~state ~required ~attributes ~of' t
+        path |> Tag_Array.eval ~eval_expression ~state ~required ~attributes ~children t
     | Tag_Record ->
-        path |> Tag_Record.eval ~eval_expression ~state ~required ~attributes ~of' t
+        path |> Tag_Record.eval ~eval_expression ~state ~required ~attributes ~children t
     | Tag_Custom name -> path |> Tag_Custom.eval ~state ~required ~attributes ~name t
   in
 

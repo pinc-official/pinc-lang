@@ -39,7 +39,6 @@ end =
 
 and Type_State : sig
   type state = {
-    binding_identifier : ([ `Required | `Optional ] * string) option;
     declarations : Ast.t;
     output : Type_Value.value;
     environment : environment;

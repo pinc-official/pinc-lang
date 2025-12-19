@@ -72,25 +72,22 @@ let rec get_uppercase_identifier_typ ~state ident =
           (state, Some (Definition_Library library)))
 
 and eval_statement ~state statement =
-  let result =
-    match statement.Ast.statement_desc with
-    | Ast.CommentStatement _ -> state
-    | Ast.LetStatement (Lowercase_Id ident, expression) ->
-        eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
-    | Ast.OptionalLetStatement (Lowercase_Id ident, expression) ->
-        eval_let ~state ~ident ~is_mutable:false ~is_optional:true expression
-    | Ast.OptionalMutableLetStatement (Lowercase_Id ident, expression) ->
-        eval_let ~state ~ident ~is_mutable:true ~is_optional:true expression
-    | Ast.MutableLetStatement (Lowercase_Id ident, expression) ->
-        eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
-    | Ast.MutationStatement (Lowercase_Id ident, expression) ->
-        eval_mutation ~state ~ident expression
-    | Ast.UseStatement (ident, expression) -> eval_use ~state ~ident expression
-    | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
-    | Ast.ContinueStatement _ -> raise_notrace (Loop_Continue state)
-    | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
-  in
-  { result with binding_identifier = None }
+  match statement.Ast.statement_desc with
+  | Ast.CommentStatement _ -> state
+  | Ast.LetStatement (Lowercase_Id ident, expression) ->
+      eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
+  | Ast.OptionalLetStatement (Lowercase_Id ident, expression) ->
+      eval_let ~state ~ident ~is_mutable:false ~is_optional:true expression
+  | Ast.OptionalMutableLetStatement (Lowercase_Id ident, expression) ->
+      eval_let ~state ~ident ~is_mutable:true ~is_optional:true expression
+  | Ast.MutableLetStatement (Lowercase_Id ident, expression) ->
+      eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
+  | Ast.MutationStatement (Lowercase_Id ident, expression) ->
+      eval_mutation ~state ~ident expression
+  | Ast.UseStatement (ident, expression) -> eval_use ~state ~ident expression
+  | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
+  | Ast.ContinueStatement _ -> raise_notrace (Loop_Continue state)
+  | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
 
 and eval_expression ~state expression =
   match expression.expression_desc with
@@ -124,11 +121,7 @@ and eval_expression ~state expression =
         |> StringMap.to_seq
         |> Seq.fold_left
              (fun (state, seq) (ident, (requirement, expression)) ->
-               let state =
-                 expression
-                 |> eval_expression
-                      ~state:{ state with binding_identifier = Some (requirement, ident) }
-               in
+               let state = eval_expression expression ~state in
                let output = state |> State.get_output in
                let () =
                  match output with
@@ -1000,17 +993,7 @@ and eval_lowercase_identifier ~state ~loc ident =
 
 and eval_let ~state ~ident ~is_mutable ~is_optional expression =
   let ident, ident_location = ident in
-  let requirement =
-    if is_optional then
-      `Optional
-    else
-      `Required
-  in
-  let state =
-    expression
-    |> eval_expression
-         ~state:{ state with binding_identifier = Some (requirement, ident) }
-  in
+  let state = eval_expression expression ~state in
   let value = State.get_output state in
   match value with
   | { value_desc = Null; _ } when not is_optional ->
@@ -1059,17 +1042,7 @@ and eval_mutation ~state ~ident expression =
   | Some { is_mutable = false; _ } ->
       Pinc_Diagnostics.error ident_location "Trying to update a non mutable variable."
   | Some { value = _; is_mutable = true; is_optional } ->
-      let requirement =
-        if is_optional then
-          `Optional
-        else
-          `Required
-      in
-      let output =
-        expression
-        |> eval_expression
-             ~state:{ state with binding_identifier = Some (requirement, ident) }
-      in
+      let output = eval_expression expression ~state in
       let () =
         output |> State.get_output |> function
         | { value_desc = Null; _ } when not is_optional ->

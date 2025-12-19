@@ -45,8 +45,11 @@ and tag_typ =
 
 and tag_desc = {
   tag : tag_typ;
+  key : string;
+  required : bool;
   attributes : expression StringMap.t;
   transformer : expression option;
+  children : expression option;
 }
 
 and string_template = {
