@@ -1,0 +1,13 @@
+component Matrix {
+	let matrix = #Array(of: #Array(of: #Int));
+
+	<div>
+		{for (row in matrix) {
+			<ul>
+				{for (col in row) {
+					<li>{col}</li>
+				}}
+			</ul>
+		}}
+	</div>
+}

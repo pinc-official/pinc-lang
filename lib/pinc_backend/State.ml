@@ -21,6 +21,7 @@ let make
     root_tag_meta_provider;
     tag_meta;
     tag_path;
+    tag_array_index = [];
     context;
     mode;
   }

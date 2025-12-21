@@ -651,7 +651,7 @@ module Tag_Array = struct
   let eval ~eval_expression ~state ~required ~attributes ~children t key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Array ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes ~required in
-    let output, child_meta, template_meta =
+    let output, child_meta =
       data
       |> Option.map (function
            | { value_desc = Int i; _ } -> i
@@ -667,26 +667,13 @@ module Tag_Array = struct
                  Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Array."
              | Some children ->
                  let state = { state with tag_path = key; tag_meta = [] } in
-                 let template_meta =
-                   let state =
-                     children
-                     |> eval_expression
-                          ~state:{ state with tag_path = state.tag_path @ [ "template" ] }
-                   in
-                   match state.tag_meta with
-                   | (_, meta) :: _ -> Some meta
-                   | _ -> None
-                 in
                  let values, metas =
                    List.init len (fun i ->
                        let state =
-                         children
-                         |> eval_expression
-                              ~state:
-                                {
-                                  state with
-                                  tag_path = state.tag_path @ [ string_of_int i ];
-                                }
+                         eval_expression
+                           ~state:
+                             { state with tag_array_index = i :: state.tag_array_index }
+                           children
                        in
                        let value = state |> State.get_output in
                        let meta =
@@ -699,8 +686,8 @@ module Tag_Array = struct
                  in
                  let value = values |> Helpers.Value.list ~loc:t.tag_loc in
                  let meta = metas |> List.filter_map Fun.id in
-                 (value, meta, template_meta))
-      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc (), [], None)
+                 (value, meta))
+      |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc (), [])
     in
 
     let meta =
@@ -709,7 +696,6 @@ module Tag_Array = struct
          @@ Helpers.TagMeta.filter_map
          @@ function
          | `SubTagPlaceholder -> child_meta |> Helpers.TagMeta.array |> Option.some
-         | `TemplatePlaceholder -> template_meta
          | v -> Some v
     in
 
@@ -723,10 +709,9 @@ let eval ~eval_expression ~state t =
   let { key; required; tag; attributes; children; transformer } = t.tag_desc in
 
   let path =
-    match (state.tag_path, key) with
-    | [], key -> [ key ]
-    | path, "" -> path
-    | path, key -> path @ [ key ]
+    match (key, state.tag_array_index) with
+    | "#", index :: _ -> state.tag_path @ [ string_of_int index ]
+    | key, _ -> state.tag_path @ [ key ]
   in
   let attributes =
     attributes

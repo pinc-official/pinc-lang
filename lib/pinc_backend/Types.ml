@@ -48,6 +48,7 @@ and Type_State : sig
     root_tag_meta_provider : Type_Tag.meta_provider;
     tag_path : string list;
     tag_meta : (string * Type_Tag.meta) list;
+    tag_array_index : int list;
     context : Type_Value.value StringMap.t;
     mode : [ `Portal_Collection | `Portal_Render ];
   }

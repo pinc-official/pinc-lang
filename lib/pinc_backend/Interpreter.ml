@@ -1291,9 +1291,9 @@ and eval_template ~state template =
               |> Helpers.Value.list
               |> Option.some
           | Type_Tag.Tag_Array ->
-              let key = key |> List.rev |> List.hd in
               component_tag_attributes
-              |> StringMap.find_opt key
+              |> StringMap.find_opt (key |> List.hd)
+              |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
               |> Fun.flip Option.bind (function
                    | { value_desc = Array a; _ } ->
                        a |> Array.length |> Helpers.Value.int |> Option.some
