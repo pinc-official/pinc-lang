@@ -122,7 +122,17 @@ and transform_tag env (tag : Parsetree.tag) =
       desc.attributes
       |> StringMap.find_opt "of"
       |> Option.fold_map
-           ~init:{ current_identifier = None; Env.tags = [] }
+           ~init:
+             {
+               Env.tags = [];
+               Env.current_identifier =
+                 (match tag with
+                 | Tag_Array ->
+                     Some
+                       ( `Optional,
+                         Parsetree.P_Lowercase_Id ("#", Pinc_Diagnostics.Location.none) )
+                 | _ -> None);
+             }
            ~f:transform_expression
     in
     let env, attributes =
@@ -141,8 +151,15 @@ and transform_tag env (tag : Parsetree.tag) =
            | { expression_desc = String []; expression_loc = _ } -> ""
            | {
                expression_desc = String [ { string_template_desc = StringText s; _ } ];
-               expression_loc = _;
-             } -> s
+               expression_loc = loc;
+             } ->
+               if Helpers.is_valid_lowercase_ident s then
+                 s
+               else
+                 Pinc_Diagnostics.error
+                   loc
+                   "Tag keys may only contain ASCII characters (a-Z), numbers (0-9) and \
+                    underscores (_)."
            | { expression_desc = String _; expression_loc = loc } ->
                Pinc_Diagnostics.error
                  loc

@@ -1,0 +1,7 @@
+component Component {
+  let fail = #String(key: "f.#ail");
+
+  <div class="Section">
+    {fail}
+  </div>
+}
