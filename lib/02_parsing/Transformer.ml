@@ -1,10 +1,30 @@
 open Utils
 open Ast
 
+type primitive_value =
+  [ `String of string
+  | `Int of int
+  | `Float of float
+  | `Boolean of bool
+  ]
+
+type public_tag_typ =
+  [ `String
+  | `Int
+  | `Float
+  | `Boolean
+  | `Array
+  | `Record
+  | `Slot
+  | `Store
+  | `Custom of string
+  ]
+
 type public_tag = {
   public_tag_key : string;
-  public_tag_typ : tag_typ;
+  public_tag_typ : public_tag_typ;
   public_tag_children : public_tag list option;
+  public_tag_initial_value : primitive_value option;
 }
 
 module Env = struct
@@ -102,22 +122,6 @@ and transform_lowercase_id_expression env id = (env, LowercaseIdentifierExpressi
 and transform_tag env (tag : Parsetree.tag) =
   let transform_tag_desc env (desc : Parsetree.tag_desc) =
     let current_identifier = env.Env.current_identifier in
-    let public, tag =
-      match desc.tag with
-      | P_Tag_String -> (true, Tag_String)
-      | P_Tag_Int -> (true, Tag_Int)
-      | P_Tag_Float -> (true, Tag_Float)
-      | P_Tag_Boolean -> (true, Tag_Boolean)
-      | P_Tag_Array -> (true, Tag_Array)
-      | P_Tag_Record -> (true, Tag_Record)
-      | P_Tag_Slot -> (true, Tag_Slot)
-      | P_Tag_Store -> (true, Tag_Store)
-      | P_Tag_SetContext -> (false, Tag_SetContext)
-      | P_Tag_GetContext -> (false, Tag_GetContext)
-      | P_Tag_CreatePortal -> (false, Tag_CreatePortal)
-      | P_Tag_Portal -> (false, Tag_Portal)
-      | P_Tag_Custom s -> (true, Tag_Custom s)
-    in
     let child_env, children =
       desc.attributes
       |> StringMap.find_opt "of"
@@ -126,8 +130,8 @@ and transform_tag env (tag : Parsetree.tag) =
              {
                Env.tags = [];
                Env.current_identifier =
-                 (match tag with
-                 | Tag_Array ->
+                 (match desc.tag with
+                 | P_Tag_Array ->
                      Some
                        ( `Optional,
                          Parsetree.P_Lowercase_Id ("#", Pinc_Diagnostics.Location.none) )
@@ -142,6 +146,103 @@ and transform_tag env (tag : Parsetree.tag) =
     in
     let env, transformer =
       Option.fold_map ~init:env ~f:transform_expression desc.transformer
+    in
+
+    let public_tag_typ, tag, initial_value =
+      match desc.tag with
+      | P_Tag_String ->
+          let initialValue =
+            StringMap.find_opt "initialValue" attributes
+            |> Option.map (function
+                 | { expression_desc = String []; expression_loc = _ } -> `String ""
+                 | {
+                     expression_desc =
+                       String [ { string_template_desc = StringText s; _ } ];
+                     expression_loc = _;
+                   } -> `String s
+                 | { expression_desc = _; expression_loc = loc } ->
+                     Pinc_Diagnostics.error
+                       loc
+                       "Expected attribute `initialValue` on tag `#String` to be of type \
+                        string")
+          in
+          (Some `String, Tag_String, initialValue)
+      | P_Tag_Int ->
+          let initialValue =
+            StringMap.find_opt "initialValue" attributes
+            |> Option.map (function
+                 | { expression_desc = Int i; expression_loc = _ } -> `Int i
+                 | { expression_desc = _; expression_loc = loc } ->
+                     Pinc_Diagnostics.error
+                       loc
+                       "Expected attribute `initialValue` on tag `#Int` to be of type int")
+          in
+          (Some `Int, Tag_Int, initialValue)
+      | P_Tag_Float ->
+          let initialValue =
+            StringMap.find_opt "initialValue" attributes
+            |> Option.map (function
+                 | { expression_desc = Float i; expression_loc = _ } -> `Float i
+                 | { expression_desc = _; expression_loc = loc } ->
+                     Pinc_Diagnostics.error
+                       loc
+                       "Expected attribute `initialValue` on tag `#Float` to be of type \
+                        float")
+          in
+          (Some `Float, Tag_Float, initialValue)
+      | P_Tag_Boolean ->
+          let initialValue =
+            StringMap.find_opt "initialValue" attributes
+            |> Option.map (function
+                 | { expression_desc = Bool b; expression_loc = _ } -> `Boolean b
+                 | { expression_desc = _; expression_loc = loc } ->
+                     Pinc_Diagnostics.error
+                       loc
+                       "Expected attribute `initialValue` on tag `#Boolean` to be of \
+                        type boolean")
+          in
+          (Some `Boolean, Tag_Boolean, initialValue)
+      | P_Tag_Array ->
+          let initialValue =
+            StringMap.find_opt "initialSize" attributes
+            |> Option.map (function
+                 | { expression_desc = Int i; expression_loc = _ } -> `Int i
+                 | { expression_desc = _; expression_loc = loc } ->
+                     Pinc_Diagnostics.error
+                       loc
+                       "Expected attribute `initialSize` on tag `#Array` to be of type \
+                        int")
+          in
+          (Some `Array, Tag_Array, initialValue)
+      | P_Tag_Record -> (Some `Record, Tag_Record, None)
+      | P_Tag_Slot -> (Some `Slot, Tag_Slot, None)
+      | P_Tag_Store -> (Some `Store, Tag_Store, None)
+      | P_Tag_SetContext -> (None, Tag_SetContext, None)
+      | P_Tag_GetContext -> (None, Tag_GetContext, None)
+      | P_Tag_CreatePortal -> (None, Tag_CreatePortal, None)
+      | P_Tag_Portal -> (None, Tag_Portal, None)
+      | P_Tag_Custom s ->
+          let initialValue =
+            StringMap.find_opt "initialValue" attributes
+            |> Option.map (function
+                 | { expression_desc = String []; expression_loc = _ } -> `String ""
+                 | {
+                     expression_desc =
+                       String [ { string_template_desc = StringText s; _ } ];
+                     expression_loc = _;
+                   } -> `String s
+                 | { expression_desc = Int i; expression_loc = _ } -> `Int i
+                 | { expression_desc = Float f; expression_loc = _ } -> `Float f
+                 | { expression_desc = Bool f; expression_loc = _ } -> `Boolean f
+                 | { expression_desc = _; expression_loc = loc } ->
+                     Pinc_Diagnostics.error
+                       loc
+                       ("Expected attribute `initialValue` on tag `#"
+                       ^ s
+                       ^ "` to be and immediate primitive value (string, int, float, \
+                          bool)."))
+          in
+          (Some (`Custom s), Tag_Custom s, initialValue)
     in
 
     let key =
@@ -185,23 +286,27 @@ and transform_tag env (tag : Parsetree.tag) =
     in
 
     let tag_desc = { key; required; tag; attributes; children; transformer } in
-    let tags =
-      if public then
-        env.tags
-        @ [
-            {
-              public_tag_key = key;
-              public_tag_typ = tag;
-              public_tag_children =
-                (match child_env.tags with
-                | [] -> None
-                | tags -> Some tags);
-            };
-          ]
-      else
-        env.tags
+    let env =
+      {
+        env with
+        Env.tags =
+          (match public_tag_typ with
+          | None -> env.tags
+          | Some public_tag_typ ->
+              env.tags
+              @ [
+                  {
+                    public_tag_key = key;
+                    public_tag_typ;
+                    public_tag_initial_value = initial_value;
+                    public_tag_children =
+                      (match child_env.tags with
+                      | [] -> None
+                      | tags -> Some tags);
+                  };
+                ]);
+      }
     in
-    let env = { env with Env.tags } in
 
     (env, tag_desc)
   in
