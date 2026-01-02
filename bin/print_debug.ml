@@ -1,4 +1,4 @@
-open Pinc
+open Pinc_lang
 
 let main =
   let filename = Sys.argv.(1) in

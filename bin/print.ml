@@ -1,4 +1,4 @@
-open Pinc
+open Pinc_lang
 
 let get_files_with_ext ~ext dir =
   let rec loop result = function

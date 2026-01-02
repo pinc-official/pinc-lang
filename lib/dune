@@ -1,5 +1,5 @@
 (library
- (name pinc)
+ (name pinc_lang)
  (public_name pinc-lang)
  (libraries Pinc_Backend)
  (instrumentation

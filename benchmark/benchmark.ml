@@ -165,20 +165,20 @@ end = struct
   ;;
 
   let benchmark filename action =
-    let src = Pinc.Source.of_file filename in
-    let ast = Pinc.Parser.parse [ src ] in
+    let src = Pinc_lang.Source.of_file filename in
+    let ast = Pinc_lang.Parser.parse [ src ] in
     let benchmarkFn =
       match action with
       | Parse ->
           fun _ ->
-            let _ = Sys.opaque_identity (Pinc.Parser.parse [ src ]) in
+            let _ = Sys.opaque_identity (Pinc_lang.Parser.parse [ src ]) in
             ()
       | Interp root ->
           fun _ ->
             let _ =
               Sys.opaque_identity
-                (Pinc.Interpreter.eval_declarations
-                   ~tag_data_provider:Pinc.Helpers.noop_data_provider
+                (Pinc_lang.Interpreter.eval_declarations
+                   ~tag_data_provider:Pinc_lang.Helpers.noop_data_provider
                    ~root
                    ast)
             in

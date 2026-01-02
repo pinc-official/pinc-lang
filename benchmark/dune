@@ -4,6 +4,6 @@
  (foreign_stubs
   (language c)
   (names time))
- (libraries pinc))
+ (libraries pinc_lang))
 
 (data_only_dirs data)
