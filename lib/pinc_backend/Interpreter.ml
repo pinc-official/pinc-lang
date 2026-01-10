@@ -1296,7 +1296,10 @@ and eval_template ~state template =
               |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
               |> Fun.flip Option.bind (function
                    | { value_desc = Array a; _ } ->
-                       a |> Array.length |> Helpers.Value.int |> Option.some
+                       a
+                       |> Array.mapi (fun i _ -> Helpers.Value.string (string_of_int i))
+                       |> Helpers.Value.array
+                       |> Option.some
                    | _ -> None)
           | _ ->
               component_tag_attributes

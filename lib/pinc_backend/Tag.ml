@@ -253,7 +253,10 @@ module Tag_Store = struct
           |> StringMap.find_opt (key |> List.rev |> List.hd)
           |> Fun.flip Option.bind (function
                | { value_desc = Array a; _ } ->
-                   a |> Array.length |> Helpers.Value.int |> Option.some
+                   a
+                   |> Array.mapi (fun i _ -> Helpers.Value.string (string_of_int i))
+                   |> Helpers.Value.array
+                   |> Option.some
                | _ -> None)
       | _ ->
           value
@@ -654,25 +657,26 @@ module Tag_Array = struct
     let output, child_meta =
       data
       |> Option.map (function
-           | { value_desc = Int i; _ } -> i
+           | { value_desc = Array _; _ } as x ->
+               Helpers.Expect.(required (array (required string))) x
            | { value_desc = _; value_loc } ->
                Pinc_Diagnostics.error
                  value_loc
                  (Printf.sprintf
-                    "Expected attribute %s to be an int (the length of the array)."
+                    "Expected attribute %s to be an array of keys."
                     (key |> List.rev |> List.hd)))
-      |> Option.map (fun len ->
+      |> Option.map (fun keys ->
              match children with
              | None ->
                  Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Array."
              | Some children ->
                  let state = { state with tag_path = key; tag_meta = [] } in
                  let values, metas =
-                   List.init len (fun i ->
+                   ArrayLabels.map keys ~f:(fun k ->
                        let state =
                          eval_expression
                            ~state:
-                             { state with tag_array_index = i :: state.tag_array_index }
+                             { state with tag_array_index = k :: state.tag_array_index }
                            children
                        in
                        let value = state |> State.get_output in
@@ -682,10 +686,10 @@ module Tag_Array = struct
                          | _ -> None
                        in
                        (value, meta))
-                   |> List.split
+                   |> Array.split
                  in
-                 let value = values |> Helpers.Value.list ~loc:t.tag_loc in
-                 let meta = metas |> List.filter_map Fun.id in
+                 let value = values |> Helpers.Value.array ~loc:t.tag_loc in
+                 let meta = metas |> Array.to_list |> List.filter_map Fun.id in
                  (value, meta))
       |> Option.value ~default:(Helpers.Value.null ~loc:t.tag_loc (), [])
     in
@@ -710,7 +714,7 @@ let eval ~eval_expression ~state t =
 
   let path =
     match (key, state.tag_array_index) with
-    | "#", index :: _ -> state.tag_path @ [ string_of_int index ]
+    | "#", index :: _ -> state.tag_path @ [ index ]
     | key, _ -> state.tag_path @ [ key ]
   in
   let attributes =
