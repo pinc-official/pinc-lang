@@ -26,8 +26,7 @@
   (ocaml
    (>= 4.12))
   fmt
-  (dune
-   (= 3.18.1))
+  dune
   crunch
   containers
   ppx_deriving
