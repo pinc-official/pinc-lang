@@ -51,15 +51,3 @@ jobs:
         run: |
           opam exec -- make
           opam exec -- make test
-          opam exec -- make test-coverage
-
-      - name: Send coverage
-        run: |
-          if [ -d /tmp/pinc-official ]; then rm -r /tmp/pinc-official; fi
-          mkdir -p /tmp/pinc-official
-          BISECT_FILE=/tmp/pinc-official/pinc-lang opam exec -- dune runtest --no-print-directory --instrument-with bisect_ppx --force
-          opam exec -- bisect-ppx-report html --coverage-path /tmp/pinc-official
-          opam exec -- bisect-ppx-report summary --coverage-path /tmp/pinc-official
-          opam exec -- bisect-ppx-report send-to Coveralls --coverage-path /tmp/pinc-official
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}

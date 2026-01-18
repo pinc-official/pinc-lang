@@ -31,6 +31,5 @@
   containers
   ppx_deriving
   ppx_gen_rec
-  (bisect_ppx :with-test)
   (ocaml-lsp-server :with-dev-setup)
   (ocamlformat :with-dev-setup)))
