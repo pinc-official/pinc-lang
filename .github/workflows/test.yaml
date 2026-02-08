@@ -45,7 +45,7 @@ jobs:
 
       - name: Install opam dependencies
         if: steps.cache-opam-dependencies.outputs.cache-hit != 'true'
-        run: opam install . --locked --deps-only --with-test --yes
+        run: opam install . --deps-only --with-test --yes
 
       - name: Test
         run: |

@@ -272,10 +272,10 @@ module Expect = struct
       |> Option.value ~default:[]
       |> List.map (fun (_, name, negated) -> (name, negated))
       |> List.partition_map (fun (name, negated) ->
-             if negated then
-               Either.left name
-             else
-               Either.right name)
+          if negated then
+            Either.left name
+          else
+            Either.right name)
     in
     let declarations =
       StringMap.fold

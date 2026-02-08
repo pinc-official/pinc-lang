@@ -154,64 +154,62 @@ and transform_tag env (tag : Parsetree.tag) =
           let initialValue =
             StringMap.find_opt "initialValue" attributes
             |> Option.map (function
-                 | { expression_desc = String []; expression_loc = _ } -> `String ""
-                 | {
-                     expression_desc =
-                       String [ { string_template_desc = StringText s; _ } ];
-                     expression_loc = _;
-                   } -> `String s
-                 | { expression_desc = _; expression_loc = loc } ->
-                     Pinc_Diagnostics.error
-                       loc
-                       "Expected attribute `initialValue` on tag `#String` to be of type \
-                        string")
+              | { expression_desc = String []; expression_loc = _ } -> `String ""
+              | {
+                  expression_desc = String [ { string_template_desc = StringText s; _ } ];
+                  expression_loc = _;
+                } -> `String s
+              | { expression_desc = _; expression_loc = loc } ->
+                  Pinc_Diagnostics.error
+                    loc
+                    "Expected attribute `initialValue` on tag `#String` to be of type \
+                     string")
           in
           (Some `String, Tag_String, initialValue)
       | P_Tag_Int ->
           let initialValue =
             StringMap.find_opt "initialValue" attributes
             |> Option.map (function
-                 | { expression_desc = Int i; expression_loc = _ } -> `Int i
-                 | { expression_desc = _; expression_loc = loc } ->
-                     Pinc_Diagnostics.error
-                       loc
-                       "Expected attribute `initialValue` on tag `#Int` to be of type int")
+              | { expression_desc = Int i; expression_loc = _ } -> `Int i
+              | { expression_desc = _; expression_loc = loc } ->
+                  Pinc_Diagnostics.error
+                    loc
+                    "Expected attribute `initialValue` on tag `#Int` to be of type int")
           in
           (Some `Int, Tag_Int, initialValue)
       | P_Tag_Float ->
           let initialValue =
             StringMap.find_opt "initialValue" attributes
             |> Option.map (function
-                 | { expression_desc = Float i; expression_loc = _ } -> `Float i
-                 | { expression_desc = _; expression_loc = loc } ->
-                     Pinc_Diagnostics.error
-                       loc
-                       "Expected attribute `initialValue` on tag `#Float` to be of type \
-                        float")
+              | { expression_desc = Float i; expression_loc = _ } -> `Float i
+              | { expression_desc = _; expression_loc = loc } ->
+                  Pinc_Diagnostics.error
+                    loc
+                    "Expected attribute `initialValue` on tag `#Float` to be of type \
+                     float")
           in
           (Some `Float, Tag_Float, initialValue)
       | P_Tag_Boolean ->
           let initialValue =
             StringMap.find_opt "initialValue" attributes
             |> Option.map (function
-                 | { expression_desc = Bool b; expression_loc = _ } -> `Boolean b
-                 | { expression_desc = _; expression_loc = loc } ->
-                     Pinc_Diagnostics.error
-                       loc
-                       "Expected attribute `initialValue` on tag `#Boolean` to be of \
-                        type boolean")
+              | { expression_desc = Bool b; expression_loc = _ } -> `Boolean b
+              | { expression_desc = _; expression_loc = loc } ->
+                  Pinc_Diagnostics.error
+                    loc
+                    "Expected attribute `initialValue` on tag `#Boolean` to be of type \
+                     boolean")
           in
           (Some `Boolean, Tag_Boolean, initialValue)
       | P_Tag_Array ->
           let initialValue =
             StringMap.find_opt "initialSize" attributes
             |> Option.map (function
-                 | { expression_desc = Int i; expression_loc = _ } -> `Int i
-                 | { expression_desc = _; expression_loc = loc } ->
-                     Pinc_Diagnostics.error
-                       loc
-                       "Expected attribute `initialSize` on tag `#Array` to be of type \
-                        int")
+              | { expression_desc = Int i; expression_loc = _ } -> `Int i
+              | { expression_desc = _; expression_loc = loc } ->
+                  Pinc_Diagnostics.error
+                    loc
+                    "Expected attribute `initialSize` on tag `#Array` to be of type int")
           in
           (Some `Array, Tag_Array, initialValue)
       | P_Tag_Record -> (Some `Record, Tag_Record, None)
@@ -225,22 +223,21 @@ and transform_tag env (tag : Parsetree.tag) =
           let initialValue =
             StringMap.find_opt "initialValue" attributes
             |> Option.map (function
-                 | { expression_desc = String []; expression_loc = _ } -> `String ""
-                 | {
-                     expression_desc =
-                       String [ { string_template_desc = StringText s; _ } ];
-                     expression_loc = _;
-                   } -> `String s
-                 | { expression_desc = Int i; expression_loc = _ } -> `Int i
-                 | { expression_desc = Float f; expression_loc = _ } -> `Float f
-                 | { expression_desc = Bool f; expression_loc = _ } -> `Boolean f
-                 | { expression_desc = _; expression_loc = loc } ->
-                     Pinc_Diagnostics.error
-                       loc
-                       ("Expected attribute `initialValue` on tag `#"
-                       ^ s
-                       ^ "` to be and immediate primitive value (string, int, float, \
-                          bool)."))
+              | { expression_desc = String []; expression_loc = _ } -> `String ""
+              | {
+                  expression_desc = String [ { string_template_desc = StringText s; _ } ];
+                  expression_loc = _;
+                } -> `String s
+              | { expression_desc = Int i; expression_loc = _ } -> `Int i
+              | { expression_desc = Float f; expression_loc = _ } -> `Float f
+              | { expression_desc = Bool f; expression_loc = _ } -> `Boolean f
+              | { expression_desc = _; expression_loc = loc } ->
+                  Pinc_Diagnostics.error
+                    loc
+                    ("Expected attribute `initialValue` on tag `#"
+                    ^ s
+                    ^ "` to be and immediate primitive value (string, int, float, bool)."
+                    ))
           in
           (Some (`Custom s), Tag_Custom s, initialValue)
     in
@@ -249,27 +246,27 @@ and transform_tag env (tag : Parsetree.tag) =
       attributes
       |> StringMap.find_opt "key"
       |> Option.map (function
-           | { expression_desc = String []; expression_loc = _ } -> ""
-           | {
-               expression_desc = String [ { string_template_desc = StringText s; _ } ];
-               expression_loc = loc;
-             } ->
-               if Helpers.is_valid_lowercase_ident s then
-                 s
-               else
-                 Pinc_Diagnostics.error
-                   loc
-                   "Tag keys may only contain ASCII characters (a-Z), numbers (0-9) and \
-                    underscores (_)."
-           | { expression_desc = String _; expression_loc = loc } ->
-               Pinc_Diagnostics.error
-                 loc
-                 "Expected attribute `key` on tag to be a plain string without \
-                  interpolations."
-           | { expression_desc = _; expression_loc = loc } ->
-               Pinc_Diagnostics.error
-                 loc
-                 "Expected attribute `key` on tag to be of type string")
+        | { expression_desc = String []; expression_loc = _ } -> ""
+        | {
+            expression_desc = String [ { string_template_desc = StringText s; _ } ];
+            expression_loc = loc;
+          } ->
+            if Helpers.is_valid_lowercase_ident s then
+              s
+            else
+              Pinc_Diagnostics.error
+                loc
+                "Tag keys may only contain ASCII characters (a-Z), numbers (0-9) and \
+                 underscores (_)."
+        | { expression_desc = String _; expression_loc = loc } ->
+            Pinc_Diagnostics.error
+              loc
+              "Expected attribute `key` on tag to be a plain string without \
+               interpolations."
+        | { expression_desc = _; expression_loc = loc } ->
+            Pinc_Diagnostics.error
+              loc
+              "Expected attribute `key` on tag to be of type string")
     in
     let key =
       match (key, current_identifier) with

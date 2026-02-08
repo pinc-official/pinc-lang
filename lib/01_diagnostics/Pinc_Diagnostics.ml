@@ -17,11 +17,11 @@ let print_code ~color ~loc source_code =
     source_code
     |> String.split_on_char '\n'
     |> List.filteri (fun index _line ->
-           let line_number = succ index in
-           line_number >= first_shown_line && line_number <= last_shown_line)
+        let line_number = succ index in
+        line_number >= first_shown_line && line_number <= last_shown_line)
     |> List.mapi (fun i line ->
-           let line_number = i + first_shown_line in
-           (line_number, line))
+        let line_number = i + first_shown_line in
+        (line_number, line))
   in
 
   let buf = Buffer.create 400 in

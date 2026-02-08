@@ -590,7 +590,9 @@ module Rules = struct
               t |> expect Token.RIGHT_PAREN;
               params)
             else (
-              match t |> parse_fn_param with
+              match
+                t |> parse_fn_param
+              with
               | Some p -> [ p ]
               | None ->
                   Diagnostics.error
@@ -734,7 +736,9 @@ module Rules = struct
       if t.token.typ = Token.SEMICOLON then
         left
       else (
-        match parse_binary_operator t with
+        match
+          parse_binary_operator t
+        with
         | None -> left
         | Some operator ->
             let precedence = Operators.Binary.get_precedence operator in
@@ -837,23 +841,23 @@ let parse_source source =
 let stdlib =
   Pinc_stdlib.file_list
   |> List.map (fun filename ->
-         filename |> Pinc_stdlib.read |> Option.get |> Pinc_Source.of_string ~filename)
+      filename |> Pinc_stdlib.read |> Option.get |> Pinc_Source.of_string ~filename)
 ;;
 
 let parse sources : Parsetree.t =
   stdlib @ sources
   |> ListLabels.fold_left ~init:StringMap.empty ~f:(fun acc source ->
-         let decls = parse_source source in
-         ListLabels.fold_left decls ~init:acc ~f:(fun acc (key, decl) ->
-             match StringMap.find_opt key acc with
-             | None -> StringMap.add key decl acc
-             | Some _ ->
-                 let message =
-                   Printf.sprintf
-                     "Found multiple declarations with identifier `%s`.\n\
-                      Every declaration has to have a unique name in pinc."
-                     key
-                 in
+      let decls = parse_source source in
+      ListLabels.fold_left decls ~init:acc ~f:(fun acc (key, decl) ->
+          match StringMap.find_opt key acc with
+          | None -> StringMap.add key decl acc
+          | Some _ ->
+              let message =
+                Printf.sprintf
+                  "Found multiple declarations with identifier `%s`.\n\
+                   Every declaration has to have a unique name in pinc."
+                  key
+              in
 
-                 Pinc_Diagnostics.error decl.Parsetree.declaration_loc message))
+              Pinc_Diagnostics.error decl.Parsetree.declaration_loc message))
 ;;

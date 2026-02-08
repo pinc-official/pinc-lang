@@ -22,17 +22,17 @@ let rec to_string value =
       let buf = Buffer.create 200 in
       l
       |> Array.iteri (fun i it ->
-             if i <> 0 then
-               Buffer.add_char buf '\n';
-             Buffer.add_string buf (to_string it));
+          if i <> 0 then
+            Buffer.add_char buf '\n';
+          Buffer.add_string buf (to_string it));
       Buffer.contents buf
   | Record m ->
       let b = Buffer.create 1024 in
       m
       |> StringMap.to_seq
       |> Seq.iter (fun (_key, value) ->
-             Buffer.add_string b (to_string value);
-             Buffer.add_char b '\n');
+          Buffer.add_string b (to_string value);
+          Buffer.add_char b '\n');
       Buffer.contents b
   | HtmlTemplateNode (tag, attributes, children, self_closing) ->
       let buf = Buffer.create 128 in
@@ -41,26 +41,26 @@ let rec to_string value =
       if not (StringMap.is_empty attributes) then
         attributes
         |> StringMap.iter (fun key value ->
-               match value.value_desc with
-               | Null -> ()
-               | Portal _
-               | Function _
-               | String _
-               | Int _
-               | Char _
-               | Float _
-               | Bool _
-               | Array _
-               | Record _
-               | HtmlTemplateNode _
-               | ComponentTemplateNode _
-               | DefinitionInfo _ ->
-                   Buffer.add_char buf ' ';
-                   Buffer.add_string buf key;
-                   Buffer.add_char buf '=';
-                   Buffer.add_char buf '"';
-                   Buffer.add_string buf (value |> to_string);
-                   Buffer.add_char buf '"');
+            match value.value_desc with
+            | Null -> ()
+            | Portal _
+            | Function _
+            | String _
+            | Int _
+            | Char _
+            | Float _
+            | Bool _
+            | Array _
+            | Record _
+            | HtmlTemplateNode _
+            | ComponentTemplateNode _
+            | DefinitionInfo _ ->
+                Buffer.add_char buf ' ';
+                Buffer.add_string buf key;
+                Buffer.add_char buf '=';
+                Buffer.add_char buf '"';
+                Buffer.add_string buf (value |> to_string);
+                Buffer.add_char buf '"');
       if self_closing && HTML.is_void_el tag then
         Buffer.add_string buf " />"
       else (

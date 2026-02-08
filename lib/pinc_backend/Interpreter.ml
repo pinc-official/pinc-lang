@@ -33,24 +33,24 @@ let rec get_uppercase_identifier_typ ~state ident =
             declaration_attributes
             |> StringMap.find_opt "single"
             |> Option.map (fun expr ->
-                   expr
-                   |> eval_expression
-                        ~state:
-                          (State.make
-                             ~root_tag_data_provider:state.root_tag_data_provider
-                             ~tag_data_provider:state.tag_data_provider
-                             ~root_tag_meta_provider:state.root_tag_meta_provider
-                             ~tag_meta_provider:state.tag_meta_provider
-                             ~tag_meta:state.tag_meta
-                             ~mode:state.mode
-                             state.declarations)
-                   |> State.get_output
-                   |> function
-                   | { value_desc = Bool b; _ } -> b
-                   | { value_loc; _ } ->
-                       Pinc_Diagnostics.error
-                         value_loc
-                         "The attribute `single` has to be a boolean.")
+                expr
+                |> eval_expression
+                     ~state:
+                       (State.make
+                          ~root_tag_data_provider:state.root_tag_data_provider
+                          ~tag_data_provider:state.tag_data_provider
+                          ~root_tag_meta_provider:state.root_tag_meta_provider
+                          ~tag_meta_provider:state.tag_meta_provider
+                          ~tag_meta:state.tag_meta
+                          ~mode:state.mode
+                          state.declarations)
+                |> State.get_output
+                |> function
+                | { value_desc = Bool b; _ } -> b
+                | { value_loc; _ } ->
+                    Pinc_Diagnostics.error
+                      value_loc
+                      "The attribute `single` has to be a boolean.")
             |> Option.value ~default:false
           in
           let store = Type_Store.make ~singleton ~body:declaration_body in
@@ -296,18 +296,18 @@ and eval_string_template ~state template =
        ~output:
          (template
          |> List.mapi (fun index string_template ->
-                if index = 0 then
-                  start_loc := string_template.Ast.string_template_loc
-                else
-                  end_loc := string_template.Ast.string_template_loc;
+             if index = 0 then
+               start_loc := string_template.Ast.string_template_loc
+             else
+               end_loc := string_template.Ast.string_template_loc;
 
-                match string_template.Ast.string_template_desc with
-                | StringText s -> s
-                | StringInterpolation (Lowercase_Id (id, loc)) ->
-                    id
-                    |> eval_lowercase_identifier ~loc ~state
-                    |> State.get_output
-                    |> Value.to_string)
+             match string_template.Ast.string_template_desc with
+             | StringText s -> s
+             | StringInterpolation (Lowercase_Id (id, loc)) ->
+                 id
+                 |> eval_lowercase_identifier ~loc ~state
+                 |> State.get_output
+                 |> Value.to_string)
          |> String.concat ""
          |> Helpers.Value.string ~loc:(Location.merge ~s:!start_loc ~e:!end_loc ()))
 
@@ -363,12 +363,12 @@ and eval_function_declaration ~state ~loc ~identifier ~parameters body =
 
   identifier
   |> Option.iter (function Ast.Lowercase_Id (ident, _) ->
-         state
-         |> State.add_value_to_function_scopes
-              ~ident
-              ~value:fn
-              ~is_optional:false
-              ~is_mutable:false);
+      state
+      |> State.add_value_to_function_scopes
+           ~ident
+           ~value:fn
+           ~is_optional:false
+           ~is_mutable:false);
 
   state |> State.add_output ~output:fn
 
@@ -1295,12 +1295,12 @@ and eval_template ~state template =
               |> StringMap.find_opt (key |> List.hd)
               |> Fun.flip Option.bind (Tag.find_path (key |> List.tl))
               |> Fun.flip Option.bind (function
-                   | { value_desc = Array a; _ } ->
-                       a
-                       |> Array.mapi (fun i _ -> Helpers.Value.string (string_of_int i))
-                       |> Helpers.Value.array
-                       |> Option.some
-                   | _ -> None)
+                | { value_desc = Array a; _ } ->
+                    a
+                    |> Array.mapi (fun i _ -> Helpers.Value.string (string_of_int i))
+                    |> Helpers.Value.array
+                    |> Option.some
+                | _ -> None)
           | _ ->
               component_tag_attributes
               |> StringMap.find_opt (key |> List.hd)
@@ -1362,14 +1362,14 @@ let eval_meta sources =
   let open Ast in
   declarations
   |> StringMap.map (function
-       | { declaration_type = Declaration_Component { declaration_attributes; _ }; _ } ->
-           `Component (eval declaration_attributes)
-       | { declaration_type = Declaration_Library { declaration_attributes; _ }; _ } ->
-           `Library (eval declaration_attributes)
-       | { declaration_type = Declaration_Page { declaration_attributes; _ }; _ } ->
-           `Page (eval declaration_attributes)
-       | { declaration_type = Declaration_Store { declaration_attributes; _ }; _ } ->
-           `Store (eval declaration_attributes))
+    | { declaration_type = Declaration_Component { declaration_attributes; _ }; _ } ->
+        `Component (eval declaration_attributes)
+    | { declaration_type = Declaration_Library { declaration_attributes; _ }; _ } ->
+        `Library (eval declaration_attributes)
+    | { declaration_type = Declaration_Page { declaration_attributes; _ }; _ } ->
+        `Page (eval declaration_attributes)
+    | { declaration_type = Declaration_Store { declaration_attributes; _ }; _ } ->
+        `Store (eval declaration_attributes))
 ;;
 
 let eval_declarations
