@@ -1,6 +1,8 @@
 module Location = Location
 module Source = Pinc_Source
 
+exception Pinc_error
+
 let print_code ~color ~loc source_code =
   let context_lines = 1 in
   let start_pos = loc |> Location.get_start in
@@ -131,7 +133,7 @@ let error location message =
   let ppf = Format.err_formatter in
   set_renderer ppf;
   Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`error) location message;
-  exit 1
+  raise Pinc_error
 ;;
 
 let warn location message =

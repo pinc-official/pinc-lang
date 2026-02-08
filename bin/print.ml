@@ -25,10 +25,12 @@ let main =
   let directory = Sys.argv.(1) in
   let root = Sys.argv.(2) in
   let declarations = get_declarations_from ~directory () in
-  declarations
-  |> Interpreter.eval_sources ~root ~tag_data_provider:Helpers.noop_data_provider
-  |> fst
-  |> print_endline
+  try
+    declarations
+    |> Interpreter.eval_sources ~root ~tag_data_provider:Helpers.noop_data_provider
+    |> fst
+    |> print_endline
+  with Pinc_Diagnostics.Pinc_error -> exit 1
 ;;
 
 let () = main
