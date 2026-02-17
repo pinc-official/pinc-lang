@@ -1,13 +1,14 @@
+module Diagnostics = Pinc_Diagnostics
 module Types = Types
 module Ast = Pinc_Parser.Ast
 open Types
 
 val eval_meta :
   Pinc_Source.t list ->
-  [> `Component of value StringMap.t
-  | `Library of value StringMap.t
-  | `Page of value StringMap.t
-  | `Store of value StringMap.t
+  [> `Component of Diagnostics.Location.t * value StringMap.t
+  | `Library of Diagnostics.Location.t * value StringMap.t
+  | `Page of Diagnostics.Location.t * value StringMap.t
+  | `Store of Diagnostics.Location.t * value StringMap.t
   ]
   StringMap.t
 
