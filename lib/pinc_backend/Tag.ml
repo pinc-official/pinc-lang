@@ -653,8 +653,23 @@ module Tag_Array = struct
     let output, child_meta =
       data
       |> Option.map (function
-        | { value_desc = Array _; _ } as x ->
-            Helpers.Expect.(required (array (required string))) x
+        | { value_desc = Array _; value_loc } as x -> begin
+            match Helpers.Expect.(required (array (required string))) x with
+            | Ok v -> v
+            | Error (`UnexpectedType value_loc) ->
+                Pinc_Diagnostics.error
+                  value_loc
+                  (Printf.sprintf
+                     "Expected attribute %s to be an array of keys."
+                     (key |> List.rev |> List.hd))
+            | Error `Required ->
+                Pinc_Diagnostics.error
+                  value_loc
+                  (Printf.sprintf
+                     "Expected attribute %s to be an array of keys. Did not recieve the \
+                      array at all."
+                     (key |> List.rev |> List.hd))
+          end
         | { value_desc = _; value_loc } ->
             Pinc_Diagnostics.error
               value_loc

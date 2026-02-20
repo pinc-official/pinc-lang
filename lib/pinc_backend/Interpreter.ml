@@ -313,7 +313,7 @@ and eval_string_template ~state template =
          |> Helpers.Value.string ~loc:(Location.merge ~s:!start_loc ~e:!end_loc ()))
 
 and eval_external_function_declaration ~state ~loc ~parameters ~identifier name =
-  let (Lowercase_Id (ident, _ident_loc)) = identifier in
+  let (Lowercase_Id (ident, ident_loc)) = identifier in
   let external_function =
     match Externals.all |> StringMap.find_opt name with
     | Some fn -> fn
@@ -323,7 +323,7 @@ and eval_external_function_declaration ~state ~loc ~parameters ~identifier name 
           (Printf.sprintf "The external function with name `%s` was not found." name)
   in
   let rec exec ~arguments ~state () =
-    let state = external_function ~arguments state in
+    let state = external_function ~loc:ident_loc ~arguments state in
     state |> State.get_output
   and fn = { value_loc = loc; value_desc = Function { parameters; state; exec } } in
 

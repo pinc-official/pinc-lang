@@ -1,3 +1,5 @@
+let ( let* ) = Result.bind
+
 module Value = struct
   open Types.Type_Value
 
@@ -43,232 +45,103 @@ module Expect = struct
 
   let required fn value =
     match fn value with
-    | None -> Pinc_Diagnostics.(error Location.none "required a value, but got null")
-    | Some v -> v
+    | Ok None -> Result.error `Required
+    | Ok (Some v) -> Result.ok v
+    | Error _ as e -> e
   ;;
 
   let maybe fn value =
     match fn value with
-    | exception _ -> None
-    | None -> None
-    | Some _ as v -> v
+    | Error _ -> None
+    | Ok None -> None
+    | Ok (Some _ as v) -> v
   ;;
 
-  let attribute key fn value = Option.bind (StringMap.find_opt key value) fn
-  let any_value v = v
+  let attribute key fn value =
+    let value = StringMap.find_opt key value in
+    match value with
+    | None -> Ok None
+    | Some v -> fn v
+  ;;
+
+  let any_value v = Ok v
 
   let string v =
     match v.value_desc with
-    | Null -> None
-    | Portal _ ->
-        Pinc_Diagnostics.(error Location.none "expected string, got portal value")
-    | String s -> Some s
-    | Int _ -> Pinc_Diagnostics.(error Location.none "expected string, got int")
-    | Char _ -> Pinc_Diagnostics.(error Location.none "expected string, got char")
-    | Float _ -> Pinc_Diagnostics.(error Location.none "expected string, got float")
-    | Bool _ -> Pinc_Diagnostics.(error Location.none "expected string, got bool")
-    | Array _ -> Pinc_Diagnostics.(error Location.none "expected string, got array")
-    | Record _ -> Pinc_Diagnostics.(error Location.none "expected string, got record")
-    | Function _ ->
-        Pinc_Diagnostics.(error Location.none "expected string, got function definition")
-    | DefinitionInfo _ ->
-        Pinc_Diagnostics.(error Location.none "expected string, got definition info")
-    | HtmlTemplateNode _ ->
-        Pinc_Diagnostics.(error Location.none "expected string, got HTML template node")
-    | ComponentTemplateNode _ ->
-        Pinc_Diagnostics.(
-          error Location.none "expected string, got component template node")
+    | Null -> Result.ok None
+    | String s -> Result.ok (Some s)
+    | _ -> Result.error (`UnexpectedType v.value_loc)
   ;;
 
   let int v =
     match v.value_desc with
-    | Null -> None
-    | Portal _ -> Pinc_Diagnostics.(error Location.none "expected int, got portal value")
-    | String _ -> Pinc_Diagnostics.(error Location.none "expected int, got string")
-    | Int i -> Some i
-    | Char _ -> Pinc_Diagnostics.(error Location.none "expected int, got char")
-    | Float _ -> Pinc_Diagnostics.(error Location.none "expected int, got float")
-    | Bool _ -> Pinc_Diagnostics.(error Location.none "expected int, got bool")
-    | Array _ -> Pinc_Diagnostics.(error Location.none "expected int, got array")
-    | Record _ -> Pinc_Diagnostics.(error Location.none "expected int, got record")
-    | Function _ ->
-        Pinc_Diagnostics.(error Location.none "expected int, got function definition")
-    | DefinitionInfo _ ->
-        Pinc_Diagnostics.(error Location.none "expected int, got definition info")
-    | HtmlTemplateNode _ ->
-        Pinc_Diagnostics.(error Location.none "expected int, got HTML template node")
-    | ComponentTemplateNode _ ->
-        Pinc_Diagnostics.(error Location.none "expected int, got component template node")
+    | Null -> Result.ok None
+    | Int i -> Result.ok (Some i)
+    | _ -> Result.error (`UnexpectedType v.value_loc)
   ;;
 
   let float v =
     match v.value_desc with
-    | Null -> None
-    | Portal _ ->
-        Pinc_Diagnostics.(error Location.none "expected float, got portal value")
-    | String _ -> Pinc_Diagnostics.(error Location.none "expected float, got string")
-    | Int _ -> Pinc_Diagnostics.(error Location.none "expected float, got int")
-    | Char _ -> Pinc_Diagnostics.(error Location.none "expected float, got char")
-    | Float f -> Some f
-    | Bool _ -> Pinc_Diagnostics.(error Location.none "expected float, got bool")
-    | Array _ -> Pinc_Diagnostics.(error Location.none "expected float, got array")
-    | Record _ -> Pinc_Diagnostics.(error Location.none "expected float, got record")
-    | Function _ ->
-        Pinc_Diagnostics.(error Location.none "expected float, got function definition")
-    | DefinitionInfo _ ->
-        Pinc_Diagnostics.(error Location.none "expected float, got definition info")
-    | HtmlTemplateNode _ ->
-        Pinc_Diagnostics.(error Location.none "expected float, got HTML template node")
-    | ComponentTemplateNode _ ->
-        Pinc_Diagnostics.(
-          error Location.none "expected float, got component template node")
+    | Null -> Result.ok None
+    | Float f -> Result.ok (Some f)
+    | _ -> Result.error (`UnexpectedType v.value_loc)
   ;;
 
   let bool v =
     match v.value_desc with
-    | Null -> None
-    | Portal _ -> Pinc_Diagnostics.(error Location.none "expected bool, got portal value")
-    | String _ -> Pinc_Diagnostics.(error Location.none "expected bool, got string")
-    | Int _ -> Pinc_Diagnostics.(error Location.none "expected bool, got int")
-    | Char _ -> Pinc_Diagnostics.(error Location.none "expected bool, got char")
-    | Float _ -> Pinc_Diagnostics.(error Location.none "expected bool, got float")
-    | Bool b -> Some b
-    | Array _ -> Pinc_Diagnostics.(error Location.none "expected bool, got array")
-    | Record _ -> Pinc_Diagnostics.(error Location.none "expected bool, got record")
-    | Function _ ->
-        Pinc_Diagnostics.(error Location.none "expected bool, got function definition")
-    | DefinitionInfo _ ->
-        Pinc_Diagnostics.(error Location.none "expected bool, got definition info")
-    | HtmlTemplateNode _ ->
-        Pinc_Diagnostics.(error Location.none "expected bool, got HTML template node")
-    | ComponentTemplateNode _ ->
-        Pinc_Diagnostics.(
-          error Location.none "expected bool, got component template node")
-  ;;
-
-  let array fn v =
-    match v.value_desc with
-    | Null -> None
-    | Portal _ ->
-        Pinc_Diagnostics.(error Location.none "expected array, got portal value")
-    | String _ -> Pinc_Diagnostics.(error Location.none "expected array, got string")
-    | Int _ -> Pinc_Diagnostics.(error Location.none "expected array, got int")
-    | Char _ -> Pinc_Diagnostics.(error Location.none "expected array, got char")
-    | Float _ -> Pinc_Diagnostics.(error Location.none "expected array, got float")
-    | Bool _ -> Pinc_Diagnostics.(error Location.none "expected array, bool")
-    | Array a -> Some (a |> Array.map fn)
-    | Record _ -> Pinc_Diagnostics.(error Location.none "expected array, got record")
-    | Function _ ->
-        Pinc_Diagnostics.(error Location.none "expected array, got function definition")
-    | DefinitionInfo _ ->
-        Pinc_Diagnostics.(error Location.none "expected array, got definition info")
-    | HtmlTemplateNode _ ->
-        Pinc_Diagnostics.(error Location.none "expected array, got HTML template node")
-    | ComponentTemplateNode _ ->
-        Pinc_Diagnostics.(
-          error Location.none "expected array, got component template node")
+    | Null -> Result.ok None
+    | Bool b -> Result.ok (Some b)
+    | _ -> Result.error (`UnexpectedType v.value_loc)
   ;;
 
   let list fn v =
     match v.value_desc with
-    | Null -> None
-    | Portal _ ->
-        Pinc_Diagnostics.(error Location.none "expected array, got portal value")
-    | String _ -> Pinc_Diagnostics.(error Location.none "expected array, got string")
-    | Int _ -> Pinc_Diagnostics.(error Location.none "expected array, got int")
-    | Char _ -> Pinc_Diagnostics.(error Location.none "expected array, got char")
-    | Float _ -> Pinc_Diagnostics.(error Location.none "expected array, got float")
-    | Bool _ -> Pinc_Diagnostics.(error Location.none "expected array, bool")
-    | Array a -> Some (a |> Array.to_list |> List.map fn)
-    | Record _ -> Pinc_Diagnostics.(error Location.none "expected array, got record")
-    | Function _ ->
-        Pinc_Diagnostics.(error Location.none "expected array, got function definition")
-    | DefinitionInfo _ ->
-        Pinc_Diagnostics.(error Location.none "expected array, got definition info")
-    | HtmlTemplateNode _ ->
-        Pinc_Diagnostics.(error Location.none "expected array, got HTML template node")
-    | ComponentTemplateNode _ ->
-        Pinc_Diagnostics.(
-          error Location.none "expected array, got component template node")
+    | Null -> Result.ok None
+    | Array a ->
+        Array.fold_left
+          (fun acc x ->
+            match (fn x, acc) with
+            | Error e, _ | _, Error e -> Error e
+            | Ok v, Ok acc -> Ok (v :: acc))
+          (Ok [])
+          a
+        |> Result.map (fun l -> l |> List.rev |> Option.some)
+    | _ -> Result.error (`UnexpectedType v.value_loc)
   ;;
+
+  let array fn v = list fn v |> Result.map (Option.map Array.of_list)
 
   let record v =
     match v.value_desc with
-    | Null -> None
-    | Portal _ ->
-        Pinc_Diagnostics.(error Location.none "expected record, got portal value")
-    | String _ -> Pinc_Diagnostics.(error Location.none "expected record, got string")
-    | Int _ -> Pinc_Diagnostics.(error Location.none "expected record, got int")
-    | Char _ -> Pinc_Diagnostics.(error Location.none "expected record, got char")
-    | Float _ -> Pinc_Diagnostics.(error Location.none "expected record, got float")
-    | Bool _ -> Pinc_Diagnostics.(error Location.none "expected record, got bool")
-    | Array _ -> Pinc_Diagnostics.(error Location.none "expected record, got array")
-    | Record r -> Some r
-    | Function _ ->
-        Pinc_Diagnostics.(error Location.none "expected record, got function definition")
-    | DefinitionInfo _ ->
-        Pinc_Diagnostics.(error Location.none "expected record, got definition info")
-    | HtmlTemplateNode _ ->
-        Pinc_Diagnostics.(error Location.none "expected record, got HTML template node")
-    | ComponentTemplateNode _ ->
-        Pinc_Diagnostics.(
-          error Location.none "expected record, got component template node")
+    | Null -> Result.ok None
+    | Record r -> Result.ok (Some r)
+    | _ -> Result.error (`UnexpectedType v.value_loc)
   ;;
 
   let definition_info ?(typ = `All) v =
     match v.value_desc with
-    | Null -> None
-    | Portal _ ->
-        Pinc_Diagnostics.(
-          error Location.none "expected definition info, got portal value")
-    | String _ ->
-        Pinc_Diagnostics.(error Location.none "expected definition info, got string")
-    | Int _ -> Pinc_Diagnostics.(error Location.none "expected definition info, got int")
-    | Char _ ->
-        Pinc_Diagnostics.(error Location.none "expected definition info, got char")
-    | Float _ ->
-        Pinc_Diagnostics.(error Location.none "expected definition info, got float")
-    | Bool _ ->
-        Pinc_Diagnostics.(error Location.none "expected definition info, got bool")
-    | Array _ ->
-        Pinc_Diagnostics.(error Location.none "expected definition info, got array")
-    | Record _ ->
-        Pinc_Diagnostics.(error Location.none "expected definition info, got record")
-    | Function _ ->
-        Pinc_Diagnostics.(
-          error Location.none "expected definition info, got function definition")
+    | Null -> Result.ok None
     | DefinitionInfo (name, def_typ, negated) ->
-        let typ =
+        let* typ =
           match (typ, def_typ) with
-          | (`Component | `All), Some Definition_Component -> `Component
-          | (`Page | `All), Some Definition_Page -> `Page
-          | (`Library | `All), Some (Definition_Library _) -> `Library
-          | (`Store | `All), Some (Definition_Store _) -> `Store
-          | _, None ->
-              Pinc_Diagnostics.(
-                error Location.none ("definition \"" ^ name ^ "\" does not exist"))
-          | `Component, _ ->
-              Pinc_Diagnostics.(error Location.none "expected a component definition")
-          | `Page, _ ->
-              Pinc_Diagnostics.(error Location.none "expected a page definition")
-          | `Library, _ ->
-              Pinc_Diagnostics.(error Location.none "expected a library definition")
-          | `Store, _ ->
-              Pinc_Diagnostics.(error Location.none "expected a store definition")
+          | (`Component | `All), Some Definition_Component -> Ok `Component
+          | (`Page | `All), Some Definition_Page -> Ok `Page
+          | (`Library | `All), Some (Definition_Library _) -> Ok `Library
+          | (`Store | `All), Some (Definition_Store _) -> Ok `Store
+          | _, None -> Result.error (`MissingDefinition v.value_loc)
+          | `Component, _ -> Result.error (`UnexpectedType v.value_loc)
+          | `Page, _ -> Result.error (`UnexpectedType v.value_loc)
+          | `Library, _ -> Result.error (`UnexpectedType v.value_loc)
+          | `Store, _ -> Result.error (`UnexpectedType v.value_loc)
         in
-        Some (typ, name, negated = `Negated)
-    | HtmlTemplateNode _ ->
-        Pinc_Diagnostics.(
-          error Location.none "expected definition info, got HTML template node")
-    | ComponentTemplateNode _ ->
-        Pinc_Diagnostics.(
-          error Location.none "expected definition info, got component template node")
+        Result.ok (Some (typ, name, negated = `Negated))
+    | _ -> Result.error (`UnexpectedType v.value_loc)
   ;;
 
   let constraints ~declarations ?(typ = `All) v =
+    let* l = v |> list (required (definition_info ~typ)) in
     let disallowed, allowed =
-      v
-      |> list (required (definition_info ~typ))
+      l
       |> Option.value ~default:[]
       |> List.map (fun (_, name, negated) -> (name, negated))
       |> List.partition_map (fun (name, negated) ->
@@ -298,7 +171,7 @@ module Expect = struct
       | allowed, _ -> declarations |> List.filter (fun id -> List.mem id allowed)
     in
 
-    Some result
+    Result.ok @@ Some result
   ;;
 end
 
