@@ -65,7 +65,7 @@ let expect token t =
   if test then
     next t
   else
-    Diagnostics.error
+    Diagnostics.raise_error
       t.token.location
       (Printf.sprintf
          "Expected: `%s`, got `%s`"
@@ -96,7 +96,7 @@ module Helpers = struct
         next t;
         (i, location)
     | token when typ = `Lower ->
-        Diagnostics.error
+        Diagnostics.raise_error
           location
           (match (error_message, token) with
           | Some message, _ -> message
@@ -110,7 +110,7 @@ module Helpers = struct
               "Expected to see a lowercase identifier at this point. Instead saw "
               ^ Token.to_string t)
     | token when typ = `Upper ->
-        Diagnostics.error
+        Diagnostics.raise_error
           location
           (match (error_message, token) with
           | Some message, _ -> message
@@ -122,7 +122,7 @@ module Helpers = struct
               ^ "?"
           | None, _ -> "Expected to see an uppercase identifier at this point.")
     | token ->
-        Diagnostics.error
+        Diagnostics.raise_error
           location
           (match (error_message, token) with
           | Some message, _ -> message
@@ -139,7 +139,7 @@ module Helpers = struct
           if has_sep || acc = [] then
             loop (r :: acc)
           else
-            Diagnostics.error
+            Diagnostics.raise_error
               t.token.location
               ("Expected list to be separated by `" ^ Token.to_string sep ^ "`")
       | None -> List.rev acc
@@ -263,7 +263,7 @@ module Rules = struct
       if t |> optional Token.DOUBLE_COLON then (
         let expr = parse_expression t in
         if Option.is_none expr then
-          Diagnostics.error
+          Diagnostics.raise_error
             (Location.merge ~s:start_token.location ~e:t.token.location ())
             "This tag transformer does not have a valid body.";
         expr)
@@ -449,7 +449,7 @@ module Rules = struct
               Some
                 (Parsetree.P_MutableLetStatement (P_Lowercase_Id identifier, expression))
           | _, _, None ->
-              Diagnostics.error
+              Diagnostics.raise_error
                 (Location.merge ~s:start_token.location ~e:end_token.location ())
                 "Expected expression as right hand side of let declaration")
       (* PARSING MUTATION STATEMENT *)
@@ -463,7 +463,7 @@ module Rules = struct
             match parse_expression t with
             | Some expression -> expression
             | None ->
-                Diagnostics.error
+                Diagnostics.raise_error
                   (Location.merge ~s:start_token.location ~e:end_token.location ())
                   "Expected expression as right hand side of mutation statement"
           in
@@ -481,7 +481,7 @@ module Rules = struct
               match parse_expression t with
               | Some expression -> expression
               | None ->
-                  Diagnostics.error
+                  Diagnostics.raise_error
                     t.token.location
                     "Expected expression as right hand side of use statement"
             in
@@ -491,7 +491,7 @@ module Rules = struct
               match parse_expression t with
               | Some expression -> expression
               | None ->
-                  Diagnostics.error
+                  Diagnostics.raise_error
                     t.token.location
                     "Expected to see a library next to the use keyword."
             in
@@ -572,7 +572,9 @@ module Rules = struct
           let body = parse_block t in
           match body with
           | None ->
-              Diagnostics.error t.token.location "Expected expression as body of for loop"
+              Diagnostics.raise_error
+                t.token.location
+                "Expected expression as body of for loop"
           | Some body ->
               Parsetree.P_ForInExpression
                 { index; iterator; reverse; iterable = expr1; body }
@@ -595,7 +597,7 @@ module Rules = struct
               with
               | Some p -> [ p ]
               | None ->
-                  Diagnostics.error
+                  Diagnostics.raise_error
                     fn_loc
                     "Expected this function to have exactly one parameter,\n\
                      or a `()` if no parameter is needed.")
@@ -762,7 +764,7 @@ module Rules = struct
                     in
                     match parse_expression ~prio:new_prio t with
                     | None ->
-                        Diagnostics.error
+                        Diagnostics.raise_error
                           t.token.location
                           ("Expected expression on right hand side of `"
                           ^ Operators.Binary.to_string operator
@@ -806,7 +808,9 @@ module Rules = struct
           let declaration_body = t |> parse_expression in
           match declaration_body with
           | None ->
-              Diagnostics.error t.token.location "Expected declaration to have a body"
+              Diagnostics.raise_error
+                t.token.location
+                "Expected declaration to have a body"
           | Some declaration_body -> (
               let declaration_desc =
                 Parsetree.{ declaration_attributes; declaration_body }
@@ -823,7 +827,7 @@ module Rules = struct
               | _ -> assert false))
       | Token.END_OF_INPUT -> None
       | _ ->
-          Diagnostics.error
+          Diagnostics.raise_error
             t.token.location
             "Expected to see a declaration (page, component, store or library)."
     in
@@ -859,5 +863,5 @@ let parse sources : Parsetree.t =
                   key
               in
 
-              Pinc_Diagnostics.error decl.Parsetree.declaration_loc message))
+              Pinc_Diagnostics.raise_error decl.Parsetree.declaration_loc message))
 ;;

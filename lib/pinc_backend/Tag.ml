@@ -25,14 +25,14 @@ module Utils = struct
           let arguments = StringMap.singleton value_param value in
           state |> State.add_output ~output:(exec ~arguments ~state:fn_state ())
       | Function { parameters; state = _; exec = _ } ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             transformer.expression_loc
             (Printf.sprintf
                "A transformer has to accept exactly one argument (the tag value).\n\
                 Here it was provided %i."
                (List.length parameters))
       | _ ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             transformer.expression_loc
             "Trying to assign a non function value to a transformer."
     in
@@ -58,7 +58,7 @@ module Utils = struct
     in
 
     if not !attached then
-      Pinc_Diagnostics.error loc err;
+      Pinc_Diagnostics.raise_error loc err;
 
     meta
   ;;
@@ -74,7 +74,7 @@ module Tag_String = struct
         | { value_desc = String _; _ } as value -> value
         | { value_desc = Null; _ } as value when not required -> value
         | { value_desc = _; value_loc } as value ->
-            Pinc_Diagnostics.error
+            Pinc_Diagnostics.raise_error
               value_loc
               (Printf.sprintf
                  "Expected attribute %s to be of type string,\ninstead got %s."
@@ -99,7 +99,7 @@ module Tag_Int = struct
         | { value_desc = Int _; _ } as value -> value
         | { value_desc = Null; _ } as value when not required -> value
         | { value_desc = _; value_loc } as value ->
-            Pinc_Diagnostics.error
+            Pinc_Diagnostics.raise_error
               value_loc
               (Printf.sprintf
                  "Expected attribute %s to be of type string,\ninstead got %s."
@@ -124,7 +124,7 @@ module Tag_Float = struct
         | { value_desc = Float _; _ } as value -> value
         | { value_desc = Null; _ } as value when not required -> value
         | { value_desc = _; value_loc } as value ->
-            Pinc_Diagnostics.error
+            Pinc_Diagnostics.raise_error
               value_loc
               (Printf.sprintf
                  "Expected attribute %s to be of type string,\ninstead got %s."
@@ -149,7 +149,7 @@ module Tag_Boolean = struct
         | { value_desc = Bool _; _ } as value -> value
         | { value_desc = Null; _ } as value when not required -> value
         | { value_desc = _; value_loc } as value ->
-            Pinc_Diagnostics.error
+            Pinc_Diagnostics.raise_error
               value_loc
               (Printf.sprintf
                  "Expected attribute %s to be of type string,\ninstead got %s."
@@ -188,11 +188,13 @@ module Tag_Portal = struct
       let push =
         match attributes |> StringMap.find_opt "push" with
         | None ->
-            Pinc_Diagnostics.error
+            Pinc_Diagnostics.raise_error
               t.tag_loc
               "The attribute `push` is required when pushing a value into a portal."
         | Some { value_desc = Function _; value_loc } ->
-            Pinc_Diagnostics.error value_loc "A function can not be put into a portal."
+            Pinc_Diagnostics.raise_error
+              value_loc
+              "A function can not be put into a portal."
         | Some value -> value
       in
       Hashtbl.add portals key push);
@@ -214,11 +216,13 @@ module Tag_Context = struct
     let value =
       attributes |> StringMap.find_opt "value" |> function
       | None ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             t.tag_loc
             "attribute value is required when setting a context."
       | Some { value_desc = Function _; value_loc } ->
-          Pinc_Diagnostics.error value_loc "a function can not be put into a context."
+          Pinc_Diagnostics.raise_error
+            value_loc
+            "a function can not be put into a context."
       | Some value -> value
     in
 
@@ -289,7 +293,7 @@ module Tag_Store = struct
     |> function
     | { value_desc = Record _; _ } as v -> v
     | { value_desc = _; value_loc } ->
-        Pinc_Diagnostics.error
+        Pinc_Diagnostics.raise_error
           value_loc
           (Printf.sprintf
              "The definition of store `%s` needs to be a record describing the shape and \
@@ -300,7 +304,8 @@ module Tag_Store = struct
   let eval ~eval_expression ~state ~required ~attributes tag key =
     let name, store =
       match attributes |> StringMap.find_opt "id" with
-      | None -> Pinc_Diagnostics.error tag.tag_loc "Attribute `id` is required on #Store."
+      | None ->
+          Pinc_Diagnostics.raise_error tag.tag_loc "Attribute `id` is required on #Store."
       | Some
           {
             value_desc = DefinitionInfo (name, Some (Definition_Store store), `NotNegated);
@@ -311,9 +316,10 @@ module Tag_Store = struct
             value_loc;
             value_desc = DefinitionInfo (_, Some (Definition_Store _), `Negated);
             _;
-          } -> Pinc_Diagnostics.error value_loc "Expected store id to not be negated."
+          } ->
+          Pinc_Diagnostics.raise_error value_loc "Expected store id to not be negated."
       | Some { value_loc; _ } ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             value_loc
             "Expected attribute `id` to be a Store definition."
     in
@@ -333,14 +339,14 @@ module Tag_Store = struct
           store |> eval_body ~name ~value ~eval_expression ~state |> function
           | { value_desc = Record _; _ } as v -> v
           | { value_desc = _; value_loc } ->
-              Pinc_Diagnostics.error
+              Pinc_Diagnostics.raise_error
                 value_loc
                 (Printf.sprintf
                    "The definition of store `%s` needs to be a record describing the \
                     shape and type of values in this store."
                    name))
       | Some { value_desc = _; value_loc } when is_singleton ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             value_loc
             (Printf.sprintf
                "Expected attribute %s to be a record."
@@ -351,14 +357,14 @@ module Tag_Store = struct
             | { value_desc = Record value; _ } ->
                 store |> eval_body ~name ~value ~eval_expression ~state
             | { value_desc = _; value_loc } ->
-                Pinc_Diagnostics.error
+                Pinc_Diagnostics.raise_error
                   value_loc
                   (Printf.sprintf
                      "Expected attribute %s to be an array of records."
                      (key |> List.rev |> List.hd)))
           |> Helpers.Value.array ~loc:tag.tag_loc
       | Some { value_desc = _; value_loc } ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             value_loc
             (Printf.sprintf
                "Expected attribute %s to be an array."
@@ -379,7 +385,9 @@ module Tag_Slot = struct
     |> function
     | { value_desc = String s; _ } -> s
     | { value_loc; _ } ->
-        Pinc_Diagnostics.error value_loc "Expected slot attribute to be of type string"
+        Pinc_Diagnostics.raise_error
+          value_loc
+          "Expected slot attribute to be of type string"
   ;;
 
   let rec keep_slotted ~key acc el =
@@ -393,7 +401,7 @@ module Tag_Slot = struct
     | { value_desc = Array l; _ } -> l |> Array.fold_left (keep_slotted ~key) acc
     | { value_desc = String s; _ } when String.trim s = "" -> acc
     | { value_loc; _ } ->
-        Pinc_Diagnostics.error
+        Pinc_Diagnostics.raise_error
           value_loc
           "Only template nodes are allowed inside slots. If you want to put another \
            value (like a string) into a slot, you have to wrap it in some html tag or \
@@ -458,7 +466,9 @@ module Tag_Slot = struct
       |> Option.map (function
         | { value_desc = Int i; _ } -> i
         | { value_loc; _ } ->
-            Pinc_Diagnostics.error value_loc "Expected attribute min to be of type int.")
+            Pinc_Diagnostics.raise_error
+              value_loc
+              "Expected attribute min to be of type int.")
       |> Option.value ~default:0
     in
 
@@ -468,7 +478,9 @@ module Tag_Slot = struct
       |> Option.map (function
         | { value_desc = Int i; _ } -> i
         | { value_loc; _ } ->
-            Pinc_Diagnostics.error value_loc "Expected attribute max to be of type int.")
+            Pinc_Diagnostics.raise_error
+              value_loc
+              "Expected attribute max to be of type int.")
       |> Option.value ~default:Int.max_int
     in
     let num_slotted_elements = Array.length slotted_elements in
@@ -495,7 +507,7 @@ module Tag_Slot = struct
       |> ( Option.map @@ function
            | { value_desc = Array a; _ } -> a
            | { value_desc = _; value_loc } ->
-               Pinc_Diagnostics.error
+               Pinc_Diagnostics.raise_error
                  value_loc
                  "slot contraints need to be an array of definitions which are either \
                   allowed or disallowed" )
@@ -505,18 +517,18 @@ module Tag_Slot = struct
          | { value_desc = DefinitionInfo (name, Some Definition_Component, negated); _ }
            -> (name, negated)
          | { value_desc = DefinitionInfo (name, None, _negated); value_loc } ->
-             Pinc_Diagnostics.error
+             Pinc_Diagnostics.raise_error
                value_loc
                (Printf.sprintf "definition `%s` does not exist" name)
          | { value_desc = DefinitionInfo (name, _typ, _negated); value_loc } ->
-             Pinc_Diagnostics.error
+             Pinc_Diagnostics.raise_error
                value_loc
                (Printf.sprintf
                   "definition `%s` is not a component. Expected to see a component \
                    definition at this point."
                   name)
          | { value_desc = _; value_loc } ->
-             Pinc_Diagnostics.error
+             Pinc_Diagnostics.raise_error
                value_loc
                "Expected to see a component definition at this point"
     in
@@ -556,7 +568,7 @@ module Tag_Slot = struct
       | Some { value_desc = Null; _ } when not required -> [||]
       | Some { value_desc = Array a; _ } -> a
       | _ ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             tag_value.tag_loc
             (Printf.sprintf
                "Expected attribute %s to be an array of elements."
@@ -579,7 +591,7 @@ module Tag_Slot = struct
                  | Ok () -> meta
                  | Error e -> Utils.attach_or_report meta value_loc e)
              | { value_desc = _; value_loc } ->
-                 Pinc_Diagnostics.error
+                 Pinc_Diagnostics.raise_error
                    value_loc
                    "Tried to assign a non node value to a #Slot. Only template nodes are \
                     allowed inside slots. If you want to put another value (like a \
@@ -606,7 +618,7 @@ module Tag_Record = struct
         | { value_desc = Record r; _ } -> r
         | { value_desc = Null; _ } when not required -> StringMap.empty
         | { value_desc = _; value_loc } ->
-            Pinc_Diagnostics.error
+            Pinc_Diagnostics.raise_error
               value_loc
               (Printf.sprintf
                  "Expected attribute %s to be a record."
@@ -615,7 +627,9 @@ module Tag_Record = struct
           let state = { state with tag_path = key; tag_meta = [] } in
           match children with
           | None ->
-              Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Record."
+              Pinc_Diagnostics.raise_error
+                t.tag_loc
+                "Attribute `of` is required on #Record."
           | Some children ->
               let state = children |> eval_expression ~state in
               let meta = state.tag_meta in
@@ -623,7 +637,7 @@ module Tag_Record = struct
                 state |> State.get_output |> function
                 | { value_desc = Record _; _ } as v -> v
                 | { value_desc = _; value_loc } ->
-                    Pinc_Diagnostics.error
+                    Pinc_Diagnostics.raise_error
                       value_loc
                       "Attribute `of` needs to be a record describing the shape and type \
                        of values in this record."
@@ -657,13 +671,13 @@ module Tag_Array = struct
             match Helpers.Expect.(required (array (required string))) x with
             | Ok v -> v
             | Error (`UnexpectedType value_loc) ->
-                Pinc_Diagnostics.error
+                Pinc_Diagnostics.raise_error
                   value_loc
                   (Printf.sprintf
                      "Expected attribute %s to be an array of keys."
                      (key |> List.rev |> List.hd))
             | Error `Required ->
-                Pinc_Diagnostics.error
+                Pinc_Diagnostics.raise_error
                   value_loc
                   (Printf.sprintf
                      "Expected attribute %s to be an array of keys. Did not recieve the \
@@ -671,7 +685,7 @@ module Tag_Array = struct
                      (key |> List.rev |> List.hd))
           end
         | { value_desc = _; value_loc } ->
-            Pinc_Diagnostics.error
+            Pinc_Diagnostics.raise_error
               value_loc
               (Printf.sprintf
                  "Expected attribute %s to be an array of keys."
@@ -679,7 +693,9 @@ module Tag_Array = struct
       |> Option.map (fun keys ->
           match children with
           | None ->
-              Pinc_Diagnostics.error t.tag_loc "Attribute `of` is required on #Array."
+              Pinc_Diagnostics.raise_error
+                t.tag_loc
+                "Attribute `of` is required on #Array."
           | Some children ->
               let state = { state with tag_path = key; tag_meta = [] } in
               let values, metas =

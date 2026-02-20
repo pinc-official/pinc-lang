@@ -8,13 +8,13 @@ module PincArray = struct
     let result =
       match array with
       | Error `Required ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             loc
             (Printf.sprintf
                "The Array.length function expects one argument (the array to compute the \
                 length of).")
       | Error (`UnexpectedType value_loc) ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             value_loc
             (Printf.sprintf
                "The argument given to the Array.length function is not of type array")
@@ -33,13 +33,13 @@ module PincString = struct
     let result =
       match str with
       | Error `Required ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             loc
             (Printf.sprintf
                "The String.length function expects one argument (the string to compute \
                 the length of).")
       | Error (`UnexpectedType value_loc) ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             value_loc
             (Printf.sprintf
                "The argument given to the String.length function is not of type string")
@@ -55,13 +55,13 @@ module PincString = struct
     let str =
       (arguments |> Helpers.Expect.(required (attribute "string" string))) |> function
       | Error `Required ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             loc
             (Printf.sprintf
                "The String.sub function must recieve three arguments (string, offset, \
                 length).")
       | Error (`UnexpectedType value_loc) ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             value_loc
             (Printf.sprintf
                "The first argument given to `String.sub` is not of type string")
@@ -70,13 +70,13 @@ module PincString = struct
     let offset =
       (arguments |> Helpers.Expect.(required (attribute "ofs" int))) |> function
       | Error `Required ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             loc
             (Printf.sprintf
                "The String.sub function must recieve three arguments (string, offset, \
                 length).")
       | Error (`UnexpectedType value_loc) ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             value_loc
             (Printf.sprintf
                "The second argument (offset) given to `String.sub` is not of type int")
@@ -85,13 +85,13 @@ module PincString = struct
     let length =
       (arguments |> Helpers.Expect.(required (attribute "len" int))) |> function
       | Error `Required ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             loc
             (Printf.sprintf
                "The String.sub function must recieve three arguments (string, offset, \
                 length).")
       | Error (`UnexpectedType value_loc) ->
-          Pinc_Diagnostics.error
+          Pinc_Diagnostics.raise_error
             value_loc
             (Printf.sprintf
                "The third argument (length) given to `String.sub` is not of type int")

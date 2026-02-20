@@ -49,7 +49,7 @@ let rec get_uppercase_identifier_typ ~state ident =
                 |> function
                 | { value_desc = Bool b; _ } -> b
                 | { value_loc; _ } ->
-                    Diagnostics.error
+                    Diagnostics.raise_error
                       value_loc
                       "The attribute `single` has to be a boolean.")
             |> Option.value ~default:false
@@ -127,7 +127,7 @@ and eval_expression ~state expression =
                let () =
                  match output with
                  | { value_desc = Null; value_loc } when requirement = `Required ->
-                     Diagnostics.error
+                     Diagnostics.raise_error
                        value_loc
                        (Printf.sprintf
                           "identifier %s is not marked as nullable, but was given a null \
@@ -167,7 +167,7 @@ and eval_expression ~state expression =
             match library |> Type_Library.get_include hd with
             | Some l -> eval_library_path ~state (hd, l) tl
             | None ->
-                Diagnostics.error
+                Diagnostics.raise_error
                   expression.expression_loc
                   (Printf.sprintf
                      "Library with name `%s` could not be found inside `%s`."
@@ -197,14 +197,14 @@ and eval_expression ~state expression =
               in
               state |> State.add_output ~output
           | Some _ ->
-              Diagnostics.error
+              Diagnostics.raise_error
                 expression.expression_loc
                 (Printf.sprintf
                    "`%s` is not a library. Cannot construct a path with non library \
                     definitions."
                    hd)
           | None ->
-              Diagnostics.error
+              Diagnostics.raise_error
                 expression.expression_loc
                 (Printf.sprintf "Library with name `%s` could not be found." hd)))
   | Ast.UppercaseIdentifierExpression id ->
@@ -318,7 +318,7 @@ and eval_external_function_declaration ~state ~loc ~parameters ~identifier name 
     match Externals.all |> StringMap.find_opt name with
     | Some fn -> fn
     | None ->
-        Diagnostics.error
+        Diagnostics.raise_error
           loc
           (Printf.sprintf "The external function with name `%s` was not found." name)
   in
@@ -396,13 +396,13 @@ and eval_function_call ~state ~arguments function_definition =
           |> List.map (fun item -> "`" ^ item ^ "`")
           |> String.concat ", "
         in
-        Diagnostics.error
+        Diagnostics.raise_error
           function_definition.expression_loc
           ("This function was provided too few arguments. The following parameters are \
             missing: "
           ^ missing))
       else
-        Diagnostics.error
+        Diagnostics.raise_error
           function_definition.expression_loc
           ("This function only accepts "
           ^ string_of_int (List.length parameters)
@@ -410,7 +410,7 @@ and eval_function_call ~state ~arguments function_definition =
           ^ string_of_int (List.length arguments)
           ^ " here.")
   | _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         function_definition.expression_loc
         "Trying to call a non function value"
 
@@ -472,11 +472,11 @@ and eval_binary_plus ~state left right =
       |> State.add_output
            ~output:(Helpers.Value.float ~loc:merged_value_loc (float_of_int a +. b))
   | (Int _ | Float _), _ ->
-      Diagnostics.error right.expression_loc "Trying to add non numeric literals."
+      Diagnostics.raise_error right.expression_loc "Trying to add non numeric literals."
   | _, (Int _ | Float _) ->
-      Diagnostics.error left.expression_loc "Trying to add non numeric literals."
+      Diagnostics.raise_error left.expression_loc "Trying to add non numeric literals."
   | _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
         "Trying to add non numeric literals."
 
@@ -516,10 +516,11 @@ and eval_binary_minus ~state left right =
       |> State.add_output
            ~output:(Helpers.Value.float ~loc:merged_value_loc (float_of_int a -. b))
   | (Int _ | Float _), _ ->
-      Diagnostics.error b.value_loc "Trying to subtract non numeric literals."
+      Diagnostics.raise_error b.value_loc "Trying to subtract non numeric literals."
   | _, (Int _ | Float _) ->
-      Diagnostics.error a.value_loc "Trying to subtract non numeric literals."
-  | _ -> Diagnostics.error merged_value_loc "Trying to subtract non numeric literals."
+      Diagnostics.raise_error a.value_loc "Trying to subtract non numeric literals."
+  | _ ->
+      Diagnostics.raise_error merged_value_loc "Trying to subtract non numeric literals."
 
 and eval_binary_times ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -557,10 +558,11 @@ and eval_binary_times ~state left right =
       |> State.add_output
            ~output:(Helpers.Value.float ~loc:merged_value_loc (float_of_int a *. b))
   | (Int _ | Float _), _ ->
-      Diagnostics.error b.value_loc "Trying to multiply non numeric literals."
+      Diagnostics.raise_error b.value_loc "Trying to multiply non numeric literals."
   | _, (Int _ | Float _) ->
-      Diagnostics.error a.value_loc "Trying to multiply non numeric literals."
-  | _ -> Diagnostics.error merged_value_loc "Trying to multiply non numeric literals."
+      Diagnostics.raise_error a.value_loc "Trying to multiply non numeric literals."
+  | _ ->
+      Diagnostics.raise_error merged_value_loc "Trying to multiply non numeric literals."
 
 and eval_binary_div ~state left right =
   let a = left |> eval_expression ~state |> State.get_output in
@@ -574,10 +576,11 @@ and eval_binary_div ~state left right =
     | Float a, Int b -> a /. float_of_int b
     | Int a, Float b -> float_of_int a /. b
     | (Int _ | Float _), _ ->
-        Diagnostics.error b.value_loc "Trying to divide non numeric literals."
+        Diagnostics.raise_error b.value_loc "Trying to divide non numeric literals."
     | _, (Int _ | Float _) ->
-        Diagnostics.error a.value_loc "Trying to divide non numeric literals."
-    | _ -> Diagnostics.error merged_value_loc "Trying to divide non numeric literals."
+        Diagnostics.raise_error a.value_loc "Trying to divide non numeric literals."
+    | _ ->
+        Diagnostics.raise_error merged_value_loc "Trying to divide non numeric literals."
   in
 
   if Float.is_integer r then
@@ -597,10 +600,11 @@ and eval_binary_pow ~state left right =
     | Float a, Int b -> a ** float_of_int b
     | Int a, Float b -> float_of_int a ** b
     | (Int _ | Float _), _ ->
-        Diagnostics.error b.value_loc "Trying to raise non numeric literals."
+        Diagnostics.raise_error b.value_loc "Trying to raise non numeric literals."
     | _, (Int _ | Float _) ->
-        Diagnostics.error a.value_loc "Trying to raise non numeric literals."
-    | _ -> Diagnostics.error merged_value_loc "Trying to raise non numeric literals."
+        Diagnostics.raise_error a.value_loc "Trying to raise non numeric literals."
+    | _ ->
+        Diagnostics.raise_error merged_value_loc "Trying to raise non numeric literals."
   in
 
   if Float.is_integer r then
@@ -627,10 +631,11 @@ and eval_binary_modulo ~state left right =
         let a = float_of_int a in
         a -. (a /. b *. b)
     | (Int _ | Float _), _ ->
-        Diagnostics.error b.value_loc "Trying to modulo non numeric literals."
+        Diagnostics.raise_error b.value_loc "Trying to modulo non numeric literals."
     | _, (Int _ | Float _) ->
-        Diagnostics.error a.value_loc "Trying to modulo non numeric literals."
-    | _ -> Diagnostics.error merged_value_loc "Trying to modulo non numeric literals."
+        Diagnostics.raise_error a.value_loc "Trying to modulo non numeric literals."
+    | _ ->
+        Diagnostics.raise_error merged_value_loc "Trying to modulo non numeric literals."
   in
   state
   |> State.add_output
@@ -724,9 +729,12 @@ and eval_binary_concat ~state left right =
     | Char a, Char b ->
         Buffer.add_utf_8_uchar buf a;
         Buffer.add_utf_8_uchar buf b
-    | String _, _ -> Diagnostics.error b.value_loc "Trying to concat non string literals."
-    | _, String _ -> Diagnostics.error a.value_loc "Trying to concat non string literals."
-    | _ -> Diagnostics.error merged_value_loc "Trying to concat non string literals."
+    | String _, _ ->
+        Diagnostics.raise_error b.value_loc "Trying to concat non string literals."
+    | _, String _ ->
+        Diagnostics.raise_error a.value_loc "Trying to concat non string literals."
+    | _ ->
+        Diagnostics.raise_error merged_value_loc "Trying to concat non string literals."
   in
   state
   |> State.add_output
@@ -755,7 +763,7 @@ and eval_binary_dot_access ~state left right =
           |> State.add_output
                ~output:(Helpers.Value.record ~loc:left.expression_loc attributes)
       | s ->
-          Diagnostics.error
+          Diagnostics.raise_error
             right.expression_loc
             ("Unknown property "
             ^ s
@@ -770,13 +778,13 @@ and eval_binary_dot_access ~state left right =
           |> State.add_output
                ~output:(Helpers.Value.record ~loc:left.expression_loc attributes)
       | s ->
-          Diagnostics.error
+          Diagnostics.raise_error
             right.expression_loc
             ("Unknown property "
             ^ s
             ^ " on component. Known properties are: `tag` and`attributes`."))
   | Record _, _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         right.expression_loc
         "Expected right hand side of record access to be a lowercase identifier."
   | DefinitionInfo (_, maybe_library, _), Ast.LowercaseIdentifierExpression b -> (
@@ -803,19 +811,19 @@ and eval_binary_dot_access ~state left right =
                       (Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
                     ())
       | _ ->
-          Diagnostics.error
+          Diagnostics.raise_error
             left.expression_loc
             "Trying to access a property on a non record, library or template value.")
   | DefinitionInfo (name, None, _), _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         left.expression_loc
         ("Trying to access a property on a non existant library `" ^ name ^ "`.")
   | _, Ast.LowercaseIdentifierExpression _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         left.expression_loc
         "Trying to access a property on a non record, library or template value."
   | _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         left.expression_loc
         "I am really not sure what you are trying to do here..."
 
@@ -866,15 +874,15 @@ and eval_binary_bracket_access ~state left right =
                 ~loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
                 ())
   | Array _, _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         right.expression_loc
         "Cannot access array with a non integer value."
   | Record _, _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         right.expression_loc
         "Cannot access record with a non string value."
   | _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         left.expression_loc
         (Printf.sprintf
            "Trying to access a property on a non record or array value (%s)."
@@ -893,7 +901,7 @@ and eval_binary_array_add ~state left right =
                 ~loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
                 new_array)
   | _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         left.expression_loc
         "Trying to add an element onto a non array value."
 
@@ -917,23 +925,23 @@ and eval_binary_merge ~state left_expression right_expression =
           value_desc = HtmlTemplateNode (tag, attributes, children, self_closing);
         }
     | HtmlTemplateNode _, _ ->
-        Diagnostics.error
+        Diagnostics.raise_error
           right_expression.expression_loc
           "Trying to merge a non record value onto tag attributes."
     | ComponentTemplateNode _, _ ->
-        Diagnostics.error
+        Diagnostics.raise_error
           right_expression.expression_loc
           "Component attributes can't be modified."
     | Array _, _ ->
-        Diagnostics.error
+        Diagnostics.raise_error
           right_expression.expression_loc
           "Trying to merge a non array value onto an array."
     | _, Array _ ->
-        Diagnostics.error
+        Diagnostics.raise_error
           right_expression.expression_loc
           "Trying to merge an array value onto a non array."
     | _ ->
-        Diagnostics.error
+        Diagnostics.raise_error
           (Location.merge
              ~s:left_expression.expression_loc
              ~e:right_expression.expression_loc
@@ -975,14 +983,14 @@ and eval_unary_minus ~state expression =
       |> State.add_output
            ~output:(Helpers.Value.float ~loc:expression.expression_loc (Float.neg f))
   | _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         expression.expression_loc
         "Invalid usage of unary `-` operator. You are only able to negate integers or \
          floats."
 
 and eval_lowercase_identifier ~state ~loc ident =
   state |> State.get_value_from_scope ~ident |> function
-  | None -> Diagnostics.error loc ("Unbound identifier `" ^ ident ^ "`")
+  | None -> Diagnostics.raise_error loc ("Unbound identifier `" ^ ident ^ "`")
   | Some { value; is_mutable = _; is_optional = _ } ->
       state |> State.add_output ~output:value
 
@@ -992,7 +1000,7 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
   let value = State.get_output state in
   match value with
   | { value_desc = Null; _ } when not is_optional ->
-      Diagnostics.error
+      Diagnostics.raise_error
         ident_location
         ("identifier " ^ ident ^ " is not marked as nullable, but was given a null value.")
   | value ->
@@ -1021,7 +1029,7 @@ and eval_use ~state ~ident expression =
             (Type_Library.get_includes library)
             state)
   | _ ->
-      Diagnostics.error
+      Diagnostics.raise_error
         expression.expression_loc
         "Attempted to use a non library definition. \n\
          Expected to see a Library at the right hand side of the `use` statement."
@@ -1031,17 +1039,17 @@ and eval_mutation ~state ~ident expression =
   let current_binding = State.get_value_from_scope ~ident state in
   match current_binding with
   | None ->
-      Diagnostics.error
+      Diagnostics.raise_error
         ident_location
         "Trying to update a variable, which does not exist in the current scope."
   | Some { is_mutable = false; _ } ->
-      Diagnostics.error ident_location "Trying to update a non mutable variable."
+      Diagnostics.raise_error ident_location "Trying to update a non mutable variable."
   | Some { value = _; is_mutable = true; is_optional } ->
       let output = eval_expression expression ~state in
       let () =
         output |> State.get_output |> function
         | { value_desc = Null; _ } when not is_optional ->
-            Diagnostics.error
+            Diagnostics.raise_error
               ident_location
               ("identifier "
               ^ ident
@@ -1140,20 +1148,27 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       |> State.add_output ~output:(res |> Helpers.Value.list ~loc:body.expression_loc)
   | Null -> state |> State.add_output ~output:iterable_value
   | HtmlTemplateNode _ ->
-      Diagnostics.error iterable.expression_loc "Cannot iterate over template node"
+      Diagnostics.raise_error iterable.expression_loc "Cannot iterate over template node"
   | ComponentTemplateNode _ ->
-      Diagnostics.error iterable.expression_loc "Cannot iterate over template node"
+      Diagnostics.raise_error iterable.expression_loc "Cannot iterate over template node"
   | Record _ ->
-      Diagnostics.error iterable.expression_loc "Cannot iterate over record value"
-  | Int _ -> Diagnostics.error iterable.expression_loc "Cannot iterate over int value"
-  | Char _ -> Diagnostics.error iterable.expression_loc "Cannot iterate over char value"
-  | Float _ -> Diagnostics.error iterable.expression_loc "Cannot iterate over float value"
+      Diagnostics.raise_error iterable.expression_loc "Cannot iterate over record value"
+  | Int _ ->
+      Diagnostics.raise_error iterable.expression_loc "Cannot iterate over int value"
+  | Char _ ->
+      Diagnostics.raise_error iterable.expression_loc "Cannot iterate over char value"
+  | Float _ ->
+      Diagnostics.raise_error iterable.expression_loc "Cannot iterate over float value"
   | Bool _ ->
-      Diagnostics.error iterable.expression_loc "Cannot iterate over boolean value"
+      Diagnostics.raise_error iterable.expression_loc "Cannot iterate over boolean value"
   | DefinitionInfo _ ->
-      Diagnostics.error iterable.expression_loc "Cannot iterate over definition info"
+      Diagnostics.raise_error
+        iterable.expression_loc
+        "Cannot iterate over definition info"
   | Function _ ->
-      Diagnostics.error iterable.expression_loc "Cannot iterate over function definition"
+      Diagnostics.raise_error
+        iterable.expression_loc
+        "Cannot iterate over function definition"
 
 and eval_range ~state ~inclusive from_expression upto_expression =
   let from = from_expression |> eval_expression ~state |> State.get_output in
@@ -1166,15 +1181,15 @@ and eval_range ~state ~inclusive from_expression upto_expression =
     | Float from, Float upto when Float.is_integer from && Float.is_integer upto ->
         (int_of_float from, int_of_float upto)
     | Int _, _ ->
-        Diagnostics.error
+        Diagnostics.raise_error
           upto.value_loc
           "Can't construct range in for loop. The end of your range is not of type int."
     | _, Int _ ->
-        Diagnostics.error
+        Diagnostics.raise_error
           from.value_loc
           "Can't construct range in for loop. The start of your range is not of type int."
     | _, _ ->
-        Diagnostics.error
+        Diagnostics.raise_error
           (Location.merge ~s:from.value_loc ~e:upto.value_loc ())
           "Can't construct range in for loop. The start and end of your range are not of \
            type int."

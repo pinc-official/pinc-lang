@@ -92,7 +92,7 @@ and transform_record env r =
 and transform_external_function env ~loc parameters name =
   let identifier = env.Env.current_identifier in
   match identifier with
-  | None -> Pinc_Diagnostics.error loc "This function is missing an identifier."
+  | None -> Pinc_Diagnostics.raise_error loc "This function is missing an identifier."
   | Some (_, identifier) ->
       let env, identifier = transform_lowercase_id env identifier in
       (env, ExternalFunction { identifier; parameters; name })
@@ -160,7 +160,7 @@ and transform_tag env (tag : Parsetree.tag) =
                   expression_loc = _;
                 } -> `String s
               | { expression_desc = _; expression_loc = loc } ->
-                  Pinc_Diagnostics.error
+                  Pinc_Diagnostics.raise_error
                     loc
                     "Expected attribute `initialValue` on tag `#String` to be of type \
                      string")
@@ -172,7 +172,7 @@ and transform_tag env (tag : Parsetree.tag) =
             |> Option.map (function
               | { expression_desc = Int i; expression_loc = _ } -> `Int i
               | { expression_desc = _; expression_loc = loc } ->
-                  Pinc_Diagnostics.error
+                  Pinc_Diagnostics.raise_error
                     loc
                     "Expected attribute `initialValue` on tag `#Int` to be of type int")
           in
@@ -183,7 +183,7 @@ and transform_tag env (tag : Parsetree.tag) =
             |> Option.map (function
               | { expression_desc = Float i; expression_loc = _ } -> `Float i
               | { expression_desc = _; expression_loc = loc } ->
-                  Pinc_Diagnostics.error
+                  Pinc_Diagnostics.raise_error
                     loc
                     "Expected attribute `initialValue` on tag `#Float` to be of type \
                      float")
@@ -195,7 +195,7 @@ and transform_tag env (tag : Parsetree.tag) =
             |> Option.map (function
               | { expression_desc = Bool b; expression_loc = _ } -> `Boolean b
               | { expression_desc = _; expression_loc = loc } ->
-                  Pinc_Diagnostics.error
+                  Pinc_Diagnostics.raise_error
                     loc
                     "Expected attribute `initialValue` on tag `#Boolean` to be of type \
                      boolean")
@@ -207,7 +207,7 @@ and transform_tag env (tag : Parsetree.tag) =
             |> Option.map (function
               | { expression_desc = Int i; expression_loc = _ } -> `Int i
               | { expression_desc = _; expression_loc = loc } ->
-                  Pinc_Diagnostics.error
+                  Pinc_Diagnostics.raise_error
                     loc
                     "Expected attribute `initialSize` on tag `#Array` to be of type int")
           in
@@ -232,7 +232,7 @@ and transform_tag env (tag : Parsetree.tag) =
               | { expression_desc = Float f; expression_loc = _ } -> `Float f
               | { expression_desc = Bool f; expression_loc = _ } -> `Boolean f
               | { expression_desc = _; expression_loc = loc } ->
-                  Pinc_Diagnostics.error
+                  Pinc_Diagnostics.raise_error
                     loc
                     ("Expected attribute `initialValue` on tag `#"
                     ^ s
@@ -254,17 +254,17 @@ and transform_tag env (tag : Parsetree.tag) =
             if Helpers.is_valid_lowercase_ident s then
               s
             else
-              Pinc_Diagnostics.error
+              Pinc_Diagnostics.raise_error
                 loc
                 "Tag keys may only contain ASCII characters (a-Z), numbers (0-9) and \
                  underscores (_)."
         | { expression_desc = String _; expression_loc = loc } ->
-            Pinc_Diagnostics.error
+            Pinc_Diagnostics.raise_error
               loc
               "Expected attribute `key` on tag to be a plain string without \
                interpolations."
         | { expression_desc = _; expression_loc = loc } ->
-            Pinc_Diagnostics.error
+            Pinc_Diagnostics.raise_error
               loc
               "Expected attribute `key` on tag to be of type string")
     in

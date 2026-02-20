@@ -129,10 +129,14 @@ let set_renderer ppf =
   | Some _ -> Fmt.set_style_renderer ppf `None
 ;;
 
-let error location message =
+let print_error location message =
   let ppf = Format.err_formatter in
   set_renderer ppf;
-  Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`error) location message;
+  Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`error) location message
+;;
+
+let raise_error location message =
+  print_error location message;
   raise Pinc_error
 ;;
 

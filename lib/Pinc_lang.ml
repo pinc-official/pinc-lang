@@ -1,3 +1,4 @@
+module Diagnostics = Pinc_Diagnostics
 module Source = Pinc_Source
 module Ast = Pinc_Parser.Ast
 module Parser = Pinc_Parser
