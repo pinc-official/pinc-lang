@@ -1,6 +1,6 @@
 module Diagnostics = Pinc_Diagnostics
 module Types = Types
-module Ast = Pinc_Parser.Ast
+module Ast = Pinc_Typer.Typed_tree
 open Types
 
 val eval_meta :

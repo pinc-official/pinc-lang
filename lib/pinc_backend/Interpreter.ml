@@ -1,8 +1,7 @@
 open Types
 module Diagnostics = Pinc_Diagnostics
 module Types = Types
-module Ast = Pinc_Parser.Ast
-module Parser = Pinc_Parser
+module Ast = Pinc_Typer.Typed_tree
 module Location = Diagnostics.Location
 module Source = Pinc_Source
 
@@ -18,13 +17,14 @@ let rec get_uppercase_identifier_typ ~state ident =
   let declaration = state.declarations |> StringMap.find_opt ident in
   match declaration with
   | None -> (state, None)
-  | Some { declaration_kind = Ast.Declaration_Component _; _ } ->
+  | Some { declaration_kind = Ast.T_Declaration_Component _; _ } ->
       (state, Some Definition_Component)
-  | Some { declaration_kind = Ast.Declaration_Page _; _ } -> (state, Some Definition_Page)
+  | Some { declaration_kind = Ast.T_Declaration_Page _; _ } ->
+      (state, Some Definition_Page)
   | Some
       {
         declaration_kind =
-          Ast.Declaration_Store { declaration_attributes; declaration_body };
+          Ast.T_Declaration_Store { declaration_attributes; declaration_body };
         _;
       } -> (
       match Hashtbl.find_opt stores ident with
@@ -57,7 +57,7 @@ let rec get_uppercase_identifier_typ ~state ident =
           let store = Type_Store.make ~singleton ~body:declaration_body in
           add_store ~store ~ident;
           (state, Some (Definition_Store store)))
-  | Some { declaration_kind = Ast.Declaration_Library { declaration_body; _ }; _ } -> (
+  | Some { declaration_kind = Ast.T_Declaration_Library { declaration_body; _ }; _ } -> (
       match Hashtbl.find_opt libraries ident with
       | Some library -> (state, Some (Definition_Library library))
       | None ->
@@ -74,49 +74,49 @@ let rec get_uppercase_identifier_typ ~state ident =
 
 and eval_statement ~state statement =
   match statement.Ast.statement_desc with
-  | Ast.CommentStatement _ -> state
-  | Ast.LetStatement (Lowercase_Id ident, expression) ->
+  | Ast.T_CommentStatement _ -> state
+  | Ast.T_LetStatement (T_Lowercase_Id ident, expression) ->
       eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
-  | Ast.OptionalLetStatement (Lowercase_Id ident, expression) ->
+  | Ast.T_OptionalLetStatement (T_Lowercase_Id ident, expression) ->
       eval_let ~state ~ident ~is_mutable:false ~is_optional:true expression
-  | Ast.OptionalMutableLetStatement (Lowercase_Id ident, expression) ->
+  | Ast.T_OptionalMutableLetStatement (T_Lowercase_Id ident, expression) ->
       eval_let ~state ~ident ~is_mutable:true ~is_optional:true expression
-  | Ast.MutableLetStatement (Lowercase_Id ident, expression) ->
+  | Ast.T_MutableLetStatement (T_Lowercase_Id ident, expression) ->
       eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
-  | Ast.MutationStatement (Lowercase_Id ident, expression) ->
+  | Ast.T_MutationStatement (T_Lowercase_Id ident, expression) ->
       eval_mutation ~state ~ident expression
-  | Ast.UseStatement (ident, expression) -> eval_use ~state ~ident expression
-  | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
-  | Ast.ContinueStatement _ -> raise_notrace (Loop_Continue state)
-  | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
+  | Ast.T_UseStatement (ident, expression) -> eval_use ~state ~ident expression
+  | Ast.T_BreakStatement _ -> raise_notrace (Loop_Break state)
+  | Ast.T_ContinueStatement _ -> raise_notrace (Loop_Continue state)
+  | Ast.T_ExpressionStatement expression -> expression |> eval_expression ~state
 
-and eval_expression ~state expression =
+and eval_expression ~state (expression : Ast.expression) =
   match expression.expression_desc with
-  | Ast.Comment _ -> state
-  | Ast.Char c ->
+  | Ast.T_Comment _ -> state
+  | Ast.T_Char c ->
       state
       |> State.add_output ~output:(Helpers.Value.char ~loc:expression.expression_loc c)
-  | Ast.Int i ->
+  | Ast.T_Int i ->
       state
       |> State.add_output ~output:(Helpers.Value.int ~loc:expression.expression_loc i)
-  | Ast.Float f when Float.is_integer f ->
+  | Ast.T_Float f when Float.is_integer f ->
       state
       |> State.add_output
            ~output:(Helpers.Value.int ~loc:expression.expression_loc (int_of_float f))
-  | Ast.Float f ->
+  | Ast.T_Float f ->
       state
       |> State.add_output ~output:(Helpers.Value.float ~loc:expression.expression_loc f)
-  | Ast.Bool b ->
+  | Ast.T_Bool b ->
       state
       |> State.add_output ~output:(Helpers.Value.bool ~loc:expression.expression_loc b)
-  | Ast.Array l ->
+  | Ast.T_Array l ->
       let output =
         l
         |> Array.map (fun it -> it |> eval_expression ~state |> State.get_output)
         |> Helpers.Value.array ~loc:expression.expression_loc
       in
       state |> State.add_output ~output
-  | Ast.Record map ->
+  | Ast.T_Record map ->
       let state, seq =
         map
         |> StringMap.to_seq
@@ -142,24 +142,24 @@ and eval_expression ~state expression =
         seq |> StringMap.of_seq |> Helpers.Value.record ~loc:expression.expression_loc
       in
       state |> State.add_output ~output
-  | Ast.String template -> eval_string_template ~state template
-  | Ast.ExternalFunction { identifier; parameters; name } ->
+  | Ast.T_String template -> eval_string_template ~state template
+  | Ast.T_ExternalFunction { identifier; parameters; name } ->
       eval_external_function_declaration
         ~loc:expression.expression_loc
         ~state
         ~parameters
         ~identifier
         name
-  | Ast.Function { identifier; parameters; body } ->
+  | Ast.T_Function { identifier; parameters; body } ->
       eval_function_declaration
         ~loc:expression.expression_loc
         ~state
         ~identifier
         ~parameters
         body
-  | Ast.FunctionCall { function_definition; arguments } ->
+  | Ast.T_FunctionCall { function_definition; arguments } ->
       eval_function_call ~state ~arguments function_definition
-  | Ast.UppercaseIdentifierPathExpression path -> (
+  | Ast.T_UppercaseIdentifierPathExpression path -> (
       let rec eval_library_path ~state (name, library) path =
         match path with
         | [] -> (state, name, library)
@@ -207,7 +207,7 @@ and eval_expression ~state expression =
               Diagnostics.raise_error
                 expression.expression_loc
                 (Printf.sprintf "Library with name `%s` could not be found." hd)))
-  | Ast.UppercaseIdentifierExpression id ->
+  | Ast.T_UppercaseIdentifierExpression (Ast.T_Uppercase_Id (id, _type, _loc)) ->
       let state, typ =
         state
         |> State.get_used_values
@@ -223,70 +223,69 @@ and eval_expression ~state expression =
         }
       in
       state |> State.add_output ~output
-  | Ast.LowercaseIdentifierExpression id ->
-      eval_lowercase_identifier ~loc:expression.expression_loc ~state id
-  | Ast.TagExpression tag -> Tag.eval ~eval_expression ~state tag
-  | Ast.ForInExpression { index; iterator = Lowercase_Id ident; reverse; iterable; body }
-    -> eval_for_in ~state ~index_ident:index ~ident ~reverse ~iterable body
-  | Ast.TemplateExpression nodes ->
+  | Ast.T_LowercaseIdentifierExpression id -> eval_lowercase_identifier ~state id
+  | Ast.T_TagExpression tag -> Tag.eval ~eval_expression ~state tag
+  | Ast.T_ForInExpression { index; iterator = ident; reverse; iterable; body } ->
+      eval_for_in ~state ~index_ident:index ~ident ~reverse ~iterable body
+  | Ast.T_TemplateExpression nodes ->
       state
       |> State.add_output
            ~output:
              (nodes
              |> List.map (fun it -> it |> eval_template ~state |> State.get_output)
              |> Helpers.Value.list ~loc:expression.expression_loc)
-  | Ast.BlockExpression e -> eval_block ~state e
-  | Ast.ConditionalExpression { condition; consequent; alternate } ->
+  | Ast.T_BlockExpression e -> eval_block ~state e
+  | Ast.T_ConditionalExpression { condition; consequent; alternate } ->
       eval_if ~state ~condition ~alternate ~consequent
-  | Ast.UnaryExpression (Ast.Operators.Unary.NOT, expression) ->
+  | Ast.T_UnaryExpression (Ast.Operators.Unary.NOT, expression) ->
       eval_unary_not ~state expression
-  | Ast.UnaryExpression (Ast.Operators.Unary.MINUS, expression) ->
+  | Ast.T_UnaryExpression (Ast.Operators.Unary.MINUS, expression) ->
       eval_unary_minus ~state expression
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.EQUAL, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.EQUAL, right) ->
       eval_binary_equal ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.NOT_EQUAL, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.NOT_EQUAL, right) ->
       eval_binary_not_equal ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.GREATER, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.GREATER, right) ->
       eval_binary_greater ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.GREATER_EQUAL, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.GREATER_EQUAL, right) ->
       eval_binary_greater_equal ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.LESS, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.LESS, right) ->
       eval_binary_less ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.LESS_EQUAL, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.LESS_EQUAL, right) ->
       eval_binary_less_equal ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.PLUS, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.PLUS, right) ->
       eval_binary_plus ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.MINUS, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.MINUS, right) ->
       eval_binary_minus ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.TIMES, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.TIMES, right) ->
       eval_binary_times ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.DIV, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.DIV, right) ->
       eval_binary_div ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.POW, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.POW, right) ->
       eval_binary_pow ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.MODULO, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.MODULO, right) ->
       eval_binary_modulo ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.CONCAT, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.CONCAT, right) ->
       eval_binary_concat ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.AND, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.AND, right) ->
       eval_binary_and ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.OR, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.OR, right) ->
       eval_binary_or ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.DOT_ACCESS, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.DOT_ACCESS, right) ->
       eval_binary_dot_access ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.BRACKET_ACCESS, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.BRACKET_ACCESS, right) ->
       eval_binary_bracket_access ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.ARRAY_ADD, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.ARRAY_ADD, right) ->
       eval_binary_array_add ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.MERGE, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.MERGE, right) ->
       eval_binary_merge ~state left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.RANGE, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.RANGE, right) ->
       eval_range ~state ~inclusive:false left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.INCLUSIVE_RANGE, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.INCLUSIVE_RANGE, right) ->
       eval_range ~state ~inclusive:true left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.FUNCTION_CALL, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.FUNCTION_CALL, right) ->
       eval_function_call ~state ~arguments:[ right ] left
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.PIPE, right) ->
+  | Ast.T_BinaryExpression (left, Ast.Operators.Binary.PIPE, right) ->
       eval_binary_pipe ~state left right
 
 and eval_string_template ~state template =
@@ -303,17 +302,17 @@ and eval_string_template ~state template =
                end_loc := string_template.Ast.string_template_loc;
 
              match string_template.Ast.string_template_desc with
-             | StringText s -> s
-             | StringInterpolation (Lowercase_Id (id, loc)) ->
+             | T_StringText s -> s
+             | T_StringInterpolation id ->
                  id
-                 |> eval_lowercase_identifier ~loc ~state
+                 |> eval_lowercase_identifier ~state
                  |> State.get_output
                  |> Value.to_string)
          |> String.concat ""
          |> Helpers.Value.string ~loc:(Location.merge ~s:!start_loc ~e:!end_loc ()))
 
 and eval_external_function_declaration ~state ~loc ~parameters ~identifier name =
-  let (Lowercase_Id (ident, ident_loc)) = identifier in
+  let (T_Lowercase_Id (ident, _ident_type, ident_loc)) = identifier in
   let external_function =
     match Externals.all |> StringMap.find_opt name with
     | Some fn -> fn
@@ -342,7 +341,7 @@ and eval_function_declaration ~state ~loc ~identifier ~parameters body =
     let state =
       match identifier with
       | None -> state
-      | Some (Lowercase_Id (ident, _)) ->
+      | Some (T_Lowercase_Id (ident, _ident_type, _)) ->
           state
           |> State.add_value_to_scope
                ~ident
@@ -363,7 +362,7 @@ and eval_function_declaration ~state ~loc ~identifier ~parameters body =
   and fn = { value_loc = loc; value_desc = Function { parameters; state; exec } } in
 
   identifier
-  |> Option.iter (function Ast.Lowercase_Id (ident, _) ->
+  |> Option.iter (function Ast.T_Lowercase_Id (ident, _ident_type, _) ->
       state
       |> State.add_value_to_function_scopes
            ~ident
@@ -381,7 +380,7 @@ and eval_function_call ~state ~arguments function_definition =
       let arguments =
         List.combine parameters arguments
         |> List.fold_left
-             (fun acc (Ast.Lowercase_Id (param, _param_loc), arg) ->
+             (fun acc (Ast.T_Lowercase_Id (param, _param_type, _param_loc), arg) ->
                let value = arg |> eval_expression ~state |> State.get_output in
                acc |> StringMap.add param value)
              StringMap.empty
@@ -393,7 +392,8 @@ and eval_function_call ~state ~arguments function_definition =
         let missing =
           parameters
           |> List.filteri (fun index _ -> index > arguments_len - 1)
-          |> List.map (fun (Ast.Lowercase_Id (param, _param_loc)) -> "`" ^ param ^ "`")
+          |> List.map (fun (Ast.T_Lowercase_Id (param, _param_type, _param_loc)) ->
+              "`" ^ param ^ "`")
           |> String.concat ", "
         in
         Diagnostics.raise_error
@@ -419,16 +419,17 @@ and eval_binary_pipe ~state left right =
     match right with
     | Ast.
         {
-          expression_desc = FunctionCall { function_definition; arguments };
+          expression_desc = T_FunctionCall { function_definition; arguments };
+          expression_type;
           expression_loc;
         } ->
         let expression_desc =
-          Ast.FunctionCall { function_definition; arguments = left :: arguments }
+          Ast.T_FunctionCall { function_definition; arguments = left :: arguments }
         in
-        Ast.{ expression_desc; expression_loc }
+        Ast.{ expression_desc; expression_type; expression_loc }
     | fn ->
         let expression_desc =
-          Ast.FunctionCall { function_definition = fn; arguments = [ left ] }
+          Ast.T_FunctionCall { function_definition = fn; arguments = [ left ] }
         in
         { fn with expression_desc }
   in
@@ -746,14 +747,15 @@ and eval_binary_dot_access ~state left right =
   match (left_value.value_desc, right.expression_desc) with
   | Null, _ ->
       state |> State.add_output ~output:(Helpers.Value.null ~loc:left_value.value_loc ())
-  | Record a, Ast.LowercaseIdentifierExpression b ->
+  | Record a, Ast.T_LowercaseIdentifierExpression (Ast.T_Lowercase_Id (b, _, _)) ->
       let output =
         a
         |> StringMap.find_opt b
         |> Option.value ~default:(Helpers.Value.null ~loc:left.expression_loc ())
       in
       state |> State.add_output ~output
-  | HtmlTemplateNode (tag, attributes, _, _), Ast.LowercaseIdentifierExpression b -> (
+  | ( HtmlTemplateNode (tag, attributes, _, _),
+      Ast.T_LowercaseIdentifierExpression (Ast.T_Lowercase_Id (b, _, _)) ) -> (
       match b with
       | "tag" ->
           state
@@ -768,7 +770,8 @@ and eval_binary_dot_access ~state left right =
             ("Unknown property "
             ^ s
             ^ " on template node. Known properties are: `tag` and `attributes`."))
-  | ComponentTemplateNode (tag, attributes, _), Ast.LowercaseIdentifierExpression b -> (
+  | ( ComponentTemplateNode (tag, attributes, _),
+      Ast.T_LowercaseIdentifierExpression (Ast.T_Lowercase_Id (b, _, _)) ) -> (
       match b with
       | "tag" ->
           state
@@ -787,7 +790,8 @@ and eval_binary_dot_access ~state left right =
       Diagnostics.raise_error
         right.expression_loc
         "Expected right hand side of record access to be a lowercase identifier."
-  | DefinitionInfo (_, maybe_library, _), Ast.LowercaseIdentifierExpression b -> (
+  | ( DefinitionInfo (_, maybe_library, _),
+      Ast.T_LowercaseIdentifierExpression (Ast.T_Lowercase_Id (b, _, _)) ) -> (
       match maybe_library with
       | Some (Definition_Library l) ->
           let output =
@@ -818,7 +822,7 @@ and eval_binary_dot_access ~state left right =
       Diagnostics.raise_error
         left.expression_loc
         ("Trying to access a property on a non existant library `" ^ name ^ "`.")
-  | _, Ast.LowercaseIdentifierExpression _ ->
+  | _, Ast.T_LowercaseIdentifierExpression _ ->
       Diagnostics.raise_error
         left.expression_loc
         "Trying to access a property on a non record, library or template value."
@@ -988,14 +992,14 @@ and eval_unary_minus ~state expression =
         "Invalid usage of unary `-` operator. You are only able to negate integers or \
          floats."
 
-and eval_lowercase_identifier ~state ~loc ident =
+and eval_lowercase_identifier ~state (Ast.T_Lowercase_Id (ident, _type, loc)) =
   state |> State.get_value_from_scope ~ident |> function
   | None -> Diagnostics.raise_error loc ("Unbound identifier `" ^ ident ^ "`")
   | Some { value; is_mutable = _; is_optional = _ } ->
       state |> State.add_output ~output:value
 
 and eval_let ~state ~ident ~is_mutable ~is_optional expression =
-  let ident, ident_location = ident in
+  let ident, _ident_type, ident_location = ident in
   let state = eval_expression expression ~state in
   let value = State.get_output state in
   match value with
@@ -1013,8 +1017,8 @@ and eval_use ~state ~ident expression =
   match value with
   | { value_desc = DefinitionInfo (_, Some (Definition_Library library), _); _ } -> (
       match ident with
-      | Some (Uppercase_Id ident) ->
-          let ident, _ident_location = ident in
+      | Some (T_Uppercase_Id ident) ->
+          let ident, _ident_type, _ident_location = ident in
           state |> State.add_value_to_use_scope ~ident ~value:library
       | None ->
           let state =
@@ -1035,7 +1039,7 @@ and eval_use ~state ~ident expression =
          Expected to see a Library at the right hand side of the `use` statement."
 
 and eval_mutation ~state ~ident expression =
-  let ident, ident_location = ident in
+  let ident, _ident_type, ident_location = ident in
   let current_binding = State.get_value_from_scope ~ident state in
   match current_binding with
   | None ->
@@ -1080,7 +1084,7 @@ and eval_if ~state ~condition ~alternate ~consequent =
                 ())
 
 and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
-  let ident, _ident_location = ident in
+  let (Ast.T_Lowercase_Id (ident, _ident_type, _ident_location)) = ident in
   let iterable_value = iterable |> eval_expression ~state |> State.get_output in
   let index = ref (-1) in
   let rec loop ~state acc curr =
@@ -1094,7 +1098,7 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
         in
         let state =
           match index_ident with
-          | Some (Lowercase_Id (ident, ident_location)) ->
+          | Some (T_Lowercase_Id (ident, _ident_type, ident_location)) ->
               state
               |> State.add_value_to_scope
                    ~ident
@@ -1225,11 +1229,11 @@ and eval_block ~state statements =
 
 and eval_template ~state template =
   match template.template_node_desc with
-  | Ast.TextTemplateNode text ->
+  | Ast.T_TextTemplateNode text ->
       state
       |> State.add_output
            ~output:(Helpers.Value.string ~loc:template.template_node_loc text)
-  | Ast.HtmlTemplateNode
+  | Ast.T_HtmlTemplateNode
       {
         html_tag_identifier;
         html_tag_attributes;
@@ -1256,10 +1260,10 @@ and eval_template ~state template =
                      html_tag_children,
                      html_tag_self_closing );
              }
-  | Ast.ExpressionTemplateNode expr -> eval_expression ~state expr
-  | Ast.ComponentTemplateNode
+  | Ast.T_ExpressionTemplateNode expr -> eval_expression ~state expr
+  | Ast.T_ComponentTemplateNode
       {
-        component_tag_identifier = Uppercase_Id (component_tag_identifier, _);
+        component_tag_identifier = T_Uppercase_Id (component_tag_identifier, _, _);
         component_tag_attributes;
         component_tag_children;
       } ->
@@ -1350,7 +1354,7 @@ and eval_template ~state template =
 ;;
 
 let eval_meta sources =
-  let declarations = sources |> Parser.parse in
+  let declarations = sources |> Pinc_Parser.parse |> Pinc_Typer.typecheck in
   let state =
     State.make
       ~mode:`Portal_Collection
@@ -1369,19 +1373,23 @@ let eval_meta sources =
   |> StringMap.map (function
     | {
         declaration_loc;
-        declaration_kind = Declaration_Component { declaration_attributes; _ };
+        declaration_type = _;
+        declaration_kind = T_Declaration_Component { declaration_attributes; _ };
       } -> `Component (declaration_loc, eval declaration_attributes)
     | {
         declaration_loc;
-        declaration_kind = Declaration_Library { declaration_attributes; _ };
+        declaration_type = _;
+        declaration_kind = T_Declaration_Library { declaration_attributes; _ };
       } -> `Library (declaration_loc, eval declaration_attributes)
     | {
         declaration_loc;
-        declaration_kind = Declaration_Page { declaration_attributes; _ };
+        declaration_type = _;
+        declaration_kind = T_Declaration_Page { declaration_attributes; _ };
       } -> `Page (declaration_loc, eval declaration_attributes)
     | {
         declaration_loc;
-        declaration_kind = Declaration_Store { declaration_attributes; _ };
+        declaration_type = _;
+        declaration_kind = T_Declaration_Store { declaration_attributes; _ };
       } -> `Store (declaration_loc, eval declaration_attributes))
 ;;
 
@@ -1393,7 +1401,7 @@ let eval_declarations
   Hashtbl.reset Tag.Tag_Portal.portals;
 
   (match declarations |> StringMap.find_opt root with
-  | Some { Ast.declaration_kind = Declaration_Library _ | Declaration_Store _; _ } ->
+  | Some { Ast.declaration_kind = T_Declaration_Library _ | T_Declaration_Store _; _ } ->
       raise_notrace (Invalid_argument (root ^ " can not be evaluated"))
   | _ -> ());
 
@@ -1426,5 +1434,8 @@ let eval_declarations
 ;;
 
 let eval_sources ?tag_meta_provider ~tag_data_provider ~root sources =
-  sources |> Parser.parse |> eval_declarations ?tag_meta_provider ~tag_data_provider ~root
+  sources
+  |> Pinc_Parser.parse
+  |> Pinc_Typer.typecheck
+  |> eval_declarations ?tag_meta_provider ~tag_data_provider ~root
 ;;

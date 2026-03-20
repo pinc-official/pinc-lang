@@ -1,3 +1,5 @@
+module Ast = Pinc_Typer.Typed_tree
+
 let ( let* ) = Result.bind
 
 module Value = struct
@@ -153,11 +155,11 @@ module Expect = struct
     let declarations =
       StringMap.fold
         (fun id decl acc ->
-          match (typ, decl.Pinc_Parser.Ast.declaration_kind) with
-          | (`All | `Component), Declaration_Component _ -> id :: acc
-          | (`All | `Library), Declaration_Library _ -> id :: acc
-          | (`All | `Page), Declaration_Page _ -> id :: acc
-          | (`All | `Store), Declaration_Store _ -> id :: acc
+          match (typ, decl.Ast.declaration_kind) with
+          | (`All | `Component), T_Declaration_Component _ -> id :: acc
+          | (`All | `Library), T_Declaration_Library _ -> id :: acc
+          | (`All | `Page), T_Declaration_Page _ -> id :: acc
+          | (`All | `Store), T_Declaration_Store _ -> id :: acc
           | _ -> acc)
         declarations
         []
