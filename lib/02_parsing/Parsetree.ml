@@ -26,7 +26,7 @@ and tag = {
   tag_desc : tag_desc;
 }
 
-and tag_typ =
+and tag_kind =
   | P_Tag_String
   | P_Tag_Int
   | P_Tag_Float
@@ -42,7 +42,7 @@ and tag_typ =
   | P_Tag_Custom of string
 
 and tag_desc = {
-  tag : tag_typ;
+  tag : tag_kind;
   attributes : expression StringMap.t;
   transformer : expression option;
 }
@@ -122,10 +122,10 @@ and statement_desc =
 
 and declaration = {
   declaration_loc : Pinc_Diagnostics.Location.t;
-  declaration_type : declaration_type;
+  declaration_kind : declaration_kind;
 }
 
-and declaration_type =
+and declaration_kind =
   | P_Declaration_Component of declaration_desc
   | P_Declaration_Library of declaration_desc
   | P_Declaration_Page of declaration_desc

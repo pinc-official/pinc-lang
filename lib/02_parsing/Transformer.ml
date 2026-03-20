@@ -579,14 +579,14 @@ and transform_store_declaration env (declaration : Parsetree.declaration_desc) =
   (env, Declaration_Store { declaration_attributes; declaration_body })
 
 and transform_declaration env (declaration : Parsetree.declaration) =
-  let env, declaration_type =
-    match declaration.declaration_type with
+  let env, declaration_kind =
+    match declaration.declaration_kind with
     | P_Declaration_Component desc -> transform_component_declaration env desc
     | P_Declaration_Library desc -> transform_library_declaration env desc
     | P_Declaration_Page desc -> transform_page_declaration env desc
     | P_Declaration_Store desc -> transform_store_declaration env desc
   in
-  (env, { declaration_loc = declaration.declaration_loc; declaration_type })
+  (env, { declaration_loc = declaration.declaration_loc; declaration_kind })
 
 and transform_declarations env declarations =
   StringMap.fold_map ~init:env ~f:transform_declaration declarations

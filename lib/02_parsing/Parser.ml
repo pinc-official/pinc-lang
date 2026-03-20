@@ -785,7 +785,7 @@ module Rules = struct
 
   and parse_declaration t =
     let declaration_start = t.token.location in
-    let* identifier, declaration_type =
+    let* identifier, declaration_kind =
       match t.token.typ with
       | ( Token.KEYWORD_PAGE
         | Token.KEYWORD_COMPONENT
@@ -833,7 +833,7 @@ module Rules = struct
     in
     let declaration_end = t.token.location in
     let declaration_loc = Location.merge ~s:declaration_start ~e:declaration_end () in
-    (identifier, Parsetree.{ declaration_loc; declaration_type }) |> Option.some
+    (identifier, Parsetree.{ declaration_loc; declaration_kind }) |> Option.some
   ;;
 end
 

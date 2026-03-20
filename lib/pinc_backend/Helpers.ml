@@ -153,7 +153,7 @@ module Expect = struct
     let declarations =
       StringMap.fold
         (fun id decl acc ->
-          match (typ, decl.Pinc_Parser.Ast.declaration_type) with
+          match (typ, decl.Pinc_Parser.Ast.declaration_kind) with
           | (`All | `Component), Declaration_Component _ -> id :: acc
           | (`All | `Library), Declaration_Library _ -> id :: acc
           | (`All | `Page), Declaration_Page _ -> id :: acc
