@@ -254,7 +254,7 @@ and transform_tag env (tag : Parsetree.tag) =
             expression_desc = String [ { string_template_desc = StringText s; _ } ];
             expression_loc = loc;
           } ->
-            if Helpers.is_valid_lowercase_ident s then
+            if Identifier.is_valid_lowercase_identifier s then
               s
             else
               Pinc_Diagnostics.raise_error
