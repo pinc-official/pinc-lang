@@ -30,6 +30,5 @@
   crunch
   containers
   ppx_deriving
-  ppx_gen_rec
   (ocaml-lsp-server :with-dev-setup)
   (ocamlformat :with-dev-setup)))

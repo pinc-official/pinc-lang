@@ -1,6 +1,6 @@
 module Ast = Pinc_Parser.Ast
 
-module%gen rec Type_Value : sig
+module rec Type_Value : sig
   type value = {
     value_loc : Pinc_Diagnostics.Location.t;
     value_desc : value_desc;

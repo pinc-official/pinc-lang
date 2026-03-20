@@ -62,7 +62,6 @@ depends: [
   "pp" {= "2.0.0" & with-dev-setup}
   "ppx_derivers" {= "1.2.1"}
   "ppx_deriving" {= "6.1.1"}
-  "ppx_gen_rec" {= "2.0.0"}
   "ppx_yojson_conv_lib" {= "v0.17.0" & with-dev-setup}
   "ppxlib" {= "0.37.0"}
   "ptime" {= "1.2.0"}

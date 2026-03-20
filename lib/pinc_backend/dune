@@ -5,6 +5,6 @@
  (public_name pinc-lang.backend)
  (libraries unix Pinc_Diagnostics Pinc_Parser containers)
  (preprocess
-  (pps ppx_deriving.show ppx_gen_rec))
+  (pps ppx_deriving.show))
  (instrumentation
   (backend landmarks --auto)))
