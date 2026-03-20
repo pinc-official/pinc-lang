@@ -21,7 +21,12 @@ module Utils = struct
     let aux transformer =
       let maybe_fn = transformer |> eval_expression ~state |> State.get_output in
       match maybe_fn.value_desc with
-      | Function { parameters = [ value_param ]; state = fn_state; exec } ->
+      | Function
+          {
+            parameters = [ Ast.Lowercase_Id (value_param, _value_loc) ];
+            state = fn_state;
+            exec;
+          } ->
           let arguments = StringMap.singleton value_param value in
           state |> State.add_output ~output:(exec ~arguments ~state:fn_state ())
       | Function { parameters; state = _; exec = _ } ->

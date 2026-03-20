@@ -95,6 +95,9 @@ and transform_external_function env ~loc parameters name =
   | None -> Pinc_Diagnostics.raise_error loc "This function is missing an identifier."
   | Some (_, identifier) ->
       let env, identifier = transform_lowercase_id env identifier in
+      let env, parameters =
+        List.fold_map ~init:env ~f:transform_lowercase_id parameters
+      in
       (env, ExternalFunction { identifier; parameters; name })
 
 and transform_function env parameters body =
@@ -105,6 +108,7 @@ and transform_function env parameters body =
         let env, id = transform_lowercase_id env identifier in
         (env, Some id)
   in
+  let env, parameters = List.fold_map ~init:env ~f:transform_lowercase_id parameters in
   let env, body = transform_expression env body in
   (env, Function { identifier; parameters; body })
 

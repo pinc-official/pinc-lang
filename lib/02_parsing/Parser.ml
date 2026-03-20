@@ -191,7 +191,7 @@ module Rules = struct
     match t.token.typ with
     | Token.IDENT_LOWER key ->
         next t;
-        Some key
+        Some (Parsetree.P_Lowercase_Id (key, t.token.location))
     | _ -> None
 
   and parse_attribute ?(sep = Token.COLON) t =

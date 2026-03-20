@@ -381,7 +381,7 @@ and eval_function_call ~state ~arguments function_definition =
       let arguments =
         List.combine parameters arguments
         |> List.fold_left
-             (fun acc (param, arg) ->
+             (fun acc (Ast.Lowercase_Id (param, _param_loc), arg) ->
                let value = arg |> eval_expression ~state |> State.get_output in
                acc |> StringMap.add param value)
              StringMap.empty
@@ -393,7 +393,7 @@ and eval_function_call ~state ~arguments function_definition =
         let missing =
           parameters
           |> List.filteri (fun index _ -> index > arguments_len - 1)
-          |> List.map (fun item -> "`" ^ item ^ "`")
+          |> List.map (fun (Ast.Lowercase_Id (param, _param_loc)) -> "`" ^ param ^ "`")
           |> String.concat ", "
         in
         Diagnostics.raise_error

@@ -71,11 +71,11 @@ and expression_desc =
   | P_Array of expression array
   | P_Record of ([ `Required | `Optional ] * expression) StringMap.t
   | P_ExternalFunction of {
-      parameters : string list;
+      parameters : lowercase_identifier list;
       name : string;
     }
   | P_Function of {
-      parameters : string list;
+      parameters : lowercase_identifier list;
       body : expression;
     }
   | P_FunctionCall of {

@@ -30,7 +30,7 @@ module rec Type_Value : sig
   and definition_info = string * definition_typ option * [ `Negated | `NotNegated ]
 
   and function_info = {
-    parameters : string list;
+    parameters : Ast.lowercase_identifier list;
     state : Type_State.state;
     exec : arguments:value StringMap.t -> state:Type_State.state -> unit -> value;
   }
