@@ -1,0 +1,10 @@
+component Test {
+  let s = "string";
+  let i = 3;
+
+  <>
+    {s}
+
+    { s >= i }
+  </>
+}

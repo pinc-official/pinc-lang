@@ -1,7 +1,6 @@
 open State
-open Pinc_Parser.Ast
 open Types.Type_Value
-module Ast = Pinc_Parser.Ast
+module Ast = Pinc_Typer.Typed_tree
 
 let find_path path value =
   let rec aux path value =
@@ -18,12 +17,12 @@ let find_path path value =
 
 module Utils = struct
   let apply_transformer ~eval_expression ~state ~transformer value =
-    let aux transformer =
+    let aux (transformer : Ast.expression) =
       let maybe_fn = transformer |> eval_expression ~state |> State.get_output in
       match maybe_fn.value_desc with
       | Function
           {
-            parameters = [ Ast.Lowercase_Id (value_param, _value_loc) ];
+            parameters = [ Ast.T_Lowercase_Id (value_param, _value_type, _value_loc) ];
             state = fn_state;
             exec;
           } ->
@@ -70,7 +69,7 @@ module Utils = struct
 end
 
 module Tag_String = struct
-  let eval ~state ~required ~attributes t key =
+  let eval ~state ~required ~attributes (t : Ast.tag) key =
     let meta = state.State.tag_meta_provider ~tag:Tag_String ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_String ~key ~attributes ~required in
     let output =
@@ -95,7 +94,7 @@ module Tag_String = struct
 end
 
 module Tag_Int = struct
-  let eval ~state ~required ~attributes t key =
+  let eval ~state ~required ~attributes (t : Ast.tag) key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Int ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Int ~key ~attributes ~required in
     let output =
@@ -120,7 +119,7 @@ module Tag_Int = struct
 end
 
 module Tag_Float = struct
-  let eval ~state ~required ~attributes t key =
+  let eval ~state ~required ~attributes (t : Ast.tag) key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Float ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Float ~key ~attributes ~required in
     let output =
@@ -145,7 +144,7 @@ module Tag_Float = struct
 end
 
 module Tag_Boolean = struct
-  let eval ~state ~required ~attributes t key =
+  let eval ~state ~required ~attributes (t : Ast.tag) key =
     let meta = state.tag_meta_provider ~tag:Tag_Boolean ~key ~attributes ~required in
     let data = state.tag_data_provider ~tag:Tag_Boolean ~key ~attributes ~required in
     let output =
@@ -170,7 +169,7 @@ module Tag_Boolean = struct
 end
 
 module Tag_Custom = struct
-  let eval ~state ~required ~attributes ~name t key =
+  let eval ~state ~required ~attributes ~name (t : Ast.tag) key =
     let meta =
       state.tag_meta_provider ~tag:(Tag_Custom name) ~key ~attributes ~required
     in
@@ -188,7 +187,7 @@ end
 module Tag_Portal = struct
   let portals = Hashtbl.create 100
 
-  let eval_push ~state ~required:_ ~attributes t key =
+  let eval_push ~state ~required:_ ~attributes (t : Ast.tag) key =
     if state.mode = `Portal_Collection then (
       let push =
         match attributes |> StringMap.find_opt "push" with
@@ -208,7 +207,7 @@ module Tag_Portal = struct
     state |> State.add_output ~output
   ;;
 
-  let eval_create ~state ~required:_ ~attributes:_ t key =
+  let eval_create ~state ~required:_ ~attributes:_ (t : Ast.tag) key =
     let output =
       { value_desc = Portal (Hashtbl.find_all portals key); value_loc = t.tag_loc }
     in
@@ -217,7 +216,7 @@ module Tag_Portal = struct
 end
 
 module Tag_Context = struct
-  let eval_set ~state ~required:_ ~attributes t key =
+  let eval_set ~state ~required:_ ~attributes (t : Ast.tag) key =
     let value =
       attributes |> StringMap.find_opt "value" |> function
       | None ->
@@ -235,7 +234,7 @@ module Tag_Context = struct
     state |> State.add_output ~output:(Helpers.Value.null ~loc:t.tag_loc ())
   ;;
 
-  let eval_get ~state ~required:_ ~attributes:_ t key =
+  let eval_get ~state ~required:_ ~attributes:_ (t : Ast.tag) key =
     let output =
       state.context
       |> StringMap.find_opt key
@@ -306,7 +305,7 @@ module Tag_Store = struct
              name)
   ;;
 
-  let eval ~eval_expression ~state ~required ~attributes tag key =
+  let eval ~eval_expression ~state ~required ~attributes (tag : Ast.tag) key =
     let name, store =
       match attributes |> StringMap.find_opt "id" with
       | None ->
@@ -505,7 +504,7 @@ module Tag_Slot = struct
     | false, false -> Result.ok ()
   ;;
 
-  let eval ~eval_expression ~state ~required ~attributes tag_value key =
+  let eval ~eval_expression ~state ~required ~attributes (tag_value : Ast.tag) key =
     let constraints =
       attributes
       |> StringMap.find_opt "constraints"
@@ -614,7 +613,7 @@ module Tag_Slot = struct
 end
 
 module Tag_Record = struct
-  let eval ~eval_expression ~state ~required ~attributes ~children t key =
+  let eval ~eval_expression ~state ~required ~attributes ~children (t : Ast.tag) key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Record ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Record ~key ~attributes ~required in
     let output, child_meta =
@@ -666,7 +665,7 @@ module Tag_Record = struct
 end
 
 module Tag_Array = struct
-  let eval ~eval_expression ~state ~required ~attributes ~children t key =
+  let eval ~eval_expression ~state ~required ~attributes ~children (t : Ast.tag) key =
     let meta = state.State.tag_meta_provider ~tag:Tag_Array ~key ~attributes ~required in
     let data = state.State.tag_data_provider ~tag:Tag_Array ~key ~attributes ~required in
     let output, child_meta =
@@ -740,8 +739,8 @@ module Tag_Array = struct
   ;;
 end
 
-let eval ~eval_expression ~state t =
-  let { key; required; tag; attributes; children; transformer } = t.tag_desc in
+let eval ~eval_expression ~state (t : Ast.tag) =
+  let Ast.{ key; required; tag; attributes; children; transformer } = t.tag_desc in
 
   let path =
     match (key, state.tag_array_index) with
@@ -755,21 +754,22 @@ let eval ~eval_expression ~state t =
 
   let state =
     match tag with
-    | Tag_SetContext -> key |> Tag_Context.eval_set ~state ~required ~attributes t
-    | Tag_GetContext -> key |> Tag_Context.eval_get ~state ~required ~attributes t
-    | Tag_CreatePortal -> key |> Tag_Portal.eval_create ~state ~required ~attributes t
-    | Tag_Portal -> key |> Tag_Portal.eval_push ~state ~required ~attributes t
-    | Tag_Slot -> path |> Tag_Slot.eval ~eval_expression ~state ~required ~attributes t
-    | Tag_Store -> path |> Tag_Store.eval ~eval_expression ~state ~required ~attributes t
-    | Tag_String -> path |> Tag_String.eval ~state ~required ~attributes t
-    | Tag_Int -> path |> Tag_Int.eval ~state ~required ~attributes t
-    | Tag_Float -> path |> Tag_Float.eval ~state ~required ~attributes t
-    | Tag_Boolean -> path |> Tag_Boolean.eval ~state ~required ~attributes t
-    | Tag_Array ->
+    | T_Tag_SetContext -> key |> Tag_Context.eval_set ~state ~required ~attributes t
+    | T_Tag_GetContext -> key |> Tag_Context.eval_get ~state ~required ~attributes t
+    | T_Tag_CreatePortal -> key |> Tag_Portal.eval_create ~state ~required ~attributes t
+    | T_Tag_Portal -> key |> Tag_Portal.eval_push ~state ~required ~attributes t
+    | T_Tag_Slot -> path |> Tag_Slot.eval ~eval_expression ~state ~required ~attributes t
+    | T_Tag_Store ->
+        path |> Tag_Store.eval ~eval_expression ~state ~required ~attributes t
+    | T_Tag_String -> path |> Tag_String.eval ~state ~required ~attributes t
+    | T_Tag_Int -> path |> Tag_Int.eval ~state ~required ~attributes t
+    | T_Tag_Float -> path |> Tag_Float.eval ~state ~required ~attributes t
+    | T_Tag_Boolean -> path |> Tag_Boolean.eval ~state ~required ~attributes t
+    | T_Tag_Array ->
         path |> Tag_Array.eval ~eval_expression ~state ~required ~attributes ~children t
-    | Tag_Record ->
+    | T_Tag_Record ->
         path |> Tag_Record.eval ~eval_expression ~state ~required ~attributes ~children t
-    | Tag_Custom name -> path |> Tag_Custom.eval ~state ~required ~attributes ~name t
+    | T_Tag_Custom name -> path |> Tag_Custom.eval ~state ~required ~attributes ~name t
   in
 
   let transformed_value =

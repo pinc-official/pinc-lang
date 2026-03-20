@@ -10,6 +10,7 @@
   Pinc_Source
   Pinc_Diagnostics
   Pinc_Parser
+  Pinc_Typer
   containers)
  (preprocess
   (pps ppx_deriving.show))

@@ -106,13 +106,15 @@ let print ~kind ppf (loc : Location.t) =
     match (Sys.getenv_opt "NO_COLOR", kind) with
     | (None | Some ""), `warning -> `Yellow
     | (None | Some ""), `error -> `Red
-    | _ -> `None
+    | (None | Some ""), `type_error -> `Red
+    | Some _, _ -> `None
   in
 
   let header =
     match kind with
     | `warning -> "WARNING"
     | `error -> "ERROR"
+    | `type_error -> "TYPE ERROR"
   in
   Fmt.pf ppf "@[%a@] " (print_header ~color) header;
   Fmt.pf ppf "@[%a@]@," Location.pp loc;
@@ -132,6 +134,17 @@ let print_error location message =
   let ppf = Format.err_formatter in
   set_renderer ppf;
   Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`error) location message
+;;
+
+let print_type_error location message =
+  let ppf = Format.err_formatter in
+  set_renderer ppf;
+  Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`type_error) location message
+;;
+
+let raise_type_error location message =
+  print_type_error location message;
+  raise Pinc_error
 ;;
 
 let raise_error location message =

@@ -1,5 +1,6 @@
 module Ast = Ast
 module Transformer = Transformer
+module DependencyGraph = DependencyGraph
 
 type t = Parser.t
 type public_tag = Transformer.public_tag

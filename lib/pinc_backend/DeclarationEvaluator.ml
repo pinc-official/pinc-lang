@@ -1,12 +1,14 @@
+module Ast = Pinc_Typer.Typed_tree
+
 let eval ~eval_expression ~state declaration =
   state.Types.Type_State.declarations |> StringMap.find_opt declaration |> function
   | Some
       {
-        Pinc_Parser.Ast.declaration_kind =
-          ( Declaration_Component { declaration_body; _ }
-          | Declaration_Library { declaration_body; _ }
-          | Declaration_Page { declaration_body; _ }
-          | Declaration_Store { declaration_body; _ } );
+        Ast.declaration_kind =
+          ( T_Declaration_Component { declaration_body; _ }
+          | T_Declaration_Library { declaration_body; _ }
+          | T_Declaration_Page { declaration_body; _ }
+          | T_Declaration_Store { declaration_body; _ } );
         _;
       } -> eval_expression ~state declaration_body
   | None ->

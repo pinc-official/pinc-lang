@@ -1,24 +1,12 @@
   $ NO_COLOR="1" print . C
-  <section>
-      String.uppercase_ascii("abcàäöüß"): ABCàäöüß
-      String.lowercase_ascii("ABCÁÄÖÜß"): abcÁÄÖÜß
-      String.capitalize_ascii("abc"): Abc
-      String.capitalize_ascii("äöü"): äöü
   
-      char: c
-      char + 1: d
-      char < 32: false
-      char > 32: true
+  TYPE ERROR in file ./data.pi:14:24-26
   
-      !
-      !
-      \
-      
+    13 │     char + 1: {char + 1}
+    14 │     char < 32: {char < 32}
+       │                        ^^ 
+    15 │     char > 32: {char > 32}
   
-      '
-      	
-      ©
-      ǿ
-      😡
-    </section>
+  Types do not match. Expected `char` got `int`.
+  [1]
 
