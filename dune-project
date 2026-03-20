@@ -1,6 +1,6 @@
 (lang dune 3.17)
 
-(using action-plugin 0.1)
+(implicit_transitive_deps false)
 
 (name pinc-lang)
 

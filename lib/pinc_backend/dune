@@ -3,7 +3,15 @@
 (library
  (name Pinc_Backend)
  (public_name pinc-lang.backend)
- (libraries unix Pinc_Diagnostics Pinc_Parser containers)
+ (flags :standard -open Pinc_Core)
+ (libraries
+  unix
+  Pinc_Core
+  Pinc_Source
+  Pinc_Diagnostics
+  Pinc_Typer
+  Pinc_Parser
+  containers)
  (preprocess
   (pps ppx_deriving.show))
  (instrumentation

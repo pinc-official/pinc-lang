@@ -1,4 +1,10 @@
 (library
  (name pinc_lang)
  (public_name pinc-lang)
- (libraries Pinc_Backend))
+ (libraries
+  Pinc_Core
+  Pinc_Source
+  Pinc_Diagnostics
+  Pinc_Parser
+  Pinc_Typer
+  Pinc_Backend))

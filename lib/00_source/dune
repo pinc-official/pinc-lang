@@ -1,6 +1,7 @@
 (library
  (name Pinc_Source)
+ (flags :standard -open Pinc_Core)
  (public_name pinc-lang.source)
- (libraries)
+ (libraries Pinc_Core)
  (instrumentation
   (backend landmarks --auto)))

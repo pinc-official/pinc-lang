@@ -30,7 +30,7 @@ let main =
     |> Interpreter.eval_sources ~root ~tag_data_provider:Helpers.noop_data_provider
     |> fst
     |> print_endline
-  with Pinc_Diagnostics.Pinc_error -> exit 1
+  with Diagnostics.Pinc_error -> exit 1
 ;;
 
 let () = main

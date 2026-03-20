@@ -1,7 +1,8 @@
 (library
  (name Pinc_Parser)
  (public_name pinc-lang.parser)
- (libraries Pinc_Diagnostics))
+ (flags :standard -open Pinc_Core)
+ (libraries Pinc_Core Pinc_Source Pinc_Diagnostics))
 
 (rule
  (target pinc_stdlib.ml)

@@ -1,4 +1,5 @@
 (library
  (name Pinc_Diagnostics)
  (public_name pinc-lang.diagnostics)
- (libraries Pinc_Source fmt))
+ (flags :standard -open Pinc_Core)
+ (libraries Pinc_Core Pinc_Source fmt))

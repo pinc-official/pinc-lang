@@ -1,0 +1,4 @@
+(library
+ (name Pinc_Core)
+ (public_name pinc-lang.core)
+ (libraries))
