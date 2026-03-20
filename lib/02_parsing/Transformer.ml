@@ -1,4 +1,3 @@
-open Utils
 open Ast
 
 type primitive_value =
