@@ -9,7 +9,6 @@
   Pinc_Core
   Pinc_Source
   Pinc_Diagnostics
-  Pinc_Typer
   Pinc_Parser
   containers)
  (preprocess
