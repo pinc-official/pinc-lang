@@ -56,7 +56,7 @@
   
      3 │ 
      4 │   <div class="Section $(if fail "A" else "B")">
-       │                         ^^^                    
+       │                         ^^                     
      5 │     {fail}
   
   Only lowercase identifiers are allowed as string interpolation placeholders.
@@ -65,11 +65,11 @@
 
   $ NO_COLOR="1" print ./tag_key.pi Component
   
-  ERROR in file ./tag_key.pi:2:27-36
+  ERROR in file ./tag_key.pi:2:27-35
   
      1 │ component Component {
      2 │   let fail = #String(key: "f.#ail");
-       │                           ^^^^^^^^^^
+       │                           ^^^^^^^^  
      3 │ 
   
   Tag keys may only contain ASCII characters (a-Z), numbers (0-9) and underscores (_).

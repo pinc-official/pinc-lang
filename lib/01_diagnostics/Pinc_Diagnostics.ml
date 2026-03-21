@@ -58,15 +58,14 @@ let print_code ~color ~loc source_code =
            line_number >= highlight_line_start && line_number <= highlight_line_end
          in
          let between_columns =
-           column_number >= highlight_column_start
-           && column_number <= highlight_column_end
+           column_number >= highlight_column_start && column_number < highlight_column_end
          in
          let on_line_end = Int.equal line_number highlight_line_end in
-         let before_column_start = column_number <= highlight_column_end in
+         let before_column_end = column_number < highlight_column_end in
 
          (on_line_start && (not on_line_end) && after_column_start)
          || (between_lines && between_columns)
-         || (on_line_end && (not on_line_start) && before_column_start)
+         || (on_line_end && (not on_line_start) && before_column_end)
        in
 
        let () =

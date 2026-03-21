@@ -87,7 +87,7 @@ let make source =
 
 module Helpers = struct
   let expect_identifier ?error_message ?(typ = `All) t =
-    let location = Location.merge ~s:t.token.location ~e:t.token.location () in
+    let location = t.token.location in
     match t.token.typ with
     | Token.IDENT_UPPER i when typ = `Upper || typ = `All ->
         next t;
@@ -190,8 +190,9 @@ module Rules = struct
   and parse_fn_param t =
     match t.token.typ with
     | Token.IDENT_LOWER key ->
+        let location = t.token.location in
         next t;
-        Some (Parsetree.P_Lowercase_Id (key, t.token.location))
+        Some (Parsetree.P_Lowercase_Id (key, location))
     | _ -> None
 
   and parse_attribute ?(sep = Token.COLON) t =
@@ -519,18 +520,20 @@ module Rules = struct
 
   and parse_expression_part t =
     let expr_start = t.token.location in
-    let* expression_desc =
+    let* expression_desc, expr_end =
       match t.token.typ with
       (* PARSING COMMENT EXPRESSION *)
       | Token.COMMENT s ->
+          let end_location = t.token.location in
           next t;
-          Some (Parsetree.P_Comment s)
+          Some (Parsetree.P_Comment s, end_location)
       (* PARSING PARENTHESIZED EXPRESSION *)
       | Token.LEFT_PAREN ->
           next t;
           let expr = parse_expression t in
           t |> expect Token.RIGHT_PAREN;
-          expr |> Option.map (fun expr -> expr.Parsetree.expression_desc)
+          let end_location = t.token.location in
+          expr |> Option.map (fun expr -> (expr.Parsetree.expression_desc, end_location))
       (* PARSING RECORD or BLOCK EXPRESSION *)
       | Token.LEFT_BRACE ->
           let is_record =
@@ -548,10 +551,12 @@ module Rules = struct
               |> StringMap.of_seq
             in
             t |> expect Token.RIGHT_BRACE;
-            Parsetree.P_Record attrs |> Option.some)
+            let end_location = t.token.location in
+            Some (Parsetree.P_Record attrs, end_location))
           else
             let* expr = parse_block t in
-            Some expr.Parsetree.expression_desc
+            let end_location = t.token.location in
+            Some (expr.Parsetree.expression_desc, end_location)
       (* PARSING FOR IN EXPRESSION *)
       | Token.KEYWORD_FOR -> (
           next t;
@@ -569,6 +574,7 @@ module Rules = struct
           let reverse = optional Token.KEYWORD_REVERSE t in
           let* expr1 = parse_expression t in
           let _ = optional Token.RIGHT_PAREN t in
+          let end_location = t.token.location in
           let body = parse_block t in
           match body with
           | None ->
@@ -576,9 +582,10 @@ module Rules = struct
                 t.token.location
                 "Expected expression as body of for loop"
           | Some body ->
-              Parsetree.P_ForInExpression
-                { index; iterator; reverse; iterable = expr1; body }
-              |> Option.some)
+              Some
+                ( Parsetree.P_ForInExpression
+                    { index; iterator; reverse; iterable = expr1; body },
+                  end_location ))
       (* PARSING FN EXPRESSION *)
       | Token.KEYWORD_FN -> (
           let fn_loc = t.token.location in
@@ -602,19 +609,23 @@ module Rules = struct
                     "Expected this function to have exactly one parameter,\n\
                      or a `()` if no parameter is needed.")
           in
+          let end_location = t.token.location in
           expect Token.ARROW t;
           match t.token.typ with
           | Token.EXTERNAL_FUNCTION_SYMBOL name ->
+              let end_location = t.token.location in
               next t;
-              Option.some @@ Parsetree.P_ExternalFunction { parameters; name }
+              Option.some
+              @@ (Parsetree.P_ExternalFunction { parameters; name }, end_location)
           | _ ->
               let* body = t |> parse_block in
-              Option.some @@ Parsetree.P_Function { parameters; body })
+              Option.some @@ (Parsetree.P_Function { parameters; body }, end_location))
       (* PARSING IF EXPRESSION *)
       | Token.KEYWORD_IF ->
           next t;
           let _ = optional Token.LEFT_PAREN t in
           let* condition = t |> parse_expression in
+          let end_location = t.token.location in
           let _ = optional Token.RIGHT_PAREN t in
           let* consequent = t |> parse_statement in
           let alternate =
@@ -623,12 +634,14 @@ module Rules = struct
             else
               None
           in
-          Parsetree.P_ConditionalExpression { condition; consequent; alternate }
-          |> Option.some
+          Option.some
+          @@ ( Parsetree.P_ConditionalExpression { condition; consequent; alternate },
+               end_location )
       (* PARSING TAG EXPRESSION *)
       | Token.TAG name ->
+          let end_location = t.token.location in
           next t;
-          parse_tag ~name t
+          parse_tag ~name t |> Option.map (fun tag -> (tag, end_location))
       (* PARSING DOCTYPE *)
       | Token.HTML_DOCTYPE s ->
           let doctype_loc = t.token.location in
@@ -640,21 +653,26 @@ module Rules = struct
                 template_node_loc = doctype_loc;
               }
           in
-          Parsetree.P_TemplateExpression [ template_nodes ] |> Option.some
+          Option.some @@ (Parsetree.P_TemplateExpression [ template_nodes ], doctype_loc)
       | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
           let template_nodes = t |> Helpers.list ~fn:parse_template_node in
-          Parsetree.P_TemplateExpression template_nodes |> Option.some
+          let end_location = t.token.location in
+          Option.some @@ (Parsetree.P_TemplateExpression template_nodes, end_location)
       (* PARSING TEMPLATE EXPRESSION *)
       | Token.HTML_OPEN_FRAGMENT ->
           next t;
           let template_nodes = t |> Helpers.list ~fn:parse_template_node in
-          t |> expect Token.HTML_CLOSE_FRAGMENT;
-          Parsetree.P_TemplateExpression template_nodes |> Option.some
+          let end_location = t.token.location in
+          expect Token.HTML_CLOSE_FRAGMENT t;
+          Option.some @@ (Parsetree.P_TemplateExpression template_nodes, end_location)
       (* PARSING IDENTIFIER EXPRESSION *)
       | Token.IDENT_LOWER identifier ->
+          let end_location = t.token.location in
           next t;
-          Parsetree.P_LowercaseIdentifierExpression identifier |> Option.some
+          Option.some
+          @@ (Parsetree.P_LowercaseIdentifierExpression identifier, end_location)
       | Token.IDENT_UPPER identifier -> (
+          let end_location = t.token.location in
           next t;
           let rec get_path list =
             match t.token.typ with
@@ -669,40 +687,50 @@ module Rules = struct
           in
           match get_path [ identifier ] with
           | [ identifier ] ->
-              Parsetree.P_UppercaseIdentifierExpression identifier |> Option.some
-          | path -> Parsetree.P_UppercaseIdentifierPathExpression path |> Option.some)
+              Option.some
+              @@ (Parsetree.P_UppercaseIdentifierExpression identifier, end_location)
+          | path ->
+              Option.some
+              @@ ( Parsetree.P_UppercaseIdentifierPathExpression path,
+                   t.prev_token.location ))
       (* PARSING VALUE EXPRESSION *)
       | Token.DOUBLE_QUOTE ->
           next t;
           let s = t |> Helpers.list ~fn:parse_string_template in
+          let end_location = t.token.location in
           t |> expect Token.DOUBLE_QUOTE;
-          Parsetree.(P_String s) |> Option.some
+          Option.some @@ (Parsetree.(P_String s), end_location)
       | Token.INT i ->
+          let end_location = t.token.location in
           next t;
-          Parsetree.(P_Int i) |> Option.some
+          Option.some @@ (Parsetree.(P_Int i), end_location)
       | Token.CHAR c ->
+          let end_location = t.token.location in
           next t;
-          Parsetree.(P_Char c) |> Option.some
+          Option.some @@ (Parsetree.(P_Char c), end_location)
       | Token.FLOAT f ->
+          let end_location = t.token.location in
           next t;
-          Parsetree.(P_Float f) |> Option.some
+          Option.some @@ (Parsetree.(P_Float f), end_location)
       | Token.KEYWORD_TRUE ->
+          let end_location = t.token.location in
           next t;
-          Parsetree.(P_Bool true) |> Option.some
+          Option.some @@ (Parsetree.(P_Bool true), end_location)
       | Token.KEYWORD_FALSE ->
+          let end_location = t.token.location in
           next t;
-          Parsetree.(P_Bool false) |> Option.some
+          Option.some @@ (Parsetree.(P_Bool false), end_location)
       | Token.LEFT_BRACK ->
           next t;
           let expressions =
             Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t
             |> Array.of_list
           in
+          let end_location = t.token.location in
           expect Token.RIGHT_BRACK t;
-          Parsetree.(P_Array expressions) |> Option.some
-      | _ -> parse_unary_expression t
+          Option.some @@ (Parsetree.(P_Array expressions), end_location)
+      | _ -> parse_unary_expression t |> Option.map (fun expr -> (expr, t.token.location))
     in
-    let expr_end = t.token.location in
     let expression_loc = Location.merge ~s:expr_start ~e:expr_end () in
     Parsetree.{ expression_desc; expression_loc } |> Option.some
 

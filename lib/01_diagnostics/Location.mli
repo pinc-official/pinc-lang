@@ -15,4 +15,5 @@ val none : t
 val get_source : t -> Pinc_Source.t
 val get_start : t -> Position.t
 val get_end : t -> Position.t
+val to_string : t -> string
 val pp : Format.formatter -> t -> unit

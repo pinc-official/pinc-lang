@@ -35,9 +35,9 @@ let get_source loc = loc.loc_start.source
 let get_start loc = loc.loc_start
 let get_end loc = loc.loc_end
 
-let pp ppf loc =
+let to_string loc =
   match (Pinc_Source.name loc.loc_start.source, loc = none) with
-  | None, _ | _, true -> ()
+  | None, _ | _, true -> ""
   | Some filename, _ ->
       let loc_string =
         if loc.loc_start.line = loc.loc_end.line then
@@ -57,9 +57,11 @@ let pp ppf loc =
             loc.loc_end.line
             loc.loc_end.column
       in
-      Fmt.pf
-        ppf
-        "%a"
-        Fmt.(styled `Faint string)
-        (Printf.sprintf "in file %s:%s" filename loc_string)
+      Printf.sprintf "in file %s:%s" filename loc_string
+;;
+
+let pp ppf loc =
+  match (Pinc_Source.name loc.loc_start.source, loc = none) with
+  | None, _ | _, true -> ()
+  | Some _, _ -> Fmt.pf ppf "%a" Fmt.(styled `Faint string) (to_string loc)
 ;;

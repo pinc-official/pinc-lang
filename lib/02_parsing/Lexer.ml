@@ -208,7 +208,7 @@ let scan_escape t =
 
 let scan_ident t =
   let buf = Buffer.create 32 in
-  (* NOTE: List all vaid chars for identifiers here: *)
+  (* NOTE: List all valid chars for identifiers here: *)
   let rec loop t =
     match t.current with
     | `Chr ('A' .. 'Z' as c)
@@ -1109,8 +1109,12 @@ let scan t =
     skip_whitespace t;
   let start_pos = make_position t in
   let token = scan_token ~start_pos t in
-  (* print_endline (Token.to_string token); *)
   let end_pos = make_position t in
   let loc = Location.make ~s:start_pos ~e:end_pos () in
+  (* print_endline
+  @@ Printf.sprintf
+       "%S -> %s"
+       (Token.to_string token)
+       (Diagnostics.Location.to_string loc); *)
   Token.make ~loc token
 ;;
