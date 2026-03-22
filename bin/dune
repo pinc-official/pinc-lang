@@ -7,6 +7,14 @@
  (libraries pinc_lang))
 
 (executable
+ (name print_typed)
+ (public_name print_typed)
+ (modules print_typed)
+ (modes native)
+ (ocamlopt_flags -O3)
+ (libraries pinc_lang))
+
+(executable
  (name print_debug)
  (public_name print_debug)
  (modules print_debug)

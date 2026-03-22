@@ -2,7 +2,9 @@
  (name Pinc_Parser)
  (public_name pinc-lang.parser)
  (flags :standard -open Pinc_Core)
- (libraries Pinc_Core Pinc_Source Pinc_Diagnostics))
+ (libraries Pinc_Core Pinc_Source Pinc_Diagnostics)
+ (preprocess
+  (pps ppx_deriving.show)))
 
 (rule
  (target pinc_stdlib.ml)

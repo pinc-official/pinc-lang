@@ -1,4 +1,5 @@
 (cram
  (deps
   %{bin:print}
+  %{bin:print_typed}
   (source_tree .)))

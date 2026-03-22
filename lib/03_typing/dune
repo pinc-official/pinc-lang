@@ -3,6 +3,5 @@
  (public_name pinc-lang.typer)
  (flags :standard -open Pinc_Core)
  (libraries Pinc_Core Pinc_Diagnostics Pinc_Parser)
- (inline_tests)
  (preprocess
-  (pps ppx_expect ppx_inline_test)))
+  (pps ppx_deriving.show)))

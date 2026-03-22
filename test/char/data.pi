@@ -11,8 +11,6 @@ component C {
 
     char: {char}
     char + 1: {char + 1}
-    char < 32: {char < 32}
-    char > 32: {char > 32}
 
     {' ' + 1}
     {'\ ' + 1}

@@ -1,7 +1,8 @@
 open Types
 module Operators = Pinc_Parser.Ast.Operators
+module Location = Pinc_Diagnostics.Location
 
-type location = Pinc_Diagnostics.Location.t
+type location = (Location.t[@opaque]) [@@deriving show]
 
 type uppercase_identifier = T_Uppercase_Id of (string * Type.t * location)
 and lowercase_identifier = T_Lowercase_Id of (string * Type.t * location)
@@ -16,12 +17,20 @@ and template_node_desc =
   | T_HtmlTemplateNode of {
       html_tag_identifier : string;
       html_tag_attributes : expression StringMap.t;
+          [@printer
+            fun fmt map ->
+              StringMap.bindings map
+              |> List.iter (fun (k, v) -> Format.fprintf fmt "%s: %a" k pp_expression v)]
       html_tag_children : template_node list;
       html_tag_self_closing : bool;
     }
   | T_ComponentTemplateNode of {
       component_tag_identifier : uppercase_identifier;
       component_tag_attributes : expression StringMap.t;
+          [@printer
+            fun fmt map ->
+              StringMap.bindings map
+              |> List.iter (fun (k, v) -> Format.fprintf fmt "%s: %a" k pp_expression v)]
       component_tag_children : template_node list;
     }
   | T_ExpressionTemplateNode of expression
@@ -53,6 +62,10 @@ and tag_desc = {
   key : string;
   required : bool;
   attributes : expression StringMap.t;
+      [@printer
+        fun fmt map ->
+          StringMap.bindings map
+          |> List.iter (fun (k, v) -> Format.fprintf fmt "%s: %a" k pp_expression v)]
   transformer : expression option;
   children : expression option;
 }
@@ -76,12 +89,17 @@ and expression = {
 and expression_desc =
   | T_Comment of string
   | T_String of string_template list
-  | T_Char of Uchar.t
+  | T_Char of Uchar.t [@printer fun fmt c -> fprintf fmt "%c" (Uchar.to_char c)]
   | T_Int of int
   | T_Float of float
   | T_Bool of bool
   | T_Array of expression array
   | T_Record of ([ `Required | `Optional ] * expression) StringMap.t
+      [@printer
+        fun fmt map ->
+          StringMap.bindings map
+          |> List.iter (fun (k, (_req, v)) ->
+              Format.fprintf fmt "%s: %a" k pp_expression v)]
   | T_ExternalFunction of {
       identifier : lowercase_identifier;
       parameters : lowercase_identifier list;
@@ -149,10 +167,20 @@ and declaration_kind =
 
 and declaration_desc = {
   declaration_attributes : expression StringMap.t;
+      [@printer
+        fun fmt map ->
+          StringMap.bindings map
+          |> List.iter (fun (k, v) -> Format.fprintf fmt "%s: %a" k pp_expression v)]
   declaration_body : expression;
 }
 
-and t = declaration StringMap.t
+and t =
+  (declaration StringMap.t
+  [@printer
+    fun fmt map ->
+      StringMap.bindings map
+      |> List.iter (fun (k, v) -> Format.fprintf fmt "%s: %a" k pp_declaration v)])
+[@@deriving show]
 
 module Declaration = struct
   let marshal (d : declaration) = Marshal.to_string d []

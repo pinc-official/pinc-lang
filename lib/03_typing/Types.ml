@@ -14,6 +14,7 @@ module rec Type : sig
     | TComponent of t StringMap.t
     | TStore of t StringMap.t
     | TPage of t StringMap.t
+  [@@deriving show]
 
   val free_type_variables : t -> StringSet.t
   val apply : t StringMap.t -> t -> t
@@ -98,6 +99,8 @@ end = struct
     | TStore _ -> "store"
     | TPage _ -> "page"
   ;;
+
+  let pp fmt t = Format.fprintf fmt "%s" (show t)
 
   (* Several operations, for example type scheme instantiation, require fresh names for newly
     introduced type variables. *)

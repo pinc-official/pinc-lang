@@ -1,4 +1,6 @@
 (library
  (name Pinc_Core)
  (public_name pinc-lang.core)
- (libraries))
+ (libraries containers)
+ (preprocess
+  (pps ppx_deriving.show)))

@@ -80,6 +80,8 @@ module Binary = struct
     | INCLUSIVE_RANGE -> "..."
     | PIPE -> "|>"
   ;;
+
+  let pp fmt t = Format.fprintf fmt "%s" (to_string t)
 end
 
 module Unary = struct
@@ -96,4 +98,6 @@ module Unary = struct
     | MINUS -> "-..."
     | NOT -> "!..."
   ;;
+
+  let pp fmt t = Format.fprintf fmt "%s" (to_string t)
 end

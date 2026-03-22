@@ -876,7 +876,13 @@ let stdlib =
       filename |> Pinc_stdlib.read |> Option.get |> Pinc_Source.of_string ~filename)
 ;;
 
-let parse sources : Parsetree.t =
+let parse ?(include_stdlib = true) sources : Parsetree.t =
+  let stdlib =
+    if include_stdlib then
+      stdlib
+    else
+      []
+  in
   stdlib @ sources
   |> ListLabels.fold_left ~init:StringMap.empty ~f:(fun acc source ->
       let decls = parse_source source in

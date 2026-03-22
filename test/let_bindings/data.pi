@@ -2,9 +2,12 @@ component Test {
   let s = "string";
   let i = 3;
 
+  let id = fn x -> x;
+  let foo = id("s");
+
   <>
     {s}
 
-    { s >= i }
+    {i > foo}
   </>
 }
