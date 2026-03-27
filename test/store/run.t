@@ -1,19 +1,7 @@
   $ NO_COLOR="1" print . StoreValueProvider
   <div>
-      Somewhere in the World ... or am I??
-  some@email.invalid
-  +1 111 000 111
+      Somewhere in the World ... or am I??some@email.invalid+1 111 000 111Imprint/imprint
   
-  Imprint
-  /imprint
-  
-  
-  
-      42008
-  Product A
-  
-  22130
-  Product B
-  
+      42008Product A22130Product B
     </div>
 

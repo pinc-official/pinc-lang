@@ -22,6 +22,8 @@ type t = {
   mutable line_offset : int;
   mutable line : int;
   mutable column : int;
+  mutable saw_characters_on_line : bool;
+  line_indentation : Buffer.t;
   mutable mode : mode list;
 }
 
@@ -38,6 +40,8 @@ let make source =
     line_offset = 0;
     column = 0;
     line = 1;
+    line_indentation = Buffer.create 32;
+    saw_characters_on_line = false;
     mode = [ Normal ];
   }
 ;;
@@ -47,31 +51,29 @@ let make_position t =
 ;;
 
 (* module Debug = struct
-     [@@@warning "-unused-value-declaration"]
+  [@@@warning "-unused-value-declaration"]
 
-     let print_current t =
-       let aux = function
-         | `Chr ' ' -> "(SPACE)"
-         | `Chr '\t' -> "(TAB)"
-         | `Chr '\n' -> "(NEWLINE)"
-         | `Chr c -> String.make 1 c
-         | `EOF -> "(EOF)"
-       in
-       print_endline (aux t.current)
-     ;;
+  let print_current t =
+    let aux = function
+      | `Chr ' ' -> "(SPACE)"
+      | `Chr '\t' -> "(TAB)"
+      | `Chr '\n' -> "(NEWLINE)"
+      | `Chr c -> String.make 1 c
+      | `EOF -> "(EOF)"
+    in
+    print_endline (aux t.current)
+  ;;
 
-     let print_mode t =
-       let aux = function
-         | Normal -> "NORMAL"
-         | String -> "String"
-         | TemplateAttributes -> "TemplateAttributes"
-         | ComponentAttributes -> "ComponentAttributes"
-         | Template -> "Template"
-       in
+  let show_mode = function
+    | Normal -> "NORMAL"
+    | String -> "String"
+    | TemplateAttributes -> "TemplateAttributes"
+    | ComponentAttributes -> "ComponentAttributes"
+    | Template -> "Template"
+  ;;
 
-       aux (List.hd t.mode)
-     ;;
-   end *)
+  let print_mode t = show_mode (List.hd t.mode)
+end *)
 
 let current_mode t =
   match t.mode with
@@ -91,11 +93,22 @@ let popMode mode t =
   | _ -> ()
 ;;
 
-let peek t = try `Chr (String.get t.src (t.offset + 1)) with Invalid_argument _ -> `EOF
-let peek2 t = try `Chr (String.get t.src (t.offset + 2)) with Invalid_argument _ -> `EOF
+let is_whitespace t =
+  match t.current with
+  | `Chr ' ' | `Chr '\t' | `Chr '\n' | `Chr '\r' -> true
+  | _ -> false
+;;
 
 let peek_n n t =
   try `Chr (String.get t.src (t.offset + n)) with Invalid_argument _ -> `EOF
+;;
+
+let peek t = peek_n 1 t
+let peek2 t = peek_n 2 t
+
+let set_saw_character t =
+  if not @@ t.saw_characters_on_line then
+    t.saw_characters_on_line <- true
 ;;
 
 let eat t =
@@ -104,7 +117,13 @@ let eat t =
     match t.current with
     | `Chr '\n' ->
         t.line_offset <- next_offset;
-        t.line <- succ t.line
+        t.line <- succ t.line;
+        t.saw_characters_on_line <- false;
+        Buffer.clear t.line_indentation;
+        ()
+    | `Chr ((' ' | '\t') as c) when not t.saw_characters_on_line ->
+        Buffer.add_char t.line_indentation c
+    | _ when not (is_whitespace t) -> set_saw_character t
     | _ -> ()
   in
   t.column <- next_offset - t.line_offset;
@@ -149,11 +168,11 @@ let eat_sequence ?(case_sensitive = false) seq t =
 ;;
 
 let rec skip_whitespace t =
-  match t.current with
-  | `Chr ' ' | `Chr '\t' | `Chr '\n' | `Chr '\r' ->
-      eat t;
-      skip_whitespace t
-  | _ -> ()
+  if is_whitespace t then (
+    eat t;
+    skip_whitespace t)
+  else
+    set_saw_character t
 ;;
 
 let scan_escape t =
@@ -510,11 +529,24 @@ let scan_template_text t =
           (Location.make ~s:start_pos ~e:(make_position t) ())
           "Your Template was not closed correctly. You probably mismatched or forgot a \
            closing tag."
-    | `Chr '{' -> Buffer.contents buf
+    | `Chr '{' ->
+        set_saw_character t;
+        Buffer.contents buf
+    | `Chr '\n' ->
+        eat t;
+        Buffer.add_char buf '\n';
+        Buffer.contents buf
     | `Chr '<' -> (
         match peek t with
-        | `Chr '/' -> Buffer.contents buf
-        | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' -> Buffer.contents buf
+        | `Chr '/' ->
+            set_saw_character t;
+            Buffer.contents buf
+        | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' ->
+            set_saw_character t;
+            Buffer.contents buf
+        | `Chr '>' ->
+            set_saw_character t;
+            Buffer.contents buf
         | _ ->
             eat t;
             Buffer.add_char buf '<';
@@ -526,7 +558,13 @@ let scan_template_text t =
   in
   let buf = Buffer.create 32 in
   let found = loop buf t in
-  Token.STRING found
+  Token.HTML_TEXT found
+;;
+
+let scan_template_fragment_open t =
+  eat2 t;
+  setMode Template t;
+  Token.HTML_OPEN_FRAGMENT
 ;;
 
 let scan_html_attribute_ident t =
@@ -719,10 +757,7 @@ let rec scan_template_token ~start_pos t =
       Token.RIGHT_BRACE
   | `Chr '<' -> (
       match peek t with
-      | `Chr '>' ->
-          eat2 t;
-          setMode Template t;
-          Token.HTML_OPEN_FRAGMENT
+      | `Chr '>' -> scan_template_fragment_open t
       | `Chr '!' ->
           (* NOTE: not sure, if we should setMode Template t; here... *)
           scan_doctype t
@@ -1042,9 +1077,7 @@ and scan_normal_token ~start_pos t =
           Token.STAR)
   | `Chr '<' -> (
       match peek t with
-      | `Chr '>' ->
-          eat2 t;
-          Token.HTML_OPEN_FRAGMENT
+      | `Chr '>' -> scan_template_fragment_open t
       | `Chr '-' ->
           eat2 t;
           Token.ARROW_LEFT
@@ -1095,7 +1128,7 @@ and scan_normal_token ~start_pos t =
     scan_token ~start_pos t *)
 
 and scan_token ~start_pos t =
-  (* Printf.printf "\nMODE(s): %s\n" (String.concat " " (List.rev_map show_mode t.mode)); *)
+  (* Printf.printf "MODE(s): %s\n\n" (String.concat " <- " (List.map Debug.show_mode t.mode)); *)
   match current_mode t with
   | Template -> scan_template_token ~start_pos t
   | TemplateAttributes -> scan_template_attributes_token ~start_pos t
@@ -1105,8 +1138,14 @@ and scan_token ~start_pos t =
 ;;
 
 let scan t =
-  if not (current_mode t = Template || current_mode t = String) then
-    skip_whitespace t;
+  let () =
+    match current_mode t with
+    | Normal -> skip_whitespace t
+    | TemplateAttributes -> skip_whitespace t
+    | ComponentAttributes -> skip_whitespace t
+    | String -> ()
+    | Template -> ()
+  in
   let start_pos = make_position t in
   let token = scan_token ~start_pos t in
   let end_pos = make_position t in

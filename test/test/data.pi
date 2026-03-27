@@ -2,18 +2,24 @@ page Docs(
   label: "Docs",
   icon: "/images/icons/page-docs.svg",
 ) {
-  let floats? = [1_000.462, 1., 1.4332, .5, 1e10, 1e+2, 1e-5, 1.e-2, 0.1e-1];
-
-  let fruits = "   ⌘,apples,oranges,bannanas    ";
-
-  let unicode = "⌘2";
+  let fruits = ["apples","oranges","bannanas", "melons"];
 
   <>
-    {fruits |> Base.String.trim |> Base.String.split(',')}
-
-    {unicode[0]}
-    {unicode[1]}
-
-    {floats[0]}
+    <span></span>
+    <>
+      <div
+        class="foo"
+      />
+    </>
+    <ul>
+      {for fruit in fruits {
+        <li>{fruit}</li>
+      }}
+    </ul>
+    <p>
+      Aliqua in elit sunt in anim culpa nostrud elit.
+      Elit voluptate nisi laborum est eu esse non exercitation minim.
+      Nisi ea enim minim quis.
+    </p>
   </>
 }

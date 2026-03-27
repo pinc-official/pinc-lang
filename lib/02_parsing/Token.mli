@@ -66,6 +66,7 @@ type token_type =
   | KEYWORD_PAGE
   | KEYWORD_STORE
   | HTML_DOCTYPE of string
+  | HTML_TEXT of string
   | HTML_OPEN_FRAGMENT
   | HTML_CLOSE_FRAGMENT
   | HTML_OPEN_TAG of string

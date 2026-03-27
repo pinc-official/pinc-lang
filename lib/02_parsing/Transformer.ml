@@ -386,6 +386,12 @@ and transform_html_template_node
         html_tag_self_closing;
       } )
 
+and transform_fragment_template_node env ~fragement_children =
+  let env, fragement_children =
+    List.fold_map ~init:env ~f:transform_template_node fragement_children
+  in
+  (env, FragmentTemplateNode { fragement_children })
+
 and transform_component_template_node
     env
     ~component_tag_identifier
@@ -404,11 +410,14 @@ and transform_component_template_node
     ComponentTemplateNode
       { component_tag_identifier; component_tag_attributes; component_tag_children } )
 
-and transform_expression_template_node env expr =
-  let env, expr = transform_expression env expr in
-  (env, ExpressionTemplateNode expr)
+and transform_expression_template_node env ~template_expression_node_expression =
+  let env, template_expression_node_expression =
+    transform_expression env template_expression_node_expression
+  in
+  (env, ExpressionTemplateNode { template_expression_node_expression })
 
-and transform_text_template_node env s = (env, TextTemplateNode s)
+and transform_text_template_node env ~text_template_node_text =
+  (env, TextTemplateNode { text_template_node_text })
 
 and transform_template_node env (node : Parsetree.template_node) =
   let env, desc =
@@ -433,14 +442,18 @@ and transform_template_node env (node : Parsetree.template_node) =
           ~component_tag_identifier
           ~component_tag_attributes
           ~component_tag_children
-    | P_ExpressionTemplateNode expr -> transform_expression_template_node env expr
-    | P_TextTemplateNode s -> transform_text_template_node env s
+    | P_FragmentTemplateNode { fragement_children } ->
+        transform_fragment_template_node env ~fragement_children
+    | P_ExpressionTemplateNode { template_expression_node_expression } ->
+        transform_expression_template_node env ~template_expression_node_expression
+    | P_TextTemplateNode { text_template_node_text } ->
+        transform_text_template_node env ~text_template_node_text
   in
   (env, { template_node_loc = node.template_node_loc; template_node_desc = desc })
 
-and transform_template env nodes =
-  let env, nodes = List.fold_map ~init:env ~f:transform_template_node nodes in
-  (env, TemplateExpression nodes)
+and transform_template env node =
+  let env, node = transform_template_node env node in
+  (env, TemplateExpression node)
 
 and transform_expression env (exression : Parsetree.expression) =
   let env, desc =

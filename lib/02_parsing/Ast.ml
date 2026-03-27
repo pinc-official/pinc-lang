@@ -20,8 +20,9 @@ and template_node_desc =
       component_tag_attributes : expression StringMap.t;
       component_tag_children : template_node list;
     }
-  | ExpressionTemplateNode of expression
-  | TextTemplateNode of string
+  | FragmentTemplateNode of { fragement_children : template_node list }
+  | ExpressionTemplateNode of { template_expression_node_expression : expression }
+  | TextTemplateNode of { text_template_node_text : string }
 
 and tag = {
   tag_loc : Pinc_Diagnostics.Location.t;
@@ -100,7 +101,7 @@ and expression_desc =
       iterable : expression;
       body : expression;
     }
-  | TemplateExpression of template_node list
+  | TemplateExpression of template_node
   | BlockExpression of statement list
   | ConditionalExpression of {
       condition : expression;
@@ -153,3 +154,32 @@ module Declaration = struct
     result
   ;;
 end
+
+let show_expression expr =
+  match expr with
+  | { expression_loc = _; expression_desc = Comment _ } -> "Comment"
+  | { expression_loc = _; expression_desc = String _ } -> "String"
+  | { expression_loc = _; expression_desc = Char _ } -> "Char"
+  | { expression_loc = _; expression_desc = Int _ } -> "Int"
+  | { expression_loc = _; expression_desc = Float _ } -> "Float"
+  | { expression_loc = _; expression_desc = Bool _ } -> "Bool"
+  | { expression_loc = _; expression_desc = Array _ } -> "Array"
+  | { expression_loc = _; expression_desc = Record _ } -> "Record"
+  | { expression_loc = _; expression_desc = ExternalFunction _ } -> "ExternalFunction"
+  | { expression_loc = _; expression_desc = Function _ } -> "Function"
+  | { expression_loc = _; expression_desc = FunctionCall _ } -> "FunctionCall"
+  | { expression_loc = _; expression_desc = UppercaseIdentifierPathExpression _ } ->
+      "UppercaseIdentifierPathExpression"
+  | { expression_loc = _; expression_desc = UppercaseIdentifierExpression _ } ->
+      "UppercaseIdentifierExpression"
+  | { expression_loc = _; expression_desc = LowercaseIdentifierExpression _ } ->
+      "LowercaseIdentifierExpression"
+  | { expression_loc = _; expression_desc = TagExpression _ } -> "TagExpression"
+  | { expression_loc = _; expression_desc = ForInExpression _ } -> "ForInExpression"
+  | { expression_loc = _; expression_desc = TemplateExpression _ } -> "TemplateExpression"
+  | { expression_loc = _; expression_desc = BlockExpression _ } -> "BlockExpression"
+  | { expression_loc = _; expression_desc = ConditionalExpression _ } ->
+      "ConditionalExpression"
+  | { expression_loc = _; expression_desc = UnaryExpression _ } -> "UnaryExpression"
+  | { expression_loc = _; expression_desc = BinaryExpression _ } -> "BinaryExpression"
+;;

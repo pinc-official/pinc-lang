@@ -295,9 +295,9 @@ module Rules = struct
     let node_start = t.token in
     let* template_node_desc =
       match t.token.typ with
-      | Token.STRING s ->
+      | Token.HTML_TEXT text_template_node_text ->
           next t;
-          Some (Parsetree.P_TextTemplateNode s)
+          Some (Parsetree.P_TextTemplateNode { text_template_node_text })
       | Token.LEFT_BRACE ->
           let start_token = t.token in
           next t;
@@ -306,9 +306,9 @@ module Rules = struct
             | Token.COMMENT _ -> true
             | _ -> false
           in
-          let expression =
+          let template_expression_node_expression =
             match parse_expression t with
-            | Some e -> Parsetree.P_ExpressionTemplateNode e
+            | Some e -> e
             | None ->
                 let location =
                   Location.merge ~s:start_token.location ~e:t.token.location ()
@@ -319,11 +319,15 @@ module Rules = struct
                     "Expected to see an expression between these braces. \n\
                      This is currently not doing anything, so you can safely remove it.\n\
                      If you wanted to have an empty record here, you need to write `{{}}`";
-                P_ExpressionTemplateNode
+
+                Parsetree.
                   {
                     expression_loc = location;
                     expression_desc = Parsetree.P_BlockExpression [];
                   }
+          in
+          let expression =
+            Parsetree.P_ExpressionTemplateNode { template_expression_node_expression }
           in
           t |> expect Token.RIGHT_BRACE;
           Some expression
@@ -355,6 +359,11 @@ module Rules = struct
                  html_tag_children;
                  html_tag_self_closing;
                })
+      | Token.HTML_OPEN_FRAGMENT ->
+          next t;
+          let fragement_children = t |> Helpers.list ~fn:parse_template_node in
+          t |> expect Token.HTML_CLOSE_FRAGMENT;
+          Some (Parsetree.P_FragmentTemplateNode { fragement_children })
       | Token.COMPONENT_OPEN_TAG identifier ->
           let component_tag_identifier =
             Parsetree.P_Uppercase_Id (identifier, t.token.location)
@@ -385,9 +394,9 @@ module Rules = struct
                  component_tag_attributes;
                  component_tag_children;
                })
-      | Token.HTML_DOCTYPE s ->
+      | Token.HTML_DOCTYPE text_template_node_text ->
           next t;
-          Some (Parsetree.P_TextTemplateNode s)
+          Some (Parsetree.P_TextTemplateNode { text_template_node_text })
       | _ -> None
     in
     let node_end = t.prev_token in
@@ -642,29 +651,14 @@ module Rules = struct
           let end_location = t.token.location in
           next t;
           parse_tag ~name t |> Option.map (fun tag -> (tag, end_location))
-      (* PARSING DOCTYPE *)
-      | Token.HTML_DOCTYPE s ->
-          let doctype_loc = t.token.location in
-          next t;
-          let template_nodes =
-            Parsetree.
-              {
-                template_node_desc = P_TextTemplateNode s;
-                template_node_loc = doctype_loc;
-              }
-          in
-          Option.some @@ (Parsetree.P_TemplateExpression [ template_nodes ], doctype_loc)
-      | Token.HTML_OPEN_TAG _ | Token.COMPONENT_OPEN_TAG _ ->
-          let template_nodes = t |> Helpers.list ~fn:parse_template_node in
-          let end_location = t.token.location in
-          Option.some @@ (Parsetree.P_TemplateExpression template_nodes, end_location)
       (* PARSING TEMPLATE EXPRESSION *)
-      | Token.HTML_OPEN_FRAGMENT ->
-          next t;
-          let template_nodes = t |> Helpers.list ~fn:parse_template_node in
+      | Token.HTML_OPEN_TAG _
+      | Token.COMPONENT_OPEN_TAG _
+      | Token.HTML_OPEN_FRAGMENT
+      | Token.HTML_DOCTYPE _ ->
+          let* template_node = parse_template_node t in
           let end_location = t.token.location in
-          expect Token.HTML_CLOSE_FRAGMENT t;
-          Option.some @@ (Parsetree.P_TemplateExpression template_nodes, end_location)
+          Option.some @@ (Parsetree.P_TemplateExpression template_node, end_location)
       (* PARSING IDENTIFIER EXPRESSION *)
       | Token.IDENT_LOWER identifier ->
           let end_location = t.token.location in
@@ -876,7 +870,13 @@ let stdlib =
       filename |> Pinc_stdlib.read |> Option.get |> Pinc_Source.of_string ~filename)
 ;;
 
-let parse sources : Parsetree.t =
+let parse ?(include_stdlib = true) sources : Parsetree.t =
+  let stdlib =
+    if include_stdlib then
+      stdlib
+    else
+      []
+  in
   stdlib @ sources
   |> ListLabels.fold_left ~init:StringMap.empty ~f:(fun acc source ->
       let decls = parse_source source in

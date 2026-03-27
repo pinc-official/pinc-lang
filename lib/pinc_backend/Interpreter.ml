@@ -228,13 +228,8 @@ and eval_expression ~state expression =
   | Ast.TagExpression tag -> Tag.eval ~eval_expression ~state tag
   | Ast.ForInExpression { index; iterator = Lowercase_Id ident; reverse; iterable; body }
     -> eval_for_in ~state ~index_ident:index ~ident ~reverse ~iterable body
-  | Ast.TemplateExpression nodes ->
-      state
-      |> State.add_output
-           ~output:
-             (nodes
-             |> List.map (fun it -> it |> eval_template ~state |> State.get_output)
-             |> Helpers.Value.list ~loc:expression.expression_loc)
+  | Ast.TemplateExpression node ->
+      state |> State.add_output ~output:(node |> eval_template ~state |> State.get_output)
   | Ast.BlockExpression e -> eval_block ~state e
   | Ast.ConditionalExpression { condition; consequent; alternate } ->
       eval_if ~state ~condition ~alternate ~consequent
@@ -1149,6 +1144,8 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
   | Null -> state |> State.add_output ~output:iterable_value
   | HtmlTemplateNode _ ->
       Diagnostics.raise_error iterable.expression_loc "Cannot iterate over template node"
+  | FragmentTemplateNode _ ->
+      Diagnostics.raise_error iterable.expression_loc "Cannot iterate over template node"
   | ComponentTemplateNode _ ->
       Diagnostics.raise_error iterable.expression_loc "Cannot iterate over template node"
   | Record _ ->
@@ -1225,10 +1222,13 @@ and eval_block ~state statements =
 
 and eval_template ~state template =
   match template.template_node_desc with
-  | Ast.TextTemplateNode text ->
+  | Ast.TextTemplateNode { text_template_node_text } ->
       state
       |> State.add_output
-           ~output:(Helpers.Value.string ~loc:template.template_node_loc text)
+           ~output:
+             (Helpers.Value.string
+                ~loc:template.template_node_loc
+                text_template_node_text)
   | Ast.HtmlTemplateNode
       {
         html_tag_identifier;
@@ -1256,7 +1256,21 @@ and eval_template ~state template =
                      html_tag_children,
                      html_tag_self_closing );
              }
-  | Ast.ExpressionTemplateNode expr -> eval_expression ~state expr
+  | Ast.FragmentTemplateNode { fragement_children } ->
+      let children =
+        fragement_children
+        |> List.map (fun child -> eval_template ~state child |> State.get_output)
+      in
+
+      state
+      |> State.add_output
+           ~output:
+             {
+               value_loc = template.template_node_loc;
+               value_desc = FragmentTemplateNode children;
+             }
+  | Ast.ExpressionTemplateNode { template_expression_node_expression } ->
+      eval_expression ~state template_expression_node_expression
   | Ast.ComponentTemplateNode
       {
         component_tag_identifier = Uppercase_Id (component_tag_identifier, _);

@@ -1,25 +1,11 @@
   $ NO_COLOR="1" print . Component
   <section>
       
-      1
-  foo
-  true
-  3.1415
-  
+      1footrue3.1415
       1
       321
       
   
-      0
-  1
-  4
-  9
-  16
-  25
-  36
-  49
-  64
-  81
-  100
+      0149162536496481100
     </section>
 

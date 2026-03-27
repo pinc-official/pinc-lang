@@ -66,6 +66,7 @@ type token_type =
   | KEYWORD_PAGE
   | KEYWORD_STORE
   | HTML_DOCTYPE of string
+  | HTML_TEXT of string
   | HTML_OPEN_FRAGMENT
   | HTML_CLOSE_FRAGMENT
   | HTML_OPEN_TAG of string
@@ -151,12 +152,13 @@ let to_string = function
   | KEYWORD_STORE -> "store"
   | COMMENT s -> "/* " ^ s ^ " */"
   | HTML_DOCTYPE s -> s
+  | HTML_TEXT s -> s
   | HTML_OPEN_FRAGMENT -> "<>"
   | HTML_CLOSE_FRAGMENT -> "</>"
   | HTML_OPEN_TAG s -> "<" ^ s
-  | HTML_CLOSE_TAG s -> "</" ^ s
+  | HTML_CLOSE_TAG s -> "</" ^ s ^ ">"
   | COMPONENT_OPEN_TAG s -> "<" ^ s
-  | COMPONENT_CLOSE_TAG s -> "</" ^ s
+  | COMPONENT_CLOSE_TAG s -> "</" ^ s ^ ">"
   | HTML_OR_COMPONENT_TAG_SELF_CLOSING -> "/>"
   | HTML_OR_COMPONENT_TAG_END -> "> (TAG END)"
   | END_OF_INPUT -> "(EOF)"
@@ -222,6 +224,7 @@ let is_keyword = function
   | PLUSPLUS
   | KEYWORD_REVERSE
   | HTML_DOCTYPE _
+  | HTML_TEXT _
   | HTML_OPEN_FRAGMENT
   | HTML_CLOSE_FRAGMENT
   | HTML_OR_COMPONENT_TAG_END

@@ -18,6 +18,7 @@ module rec Type_Value : sig
     | Record of value StringMap.t
     | Function of function_info
     | DefinitionInfo of definition_info
+    | FragmentTemplateNode of value list
     | HtmlTemplateNode of string * value StringMap.t * value list * bool
     | ComponentTemplateNode of string * value StringMap.t * value
 

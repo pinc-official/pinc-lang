@@ -18,8 +18,9 @@ and template_node_desc =
       component_tag_attributes : expression StringMap.t;
       component_tag_children : template_node list;
     }
-  | P_ExpressionTemplateNode of expression
-  | P_TextTemplateNode of string
+  | P_FragmentTemplateNode of { fragement_children : template_node list }
+  | P_ExpressionTemplateNode of { template_expression_node_expression : expression }
+  | P_TextTemplateNode of { text_template_node_text : string }
 
 and tag = {
   tag_loc : Pinc_Diagnostics.Location.t;
@@ -93,7 +94,7 @@ and expression_desc =
       iterable : expression;
       body : expression;
     }
-  | P_TemplateExpression of template_node list
+  | P_TemplateExpression of template_node
   | P_BlockExpression of statement list
   | P_ConditionalExpression of {
       condition : expression;

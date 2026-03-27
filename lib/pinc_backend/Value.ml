@@ -20,19 +20,13 @@ let rec to_string value =
         "false"
   | Array l ->
       let buf = Buffer.create 200 in
-      l
-      |> Array.iteri (fun i it ->
-          if i <> 0 then
-            Buffer.add_char buf '\n';
-          Buffer.add_string buf (to_string it));
+      l |> Array.iter (fun it -> Buffer.add_string buf (to_string it));
       Buffer.contents buf
   | Record m ->
       let b = Buffer.create 1024 in
       m
       |> StringMap.to_seq
-      |> Seq.iter (fun (_key, value) ->
-          Buffer.add_string b (to_string value);
-          Buffer.add_char b '\n');
+      |> Seq.iter (fun (_key, value) -> Buffer.add_string b (to_string value));
       Buffer.contents b
   | HtmlTemplateNode (tag, attributes, children, self_closing) ->
       let buf = Buffer.create 128 in
@@ -53,6 +47,7 @@ let rec to_string value =
             | Array _
             | Record _
             | HtmlTemplateNode _
+            | FragmentTemplateNode _
             | ComponentTemplateNode _
             | DefinitionInfo _ ->
                 Buffer.add_char buf ' ';
@@ -71,6 +66,11 @@ let rec to_string value =
         Buffer.add_string buf tag;
         Buffer.add_char buf '>');
       Buffer.contents buf
+  | FragmentTemplateNode children ->
+      let buf = Buffer.create 128 in
+      children |> List.iter (fun child -> Buffer.add_string buf (to_string child));
+      let content = Buffer.contents buf in
+      Dedent.string content
   | ComponentTemplateNode (_tag, _attributes, result) -> result |> to_string
   | Function _ -> ""
   | DefinitionInfo _ -> ""
@@ -84,6 +84,7 @@ let is_true value =
   | Char _ -> true
   | Int _ -> true
   | Float _ -> true
+  | FragmentTemplateNode _ -> true
   | HtmlTemplateNode _ -> true
   | ComponentTemplateNode _ -> true
   | Portal _ -> false
@@ -152,6 +153,7 @@ let show value =
   | Char c -> Printf.sprintf "char (%i)" (Uchar.to_int c)
   | Int i -> Printf.sprintf "int (%i)" i
   | Float f -> Printf.sprintf "float (%f)" f
+  | FragmentTemplateNode _ -> Printf.sprintf "FragmentTemplateNode"
   | HtmlTemplateNode _ -> Printf.sprintf "HtmlTemplateNode"
   | ComponentTemplateNode _ -> Printf.sprintf "ComponentTemplateNode"
   | Portal _ -> Printf.sprintf "Portal"
