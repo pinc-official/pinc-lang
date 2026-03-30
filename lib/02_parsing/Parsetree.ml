@@ -9,13 +9,13 @@ and template_node = {
 and template_node_desc =
   | P_HtmlTemplateNode of {
       html_tag_identifier : string;
-      html_tag_attributes : expression StringMap.t;
+      html_tag_attributes : (string * expression) list;
       html_tag_children : template_node list;
       html_tag_self_closing : bool;
     }
   | P_ComponentTemplateNode of {
       component_tag_identifier : uppercase_identifier;
-      component_tag_attributes : expression StringMap.t;
+      component_tag_attributes : (string * expression) list;
       component_tag_children : template_node list;
     }
   | P_FragmentTemplateNode of { fragement_children : template_node list }
@@ -44,7 +44,7 @@ and tag_kind =
 
 and tag_desc = {
   tag : tag_kind;
-  attributes : expression StringMap.t;
+  attributes : (string * expression) list;
   transformer : expression option;
 }
 
@@ -69,8 +69,8 @@ and expression_desc =
   | P_Int of int
   | P_Float of float
   | P_Bool of bool
-  | P_Array of expression array
-  | P_Record of ([ `Required | `Optional ] * expression) StringMap.t
+  | P_Array of expression list
+  | P_Record of (string * ([ `Required | `Optional ] * expression)) list
   | P_ExternalFunction of {
       parameters : lowercase_identifier list;
       name : string;
@@ -133,11 +133,11 @@ and declaration_kind =
   | P_Declaration_Store of declaration_desc
 
 and declaration_desc = {
-  declaration_attributes : expression StringMap.t;
+  declaration_attributes : (string * expression) list;
   declaration_body : expression;
 }
 
-and t = declaration StringMap.t
+and t = (string * declaration) list
 
 module Declaration = struct
   let marshal (d : declaration) = Marshal.to_string d []

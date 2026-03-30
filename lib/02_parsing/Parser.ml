@@ -248,16 +248,11 @@ module Rules = struct
     let start_token = t.token in
     let attributes =
       if t |> optional Token.LEFT_PAREN then (
-        let res =
-          t
-          |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA
-          |> List.to_seq
-          |> StringMap.of_seq
-        in
+        let res = t |> Helpers.separated_list ~fn:parse_attribute ~sep:Token.COMMA in
         t |> expect Token.RIGHT_PAREN;
         res)
       else
-        StringMap.empty
+        []
     in
     let transformer =
       let start_token = t.token in
@@ -334,10 +329,7 @@ module Rules = struct
       | Token.HTML_OPEN_TAG html_tag_identifier ->
           next t;
           let html_tag_attributes =
-            t
-            |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
-            |> List.to_seq
-            |> StringMap.of_seq
+            t |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
           in
           let html_tag_self_closing =
             t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING
@@ -370,10 +362,7 @@ module Rules = struct
           in
           next t;
           let component_tag_attributes =
-            t
-            |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
-            |> List.to_seq
-            |> StringMap.of_seq
+            t |> Helpers.list ~fn:(parse_attribute ~sep:Token.EQUAL)
           in
           let component_tag_self_closing =
             t |> optional Token.HTML_OR_COMPONENT_TAG_SELF_CLOSING
@@ -554,10 +543,7 @@ module Rules = struct
           if is_record then (
             next t;
             let attrs =
-              t
-              |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field
-              |> List.to_seq
-              |> StringMap.of_seq
+              t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_record_field
             in
             t |> expect Token.RIGHT_BRACE;
             let end_location = t.token.location in
@@ -718,7 +704,6 @@ module Rules = struct
           next t;
           let expressions =
             Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression t
-            |> Array.of_list
           in
           let end_location = t.token.location in
           expect Token.RIGHT_BRACK t;
@@ -819,13 +804,11 @@ module Rules = struct
             if optional Token.LEFT_PAREN t then (
               let attributes =
                 Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t
-                |> List.to_seq
-                |> StringMap.of_seq
               in
               t |> expect Token.RIGHT_PAREN;
               attributes)
             else
-              StringMap.empty
+              []
           in
           let declaration_body = t |> parse_expression in
           match declaration_body with
@@ -878,11 +861,11 @@ let parse ?(include_stdlib = true) sources : Parsetree.t =
       []
   in
   stdlib @ sources
-  |> ListLabels.fold_left ~init:StringMap.empty ~f:(fun acc source ->
+  |> ListLabels.fold_left ~init:[] ~f:(fun acc source ->
       let decls = parse_source source in
       ListLabels.fold_left decls ~init:acc ~f:(fun acc (key, decl) ->
-          match StringMap.find_opt key acc with
-          | None -> StringMap.add key decl acc
+          match List.assoc_opt key acc with
+          | None -> (key, decl) :: acc
           | Some _ ->
               let message =
                 Printf.sprintf
@@ -892,4 +875,5 @@ let parse ?(include_stdlib = true) sources : Parsetree.t =
               in
 
               Pinc_Diagnostics.raise_error decl.Parsetree.declaration_loc message))
+  |> List.rev
 ;;

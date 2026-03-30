@@ -66,12 +66,14 @@ and transform_float env f = (env, Float f)
 and transform_bool env b = (env, Bool b)
 
 and transform_array env a =
-  let env, array = Array.fold_map ~init:env ~f:transform_expression a in
-  (env, Array array)
+  let env, array = List.fold_map ~init:env ~f:transform_expression a in
+  (env, Array (Array.of_list array))
 
 and transform_record env r =
   let env, r =
-    StringMap.fold_mapi r ~init:env ~f:(fun key env (requirement, expr) ->
+    r
+    |> StringMap.of_list
+    |> StringMap.fold_mapi ~init:env ~f:(fun key env (requirement, expr) ->
         let env =
           {
             env with
@@ -127,6 +129,7 @@ and transform_tag env (tag : Parsetree.tag) =
     let current_identifier = env.Env.current_identifier in
     let child_env, children =
       desc.attributes
+      |> StringMap.of_list
       |> StringMap.find_opt "of"
       |> Option.fold_map
            ~init:
@@ -144,6 +147,7 @@ and transform_tag env (tag : Parsetree.tag) =
     in
     let env, attributes =
       desc.attributes
+      |> StringMap.of_list
       |> StringMap.remove "of"
       |> StringMap.fold_map ~init:env ~f:transform_expression
     in
@@ -371,7 +375,9 @@ and transform_html_template_node
     ~html_tag_self_closing =
   let html_tag_identifier = html_tag_identifier in
   let env, html_tag_attributes =
-    StringMap.fold_map ~init:env ~f:transform_expression html_tag_attributes
+    html_tag_attributes
+    |> StringMap.of_list
+    |> StringMap.fold_map ~init:env ~f:transform_expression
   in
   let env, html_tag_children =
     List.fold_map ~init:env ~f:transform_template_node html_tag_children
@@ -401,7 +407,9 @@ and transform_component_template_node
     transform_uppercase_id env component_tag_identifier
   in
   let env, component_tag_attributes =
-    StringMap.fold_map ~init:env ~f:transform_expression component_tag_attributes
+    component_tag_attributes
+    |> StringMap.of_list
+    |> StringMap.fold_map ~init:env ~f:transform_expression
   in
   let env, component_tag_children =
     List.fold_map ~init:env ~f:transform_template_node component_tag_children
@@ -553,40 +561,36 @@ and transform_statement env (statement : Parsetree.statement) =
 
 and transform_component_declaration env (declaration : Parsetree.declaration_desc) =
   let env, declaration_attributes =
-    StringMap.fold_map
-      ~init:env
-      ~f:transform_expression
-      declaration.declaration_attributes
+    declaration.declaration_attributes
+    |> StringMap.of_list
+    |> StringMap.fold_map ~init:env ~f:transform_expression
   in
   let env, declaration_body = transform_expression env declaration.declaration_body in
   (env, Declaration_Component { declaration_attributes; declaration_body })
 
 and transform_library_declaration env (declaration : Parsetree.declaration_desc) =
   let env, declaration_attributes =
-    StringMap.fold_map
-      ~init:env
-      ~f:transform_expression
-      declaration.declaration_attributes
+    declaration.declaration_attributes
+    |> StringMap.of_list
+    |> StringMap.fold_map ~init:env ~f:transform_expression
   in
   let env, declaration_body = transform_expression env declaration.declaration_body in
   (env, Declaration_Library { declaration_attributes; declaration_body })
 
 and transform_page_declaration env (declaration : Parsetree.declaration_desc) =
   let env, declaration_attributes =
-    StringMap.fold_map
-      ~init:env
-      ~f:transform_expression
-      declaration.declaration_attributes
+    declaration.declaration_attributes
+    |> StringMap.of_list
+    |> StringMap.fold_map ~init:env ~f:transform_expression
   in
   let env, declaration_body = transform_expression env declaration.declaration_body in
   (env, Declaration_Page { declaration_attributes; declaration_body })
 
 and transform_store_declaration env (declaration : Parsetree.declaration_desc) =
   let env, declaration_attributes =
-    StringMap.fold_map
-      ~init:env
-      ~f:transform_expression
-      declaration.declaration_attributes
+    declaration.declaration_attributes
+    |> StringMap.of_list
+    |> StringMap.fold_map ~init:env ~f:transform_expression
   in
   let env, declaration_body = transform_expression env declaration.declaration_body in
   (env, Declaration_Store { declaration_attributes; declaration_body })
@@ -602,7 +606,9 @@ and transform_declaration env (declaration : Parsetree.declaration) =
   (env, { declaration_loc = declaration.declaration_loc; declaration_kind })
 
 and transform_declarations env declarations =
-  StringMap.fold_map ~init:env ~f:transform_declaration declarations
+  declarations
+  |> StringMap.of_list
+  |> StringMap.fold_map ~init:env ~f:transform_declaration
 ;;
 
 let transform (declarations : Parsetree.t) : Ast.t =
@@ -613,7 +619,7 @@ let transform (declarations : Parsetree.t) : Ast.t =
 
 let all_tags key declarations =
   let env = Env.empty in
-  let declaration = StringMap.find_opt key declarations in
+  let declaration = List.assoc_opt key declarations in
   match declaration with
   | None -> env.tags
   | Some declaration ->
