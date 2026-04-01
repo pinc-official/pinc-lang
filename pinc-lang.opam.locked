@@ -60,6 +60,7 @@ depends: [
   "ocp-indent" {= "1.8.1" & with-dev-setup}
   "ordering" {= "3.21.0" & with-dev-setup}
   "pp" {= "2.0.0" & with-dev-setup}
+  "pprint" {= "20230830"}
   "ppx_derivers" {= "1.2.1"}
   "ppx_deriving" {= "6.1.1"}
   "ppx_yojson_conv_lib" {= "v0.17.0" & with-dev-setup}
