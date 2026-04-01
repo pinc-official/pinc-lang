@@ -10,6 +10,7 @@ depends: [
   "ocaml" {>= "4.12"}
   "fmt"
   "dune" {>= "3.17"}
+  "pprint"
   "crunch"
   "containers"
   "ppx_deriving"

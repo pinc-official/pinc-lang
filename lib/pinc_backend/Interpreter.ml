@@ -1364,7 +1364,7 @@ and eval_template ~state template =
 ;;
 
 let eval_meta sources =
-  let declarations = sources |> Parser.parse in
+  let declarations = Parser.get_ast sources in
   let state =
     State.make
       ~mode:`Portal_Collection
@@ -1440,5 +1440,7 @@ let eval_declarations
 ;;
 
 let eval_sources ?tag_meta_provider ~tag_data_provider ~root sources =
-  sources |> Parser.parse |> eval_declarations ?tag_meta_provider ~tag_data_provider ~root
+  sources
+  |> Parser.get_ast
+  |> eval_declarations ?tag_meta_provider ~tag_data_provider ~root
 ;;

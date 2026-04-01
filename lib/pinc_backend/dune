@@ -1,5 +1,3 @@
-(dirs *)
-
 (library
  (name Pinc_Backend)
  (public_name pinc-lang.backend)

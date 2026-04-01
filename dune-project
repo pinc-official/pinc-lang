@@ -27,6 +27,7 @@
    (>= 4.12))
   fmt
   dune
+  pprint
   crunch
   containers
   ppx_deriving

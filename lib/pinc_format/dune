@@ -1,0 +1,5 @@
+(library
+ (name Pinc_Format)
+ (public_name pinc-lang.format)
+ (flags :standard -open Pinc_Core)
+ (libraries pprint Pinc_Core Pinc_Source Pinc_Parser))
