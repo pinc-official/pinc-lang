@@ -622,10 +622,34 @@ module Rules = struct
           let* condition = t |> parse_expression in
           let end_location = t.token.location in
           let _ = optional Token.RIGHT_PAREN t in
-          let* consequent = t |> parse_statement in
+          let* consequent =
+            match parse_statement t with
+            | None -> None
+            | Some { statement_loc = _; statement_desc = P_ExpressionStatement e } ->
+                Some e
+            | Some ({ statement_loc; _ } as s) ->
+                Some
+                  Parsetree.
+                    {
+                      expression_loc = statement_loc;
+                      expression_desc = P_BlockExpression [ s ];
+                    }
+          in
           let alternate =
-            if optional Token.KEYWORD_ELSE t then
-              t |> parse_statement
+            if optional Token.KEYWORD_ELSE t then (
+              match
+                parse_statement t
+              with
+              | None -> None
+              | Some { statement_loc = _; statement_desc = P_ExpressionStatement e } ->
+                  Some e
+              | Some ({ statement_loc; _ } as s) ->
+                  Some
+                    Parsetree.
+                      {
+                        expression_loc = statement_loc;
+                        expression_desc = P_BlockExpression [ s ];
+                      })
             else
               None
           in

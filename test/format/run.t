@@ -1,13 +1,21 @@
   $ pincfmt ./data.pi
   page Docs(label: "Docs", icon: "/images/icons/page-docs.svg") {
+    use Math = Base.Math;
     let fruits = ["apples", "oranges", "bannanas", "melons"];
+    let calculations = {
+      math: 5 / 3 + 5 * 7,
+      math2: 3 + 5 / 5 * 7,
+      math3?: if (false) 3 * 4,
+    };
     <>
       <span />
       <>
         <div class="foo" />
       <>
       <ul>
-        {}
+        {for (fruit in fruits) {
+      <li>{fruit}</li>
+    }}
       </ul>
       <p>
         Aliqua in elit sunt in anim culpa nostrud elit.
@@ -22,20 +30,47 @@
     icon: "/images/icons/page-docs.svg",
     groups: ["Some Group", "Another Group", "And another group"],
   ) {
-    let fruits = [
-      "apples",
-      "oranges",
-      "bannanas",
-      "melons",
-      "and a bunch more very healthy things you can eat",
-    ];
+    #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/ButtonPrimary.css" />)
+    let fruits = #Array(key: "fruits", of: #String);
+    let tag? = #Selection(
+      label: "SEO Tag",
+      options: [
+        {
+          label: "h1",
+          value: "h1",
+        },
+        {
+          label: "h2",
+          value: "h2",
+        },
+        {
+          label: "h3",
+          value: "h3",
+        },
+        {
+          label: "h4",
+          value: "h4",
+        },
+        {
+          label: "h5",
+          value: "h5",
+        },
+        {
+          label: "h6",
+          value: "h6",
+        },
+      ],
+    ) :: fn (v) -> Base.Fn.default(v, "h1");
+    let tags = #Array(label: "Tags", initialSize: 1, max: 5, of: #String(label: "Tag"));
     <>
       <span />
       <>
         <div class="foo" />
       <>
       <ul>
-        {}
+        {for (fruit in reverse fruits) {
+      <li>{fruit}</li>
+    }}
       </ul>
       <p>
         Aliqua in elit sunt in anim culpa nostrud elit.
@@ -53,7 +88,9 @@
     let mutable a = "initial";
     a := "mutated";
     let mutable b = "initial";
-  
+    if (a == "mutated") {
+      b := "mutated";
+    }
     let mutable c = "initial";
     let print_c = fn () -> c;
     c := "mutated";
@@ -64,7 +101,7 @@
     <section class="foo" data-test="bar">
       a: {a}
       b: {b}
-      print_c(): {}
-      print_d(): {}
+      print_c(): {print_c()}
+      print_d(): {print_d()}
     </section>
   }

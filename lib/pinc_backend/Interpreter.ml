@@ -1060,8 +1060,8 @@ and eval_if ~state ~condition ~alternate ~consequent =
     condition |> eval_expression ~state |> State.get_output |> Value.is_true
   in
   match (condition_matches, alternate) with
-  | true, _ -> consequent |> eval_statement ~state
-  | false, Some alt -> alt |> eval_statement ~state
+  | true, _ -> consequent |> eval_expression ~state
+  | false, Some alt -> alt |> eval_expression ~state
   | false, None ->
       state
       |> State.add_output
@@ -1070,7 +1070,7 @@ and eval_if ~state ~condition ~alternate ~consequent =
                 ~loc:
                   (Location.merge
                      ~s:condition.expression_loc
-                     ~e:consequent.statement_loc
+                     ~e:consequent.expression_loc
                      ())
                 ())
 
