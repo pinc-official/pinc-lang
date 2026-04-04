@@ -359,8 +359,8 @@ and transform_for_in env ~index ~iterator ~reverse ~iterable ~body =
 
 and transform_conditional env ~condition ~consequent ~alternate =
   let env, condition = transform_expression env condition in
-  let env, consequent = transform_statement env consequent in
-  let env, alternate = Option.fold_map ~init:env ~f:transform_statement alternate in
+  let env, consequent = transform_expression env consequent in
+  let env, alternate = Option.fold_map ~init:env ~f:transform_expression alternate in
   (env, ConditionalExpression { condition; consequent; alternate })
 
 and transform_block env statements =

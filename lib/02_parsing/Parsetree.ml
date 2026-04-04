@@ -1,3 +1,5 @@
+module Operators = Operators
+
 type uppercase_identifier = P_Uppercase_Id of (string * Pinc_Diagnostics.Location.t)
 and lowercase_identifier = P_Lowercase_Id of (string * Pinc_Diagnostics.Location.t)
 
@@ -98,8 +100,8 @@ and expression_desc =
   | P_BlockExpression of statement list
   | P_ConditionalExpression of {
       condition : expression;
-      consequent : statement;
-      alternate : statement option;
+      consequent : expression;
+      alternate : expression option;
     }
   | P_UnaryExpression of Operators.Unary.t * expression
   | P_BinaryExpression of expression * Operators.Binary.t * expression

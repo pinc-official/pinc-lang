@@ -68,7 +68,27 @@ and format_array a =
   in
   brackets @@ group (separate (comma ^^ space) array ^^ ifflat empty (comma ^^ break 1))
 
-and format_record _r = empty (* TODO *)
+and format_record = function
+  | [] -> braces empty
+  | lst ->
+      let lst =
+        List.map
+          (fun (key, (required, value)) ->
+            nest
+              2
+              (hardline
+              ^^ string key
+              ^^ (match required with
+                | `Optional -> qmark
+                | `Required -> empty)
+              ^^ colon
+              ^^ blank 1
+              ^^ format_expression value))
+          lst
+      in
+      lbrace
+      ^^ group (separate (comma ^^ space) lst ^^ ifflat empty (comma ^^ break 1))
+      ^^ rbrace
 
 and format_external_function parameters name =
   let parameters =
@@ -108,15 +128,118 @@ and format_function parameters body =
   ^^ space
   ^^ format_expression body
 
-and format_function_call _function_definition _arguments = empty (* TODO *)
-and format_uppercase_id_path_expression _path = empty (* TODO *)
+and format_function_call function_definition arguments =
+  let arguments =
+    match arguments with
+    | [] -> empty
+    | lst ->
+        let lst =
+          List.map
+            (fun value -> nest 2 (ifflat empty (break 1) ^^ format_expression value))
+            lst
+        in
+        group (separate (comma ^^ space) lst ^^ ifflat empty (comma ^^ break 1))
+  in
+  format_expression function_definition ^^ parens arguments
+
+and format_uppercase_id_path_expression path =
+  separate_map dot format_uppercase_id_expression path
+
 and format_uppercase_id_expression id = string id
 and format_lowercase_id_expression id = string id
-and format_tag (_tag : Parsetree.tag) = empty (* TODO *)
-and format_unary_expression _op _right = empty (* TODO *)
-and format_binary_expression _left _op _right = empty (* TODO *)
-and format_for_in ~index:_ ~iterator:_ ~reverse:_ ~iterable:_ ~body:_ = empty (* TODO *)
-and format_conditional ~condition:_ ~consequent:_ ~alternate:_ = empty (* TODO *)
+
+and format_tag (tag : Parsetree.tag_desc) =
+  let arguments =
+    match tag.attributes with
+    | [] -> empty
+    | attrs -> parens @@ Helpers.comma_separated_attributes format_expression attrs
+  in
+  let transformer =
+    match tag.transformer with
+    | None -> empty
+    | Some expr -> space ^^ repeat 2 colon ^^ space ^^ format_expression expr
+  in
+  sharp ^^ format_tag_kind tag.tag ^^ arguments ^^ transformer
+
+and format_tag_kind = function
+  | Parsetree.P_Tag_String -> string "String"
+  | Parsetree.P_Tag_Int -> string "Int"
+  | Parsetree.P_Tag_Float -> string "Float"
+  | Parsetree.P_Tag_Boolean -> string "Boolean"
+  | Parsetree.P_Tag_Array -> string "Array"
+  | Parsetree.P_Tag_Record -> string "Record"
+  | Parsetree.P_Tag_Slot -> string "Slot"
+  | Parsetree.P_Tag_Store -> string "Store"
+  | Parsetree.P_Tag_SetContext -> string "SetContext"
+  | Parsetree.P_Tag_GetContext -> string "GetContext"
+  | Parsetree.P_Tag_CreatePortal -> string "CreatePortal"
+  | Parsetree.P_Tag_Portal -> string "Portal"
+  | Parsetree.P_Tag_Custom s -> string s
+
+and format_unary_expression op right =
+  let r = format_expression right in
+  match op with
+  | Parsetree.Operators.Unary.MINUS -> minus ^^ r
+  | Parsetree.Operators.Unary.NOT -> bang ^^ r
+
+and format_binary_expression left op right =
+  let l = format_expression left in
+  let r = format_expression right in
+  match op with
+  | Parsetree.Operators.Binary.EQUAL -> l ^^ space ^^ repeat 2 equals ^^ space ^^ r
+  | Parsetree.Operators.Binary.NOT_EQUAL -> l ^^ space ^^ bang ^^ equals ^^ space ^^ r
+  | Parsetree.Operators.Binary.GREATER -> l ^^ space ^^ rangle ^^ space ^^ r
+  | Parsetree.Operators.Binary.GREATER_EQUAL ->
+      l ^^ space ^^ rangle ^^ equals ^^ space ^^ r
+  | Parsetree.Operators.Binary.LESS -> l ^^ space ^^ langle ^^ space ^^ r
+  | Parsetree.Operators.Binary.LESS_EQUAL -> l ^^ space ^^ langle ^^ equals ^^ space ^^ r
+  | Parsetree.Operators.Binary.PLUS -> l ^^ space ^^ plus ^^ space ^^ r
+  | Parsetree.Operators.Binary.MINUS -> l ^^ space ^^ minus ^^ space ^^ r
+  | Parsetree.Operators.Binary.TIMES -> l ^^ space ^^ star ^^ space ^^ r
+  | Parsetree.Operators.Binary.DIV -> l ^^ space ^^ slash ^^ space ^^ r
+  | Parsetree.Operators.Binary.POW -> l ^^ space ^^ repeat 2 star ^^ space ^^ r
+  | Parsetree.Operators.Binary.MODULO -> l ^^ space ^^ percent ^^ space ^^ r
+  | Parsetree.Operators.Binary.CONCAT -> l ^^ space ^^ repeat 2 plus ^^ space ^^ r
+  | Parsetree.Operators.Binary.AND -> l ^^ space ^^ repeat 2 ampersand ^^ space ^^ r
+  | Parsetree.Operators.Binary.OR -> l ^^ space ^^ repeat 2 bar ^^ space ^^ r
+  | Parsetree.Operators.Binary.DOT_ACCESS -> l ^^ dot ^^ r
+  | Parsetree.Operators.Binary.BRACKET_ACCESS -> l ^^ brackets r
+  | Parsetree.Operators.Binary.FUNCTION_CALL -> l ^^ parens r
+  | Parsetree.Operators.Binary.PIPE -> l ^^ space ^^ bar ^^ rangle ^^ space ^^ r
+  | Parsetree.Operators.Binary.ARRAY_ADD -> l ^^ space ^^ at ^^ space ^^ r
+  | Parsetree.Operators.Binary.MERGE -> l ^^ space ^^ repeat 2 at ^^ space ^^ r
+  | Parsetree.Operators.Binary.RANGE -> l ^^ repeat 2 dot ^^ r
+  | Parsetree.Operators.Binary.INCLUSIVE_RANGE -> l ^^ repeat 3 dot ^^ r
+
+and format_for_in ~index ~iterator ~reverse ~iterable ~body =
+  string "for"
+  ^^ space
+  ^^ lparen
+  ^^ optional format_lowercase_id index
+  ^^ optional (Fun.const comma) index
+  ^^ optional (Fun.const space) index
+  ^^ format_lowercase_id iterator
+  ^^ space
+  ^^ string "in"
+  ^^ space
+  ^^ (if reverse then
+        string "reverse" ^^ space
+      else
+        empty)
+  ^^ format_expression iterable
+  ^^ rparen
+  ^^ space
+  ^^ format_expression body
+
+and format_conditional ~condition ~consequent ~alternate =
+  string "if"
+  ^^ space
+  ^^ parens (format_expression condition)
+  ^^ space
+  ^^ format_expression consequent
+  ^^ optional
+       (fun expr -> space ^^ string "else" ^^ space ^^ format_expression expr)
+       alternate
 
 and format_block statements =
   let statements = List.map (fun s -> format_statement s) statements in
@@ -219,7 +342,7 @@ and format_expression (exression : Parsetree.expression) =
   | P_UppercaseIdentifierPathExpression path -> format_uppercase_id_path_expression path
   | P_UppercaseIdentifierExpression id -> format_uppercase_id_expression id
   | P_LowercaseIdentifierExpression id -> format_lowercase_id_expression id
-  | P_TagExpression tag -> format_tag tag
+  | P_TagExpression { tag_desc; tag_loc = _ } -> format_tag tag_desc
   | P_ForInExpression { index; iterator; reverse; iterable; body } ->
       format_for_in ~index ~iterator ~reverse ~iterable ~body
   | P_ConditionalExpression { condition; consequent; alternate } ->
@@ -250,11 +373,11 @@ and format_continue_stmt i =
   string "continue" ^^ num ^^ semi
 
 and format_use_stmt id expr =
-  string "let"
+  string "use"
   ^^ space
-  ^^ optional (fun id -> format_uppercase_id id ^^ space) id
-  ^^ equals
-  ^^ space
+  ^^ (match id with
+    | None -> empty
+    | Some id -> format_uppercase_id id ^^ space ^^ equals ^^ space)
   ^^ format_expression expr
   ^^ semi
 

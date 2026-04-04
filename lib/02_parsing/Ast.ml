@@ -105,8 +105,8 @@ and expression_desc =
   | BlockExpression of statement list
   | ConditionalExpression of {
       condition : expression;
-      consequent : statement;
-      alternate : statement option;
+      consequent : expression;
+      alternate : expression option;
     }
   | UnaryExpression of Operators.Unary.t * expression
   | BinaryExpression of expression * Operators.Binary.t * expression
