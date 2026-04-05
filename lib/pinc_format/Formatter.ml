@@ -52,7 +52,7 @@ and format_string templates =
         match t.string_template_desc with
         | Parsetree.P_StringInterpolation (Parsetree.P_Lowercase_Id (id, _)) ->
             dollar ^^ parens (string id)
-        | Parsetree.P_StringText s -> string s)
+        | Parsetree.P_StringText s -> utf8string s)
       templates
   in
   dquotes (concat templates)
@@ -303,7 +303,8 @@ and format_component_template_node
 and format_expression_template_node ~template_expression_node_expression =
   braces (format_expression template_expression_node_expression)
 
-and format_text_template_node ~text_template_node_text = string text_template_node_text
+and format_text_template_node ~text_template_node_text =
+  utf8string text_template_node_text
 
 and format_template_node (node : Parsetree.template_node) =
   match node.template_node_desc with
