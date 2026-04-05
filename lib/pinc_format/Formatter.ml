@@ -451,48 +451,21 @@ and format_statement (statement : Parsetree.statement) =
   | P_MutationStatement (id, expr) -> format_mutation id expr
   | P_ExpressionStatement s -> format_expression_stmt s
 
-and format_component_declaration key (declaration : Parsetree.declaration_desc) =
-  let attributes =
-    Helpers.comma_separated_attributes
-      format_expression
-      declaration.declaration_attributes
-  in
-  let body = format_expression declaration.declaration_body in
-  string "component" ^^ blank 1 ^^ string key ^^ parens attributes ^^ blank 1 ^^ body
-
-and format_library_declaration key (declaration : Parsetree.declaration_desc) =
-  let attributes =
-    Helpers.comma_separated_attributes
-      format_expression
-      declaration.declaration_attributes
-  in
-  let body = format_expression declaration.declaration_body in
-  string "library" ^^ blank 1 ^^ string key ^^ parens attributes ^^ blank 1 ^^ body
-
-and format_page_declaration key (declaration : Parsetree.declaration_desc) =
-  let attributes =
-    Helpers.comma_separated_attributes
-      format_expression
-      declaration.declaration_attributes
-  in
-  let body = format_expression declaration.declaration_body in
-  string "page" ^^ blank 1 ^^ string key ^^ parens attributes ^^ blank 1 ^^ body
-
-and format_store_declaration key (declaration : Parsetree.declaration_desc) =
-  let attributes =
-    Helpers.comma_separated_attributes
-      format_expression
-      declaration.declaration_attributes
-  in
-  let body = format_expression declaration.declaration_body in
-  string "store" ^^ blank 1 ^^ string key ^^ parens attributes ^^ blank 1 ^^ body
-
 and format_declaration key (declaration : Parsetree.declaration) =
-  match declaration.declaration_kind with
-  | P_Declaration_Component desc -> format_component_declaration key desc
-  | P_Declaration_Library desc -> format_library_declaration key desc
-  | P_Declaration_Page desc -> format_page_declaration key desc
-  | P_Declaration_Store desc -> format_store_declaration key desc
+  let typ =
+    match declaration.declaration_kind with
+    | P_Declaration_Component -> string "component"
+    | P_Declaration_Library -> string "library"
+    | P_Declaration_Page -> string "page"
+    | P_Declaration_Store -> string "store"
+  in
+  let attributes =
+    Helpers.comma_separated_attributes
+      format_expression
+      declaration.declaration_attributes
+  in
+  let body = format_expression declaration.declaration_body in
+  typ ^^ blank 1 ^^ string key ^^ parens attributes ^^ blank 1 ^^ body
 
 and format_declarations declarations =
   let declarations =

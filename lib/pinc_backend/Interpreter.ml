@@ -18,13 +18,14 @@ let rec get_uppercase_identifier_typ ~state ident =
   let declaration = state.declarations |> StringMap.find_opt ident in
   match declaration with
   | None -> (state, None)
-  | Some { declaration_kind = Ast.Declaration_Component _; _ } ->
+  | Some { declaration_kind = Ast.Declaration_Component; _ } ->
       (state, Some Definition_Component)
-  | Some { declaration_kind = Ast.Declaration_Page _; _ } -> (state, Some Definition_Page)
+  | Some { declaration_kind = Ast.Declaration_Page; _ } -> (state, Some Definition_Page)
   | Some
       {
-        declaration_kind =
-          Ast.Declaration_Store { declaration_attributes; declaration_body };
+        declaration_kind = Ast.Declaration_Store;
+        declaration_attributes;
+        declaration_body;
         _;
       } -> (
       match Hashtbl.find_opt stores ident with
@@ -57,7 +58,7 @@ let rec get_uppercase_identifier_typ ~state ident =
           let store = Type_Store.make ~singleton ~body:declaration_body in
           add_store ~store ~ident;
           (state, Some (Definition_Store store)))
-  | Some { declaration_kind = Ast.Declaration_Library { declaration_body; _ }; _ } -> (
+  | Some { declaration_kind = Ast.Declaration_Library; declaration_body; _ } -> (
       match Hashtbl.find_opt libraries ident with
       | Some library -> (state, Some (Definition_Library library))
       | None ->
@@ -1383,20 +1384,20 @@ let eval_meta sources =
   |> StringMap.map (function
     | {
         declaration_loc;
-        declaration_kind = Declaration_Component { declaration_attributes; _ };
+        declaration_kind = Declaration_Component;
+        declaration_attributes;
+        _;
       } -> `Component (declaration_loc, eval declaration_attributes)
     | {
         declaration_loc;
-        declaration_kind = Declaration_Library { declaration_attributes; _ };
+        declaration_kind = Declaration_Library;
+        declaration_attributes;
+        _;
       } -> `Library (declaration_loc, eval declaration_attributes)
-    | {
-        declaration_loc;
-        declaration_kind = Declaration_Page { declaration_attributes; _ };
-      } -> `Page (declaration_loc, eval declaration_attributes)
-    | {
-        declaration_loc;
-        declaration_kind = Declaration_Store { declaration_attributes; _ };
-      } -> `Store (declaration_loc, eval declaration_attributes))
+    | { declaration_loc; declaration_kind = Declaration_Page; declaration_attributes; _ }
+      -> `Page (declaration_loc, eval declaration_attributes)
+    | { declaration_loc; declaration_kind = Declaration_Store; declaration_attributes; _ }
+      -> `Store (declaration_loc, eval declaration_attributes))
 ;;
 
 let eval_declarations
@@ -1407,7 +1408,7 @@ let eval_declarations
   Hashtbl.reset Tag.Tag_Portal.portals;
 
   (match declarations |> StringMap.find_opt root with
-  | Some { Ast.declaration_kind = Declaration_Library _ | Declaration_Store _; _ } ->
+  | Some { Ast.declaration_kind = Declaration_Library | Declaration_Store; _ } ->
       raise_notrace (Invalid_argument (root ^ " can not be evaluated"))
   | _ -> ());
 
