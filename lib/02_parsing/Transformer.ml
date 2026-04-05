@@ -559,51 +559,27 @@ and transform_statement env (statement : Parsetree.statement) =
   in
   (env, { statement_loc = statement.statement_loc; statement_desc = desc })
 
-and transform_component_declaration env (declaration : Parsetree.declaration_desc) =
-  let env, declaration_attributes =
-    declaration.declaration_attributes
-    |> StringMap.of_list
-    |> StringMap.fold_map ~init:env ~f:transform_expression
-  in
-  let env, declaration_body = transform_expression env declaration.declaration_body in
-  (env, Declaration_Component { declaration_attributes; declaration_body })
-
-and transform_library_declaration env (declaration : Parsetree.declaration_desc) =
-  let env, declaration_attributes =
-    declaration.declaration_attributes
-    |> StringMap.of_list
-    |> StringMap.fold_map ~init:env ~f:transform_expression
-  in
-  let env, declaration_body = transform_expression env declaration.declaration_body in
-  (env, Declaration_Library { declaration_attributes; declaration_body })
-
-and transform_page_declaration env (declaration : Parsetree.declaration_desc) =
-  let env, declaration_attributes =
-    declaration.declaration_attributes
-    |> StringMap.of_list
-    |> StringMap.fold_map ~init:env ~f:transform_expression
-  in
-  let env, declaration_body = transform_expression env declaration.declaration_body in
-  (env, Declaration_Page { declaration_attributes; declaration_body })
-
-and transform_store_declaration env (declaration : Parsetree.declaration_desc) =
-  let env, declaration_attributes =
-    declaration.declaration_attributes
-    |> StringMap.of_list
-    |> StringMap.fold_map ~init:env ~f:transform_expression
-  in
-  let env, declaration_body = transform_expression env declaration.declaration_body in
-  (env, Declaration_Store { declaration_attributes; declaration_body })
-
 and transform_declaration env (declaration : Parsetree.declaration) =
-  let env, declaration_kind =
+  let declaration_kind =
     match declaration.declaration_kind with
-    | P_Declaration_Component desc -> transform_component_declaration env desc
-    | P_Declaration_Library desc -> transform_library_declaration env desc
-    | P_Declaration_Page desc -> transform_page_declaration env desc
-    | P_Declaration_Store desc -> transform_store_declaration env desc
+    | P_Declaration_Component -> Declaration_Component
+    | P_Declaration_Library -> Declaration_Library
+    | P_Declaration_Page -> Declaration_Page
+    | P_Declaration_Store -> Declaration_Store
   in
-  (env, { declaration_loc = declaration.declaration_loc; declaration_kind })
+  let env, declaration_attributes =
+    declaration.declaration_attributes
+    |> StringMap.of_list
+    |> StringMap.fold_map ~init:env ~f:transform_expression
+  in
+  let env, declaration_body = transform_expression env declaration.declaration_body in
+  ( env,
+    {
+      declaration_loc = declaration.declaration_loc;
+      declaration_kind;
+      declaration_attributes;
+      declaration_body;
+    } )
 
 and transform_declarations env declarations =
   declarations

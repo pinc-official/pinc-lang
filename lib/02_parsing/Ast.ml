@@ -131,18 +131,15 @@ and statement_desc =
 and declaration = {
   declaration_loc : Pinc_Diagnostics.Location.t;
   declaration_kind : declaration_kind;
-}
-
-and declaration_kind =
-  | Declaration_Component of declaration_desc
-  | Declaration_Library of declaration_desc
-  | Declaration_Page of declaration_desc
-  | Declaration_Store of declaration_desc
-
-and declaration_desc = {
   declaration_attributes : expression StringMap.t;
   declaration_body : expression;
 }
+
+and declaration_kind =
+  | Declaration_Component
+  | Declaration_Library
+  | Declaration_Page
+  | Declaration_Store
 
 and t = declaration StringMap.t
 

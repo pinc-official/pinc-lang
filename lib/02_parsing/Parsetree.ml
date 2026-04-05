@@ -126,18 +126,15 @@ and statement_desc =
 and declaration = {
   declaration_loc : Pinc_Diagnostics.Location.t;
   declaration_kind : declaration_kind;
-}
-
-and declaration_kind =
-  | P_Declaration_Component of declaration_desc
-  | P_Declaration_Library of declaration_desc
-  | P_Declaration_Page of declaration_desc
-  | P_Declaration_Store of declaration_desc
-
-and declaration_desc = {
   declaration_attributes : (string * expression) list;
   declaration_body : expression;
 }
+
+and declaration_kind =
+  | P_Declaration_Component
+  | P_Declaration_Library
+  | P_Declaration_Page
+  | P_Declaration_Store
 
 and t = (string * declaration) list
 

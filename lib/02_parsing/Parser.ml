@@ -816,53 +816,49 @@ module Rules = struct
 
   and parse_declaration t =
     let declaration_start = t.token.location in
-    let* identifier, declaration_kind =
+    let* declaration_kind =
       match t.token.typ with
-      | ( Token.KEYWORD_PAGE
-        | Token.KEYWORD_COMPONENT
-        | Token.KEYWORD_LIBRARY
-        | Token.KEYWORD_STORE ) as typ -> (
+      | Token.KEYWORD_PAGE ->
           next t;
-          let identifier = Helpers.expect_identifier ~typ:`Upper t |> fst in
-          let declaration_attributes =
-            if optional Token.LEFT_PAREN t then (
-              let attributes =
-                Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t
-              in
-              t |> expect Token.RIGHT_PAREN;
-              attributes)
-            else
-              []
-          in
-          let declaration_body = t |> parse_expression in
-          match declaration_body with
-          | None ->
-              Diagnostics.raise_error
-                t.token.location
-                "Expected declaration to have a body"
-          | Some declaration_body -> (
-              let declaration_desc =
-                Parsetree.{ declaration_attributes; declaration_body }
-              in
-              match typ with
-              | Token.KEYWORD_PAGE ->
-                  Some (identifier, Parsetree.P_Declaration_Page declaration_desc)
-              | Token.KEYWORD_COMPONENT ->
-                  Some (identifier, Parsetree.P_Declaration_Component declaration_desc)
-              | Token.KEYWORD_STORE ->
-                  Some (identifier, Parsetree.P_Declaration_Store declaration_desc)
-              | Token.KEYWORD_LIBRARY ->
-                  Some (identifier, Parsetree.P_Declaration_Library declaration_desc)
-              | _ -> assert false))
+          Some Parsetree.P_Declaration_Page
+      | Token.KEYWORD_COMPONENT ->
+          next t;
+          Some Parsetree.P_Declaration_Component
+      | Token.KEYWORD_STORE ->
+          next t;
+          Some Parsetree.P_Declaration_Store
+      | Token.KEYWORD_LIBRARY ->
+          next t;
+          Some Parsetree.P_Declaration_Library
       | Token.END_OF_INPUT -> None
       | _ ->
           Diagnostics.raise_error
             t.token.location
             "Expected to see a declaration (page, component, store or library)."
     in
+
+    let identifier = Helpers.expect_identifier ~typ:`Upper t |> fst in
+    let declaration_attributes =
+      if optional Token.LEFT_PAREN t then (
+        let attributes = Helpers.separated_list ~sep:Token.COMMA ~fn:parse_attribute t in
+        t |> expect Token.RIGHT_PAREN;
+        attributes)
+      else
+        []
+    in
+    let declaration_body =
+      match t |> parse_expression with
+      | None ->
+          Diagnostics.raise_error t.token.location "Expected declaration to have a body"
+      | Some declaration_body -> declaration_body
+    in
+
     let declaration_end = t.token.location in
     let declaration_loc = Location.merge ~s:declaration_start ~e:declaration_end () in
-    (identifier, Parsetree.{ declaration_loc; declaration_kind }) |> Option.some
+    ( identifier,
+      Parsetree.
+        { declaration_loc; declaration_kind; declaration_attributes; declaration_body } )
+    |> Option.some
   ;;
 end
 
