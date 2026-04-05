@@ -1,4 +1,7 @@
   $ pincfmt ./data.pi
+  /*
+    Some Comment Eiusmod eiusmod tempor eiusmod nostrud nostrud nostrud in nisi ipsum ullamco ipsum esse enim laborum cupidatat. Deserunt duis culpa consectetur est duis.
+  */
   page Docs(label: "Docs", icon: "/images/icons/page-docs.svg") {
     use Math = Base.Math;
     let fruits = ["apples", "oranges", "bannanas", "melons"];

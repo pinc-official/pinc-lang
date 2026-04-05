@@ -29,14 +29,21 @@ module Helpers = struct
   ;;
 end
 
-let rec format_lowercase_id = function
+let rec format_annotations annotations = concat_map format_annotation annotations
+
+and format_annotation = function
+  | Parsetree.P_Comment_Annotation s -> format_comment s ^^ hardline
+  | Parsetree.P_Blankline_Annotation i -> repeat i hardline
+
+and format_lowercase_id = function
   | Parsetree.P_Lowercase_Id (id, _loc) -> string id
 
 and format_uppercase_id = function
   | Parsetree.P_Uppercase_Id (id, _loc) -> string id
 
 and format_comment comment =
-  string "/*" ^^ space ^^ utf8string comment ^^ space ^^ string "*/"
+  let comment = nest 2 (ifflat empty (break 1) ^^ arbitrary_string comment) in
+  string "/*" ^^ group (comment ^^ ifflat empty (break 1)) ^^ string "*/"
 
 and format_string templates =
   let templates =
@@ -452,6 +459,7 @@ and format_statement (statement : Parsetree.statement) =
   | P_ExpressionStatement s -> format_expression_stmt s
 
 and format_declaration key (declaration : Parsetree.declaration) =
+  let annotations = format_annotations declaration.declaration_annotations in
   let typ =
     match declaration.declaration_kind with
     | P_Declaration_Component -> string "component"
@@ -465,7 +473,7 @@ and format_declaration key (declaration : Parsetree.declaration) =
       declaration.declaration_attributes
   in
   let body = format_expression declaration.declaration_body in
-  typ ^^ blank 1 ^^ string key ^^ parens attributes ^^ blank 1 ^^ body
+  annotations ^^ typ ^^ blank 1 ^^ string key ^^ parens attributes ^^ blank 1 ^^ body
 
 and format_declarations declarations =
   let declarations =
