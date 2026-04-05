@@ -158,7 +158,16 @@ module Helpers = struct
 end
 
 module Rules = struct
-  let rec parse_string_template t =
+  let rec parse_annotations t = Helpers.list ~fn:parse_annotation t
+
+  and parse_annotation t =
+    match t.token.typ with
+    | Token.COMMENT s ->
+        next t;
+        Some (Parsetree.P_Comment_Annotation s)
+    | _ -> None
+
+  and parse_string_template t =
     let string_template_start = t.token.location in
     let* string_template_desc =
       match t.token.typ with
@@ -815,6 +824,7 @@ module Rules = struct
     Some (loop ~prio ~left t)
 
   and parse_declaration t =
+    let declaration_annotations = parse_annotations t in
     let declaration_start = t.token.location in
     let* declaration_kind =
       match t.token.typ with
@@ -857,7 +867,13 @@ module Rules = struct
     let declaration_loc = Location.merge ~s:declaration_start ~e:declaration_end () in
     ( identifier,
       Parsetree.
-        { declaration_loc; declaration_kind; declaration_attributes; declaration_body } )
+        {
+          declaration_loc;
+          declaration_kind;
+          declaration_attributes;
+          declaration_body;
+          declaration_annotations;
+        } )
     |> Option.some
   ;;
 end

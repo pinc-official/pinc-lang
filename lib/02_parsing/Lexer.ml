@@ -683,6 +683,8 @@ let scan_char ~start_pos t =
 ;;
 
 let scan_comment t =
+  eat2 t;
+  skip_whitespace t;
   let rec loop buf t =
     match t.current with
     (* This case also matches \r\n on windows *)

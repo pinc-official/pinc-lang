@@ -1,6 +1,10 @@
 module Operators = Operators
 
-type uppercase_identifier = P_Uppercase_Id of (string * Pinc_Diagnostics.Location.t)
+type annotation =
+  | P_Comment_Annotation of string
+  | P_Blankline_Annotation of int
+
+and uppercase_identifier = P_Uppercase_Id of (string * Pinc_Diagnostics.Location.t)
 and lowercase_identifier = P_Lowercase_Id of (string * Pinc_Diagnostics.Location.t)
 
 and template_node = {
@@ -128,6 +132,7 @@ and declaration = {
   declaration_kind : declaration_kind;
   declaration_attributes : (string * expression) list;
   declaration_body : expression;
+  declaration_annotations : annotation list;
 }
 
 and declaration_kind =
