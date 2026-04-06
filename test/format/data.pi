@@ -2,6 +2,7 @@
 page Docs(label: "Docs", icon: "/images/icons/page-docs.svg",) {
   use Math = Base.Math;
 
+  // Another comment!
   let fruits = ["apples","oranges","bannanas", "melons"];
 
 

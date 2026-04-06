@@ -33,7 +33,7 @@ let rec format_annotations annotations = concat_map format_annotation annotation
 
 and format_annotation = function
   | Parsetree.P_Comment_Annotation s -> format_comment s ^^ hardline
-  | Parsetree.P_Blankline_Annotation i -> repeat i hardline
+  | Parsetree.P_Blankline_Annotation -> hardline
 
 and format_lowercase_id = function
   | Parsetree.P_Lowercase_Id (id, _loc) -> string id
@@ -42,8 +42,8 @@ and format_uppercase_id = function
   | Parsetree.P_Uppercase_Id (id, _loc) -> string id
 
 and format_comment comment =
-  let comment = nest 2 (ifflat empty (break 1) ^^ arbitrary_string comment) in
-  string "/*" ^^ group (comment ^^ ifflat empty (break 1)) ^^ string "*/"
+  let comment = nest 2 (ifflat (blank 1) (break 1) ^^ arbitrary_string comment) in
+  string "/*" ^^ group (comment ^^ ifflat (blank 1) (break 1)) ^^ string "*/"
 
 and format_string templates =
   let templates =
@@ -307,58 +307,66 @@ and format_text_template_node ~text_template_node_text =
   utf8string text_template_node_text
 
 and format_template_node (node : Parsetree.template_node) =
-  match node.template_node_desc with
-  | P_HtmlTemplateNode
-      {
-        html_tag_identifier;
-        html_tag_attributes;
-        html_tag_children;
-        html_tag_self_closing;
-      } ->
-      format_html_template_node
-        ~html_tag_identifier
-        ~html_tag_attributes
-        ~html_tag_children
-        ~html_tag_self_closing
-  | P_ComponentTemplateNode
-      { component_tag_identifier; component_tag_attributes; component_tag_children } ->
-      format_component_template_node
-        ~component_tag_identifier
-        ~component_tag_attributes
-        ~component_tag_children
-  | P_FragmentTemplateNode { fragement_children } ->
-      format_fragment_template_node ~fragement_children
-  | P_ExpressionTemplateNode { template_expression_node_expression } ->
-      format_expression_template_node ~template_expression_node_expression
-  | P_TextTemplateNode { text_template_node_text } ->
-      format_text_template_node ~text_template_node_text
+  let annotations = format_annotations node.template_node_annotations in
+  let desc =
+    match node.template_node_desc with
+    | P_HtmlTemplateNode
+        {
+          html_tag_identifier;
+          html_tag_attributes;
+          html_tag_children;
+          html_tag_self_closing;
+        } ->
+        format_html_template_node
+          ~html_tag_identifier
+          ~html_tag_attributes
+          ~html_tag_children
+          ~html_tag_self_closing
+    | P_ComponentTemplateNode
+        { component_tag_identifier; component_tag_attributes; component_tag_children } ->
+        format_component_template_node
+          ~component_tag_identifier
+          ~component_tag_attributes
+          ~component_tag_children
+    | P_FragmentTemplateNode { fragement_children } ->
+        format_fragment_template_node ~fragement_children
+    | P_ExpressionTemplateNode { template_expression_node_expression } ->
+        format_expression_template_node ~template_expression_node_expression
+    | P_TextTemplateNode { text_template_node_text } ->
+        format_text_template_node ~text_template_node_text
+  in
+  annotations ^^ desc
 
 and format_expression (exression : Parsetree.expression) =
-  match exression.expression_desc with
-  | P_Comment comment -> format_comment comment
-  | P_String templates -> format_string templates
-  | P_Char c -> format_char c
-  | P_Int i -> format_int i
-  | P_Float f -> format_float f
-  | P_Bool b -> format_bool b
-  | P_Array array -> format_array array
-  | P_Record record -> format_record record
-  | P_ExternalFunction { parameters; name } -> format_external_function parameters name
-  | P_Function { parameters; body } -> format_function parameters body
-  | P_FunctionCall { function_definition; arguments } ->
-      format_function_call function_definition arguments
-  | P_UppercaseIdentifierPathExpression path -> format_uppercase_id_path_expression path
-  | P_UppercaseIdentifierExpression id -> format_uppercase_id_expression id
-  | P_LowercaseIdentifierExpression id -> format_lowercase_id_expression id
-  | P_TagExpression { tag_desc; tag_loc = _ } -> format_tag tag_desc
-  | P_ForInExpression { index; iterator; reverse; iterable; body } ->
-      format_for_in ~index ~iterator ~reverse ~iterable ~body
-  | P_ConditionalExpression { condition; consequent; alternate } ->
-      format_conditional ~condition ~consequent ~alternate
-  | P_BlockExpression statements -> format_block statements
-  | P_TemplateExpression node -> format_template_node node
-  | P_UnaryExpression (op, expr) -> format_unary_expression op expr
-  | P_BinaryExpression (left, op, right) -> format_binary_expression left op right
+  let annotations = format_annotations exression.expression_annotations in
+  let desc =
+    match exression.expression_desc with
+    | P_Comment comment -> format_comment comment
+    | P_String templates -> format_string templates
+    | P_Char c -> format_char c
+    | P_Int i -> format_int i
+    | P_Float f -> format_float f
+    | P_Bool b -> format_bool b
+    | P_Array array -> format_array array
+    | P_Record record -> format_record record
+    | P_ExternalFunction { parameters; name } -> format_external_function parameters name
+    | P_Function { parameters; body } -> format_function parameters body
+    | P_FunctionCall { function_definition; arguments } ->
+        format_function_call function_definition arguments
+    | P_UppercaseIdentifierPathExpression path -> format_uppercase_id_path_expression path
+    | P_UppercaseIdentifierExpression id -> format_uppercase_id_expression id
+    | P_LowercaseIdentifierExpression id -> format_lowercase_id_expression id
+    | P_TagExpression { tag_desc; tag_loc = _ } -> format_tag tag_desc
+    | P_ForInExpression { index; iterator; reverse; iterable; body } ->
+        format_for_in ~index ~iterator ~reverse ~iterable ~body
+    | P_ConditionalExpression { condition; consequent; alternate } ->
+        format_conditional ~condition ~consequent ~alternate
+    | P_BlockExpression statements -> format_block statements
+    | P_TemplateExpression node -> format_template_node node
+    | P_UnaryExpression (op, expr) -> format_unary_expression op expr
+    | P_BinaryExpression (left, op, right) -> format_binary_expression left op right
+  in
+  annotations ^^ desc
 
 and format_comment_stmt s = format_comment s
 
@@ -447,20 +455,29 @@ and format_mutation id expr =
 and format_expression_stmt expr = format_expression expr
 
 and format_statement (statement : Parsetree.statement) =
-  match statement.statement_desc with
-  | P_CommentStatement s -> format_comment_stmt s
-  | P_BreakStatement s -> format_break_stmt s
-  | P_ContinueStatement s -> format_continue_stmt s
-  | P_UseStatement (id, expr) -> format_use_stmt id expr
-  | P_OptionalMutableLetStatement (id, expr) -> format_optional_mutable_let id expr
-  | P_OptionalLetStatement (id, expr) -> format_optional_let id expr
-  | P_MutableLetStatement (id, expr) -> format_mutable_let id expr
-  | P_LetStatement (id, expr) -> format_let id expr
-  | P_MutationStatement (id, expr) -> format_mutation id expr
-  | P_ExpressionStatement s -> format_expression_stmt s
+  let annotations = format_annotations statement.statement_annotations in
+  let desc =
+    match statement.statement_desc with
+    | P_BreakStatement s -> format_break_stmt s
+    | P_ContinueStatement s -> format_continue_stmt s
+    | P_UseStatement (id, expr) -> format_use_stmt id expr
+    | P_OptionalMutableLetStatement (id, expr) -> format_optional_mutable_let id expr
+    | P_OptionalLetStatement (id, expr) -> format_optional_let id expr
+    | P_MutableLetStatement (id, expr) -> format_mutable_let id expr
+    | P_LetStatement (id, expr) -> format_let id expr
+    | P_MutationStatement (id, expr) -> format_mutation id expr
+    | P_ExpressionStatement s -> format_expression_stmt s
+  in
+  annotations ^^ desc
 
 and format_declaration key (declaration : Parsetree.declaration) =
-  let annotations = format_annotations declaration.declaration_annotations in
+  let annotations =
+    declaration.declaration_annotations
+    |> List.filter (function
+      | Parsetree.P_Blankline_Annotation -> false
+      | Parsetree.P_Comment_Annotation _ -> true)
+    |> format_annotations
+  in
   let typ =
     match declaration.declaration_kind with
     | P_Declaration_Component -> string "component"

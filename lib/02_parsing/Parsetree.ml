@@ -2,7 +2,7 @@ module Operators = Operators
 
 type annotation =
   | P_Comment_Annotation of string
-  | P_Blankline_Annotation of int
+  | P_Blankline_Annotation
 
 and uppercase_identifier = P_Uppercase_Id of (string * Pinc_Diagnostics.Location.t)
 and lowercase_identifier = P_Lowercase_Id of (string * Pinc_Diagnostics.Location.t)
@@ -10,6 +10,7 @@ and lowercase_identifier = P_Lowercase_Id of (string * Pinc_Diagnostics.Location
 and template_node = {
   template_node_loc : Pinc_Diagnostics.Location.t;
   template_node_desc : template_node_desc;
+  template_node_annotations : annotation list;
 }
 
 and template_node_desc =
@@ -66,6 +67,7 @@ and string_template_desc =
 and expression = {
   expression_loc : Pinc_Diagnostics.Location.t;
   expression_desc : expression_desc;
+  expression_annotations : annotation list;
 }
 
 and expression_desc =
@@ -113,10 +115,10 @@ and expression_desc =
 and statement = {
   statement_loc : Pinc_Diagnostics.Location.t;
   statement_desc : statement_desc;
+  statement_annotations : annotation list;
 }
 
 and statement_desc =
-  | P_CommentStatement of string
   | P_BreakStatement of int
   | P_ContinueStatement of int
   | P_UseStatement of uppercase_identifier option * expression

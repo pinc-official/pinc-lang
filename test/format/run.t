@@ -4,12 +4,16 @@
   */
   page Docs(label: "Docs", icon: "/images/icons/page-docs.svg") {
     use Math = Base.Math;
+  
+    /* Another comment! */
     let fruits = ["apples", "oranges", "bannanas", "melons"];
+  
     let calculations = {
       math: 5 / 3 + 5 * 7,
       math2: 3 + 5 / 5 * 7,
       math3?: if (false) 3 * 4,
     };
+  
     <>
       <span />
       <>
@@ -34,7 +38,9 @@
     groups: ["Some Group", "Another Group", "And another group"],
   ) {
     #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/ButtonPrimary.css" />)
+  
     let fruits = #Array(key: "fruits", of: #String);
+  
     let tag? = #Selection(
       label: "SEO Tag",
       options: [
@@ -64,7 +70,9 @@
         },
       ],
     ) :: fn (v) -> Base.Fn.default(v, "h1");
+  
     let tags = #Array(label: "Tags", initialSize: 1, max: 5, of: #String(label: "Tag"));
+  
     <>
       <span />
       <>
@@ -90,17 +98,21 @@
   component Mutation() {
     let mutable a = "initial";
     a := "mutated";
+  
     let mutable b = "initial";
     if (a == "mutated") {
       b := "mutated";
     }
+  
     let mutable c = "initial";
     let print_c = fn () -> c;
     c := "mutated";
+  
     let mutable d = "initial";
     let print_d = fn () -> d;
     let mutable d = "initial2";
     d := "mutated";
+  
     <section class="foo" data-test="bar">
       a: {a}
       b: {b}
