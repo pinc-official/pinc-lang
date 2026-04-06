@@ -20,9 +20,9 @@ and template_node_desc =
       component_tag_attributes : expression StringMap.t;
       component_tag_children : template_node list;
     }
-  | FragmentTemplateNode of { fragement_children : template_node list }
-  | ExpressionTemplateNode of { template_expression_node_expression : expression }
-  | TextTemplateNode of { text_template_node_text : string }
+  | FragmentTemplateNode of template_node list
+  | ExpressionTemplateNode of expression
+  | TextTemplateNode of string
 
 and tag = {
   tag_loc : Pinc_Diagnostics.Location.t;
@@ -68,7 +68,7 @@ and expression = {
 }
 
 and expression_desc =
-  | Comment of string
+  | Void
   | String of string_template list
   | Char of Uchar.t
   | Int of int
@@ -153,7 +153,7 @@ end
 
 let show_expression expr =
   match expr with
-  | { expression_loc = _; expression_desc = Comment _ } -> "Comment"
+  | { expression_loc = _; expression_desc = Void } -> "Void"
   | { expression_loc = _; expression_desc = String _ } -> "String"
   | { expression_loc = _; expression_desc = Char _ } -> "Char"
   | { expression_loc = _; expression_desc = Int _ } -> "Int"

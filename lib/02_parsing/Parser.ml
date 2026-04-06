@@ -308,41 +308,42 @@ module Rules = struct
       match t.token.typ with
       | Token.HTML_TEXT text_template_node_text ->
           next t;
-          Some (Parsetree.P_TextTemplateNode { text_template_node_text })
+          Some (Parsetree.P_TextTemplateNode text_template_node_text)
       | Token.LEFT_BRACE ->
           let start_token = t.token in
           next t;
-          let has_comment =
+          let comment =
             match t.token.typ with
-            | Token.COMMENT _ -> true
-            | _ -> false
+            | Token.COMMENT s -> Some s
+            | _ -> None
           in
-          let template_expression_node_expression =
+          let template_node =
             match parse_expression t with
-            | Some e -> e
-            | None ->
+            | Some template_expression_node_expression ->
+                Parsetree.P_ExpressionTemplateNode template_expression_node_expression
+            | None -> (
                 let location =
                   Location.merge ~s:start_token.location ~e:t.token.location ()
                 in
-                if not has_comment then
-                  Diagnostics.warn
-                    location
-                    "Expected to see an expression between these braces. \n\
-                     This is currently not doing anything, so you can safely remove it.\n\
-                     If you wanted to have an empty record here, you need to write `{{}}`";
-
-                Parsetree.
-                  {
-                    expression_loc = location;
-                    expression_desc = Parsetree.P_BlockExpression [];
-                    expression_annotations = [];
-                  }
-          in
-          let expression =
-            Parsetree.P_ExpressionTemplateNode { template_expression_node_expression }
+                match comment with
+                | None ->
+                    Diagnostics.warn
+                      location
+                      "Expected to see an expression between these braces. \n\
+                       This is currently not doing anything, so you can safely remove it.\n\
+                       If you wanted to have an empty record here, you need to write \
+                       `{{}}`";
+                    Parsetree.P_ExpressionTemplateNode
+                      Parsetree.
+                        {
+                          expression_loc = location;
+                          expression_desc = Parsetree.P_Record [];
+                          expression_annotations = [];
+                        }
+                | Some comment -> Parsetree.P_TemplateComment comment)
           in
           t |> expect Token.RIGHT_BRACE;
-          Some expression
+          Some template_node
       | Token.HTML_OPEN_TAG html_tag_identifier ->
           next t;
           let html_tag_attributes =
@@ -372,7 +373,7 @@ module Rules = struct
           next t;
           let fragement_children = t |> Helpers.list ~fn:parse_template_node in
           t |> expect Token.HTML_CLOSE_FRAGMENT;
-          Some (Parsetree.P_FragmentTemplateNode { fragement_children })
+          Some (Parsetree.P_FragmentTemplateNode fragement_children)
       | Token.COMPONENT_OPEN_TAG identifier ->
           let component_tag_identifier =
             Parsetree.P_Uppercase_Id (identifier, t.token.location)
@@ -402,7 +403,7 @@ module Rules = struct
                })
       | Token.HTML_DOCTYPE text_template_node_text ->
           next t;
-          Some (Parsetree.P_TextTemplateNode { text_template_node_text })
+          Some (Parsetree.P_TextTemplateNode text_template_node_text)
       | _ -> None
     in
     let node_end = t.prev_token in
@@ -536,11 +537,6 @@ module Rules = struct
     let expr_start = t.token.location in
     let* expression_desc, expr_end =
       match t.token.typ with
-      (* PARSING COMMENT EXPRESSION *)
-      | Token.COMMENT s ->
-          let end_location = t.token.location in
-          next t;
-          Some (Parsetree.P_Comment s, end_location)
       (* PARSING PARENTHESIZED EXPRESSION *)
       | Token.LEFT_PAREN ->
           next t;

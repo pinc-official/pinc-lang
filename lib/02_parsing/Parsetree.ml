@@ -25,9 +25,10 @@ and template_node_desc =
       component_tag_attributes : (string * expression) list;
       component_tag_children : template_node list;
     }
-  | P_FragmentTemplateNode of { fragement_children : template_node list }
-  | P_ExpressionTemplateNode of { template_expression_node_expression : expression }
-  | P_TextTemplateNode of { text_template_node_text : string }
+  | P_FragmentTemplateNode of template_node list
+  | P_ExpressionTemplateNode of expression
+  | P_TemplateComment of string
+  | P_TextTemplateNode of string
 
 and tag = {
   tag_loc : Pinc_Diagnostics.Location.t;
@@ -71,7 +72,7 @@ and expression = {
 }
 
 and expression_desc =
-  | P_Comment of string
+  | P_Void
   | P_String of string_template list
   | P_Char of Uchar.t
   | P_Int of int

@@ -65,6 +65,7 @@ type token_type =
   | KEYWORD_LIBRARY
   | KEYWORD_PAGE
   | KEYWORD_STORE
+  | TEMPLATE_COMMENT of string
   | HTML_DOCTYPE of string
   | HTML_TEXT of string
   | HTML_OPEN_FRAGMENT
@@ -152,6 +153,7 @@ let to_string = function
   | KEYWORD_PAGE -> "page"
   | KEYWORD_STORE -> "store"
   | COMMENT s -> "/* " ^ s ^ " */"
+  | TEMPLATE_COMMENT s -> "/* " ^ s ^ " */"
   | HTML_DOCTYPE s -> s
   | HTML_TEXT s -> s
   | HTML_OPEN_FRAGMENT -> "<>"
@@ -225,6 +227,7 @@ let is_keyword = function
   | LESS_EQUAL
   | PLUSPLUS
   | KEYWORD_REVERSE
+  | TEMPLATE_COMMENT _
   | HTML_DOCTYPE _
   | HTML_TEXT _
   | HTML_OPEN_FRAGMENT

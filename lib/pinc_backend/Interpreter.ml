@@ -92,7 +92,7 @@ and eval_statement ~state statement =
 
 and eval_expression ~state expression =
   match expression.expression_desc with
-  | Ast.Comment _ -> state
+  | Ast.Void -> state
   | Ast.Char c ->
       state
       |> State.add_output ~output:(Helpers.Value.char ~loc:expression.expression_loc c)
@@ -1222,7 +1222,7 @@ and eval_block ~state statements =
 
 and eval_template ~state template =
   match template.template_node_desc with
-  | Ast.TextTemplateNode { text_template_node_text } ->
+  | Ast.TextTemplateNode text_template_node_text ->
       state
       |> State.add_output
            ~output:
@@ -1256,7 +1256,7 @@ and eval_template ~state template =
                      html_tag_children,
                      html_tag_self_closing );
              }
-  | Ast.FragmentTemplateNode { fragement_children } ->
+  | Ast.FragmentTemplateNode fragement_children ->
       let children =
         fragement_children
         |> List.map (fun child -> eval_template ~state child |> State.get_output)
@@ -1269,7 +1269,7 @@ and eval_template ~state template =
                value_loc = template.template_node_loc;
                value_desc = FragmentTemplateNode children;
              }
-  | Ast.ExpressionTemplateNode { template_expression_node_expression } ->
+  | Ast.ExpressionTemplateNode template_expression_node_expression ->
       eval_expression ~state template_expression_node_expression
   | Ast.ComponentTemplateNode
       {
