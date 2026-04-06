@@ -166,7 +166,7 @@ end = struct
 
   let benchmark filename action =
     let src = Pinc_lang.Source.of_file filename in
-    let ast = Pinc_lang.Parser.parse [ src ] in
+    let ast = Pinc_lang.Parser.get_ast [ src ] in
     let benchmarkFn =
       match action with
       | Parse ->
