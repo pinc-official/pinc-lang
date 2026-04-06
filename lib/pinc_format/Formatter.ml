@@ -42,8 +42,33 @@ and format_uppercase_id = function
   | Parsetree.P_Uppercase_Id (id, _loc) -> string id
 
 and format_comment comment =
-  let comment = nest 2 (ifflat (blank 1) (break 1) ^^ arbitrary_string comment) in
-  string "/*" ^^ group (comment ^^ ifflat (blank 1) (break 1)) ^^ string "*/"
+  let starts_with_blank =
+    String.starts_with ~prefix:" " comment || String.starts_with ~prefix:"\t" comment
+  in
+  let ends_with_blank =
+    String.ends_with ~suffix:" " comment || String.ends_with ~suffix:"\t" comment
+  in
+  let comment =
+    nest
+      2
+      (ifflat
+         (if starts_with_blank then
+            empty
+          else
+            blank 1)
+         (break 1)
+      ^^ arbitrary_string comment)
+  in
+  string "/*"
+  ^^ group
+       (comment
+       ^^ ifflat
+            (if ends_with_blank then
+               empty
+             else
+               blank 1)
+            (break 1))
+  ^^ string "*/"
 
 and format_string templates =
   let templates =
@@ -310,6 +335,7 @@ and format_template_node (node : Parsetree.template_node) =
   let annotations = format_annotations node.template_node_annotations in
   let desc =
     match node.template_node_desc with
+    | P_TemplateComment s -> braces (format_comment s)
     | P_HtmlTemplateNode
         {
           html_tag_identifier;
@@ -328,11 +354,11 @@ and format_template_node (node : Parsetree.template_node) =
           ~component_tag_identifier
           ~component_tag_attributes
           ~component_tag_children
-    | P_FragmentTemplateNode { fragement_children } ->
+    | P_FragmentTemplateNode fragement_children ->
         format_fragment_template_node ~fragement_children
-    | P_ExpressionTemplateNode { template_expression_node_expression } ->
+    | P_ExpressionTemplateNode template_expression_node_expression ->
         format_expression_template_node ~template_expression_node_expression
-    | P_TextTemplateNode { text_template_node_text } ->
+    | P_TextTemplateNode text_template_node_text ->
         format_text_template_node ~text_template_node_text
   in
   annotations ^^ desc
@@ -341,7 +367,7 @@ and format_expression (exression : Parsetree.expression) =
   let annotations = format_annotations exression.expression_annotations in
   let desc =
     match exression.expression_desc with
-    | P_Comment comment -> format_comment comment
+    | P_Void -> empty
     | P_String templates -> format_string templates
     | P_Char c -> format_char c
     | P_Int i -> format_int i

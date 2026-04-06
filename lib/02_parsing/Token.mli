@@ -65,6 +65,7 @@ type token_type =
   | KEYWORD_LIBRARY
   | KEYWORD_PAGE
   | KEYWORD_STORE
+  | TEMPLATE_COMMENT of string
   | HTML_DOCTYPE of string
   | HTML_TEXT of string
   | HTML_OPEN_FRAGMENT

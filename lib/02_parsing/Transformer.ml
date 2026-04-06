@@ -42,7 +42,7 @@ let rec transform_lowercase_id env = function
 and transform_uppercase_id env = function
   | Parsetree.P_Uppercase_Id (id, loc) -> (env, Uppercase_Id (id, loc))
 
-and transform_comment env comment = (env, Comment comment)
+and transform_void env = (env, Void)
 
 and transform_string env templates =
   let transform_string_template env (template : Parsetree.string_template) =
@@ -396,7 +396,7 @@ and transform_fragment_template_node env ~fragement_children =
   let env, fragement_children =
     List.fold_map ~init:env ~f:transform_template_node fragement_children
   in
-  (env, FragmentTemplateNode { fragement_children })
+  (env, FragmentTemplateNode fragement_children)
 
 and transform_component_template_node
     env
@@ -422,14 +422,14 @@ and transform_expression_template_node env ~template_expression_node_expression 
   let env, template_expression_node_expression =
     transform_expression env template_expression_node_expression
   in
-  (env, ExpressionTemplateNode { template_expression_node_expression })
+  (env, ExpressionTemplateNode template_expression_node_expression)
 
-and transform_text_template_node env ~text_template_node_text =
-  (env, TextTemplateNode { text_template_node_text })
+and transform_text_template_node env s = (env, TextTemplateNode s)
 
 and transform_template_node env (node : Parsetree.template_node) =
   let env, desc =
     match node.template_node_desc with
+    | P_TemplateComment _ -> (env, TextTemplateNode "")
     | P_HtmlTemplateNode
         {
           html_tag_identifier;
@@ -450,12 +450,12 @@ and transform_template_node env (node : Parsetree.template_node) =
           ~component_tag_identifier
           ~component_tag_attributes
           ~component_tag_children
-    | P_FragmentTemplateNode { fragement_children } ->
+    | P_FragmentTemplateNode fragement_children ->
         transform_fragment_template_node env ~fragement_children
-    | P_ExpressionTemplateNode { template_expression_node_expression } ->
+    | P_ExpressionTemplateNode template_expression_node_expression ->
         transform_expression_template_node env ~template_expression_node_expression
-    | P_TextTemplateNode { text_template_node_text } ->
-        transform_text_template_node env ~text_template_node_text
+    | P_TextTemplateNode text_template_node_text ->
+        transform_text_template_node env text_template_node_text
   in
   (env, { template_node_loc = node.template_node_loc; template_node_desc = desc })
 
@@ -466,7 +466,7 @@ and transform_template env node =
 and transform_expression env (exression : Parsetree.expression) =
   let env, desc =
     match exression.expression_desc with
-    | P_Comment comment -> transform_comment env comment
+    | P_Void -> transform_void env
     | P_String templates -> transform_string env templates
     | P_Char c -> transform_char env c
     | P_Int i -> transform_int env i
