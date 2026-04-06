@@ -75,6 +75,7 @@ type token_type =
   | COMPONENT_CLOSE_TAG of string
   | HTML_OR_COMPONENT_TAG_SELF_CLOSING
   | HTML_OR_COMPONENT_TAG_END
+  | BLANKLINE
   | END_OF_INPUT
 
 type t = {

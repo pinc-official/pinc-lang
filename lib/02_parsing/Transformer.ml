@@ -496,7 +496,6 @@ and transform_expression env (exression : Parsetree.expression) =
   in
   (env, { expression_loc = exression.expression_loc; expression_desc = desc })
 
-and transform_comment_stmt env s = (env, CommentStatement s)
 and transform_break_stmt env s = (env, BreakStatement s)
 and transform_continue_stmt env s = (env, ContinueStatement s)
 
@@ -545,7 +544,6 @@ and transform_expression_stmt env s =
 and transform_statement env (statement : Parsetree.statement) =
   let env, desc =
     match statement.statement_desc with
-    | P_CommentStatement s -> transform_comment_stmt env s
     | P_BreakStatement s -> transform_break_stmt env s
     | P_ContinueStatement s -> transform_continue_stmt env s
     | P_UseStatement (id, expr) -> transform_use_stmt env id expr

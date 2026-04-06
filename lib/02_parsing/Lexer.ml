@@ -23,7 +23,6 @@ type t = {
   mutable line : int;
   mutable column : int;
   mutable saw_characters_on_line : bool;
-  line_indentation : Buffer.t;
   mutable mode : mode list;
 }
 
@@ -40,7 +39,6 @@ let make source =
     line_offset = 0;
     column = 0;
     line = 1;
-    line_indentation = Buffer.create 32;
     saw_characters_on_line = false;
     mode = [ Normal ];
   }
@@ -119,10 +117,7 @@ let eat t =
         t.line_offset <- next_offset;
         t.line <- succ t.line;
         t.saw_characters_on_line <- false;
-        Buffer.clear t.line_indentation;
         ()
-    | `Chr ((' ' | '\t') as c) when not t.saw_characters_on_line ->
-        Buffer.add_char t.line_indentation c
     | _ when not (is_whitespace t) -> set_saw_character t
     | _ -> ()
   in
@@ -168,11 +163,12 @@ let eat_sequence ?(case_sensitive = false) seq t =
 ;;
 
 let rec skip_whitespace t =
-  if is_whitespace t then (
-    eat t;
-    skip_whitespace t)
-  else
-    set_saw_character t
+  match t.current with
+  | `Chr '\n' when not t.saw_characters_on_line -> ()
+  | `Chr ' ' | `Chr '\t' | `Chr '\n' | `Chr '\r' ->
+      eat t;
+      skip_whitespace t
+  | _ -> set_saw_character t
 ;;
 
 let scan_escape t =
@@ -1120,14 +1116,13 @@ and scan_normal_token ~start_pos t =
       | _ ->
           eat t;
           Token.LESS)
+  | `Chr '\n' ->
+      eat t;
+      Token.BLANKLINE
   | `EOF -> Token.END_OF_INPUT
-  | `Chr c ->
-      Diagnostics.raise_error
-        (Location.make ~s:start_pos ~e:(make_position t) ())
-        ("The character " ^ String.make 1 c ^ " is unknown. You should remove it.")
-(* NOTE: Maybe we can ignore this and continue scanning... *)
-(* eat t;
-    scan_token ~start_pos t *)
+  | `Chr _ ->
+      eat t;
+      scan_token ~start_pos t
 
 and scan_token ~start_pos t =
   (* Printf.printf "MODE(s): %s\n\n" (String.concat " <- " (List.map Debug.show_mode t.mode)); *)
@@ -1137,9 +1132,8 @@ and scan_token ~start_pos t =
   | ComponentAttributes -> scan_component_attributes_token ~start_pos t
   | String -> scan_string_token ~start_pos t
   | Normal -> scan_normal_token ~start_pos t
-;;
 
-let scan t =
+and scan t =
   let () =
     match current_mode t with
     | Normal -> skip_whitespace t

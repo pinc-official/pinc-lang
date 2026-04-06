@@ -75,6 +75,7 @@ type token_type =
   | COMPONENT_CLOSE_TAG of string
   | HTML_OR_COMPONENT_TAG_SELF_CLOSING
   | HTML_OR_COMPONENT_TAG_END
+  | BLANKLINE
   | END_OF_INPUT
 
 type t = {
@@ -162,6 +163,7 @@ let to_string = function
   | HTML_OR_COMPONENT_TAG_SELF_CLOSING -> "/>"
   | HTML_OR_COMPONENT_TAG_END -> "> (TAG END)"
   | END_OF_INPUT -> "(EOF)"
+  | BLANKLINE -> "(BLANKLINE)"
   | EXTERNAL_FUNCTION_SYMBOL s -> Printf.sprintf "%%%%%s%%%%" s
 ;;
 
@@ -240,7 +242,8 @@ let is_keyword = function
   | HTML_OPEN_TAG _
   | HTML_CLOSE_TAG _
   | COMPONENT_OPEN_TAG _
-  | COMPONENT_CLOSE_TAG _ -> false
+  | COMPONENT_CLOSE_TAG _
+  | BLANKLINE -> false
 ;;
 
 let keyword_of_string = function

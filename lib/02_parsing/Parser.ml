@@ -158,14 +158,21 @@ module Helpers = struct
 end
 
 module Rules = struct
-  let rec parse_annotations t = Helpers.list ~fn:parse_annotation t
-
-  and parse_annotation t =
-    match t.token.typ with
-    | Token.COMMENT s ->
-        next t;
-        Some (Parsetree.P_Comment_Annotation s)
-    | _ -> None
+  let rec parse_annotations t =
+    let rec loop acc =
+      match t.token.typ with
+      | Token.COMMENT s ->
+          next t;
+          loop (Parsetree.P_Comment_Annotation s :: acc)
+      | Token.BLANKLINE when peek t = Token.BLANKLINE ->
+          next t;
+          loop acc
+      | Token.BLANKLINE ->
+          next t;
+          loop (Parsetree.P_Blankline_Annotation :: acc)
+      | _ -> List.rev acc
+    in
+    loop []
 
   and parse_string_template t =
     let string_template_start = t.token.location in
@@ -229,6 +236,7 @@ module Rules = struct
     | _ -> None
 
   and parse_block t =
+    let expression_annotations = parse_annotations t in
     let expr_start = t.token.location in
     let* expression_desc =
       match t.token.typ with
@@ -237,8 +245,6 @@ module Rules = struct
           let rec get_statements acc =
             match parse_statement t with
             | Some r when optional Token.SEMICOLON t -> get_statements (r :: acc)
-            | Some (Parsetree.{ statement_desc = P_CommentStatement _; _ } as r) ->
-                get_statements (r :: acc)
             | Some r -> List.rev (r :: acc)
             | _ -> List.rev acc
           in
@@ -251,7 +257,7 @@ module Rules = struct
     in
     let expr_end = t.token.location in
     let expression_loc = Location.merge ~s:expr_start ~e:expr_end () in
-    Parsetree.{ expression_desc; expression_loc } |> Option.some
+    Parsetree.{ expression_desc; expression_loc; expression_annotations } |> Option.some
 
   and parse_tag ~name t =
     let start_token = t.token in
@@ -296,6 +302,7 @@ module Rules = struct
     Parsetree.P_TagExpression Parsetree.{ tag_loc; tag_desc } |> Option.some
 
   and parse_template_node t =
+    let template_node_annotations = parse_annotations t in
     let node_start = t.token in
     let* template_node_desc =
       match t.token.typ with
@@ -328,6 +335,7 @@ module Rules = struct
                   {
                     expression_loc = location;
                     expression_desc = Parsetree.P_BlockExpression [];
+                    expression_annotations = [];
                   }
           in
           let expression =
@@ -401,16 +409,14 @@ module Rules = struct
     let template_node_loc =
       Location.merge ~s:node_start.location ~e:node_end.location ()
     in
-    Parsetree.{ template_node_desc; template_node_loc } |> Option.some
+    Parsetree.{ template_node_desc; template_node_loc; template_node_annotations }
+    |> Option.some
 
   and parse_statement t =
+    let statement_annotations = parse_annotations t in
     let statement_start = t.token in
     let* statement_desc =
       match t.token.typ with
-      (* PARSING COMMENT STATEMENT *)
-      | Token.COMMENT s ->
-          next t;
-          Some (Parsetree.P_CommentStatement s)
       (* PARSING BREAK STATEMENT *)
       | Token.KEYWORD_BREAK ->
           next t;
@@ -512,7 +518,7 @@ module Rules = struct
     let statement_loc =
       Location.merge ~s:statement_start.location ~e:statement_end.location ()
     in
-    Parsetree.{ statement_desc; statement_loc } |> Option.some
+    Parsetree.{ statement_desc; statement_loc; statement_annotations } |> Option.some
 
   and parse_unary_expression t =
     let* operator =
@@ -526,6 +532,7 @@ module Rules = struct
     Parsetree.P_UnaryExpression (operator, argument) |> Option.some
 
   and parse_expression_part t =
+    let expression_annotations = parse_annotations t in
     let expr_start = t.token.location in
     let* expression_desc, expr_end =
       match t.token.typ with
@@ -634,14 +641,25 @@ module Rules = struct
           let* consequent =
             match parse_statement t with
             | None -> None
-            | Some { statement_loc = _; statement_desc = P_ExpressionStatement e } ->
-                Some e
-            | Some ({ statement_loc; _ } as s) ->
+            | Some
+                {
+                  statement_loc = _;
+                  statement_desc = P_ExpressionStatement e;
+                  statement_annotations;
+                } ->
+                Some
+                  {
+                    e with
+                    expression_annotations =
+                      statement_annotations @ e.expression_annotations;
+                  }
+            | Some ({ statement_loc; statement_annotations; statement_desc = _ } as s) ->
                 Some
                   Parsetree.
                     {
                       expression_loc = statement_loc;
                       expression_desc = P_BlockExpression [ s ];
+                      expression_annotations = statement_annotations;
                     }
           in
           let alternate =
@@ -650,14 +668,26 @@ module Rules = struct
                 parse_statement t
               with
               | None -> None
-              | Some { statement_loc = _; statement_desc = P_ExpressionStatement e } ->
-                  Some e
-              | Some ({ statement_loc; _ } as s) ->
+              | Some
+                  {
+                    statement_loc = _;
+                    statement_desc = P_ExpressionStatement e;
+                    statement_annotations;
+                  } ->
+                  Some
+                    {
+                      e with
+                      expression_annotations =
+                        statement_annotations @ e.expression_annotations;
+                    }
+              | Some ({ statement_loc; statement_annotations; statement_desc = _ } as s)
+                ->
                   Some
                     Parsetree.
                       {
                         expression_loc = statement_loc;
                         expression_desc = P_BlockExpression [ s ];
+                        expression_annotations = statement_annotations;
                       })
             else
               None
@@ -744,7 +774,7 @@ module Rules = struct
       | _ -> parse_unary_expression t |> Option.map (fun expr -> (expr, t.token.location))
     in
     let expression_loc = Location.merge ~s:expr_start ~e:expr_end () in
-    Parsetree.{ expression_desc; expression_loc } |> Option.some
+    Parsetree.{ expression_desc; expression_loc; expression_annotations } |> Option.some
 
   and parse_binary_operator t =
     match t.token.typ with
@@ -787,6 +817,7 @@ module Rules = struct
             if precedence < prio then
               left
             else (
+              let expression_annotations = parse_annotations t in
               let expression_start = t.token.location in
               next t;
               let expression_desc =
@@ -817,7 +848,9 @@ module Rules = struct
               let expression_loc =
                 Location.merge ~s:expression_start ~e:expression_end ()
               in
-              let left = Parsetree.{ expression_desc; expression_loc } in
+              let left =
+                Parsetree.{ expression_desc; expression_loc; expression_annotations }
+              in
               loop ~left ~prio t))
     in
     let* left = parse_expression_part t in
