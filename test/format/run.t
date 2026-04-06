@@ -80,8 +80,8 @@
       <>
       <ul>
         {for (fruit in reverse fruits) {
-      <li>{fruit}</li>
-    }}
+          <li>{fruit}</li>
+        }}
       </ul>
       <p>
         Aliqua in elit sunt in anim culpa nostrud elit.
