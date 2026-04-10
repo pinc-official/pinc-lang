@@ -10,7 +10,7 @@
   
     let calculations = {
       math: 5 / 3 + 5 * 7,
-      math2: 3 + 5 / 5 * 7,
+      math2: (3 + 5) / 5 * 7,
       math3?: if (false) 3 * 4,
     };
   
@@ -18,18 +18,18 @@
       <span />
       <>
         <div class="foo" />
-      <>
+      </>
       <ul>
         {for (fruit in fruits) {
-      <li>{fruit}</li>
-    }}
+          <li>{fruit}</li>
+        }}
       </ul>
-      <p>
-        Aliqua in elit sunt in anim culpa nostrud elit.
-        Elit voluptate nisi laborum est eu esse non exercitation minim.
-        Nisi ea enim minim quis.
-      </p>
-    <>
+      <code>
+        {"Aliqua in elit sunt in anim culpa nostrud elit.
+  Elit voluptate nisi laborum est eu esse non exercitation minim.
+  Nisi ea enim minim quis."}
+      </code>
+    </>
   }
   
   component Component(
@@ -77,7 +77,7 @@
       <span />
       <>
         <div class="foo" />
-      <>
+      </>
       <ul>
         {for (fruit in reverse fruits) {
           <li>{fruit}</li>
@@ -89,7 +89,7 @@
         Elit voluptate nisi laborum est eu esse non exercitation minim.
         Nisi ea enim minim quis.
       </p>
-    <>
+    </>
   }
   
   library NoAttributes() {

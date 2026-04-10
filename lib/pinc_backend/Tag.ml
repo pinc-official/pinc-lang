@@ -397,7 +397,7 @@ module Tag_Slot = struct
 
   let rec keep_slotted ~key acc el =
     match el with
-    | ( { value_desc = HtmlTemplateNode (_, attributes, _, _); _ }
+    | ( { value_desc = HtmlTemplateNode (_, attributes, _); _ }
       | { value_desc = ComponentTemplateNode (_, attributes, _); _ } ) as v ->
         if find_slot_key attributes = key then
           v :: acc
@@ -590,7 +590,7 @@ module Tag_Slot = struct
       slotted_elements
       |> Array.fold_left
            (fun meta -> function
-             | { value_desc = HtmlTemplateNode (tag_name, _, _, _); value_loc }
+             | { value_desc = HtmlTemplateNode (tag_name, _, _); value_loc }
              | { value_desc = ComponentTemplateNode (tag_name, _, _); value_loc } -> (
                  match check_instance_restriction ~constraints tag_name with
                  | Ok () -> meta

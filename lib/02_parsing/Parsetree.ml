@@ -11,6 +11,7 @@ and template_node = {
   template_node_loc : Pinc_Diagnostics.Location.t;
   template_node_desc : template_node_desc;
   template_node_annotations : annotation list;
+  template_node_indent : int;
 }
 
 and template_node_desc =
@@ -18,7 +19,6 @@ and template_node_desc =
       html_tag_identifier : string;
       html_tag_attributes : (string * expression) list;
       html_tag_children : template_node list;
-      html_tag_self_closing : bool;
     }
   | P_ComponentTemplateNode of {
       component_tag_identifier : uppercase_identifier;

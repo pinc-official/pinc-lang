@@ -76,8 +76,8 @@ let expect token t =
 let make source =
   let lexer = Lexer.make source in
   let initial_pos = Location.Position.make ~source ~line:0 ~column:0 in
-  let loc = Location.make ~s:initial_pos () in
-  let initial_token = Token.make ~loc Token.END_OF_INPUT in
+  let location = Location.make ~s:initial_pos () in
+  let initial_token = Token.make ~indentation:0 ~location Token.END_OF_INPUT in
   let t =
     { lexer; prev_token = initial_token; token = initial_token; next = Queue.create () }
   in
@@ -304,6 +304,7 @@ module Rules = struct
   and parse_template_node t =
     let template_node_annotations = parse_annotations t in
     let node_start = t.token in
+    let indentation = t.token.indentation in
     let* template_node_desc =
       match t.token.typ with
       | Token.HTML_TEXT text_template_node_text ->
@@ -363,12 +364,7 @@ module Rules = struct
           in
           Some
             (Parsetree.P_HtmlTemplateNode
-               {
-                 html_tag_identifier;
-                 html_tag_attributes;
-                 html_tag_children;
-                 html_tag_self_closing;
-               })
+               { html_tag_identifier; html_tag_attributes; html_tag_children })
       | Token.HTML_OPEN_FRAGMENT ->
           next t;
           let fragement_children = t |> Helpers.list ~fn:parse_template_node in
@@ -410,7 +406,14 @@ module Rules = struct
     let template_node_loc =
       Location.merge ~s:node_start.location ~e:node_end.location ()
     in
-    Parsetree.{ template_node_desc; template_node_loc; template_node_annotations }
+    let template_node_indent = indentation in
+    Parsetree.
+      {
+        template_node_desc;
+        template_node_loc;
+        template_node_annotations;
+        template_node_indent;
+      }
     |> Option.some
 
   and parse_statement t =
@@ -697,6 +700,8 @@ module Rules = struct
           next t;
           parse_tag ~name t |> Option.map (fun tag -> (tag, end_location))
       (* PARSING TEMPLATE EXPRESSION *)
+      | Token.TEMPLATE_NEWLINE
+      | Token.HTML_TEXT _
       | Token.HTML_OPEN_TAG _
       | Token.COMPONENT_OPEN_TAG _
       | Token.HTML_OPEN_FRAGMENT

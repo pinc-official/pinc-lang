@@ -371,8 +371,7 @@ and transform_html_template_node
     env
     ~html_tag_identifier
     ~html_tag_attributes
-    ~html_tag_children
-    ~html_tag_self_closing =
+    ~html_tag_children =
   let html_tag_identifier = html_tag_identifier in
   let env, html_tag_attributes =
     html_tag_attributes
@@ -382,15 +381,7 @@ and transform_html_template_node
   let env, html_tag_children =
     List.fold_map ~init:env ~f:transform_template_node html_tag_children
   in
-  let html_tag_self_closing = html_tag_self_closing in
-  ( env,
-    HtmlTemplateNode
-      {
-        html_tag_identifier;
-        html_tag_attributes;
-        html_tag_children;
-        html_tag_self_closing;
-      } )
+  (env, HtmlTemplateNode { html_tag_identifier; html_tag_attributes; html_tag_children })
 
 and transform_fragment_template_node env ~fragement_children =
   let env, fragement_children =
@@ -430,19 +421,13 @@ and transform_template_node env (node : Parsetree.template_node) =
   let env, desc =
     match node.template_node_desc with
     | P_TemplateComment _ -> (env, TextTemplateNode "")
-    | P_HtmlTemplateNode
-        {
-          html_tag_identifier;
-          html_tag_attributes;
-          html_tag_children;
-          html_tag_self_closing;
-        } ->
+    | P_HtmlTemplateNode { html_tag_identifier; html_tag_attributes; html_tag_children }
+      ->
         transform_html_template_node
           env
           ~html_tag_identifier
           ~html_tag_attributes
           ~html_tag_children
-          ~html_tag_self_closing
     | P_ComponentTemplateNode
         { component_tag_identifier; component_tag_attributes; component_tag_children } ->
         transform_component_template_node
