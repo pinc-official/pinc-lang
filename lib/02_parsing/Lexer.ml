@@ -23,6 +23,7 @@ type t = {
   mutable line : int;
   mutable column : int;
   mutable saw_characters_on_line : bool;
+  line_indentation : Buffer.t;
   mutable mode : mode list;
 }
 
@@ -39,6 +40,7 @@ let make source =
     line_offset = 0;
     column = 0;
     line = 1;
+    line_indentation = Buffer.create 32;
     saw_characters_on_line = false;
     mode = [ Normal ];
   }
@@ -104,6 +106,12 @@ let peek_n n t =
 let peek t = peek_n 1 t
 let peek2 t = peek_n 2 t
 
+let get_line_indentation t =
+  let indent = Buffer.contents t.line_indentation in
+  Buffer.clear t.line_indentation;
+  String.length indent
+;;
+
 let set_saw_character t =
   if not @@ t.saw_characters_on_line then
     t.saw_characters_on_line <- true
@@ -117,7 +125,10 @@ let eat t =
         t.line_offset <- next_offset;
         t.line <- succ t.line;
         t.saw_characters_on_line <- false;
+        Buffer.clear t.line_indentation;
         ()
+    | `Chr ((' ' | '\t') as c) when not t.saw_characters_on_line ->
+        Buffer.add_char t.line_indentation c
     | _ when not (is_whitespace t) -> set_saw_character t
     | _ -> ()
   in
@@ -168,7 +179,16 @@ let rec skip_whitespace t =
   | `Chr ' ' | `Chr '\t' | `Chr '\n' | `Chr '\r' ->
       eat t;
       skip_whitespace t
-  | _ -> set_saw_character t
+  | _ -> ()
+;;
+
+let rec skip_indentation t =
+  match t.current with
+  | (`Chr ' ' | `Chr '\t') when not t.saw_characters_on_line ->
+      eat t;
+      skip_indentation t
+  | _ when not @@ is_whitespace t -> set_saw_character t
+  | _ -> ()
 ;;
 
 let scan_escape t =
@@ -525,24 +545,16 @@ let scan_template_text t =
           (Location.make ~s:start_pos ~e:(make_position t) ())
           "Your Template was not closed correctly. You probably mismatched or forgot a \
            closing tag."
-    | `Chr '{' ->
-        set_saw_character t;
-        Buffer.contents buf
+    | `Chr '{' -> Buffer.contents buf
     | `Chr '\n' ->
         eat t;
         Buffer.add_char buf '\n';
         Buffer.contents buf
     | `Chr '<' -> (
         match peek t with
-        | `Chr '/' ->
-            set_saw_character t;
-            Buffer.contents buf
-        | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' ->
-            set_saw_character t;
-            Buffer.contents buf
-        | `Chr '>' ->
-            set_saw_character t;
-            Buffer.contents buf
+        | `Chr '/' -> Buffer.contents buf
+        | `Chr 'a' .. 'z' | `Chr 'A' .. 'Z' -> Buffer.contents buf
+        | `Chr '>' -> Buffer.contents buf
         | _ ->
             eat t;
             Buffer.add_char buf '<';
@@ -756,9 +768,7 @@ let rec scan_template_token ~start_pos t =
   | `Chr '<' -> (
       match peek t with
       | `Chr '>' -> scan_template_fragment_open t
-      | `Chr '!' ->
-          (* NOTE: not sure, if we should setMode Template t; here... *)
-          scan_doctype t
+      | `Chr '!' -> scan_doctype t
       | `Chr 'a' .. 'z' ->
           setMode Template t;
           setMode TemplateAttributes t;
@@ -1075,13 +1085,13 @@ and scan_normal_token ~start_pos t =
           Token.STAR)
   | `Chr '<' -> (
       match peek t with
-      | `Chr '>' -> scan_template_fragment_open t
       | `Chr '-' ->
           eat2 t;
           Token.ARROW_LEFT
       | `Chr '=' ->
           eat2 t;
           Token.LESS_EQUAL
+      | `Chr '>' -> scan_template_fragment_open t
       | `Chr '!' ->
           (* NOTE: not sure, if we should setMode Template t; here... *)
           scan_doctype t
@@ -1127,7 +1137,9 @@ and scan_normal_token ~start_pos t =
 and scan_token ~start_pos t =
   (* Printf.printf "MODE(s): %s\n\n" (String.concat " <- " (List.map Debug.show_mode t.mode)); *)
   match current_mode t with
-  | Template -> scan_template_token ~start_pos t
+  | Template ->
+      skip_indentation t;
+      scan_template_token ~start_pos t
   | TemplateAttributes -> scan_template_attributes_token ~start_pos t
   | ComponentAttributes -> scan_component_attributes_token ~start_pos t
   | String -> scan_string_token ~start_pos t
@@ -1140,16 +1152,22 @@ and scan t =
     | TemplateAttributes -> skip_whitespace t
     | ComponentAttributes -> skip_whitespace t
     | String -> ()
-    | Template -> ()
+    | Template -> skip_indentation t
   in
   let start_pos = make_position t in
   let token = scan_token ~start_pos t in
+  let indentation =
+    if t.saw_characters_on_line then
+      get_line_indentation t
+    else
+      0
+  in
   let end_pos = make_position t in
-  let loc = Location.make ~s:start_pos ~e:end_pos () in
+  let location = Location.make ~s:start_pos ~e:end_pos () in
   (* print_endline
   @@ Printf.sprintf
        "%S -> %s"
        (Token.to_string token)
-       (Diagnostics.Location.to_string loc); *)
-  Token.make ~loc token
+       (Diagnostics.Location.to_string location); *)
+  Token.make ~location ~indentation token
 ;;

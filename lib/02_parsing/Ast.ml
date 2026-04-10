@@ -13,7 +13,6 @@ and template_node_desc =
       html_tag_identifier : string;
       html_tag_attributes : expression StringMap.t;
       html_tag_children : template_node list;
-      html_tag_self_closing : bool;
     }
   | ComponentTemplateNode of {
       component_tag_identifier : uppercase_identifier;

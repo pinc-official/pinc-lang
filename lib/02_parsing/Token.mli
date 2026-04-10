@@ -65,6 +65,7 @@ type token_type =
   | KEYWORD_LIBRARY
   | KEYWORD_PAGE
   | KEYWORD_STORE
+  | TEMPLATE_NEWLINE
   | TEMPLATE_COMMENT of string
   | HTML_DOCTYPE of string
   | HTML_TEXT of string
@@ -81,10 +82,11 @@ type token_type =
 
 type t = {
   typ : token_type;
+  indentation : int;
   location : Location.t;
 }
 
-val make : loc:Location.t -> token_type -> t
+val make : location:Location.t -> indentation:int -> token_type -> t
 val to_string : token_type -> string
 val is_keyword : token_type -> bool
 val lookup_keyword : string -> token_type

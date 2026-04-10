@@ -748,7 +748,7 @@ and eval_binary_dot_access ~state left right =
         |> Option.value ~default:(Helpers.Value.null ~loc:left.expression_loc ())
       in
       state |> State.add_output ~output
-  | HtmlTemplateNode (tag, attributes, _, _), Ast.LowercaseIdentifierExpression b -> (
+  | HtmlTemplateNode (tag, attributes, _), Ast.LowercaseIdentifierExpression b -> (
       match b with
       | "tag" ->
           state
@@ -913,12 +913,9 @@ and eval_binary_merge ~state left_expression right_expression =
         Helpers.Value.record
           ~loc:(Location.merge ~s:left.value_loc ~e:right.value_loc ())
           (StringMap.union (fun _key _x y -> Some y) l r)
-    | HtmlTemplateNode (tag, attributes, children, self_closing), Record right ->
+    | HtmlTemplateNode (tag, attributes, children), Record right ->
         let attributes = StringMap.union (fun _key _x y -> Some y) attributes right in
-        {
-          left with
-          value_desc = HtmlTemplateNode (tag, attributes, children, self_closing);
-        }
+        { left with value_desc = HtmlTemplateNode (tag, attributes, children) }
     | HtmlTemplateNode _, _ ->
         Diagnostics.raise_error
           right_expression.expression_loc
@@ -1229,13 +1226,8 @@ and eval_template ~state template =
              (Helpers.Value.string
                 ~loc:template.template_node_loc
                 text_template_node_text)
-  | Ast.HtmlTemplateNode
-      {
-        html_tag_identifier;
-        html_tag_attributes;
-        html_tag_children;
-        html_tag_self_closing;
-      } ->
+  | Ast.HtmlTemplateNode { html_tag_identifier; html_tag_attributes; html_tag_children }
+    ->
       let html_tag_attributes =
         html_tag_attributes
         |> StringMap.map (eval_expression ~state)
@@ -1251,10 +1243,7 @@ and eval_template ~state template =
                value_loc = template.template_node_loc;
                value_desc =
                  HtmlTemplateNode
-                   ( html_tag_identifier,
-                     html_tag_attributes,
-                     html_tag_children,
-                     html_tag_self_closing );
+                   (html_tag_identifier, html_tag_attributes, html_tag_children);
              }
   | Ast.FragmentTemplateNode fragement_children ->
       let children =

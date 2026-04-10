@@ -28,7 +28,7 @@ let rec to_string value =
       |> StringMap.to_seq
       |> Seq.iter (fun (_key, value) -> Buffer.add_string b (to_string value));
       Buffer.contents b
-  | HtmlTemplateNode (tag, attributes, children, self_closing) ->
+  | HtmlTemplateNode (tag, attributes, children) ->
       let buf = Buffer.create 128 in
       Buffer.add_char buf '<';
       Buffer.add_string buf tag;
@@ -56,15 +56,17 @@ let rec to_string value =
                 Buffer.add_char buf '"';
                 Buffer.add_string buf (value |> to_string);
                 Buffer.add_char buf '"');
-      if self_closing && HTML.is_void_el tag then
-        Buffer.add_string buf " />"
-      else (
-        Buffer.add_char buf '>';
-        children |> List.iter (fun child -> Buffer.add_string buf (to_string child));
-        Buffer.add_char buf '<';
-        Buffer.add_char buf '/';
-        Buffer.add_string buf tag;
-        Buffer.add_char buf '>');
+      let () =
+        match children with
+        | [] when HTML.is_void_el tag -> Buffer.add_string buf " />"
+        | children ->
+            Buffer.add_char buf '>';
+            children |> List.iter (fun child -> Buffer.add_string buf (to_string child));
+            Buffer.add_char buf '<';
+            Buffer.add_char buf '/';
+            Buffer.add_string buf tag;
+            Buffer.add_char buf '>'
+      in
       Buffer.contents buf
   | FragmentTemplateNode children ->
       let buf = Buffer.create 128 in
@@ -109,12 +111,9 @@ let rec equal a b =
   | Record a, Record b -> StringMap.equal equal a b
   | Function _, Function _ -> false
   | DefinitionInfo (a, _, _), DefinitionInfo (b, _, _) -> String.equal a b
-  | ( HtmlTemplateNode (a_tag, a_attrs, a_children, a_self_closing),
-      HtmlTemplateNode (b_tag, b_attrs, b_children, b_self_closing) ) ->
-      a_tag = b_tag
-      && a_self_closing = b_self_closing
-      && StringMap.equal equal a_attrs b_attrs
-      && a_children = b_children
+  | ( HtmlTemplateNode (a_tag, a_attrs, a_children),
+      HtmlTemplateNode (b_tag, b_attrs, b_children) ) ->
+      a_tag = b_tag && StringMap.equal equal a_attrs b_attrs && a_children = b_children
   | ( ComponentTemplateNode (a_tag, a_attributes, _),
       ComponentTemplateNode (b_tag, b_attributes, _) ) ->
       a_tag = b_tag && StringMap.equal equal a_attributes b_attributes

@@ -277,77 +277,87 @@ and format_block statements =
   let statements = List.map (fun s -> format_statement s) statements in
   lbrace ^^ nest 2 (break 1 ^^ separate hardline statements) ^^ break 1 ^^ rbrace
 
-and format_html_template_node
-    ~html_tag_identifier
-    ~html_tag_attributes
-    ~html_tag_children
-    ~html_tag_self_closing:_ =
-  langle
-  ^^ string html_tag_identifier
-  ^^ (match html_tag_attributes with
+and format_html_template_node ~html_tag_identifier ~html_tag_attributes ~html_tag_children
+    =
+  let open_tag =
+    langle
+    ^^ string html_tag_identifier
+    ^^ (match html_tag_attributes with
+      | [] -> empty
+      | attrs -> space ^^ Helpers.html_attributes format_expression attrs)
+    ^^
+    match html_tag_children with
     | [] -> empty
-    | attrs -> space ^^ Helpers.html_attributes format_expression attrs)
-  ^^
-  match html_tag_children with
-  | [] -> space ^^ slash ^^ rangle
-  | children ->
-      rangle
-      ^^ concat_map format_template_node children
-      ^^ langle
-      ^^ slash
-      ^^ string html_tag_identifier
-      ^^ rangle
+    | _ -> rangle
+  in
+  let close_tag =
+    match html_tag_children with
+    | [] -> char ' ' ^^ slash ^^ rangle
+    | _ -> langle ^^ slash ^^ string html_tag_identifier ^^ rangle
+  in
+  let children =
+    match html_tag_children with
+    | [] -> empty
+    | children -> separate_map empty format_template_node children
+  in
+  group
+    (open_tag
+    ^^ nest 2 (ifflat empty hardline ^^ children)
+    ^^ ifflat empty hardline
+    ^^ close_tag)
 
 and format_fragment_template_node ~fragement_children =
-  langle
-  ^^ rangle
-  ^^ concat_map format_template_node fragement_children
-  ^^ langle
-  ^^ rangle
+  let open_tag = langle ^^ rangle in
+  let children = concat_map format_template_node fragement_children in
+  let close_tag = langle ^^ slash ^^ rangle in
+  group
+    (open_tag
+    ^^ nest 2 (ifflat empty hardline ^^ children)
+    ^^ ifflat empty hardline
+    ^^ close_tag)
 
 and format_component_template_node
     ~component_tag_identifier
     ~component_tag_attributes
     ~component_tag_children =
-  langle
-  ^^ format_uppercase_id component_tag_identifier
-  ^^ (match component_tag_attributes with
+  let open_tag =
+    langle
+    ^^ format_uppercase_id component_tag_identifier
+    ^^ (match component_tag_attributes with
+      | [] -> empty
+      | attrs -> space ^^ Helpers.html_attributes format_expression attrs)
+    ^^
+    match component_tag_children with
     | [] -> empty
-    | attrs -> space ^^ Helpers.html_attributes format_expression attrs)
-  ^^
-  match component_tag_children with
-  | [] -> space ^^ slash ^^ rangle
-  | children ->
-      rangle
-      ^^ concat_map format_template_node children
-      ^^ langle
-      ^^ slash
-      ^^ format_uppercase_id component_tag_identifier
-      ^^ rangle
-
-and format_expression_template_node ~template_expression_node_expression =
-  braces (format_expression template_expression_node_expression)
-
-and format_text_template_node ~text_template_node_text =
-  utf8string text_template_node_text
+    | _ -> rangle
+  in
+  let close_tag =
+    match component_tag_children with
+    | [] -> space ^^ slash ^^ rangle
+    | _ -> langle ^^ slash ^^ format_uppercase_id component_tag_identifier ^^ rangle
+  in
+  let children =
+    match component_tag_children with
+    | [] -> empty
+    | children -> concat_map format_template_node children
+  in
+  group
+    (open_tag
+    ^^ nest 2 (ifflat empty hardline ^^ children)
+    ^^ ifflat empty hardline
+    ^^ close_tag)
 
 and format_template_node (node : Parsetree.template_node) =
   let annotations = format_annotations node.template_node_annotations in
   let desc =
     match node.template_node_desc with
     | P_TemplateComment s -> braces (format_comment s)
-    | P_HtmlTemplateNode
-        {
-          html_tag_identifier;
-          html_tag_attributes;
-          html_tag_children;
-          html_tag_self_closing;
-        } ->
+    | P_HtmlTemplateNode { html_tag_identifier; html_tag_attributes; html_tag_children }
+      ->
         format_html_template_node
           ~html_tag_identifier
           ~html_tag_attributes
           ~html_tag_children
-          ~html_tag_self_closing
     | P_ComponentTemplateNode
         { component_tag_identifier; component_tag_attributes; component_tag_children } ->
         format_component_template_node
@@ -357,9 +367,10 @@ and format_template_node (node : Parsetree.template_node) =
     | P_FragmentTemplateNode fragement_children ->
         format_fragment_template_node ~fragement_children
     | P_ExpressionTemplateNode template_expression_node_expression ->
-        format_expression_template_node ~template_expression_node_expression
-    | P_TextTemplateNode text_template_node_text ->
-        format_text_template_node ~text_template_node_text
+        braces (format_expression template_expression_node_expression)
+    | P_TextTemplateNode "" -> empty
+    | P_TextTemplateNode "\n" -> hardline
+    | P_TextTemplateNode s -> arbitrary_string s
   in
   annotations ^^ desc
 

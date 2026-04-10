@@ -65,6 +65,7 @@ type token_type =
   | KEYWORD_LIBRARY
   | KEYWORD_PAGE
   | KEYWORD_STORE
+  | TEMPLATE_NEWLINE
   | TEMPLATE_COMMENT of string
   | HTML_DOCTYPE of string
   | HTML_TEXT of string
@@ -81,10 +82,11 @@ type token_type =
 
 type t = {
   typ : token_type;
+  indentation : int;
   location : Location.t;
 }
 
-let make ~loc typ = { typ; location = loc }
+let make ~location ~indentation typ = { typ; indentation; location }
 
 let to_string = function
   | FLOAT f -> string_of_float f
@@ -154,6 +156,7 @@ let to_string = function
   | KEYWORD_STORE -> "store"
   | COMMENT s -> "/* " ^ s ^ " */"
   | TEMPLATE_COMMENT s -> "/* " ^ s ^ " */"
+  | TEMPLATE_NEWLINE -> "(NEWLINE)"
   | HTML_DOCTYPE s -> s
   | HTML_TEXT s -> s
   | HTML_OPEN_FRAGMENT -> "<>"
@@ -227,6 +230,7 @@ let is_keyword = function
   | LESS_EQUAL
   | PLUSPLUS
   | KEYWORD_REVERSE
+  | TEMPLATE_NEWLINE
   | TEMPLATE_COMMENT _
   | HTML_DOCTYPE _
   | HTML_TEXT _
