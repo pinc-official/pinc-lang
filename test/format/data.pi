@@ -55,7 +55,8 @@ component Component(label: "Long Name of $(c)", icon: "/images/icons/page-docs.s
     </>
     <ul>
       {for fruit in reverse fruits {
-        <li>{fruit}</li>
+        let prefix = "fruit:";
+        <li>{prefix} {fruit}</li>
       }}
     </ul>
     <p>

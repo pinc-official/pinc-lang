@@ -189,7 +189,7 @@ and format_tag (tag : Parsetree.tag_desc) =
   let transformer =
     match tag.transformer with
     | None -> empty
-    | Some expr -> space ^^ repeat 2 colon ^^ space ^^ format_expression expr
+    | Some expr -> space ^^ twice colon ^^ space ^^ format_expression expr
   in
   sharp ^^ format_tag_kind tag.tag ^^ arguments ^^ transformer
 
@@ -218,7 +218,7 @@ and format_binary_expression left op right =
   let l = format_expression left in
   let r = format_expression right in
   match op with
-  | Parsetree.Operators.Binary.EQUAL -> l ^^ space ^^ repeat 2 equals ^^ space ^^ r
+  | Parsetree.Operators.Binary.EQUAL -> l ^^ space ^^ twice equals ^^ space ^^ r
   | Parsetree.Operators.Binary.NOT_EQUAL -> l ^^ space ^^ bang ^^ equals ^^ space ^^ r
   | Parsetree.Operators.Binary.GREATER -> l ^^ space ^^ rangle ^^ space ^^ r
   | Parsetree.Operators.Binary.GREATER_EQUAL ->
@@ -229,18 +229,18 @@ and format_binary_expression left op right =
   | Parsetree.Operators.Binary.MINUS -> l ^^ space ^^ minus ^^ space ^^ r
   | Parsetree.Operators.Binary.TIMES -> l ^^ space ^^ star ^^ space ^^ r
   | Parsetree.Operators.Binary.DIV -> l ^^ space ^^ slash ^^ space ^^ r
-  | Parsetree.Operators.Binary.POW -> l ^^ space ^^ repeat 2 star ^^ space ^^ r
+  | Parsetree.Operators.Binary.POW -> l ^^ space ^^ twice star ^^ space ^^ r
   | Parsetree.Operators.Binary.MODULO -> l ^^ space ^^ percent ^^ space ^^ r
-  | Parsetree.Operators.Binary.CONCAT -> l ^^ space ^^ repeat 2 plus ^^ space ^^ r
-  | Parsetree.Operators.Binary.AND -> l ^^ space ^^ repeat 2 ampersand ^^ space ^^ r
-  | Parsetree.Operators.Binary.OR -> l ^^ space ^^ repeat 2 bar ^^ space ^^ r
+  | Parsetree.Operators.Binary.CONCAT -> l ^^ space ^^ twice plus ^^ space ^^ r
+  | Parsetree.Operators.Binary.AND -> l ^^ space ^^ twice ampersand ^^ space ^^ r
+  | Parsetree.Operators.Binary.OR -> l ^^ space ^^ twice bar ^^ space ^^ r
   | Parsetree.Operators.Binary.DOT_ACCESS -> l ^^ dot ^^ r
   | Parsetree.Operators.Binary.BRACKET_ACCESS -> l ^^ brackets r
   | Parsetree.Operators.Binary.FUNCTION_CALL -> l ^^ parens r
   | Parsetree.Operators.Binary.PIPE -> l ^^ space ^^ bar ^^ rangle ^^ space ^^ r
   | Parsetree.Operators.Binary.ARRAY_ADD -> l ^^ space ^^ at ^^ space ^^ r
-  | Parsetree.Operators.Binary.MERGE -> l ^^ space ^^ repeat 2 at ^^ space ^^ r
-  | Parsetree.Operators.Binary.RANGE -> l ^^ repeat 2 dot ^^ r
+  | Parsetree.Operators.Binary.MERGE -> l ^^ space ^^ twice at ^^ space ^^ r
+  | Parsetree.Operators.Binary.RANGE -> l ^^ twice dot ^^ r
   | Parsetree.Operators.Binary.INCLUSIVE_RANGE -> l ^^ repeat 3 dot ^^ r
 
 and format_for_in ~index ~iterator ~reverse ~iterable ~body =
@@ -277,6 +277,22 @@ and format_block statements =
   let statements = List.map (fun s -> format_statement s) statements in
   lbrace ^^ nest 2 (break 1 ^^ separate hardline statements) ^^ break 1 ^^ rbrace
 
+and format_template_children children =
+  let had_newline = ref false in
+  let children =
+    match children with
+    | [] -> empty
+    | children ->
+        let len = List.length children in
+        concat
+        @@ List.mapi
+             (fun i x ->
+               let last = i = len - 1 in
+               format_template_node ~had_newline ~last x)
+             children
+  in
+  (!had_newline, children)
+
 and format_html_template_node ~html_tag_identifier ~html_tag_attributes ~html_tag_children
     =
   let open_tag =
@@ -292,29 +308,29 @@ and format_html_template_node ~html_tag_identifier ~html_tag_attributes ~html_ta
   in
   let close_tag =
     match html_tag_children with
-    | [] -> char ' ' ^^ slash ^^ rangle
+    | [] -> space ^^ slash ^^ rangle
     | _ -> langle ^^ slash ^^ string html_tag_identifier ^^ rangle
   in
-  let children =
-    match html_tag_children with
-    | [] -> empty
-    | children -> separate_map empty format_template_node children
+  let had_newline, children = format_template_children html_tag_children in
+  let end_line =
+    if had_newline then
+      ifflat empty hardline
+    else
+      empty
   in
-  group
-    (open_tag
-    ^^ nest 2 (ifflat empty hardline ^^ children)
-    ^^ ifflat empty hardline
-    ^^ close_tag)
+  group (open_tag ^^ nest 2 children ^^ end_line ^^ close_tag)
 
 and format_fragment_template_node ~fragement_children =
   let open_tag = langle ^^ rangle in
-  let children = concat_map format_template_node fragement_children in
+  let had_newline, children = format_template_children fragement_children in
   let close_tag = langle ^^ slash ^^ rangle in
-  group
-    (open_tag
-    ^^ nest 2 (ifflat empty hardline ^^ children)
-    ^^ ifflat empty hardline
-    ^^ close_tag)
+  let end_line =
+    if had_newline then
+      ifflat empty hardline
+    else
+      empty
+  in
+  open_tag ^^ nest 2 children ^^ end_line ^^ close_tag
 
 and format_component_template_node
     ~component_tag_identifier
@@ -336,18 +352,19 @@ and format_component_template_node
     | [] -> space ^^ slash ^^ rangle
     | _ -> langle ^^ slash ^^ format_uppercase_id component_tag_identifier ^^ rangle
   in
-  let children =
-    match component_tag_children with
-    | [] -> empty
-    | children -> concat_map format_template_node children
+  let had_newline, children = format_template_children component_tag_children in
+  let end_line =
+    if had_newline then
+      ifflat empty hardline
+    else
+      empty
   in
-  group
-    (open_tag
-    ^^ nest 2 (ifflat empty hardline ^^ children)
-    ^^ ifflat empty hardline
-    ^^ close_tag)
+  open_tag ^^ nest 2 children ^^ end_line ^^ close_tag
 
-and format_template_node (node : Parsetree.template_node) =
+and format_template_node
+    ?(had_newline = ref false)
+    ?(last = false)
+    (node : Parsetree.template_node) =
   let annotations = format_annotations node.template_node_annotations in
   let desc =
     match node.template_node_desc with
@@ -368,9 +385,14 @@ and format_template_node (node : Parsetree.template_node) =
         format_fragment_template_node ~fragement_children
     | P_ExpressionTemplateNode template_expression_node_expression ->
         braces (format_expression template_expression_node_expression)
-    | P_TextTemplateNode "" -> empty
-    | P_TextTemplateNode "\n" -> hardline
-    | P_TextTemplateNode s -> arbitrary_string s
+    | P_TextTemplateNode "\n" when last ->
+        had_newline := true;
+        empty
+    | P_TextTemplateNode s when last ->
+        had_newline := String.ends_with ~suffix:"\n" s;
+        let xs = String.split_on_char '\n' s in
+        separate2 hardline empty (List.map string xs)
+    | P_TextTemplateNode s -> separate hardline (lines s)
   in
   annotations ^^ desc
 
@@ -403,9 +425,12 @@ and format_expression (exression : Parsetree.expression) =
     | P_UnaryExpression (op, expr) -> format_unary_expression op expr
     | P_BinaryExpression (left, op, right) -> format_binary_expression left op right
   in
-  annotations ^^ desc
-
-and format_comment_stmt s = format_comment s
+  annotations
+  ^^
+  if exression.expression_parenthesized then
+    parens desc
+  else
+    desc
 
 and format_break_stmt i =
   let num =
