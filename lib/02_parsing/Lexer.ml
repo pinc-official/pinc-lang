@@ -549,7 +549,8 @@ let scan_template_text t =
     | `Chr '\n' ->
         eat t;
         Buffer.add_char buf '\n';
-        Buffer.contents buf
+        skip_indentation t;
+        loop buf t
     | `Chr '<' -> (
         match peek t with
         | `Chr '/' -> Buffer.contents buf

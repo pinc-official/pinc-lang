@@ -68,6 +68,7 @@ and string_template_desc =
 and expression = {
   expression_loc : Pinc_Diagnostics.Location.t;
   expression_desc : expression_desc;
+  expression_parenthesized : bool;
   expression_annotations : annotation list;
 }
 
