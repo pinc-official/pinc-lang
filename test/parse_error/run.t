@@ -1,7 +1,7 @@
   $ NO_COLOR="1" print ./empty_template_expression.pi Component
   <div class="Section">
-      
-    </div>
+  
+  </div>
   
   WARNING in file ./empty_template_expression.pi:4:5-7
   
