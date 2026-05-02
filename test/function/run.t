@@ -1,23 +1,23 @@
   $ NO_COLOR="1" print . Component
   <section>
-      max(1, 5) = 5
-      min(1, 5) = 1
-      add_curry(1)(5) = 6
-      Math.fibonacci(9) = 34
-      Math.factorial(5) = 120
-      is_even(10) = true
-      is_odd(10) = false
+  max(1, 5) = 5
+  min(1, 5) = 1
+  add_curry(1)(5) = 6
+  Math.fibonacci(9) = 34
+  Math.factorial(5) = 120
+  is_even(10) = true
+  is_odd(10) = false
   
-      1 |> max(5) |> Math.factorial = 120
-      1 |> add_curry(5)() = 6
-      5 |> Math.factorial = 120
+  1 |> max(5) |> Math.factorial = 120
+  1 |> add_curry(5)() = 6
+  5 |> Math.factorial = 120
   
-      Math.Constants.pi = 3.1415
-      C.pi = 3.1415
+  Math.Constants.pi = 3.1415
+  C.pi = 3.1415
   
-      Map:
-      14916
-      
-      Map Pipe:
-      14916
-    </section>
+  Map:
+  14916
+  
+  Map Pipe:
+  14916
+  </section>

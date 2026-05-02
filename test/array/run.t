@@ -1,44 +1,44 @@
   $ NO_COLOR="1" print . C
   <section>
-      0123
+  0123
   
-      01234
+  01234
   
-      0123456
+  0123456
   
-      01234567
-      
-      0123456789
+  01234567
   
-      123
-      138
+  0123456789
   
-      8
-      8
+  123
+  138
   
-      02468
+  8
+  8
   
-      13579
+  02468
   
-      02468
-      
-      FOUND
+  13579
   
-      NOT FOUND
+  02468
   
-      true
-      true
-      false
-      false
-      21
+  FOUND
   
-      01234
+  NOT FOUND
   
-      34567
+  true
+  true
+  false
+  false
+  21
   
-      <div> 1,2,3 </div><div> 4,5,6 </div><div> 7,8,9 </div><div> 10 </div>
+  01234
   
-      12334567
-      
-      12347
-    </section>
+  34567
+  
+  <div> 1,2,3 </div><div> 4,5,6 </div><div> 7,8,9 </div><div> 10 </div>
+  
+  12334567
+  
+  12347
+  </section>
