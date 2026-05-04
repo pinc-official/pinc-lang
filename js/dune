@@ -1,0 +1,9 @@
+(executable
+ (name pincfmt)
+ (modules pincfmt)
+ (modes js)
+ (libraries pinc_lang js_of_ocaml)
+ (js_of_ocaml
+  (compilation_mode whole_program)
+  (sourcemap no)
+  (flags --target-env=nodejs)))
