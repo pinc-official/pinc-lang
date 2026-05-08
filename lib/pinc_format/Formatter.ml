@@ -1,15 +1,25 @@
 open PPrint
 module Parsetree = Pinc_Parser.Parsetree
 
-let rec format_comma_separated_attributes format = function
+let rec format_comma_separated_attributes ?force_break_at format = function
   | [] -> empty
   | lst ->
+      let force_break =
+        force_break_at
+        |> Option.map (List.compare_length_with lst)
+        |> Option.value ~default:(-1)
+        >= 0
+      in
+      let prefix =
+        if force_break then
+          hardline
+        else
+          ifflat empty (break 1)
+      in
       let lst =
         List.map
           (fun (key, value) ->
-            nest
-              2
-              (ifflat empty (break 1) ^^ string key ^^ colon ^^ blank 1 ^^ format value))
+            nest 2 (prefix ^^ string key ^^ colon ^^ blank 1 ^^ format value))
           lst
       in
       group (separate (comma ^^ space) lst ^^ ifflat empty (comma ^^ break 1))
@@ -546,7 +556,10 @@ and format_declaration key (declaration : Parsetree.declaration) =
     | P_Declaration_Store -> string "store"
   in
   let attributes =
-    format_comma_separated_attributes format_expression declaration.declaration_attributes
+    format_comma_separated_attributes
+      ~force_break_at:3
+      format_expression
+      declaration.declaration_attributes
   in
   let body = format_expression declaration.declaration_body in
   annotations ^^ typ ^^ blank 1 ^^ string key ^^ parens attributes ^^ blank 1 ^^ body

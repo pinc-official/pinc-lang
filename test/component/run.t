@@ -23,7 +23,11 @@
   [1]
 
   $ pincfmt ./data.pi
-  component Component(label: "Section", icon: "/images/icons/group.svg", group: "Structure") {
+  component Component(
+    label: "Section",
+    icon: "/images/icons/group.svg",
+    group: "Structure",
+  ) {
     let array = for (i in 0..10) {
       i
     };

@@ -23,4 +23,4 @@
  (libraries pinc_lang unix))
 
 (cram
- (deps %{bin:print}))
+ (deps %{bin:print} %{bin:pincfmt}))
