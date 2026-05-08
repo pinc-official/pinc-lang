@@ -22,3 +22,32 @@
   😡
   </section>
 
+  $ pincfmt ./data.pi
+  component C() {
+    use Base;
+  
+    let char = 'c';
+  
+    <section>
+      String.uppercase_ascii("abcàäöüß"): {String.uppercase_ascii("abcàäöüß")}
+      String.lowercase_ascii("ABCÁÄÖÜß"): {String.lowercase_ascii("ABCÁÄÖÜß")}
+      String.capitalize_ascii("abc"): {String.capitalize_ascii("abc")}
+      String.capitalize_ascii("äöü"): {String.capitalize_ascii("äöü")}
+  
+      char: {char}
+      char + 1: {char + 1}
+      char < 32: {char < 32}
+      char > 32: {char > 32}
+  
+      {' ' + 1}
+      {' ' + 1}
+      {'\'}
+      {'
+  '}
+      {'''}
+      {'	'}
+      {'©'}
+      {'ǿ'}
+      {'!' + 128512}
+    </section>
+  }

@@ -12,3 +12,24 @@
   </p>
   
 
+  $ pincfmt ./data.pi
+  page Docs(label: "Docs", icon: "/images/icons/page-docs.svg") {
+    let fruits = ["apples", "oranges", "bannanas", "melons"];
+  
+    <>
+      <span />
+      <>
+        <div class="foo" />
+      </>
+      <ul>
+        {for (fruit in fruits) {
+          <li>{fruit}</li>
+        }}
+      </ul>
+      <p>
+        Aliqua in elit sunt in anim culpa nostrud elit.
+        Elit voluptate nisi laborum est eu esse non exercitation minim.
+        Nisi ea enim minim quis.
+      </p>
+    </>
+  }

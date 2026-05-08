@@ -9,3 +9,47 @@
   0149162536496481100
   </section>
 
+  $ pincfmt ./data.pi
+  component Component() {
+  
+    let record = {
+      a: 1,
+      b: "foo",
+      c: true,
+      d: 3.1415,
+    };
+  
+    let record_dangling = {
+      a: 1,
+      b: "foo",
+      c: true,
+      d: 3.1415,
+    };
+  
+    let record_nested = {
+      a: 1,
+      b: "foo",
+      c: true,
+      d: {
+        e: "123",
+        f: 321,
+        g: for (i in 0...10) {
+          i
+        },
+      },
+    };
+  
+    let empty_record = {};
+  
+    <section>
+      {empty_record}
+      {record}
+      {record_nested.a}
+      {record_nested.d.f}
+      {record_nested.d.h.y}
+  
+      {for (el in record_nested.d.g) {
+        el ** 2
+      }}
+    </section>
+  }
