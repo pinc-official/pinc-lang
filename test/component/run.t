@@ -36,7 +36,7 @@
       0...3
     };
   
-    /* COMMENT with nested  COMMENT!!  */
+    /* COMMENT with nested /* COMMENT!! */ */
   
     <section class="Section">
       {/* <span> {config} </span> */}

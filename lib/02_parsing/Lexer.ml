@@ -708,16 +708,20 @@ let scan_comment t =
   found
 ;;
 
-let rec scan_block_comment t =
+let rec scan_block_comment ?(inside_comment = false) t =
   let start_pos = make_position t in
   eat2 t;
   let rec loop buf t =
     match t.current with
     | `Chr '*' when peek t = `Chr '/' ->
         eat2 t;
+        let () =
+          if inside_comment then
+            Buffer.add_string buf "*/"
+        in
         Buffer.contents buf
     | `Chr '/' when peek t = `Chr '*' ->
-        Buffer.add_string buf (scan_block_comment t);
+        Buffer.add_string buf (scan_block_comment ~inside_comment:true t);
         loop buf t
     | `EOF ->
         Diagnostics.raise_error
@@ -729,6 +733,10 @@ let rec scan_block_comment t =
         loop buf t
   in
   let buf = Buffer.create 512 in
+  let () =
+    if inside_comment then
+      Buffer.add_string buf "/*"
+  in
   let found = loop buf t in
   found
 ;;
