@@ -1,35 +1,41 @@
 open PPrint
 module Parsetree = Pinc_Parser.Parsetree
 
-module Helpers = struct
-  let comma_separated_attributes format = function
-    | [] -> empty
-    | lst ->
-        let lst =
-          List.map
-            (fun (key, value) ->
-              nest
-                2
-                (ifflat empty (break 1) ^^ string key ^^ colon ^^ blank 1 ^^ format value))
-            lst
-        in
-        group (separate (comma ^^ space) lst ^^ ifflat empty (comma ^^ break 1))
-  ;;
+let rec format_comma_separated_attributes format = function
+  | [] -> empty
+  | lst ->
+      let lst =
+        List.map
+          (fun (key, value) ->
+            nest
+              2
+              (ifflat empty (break 1) ^^ string key ^^ colon ^^ blank 1 ^^ format value))
+          lst
+      in
+      group (separate (comma ^^ space) lst ^^ ifflat empty (comma ^^ break 1))
 
-  let html_attributes format = function
-    | [] -> empty
-    | lst ->
-        let lst =
-          List.map
-            (fun (key, value) ->
-              nest 2 (ifflat empty (break 1) ^^ string key ^^ equals ^^ format value))
-            lst
-        in
-        group (separate space lst)
-  ;;
-end
+and format_html_attributes format = function
+  | [] -> empty
+  | lst ->
+      let lst =
+        List.map
+          (fun (key, value) ->
+            let formatted_value =
+              match value.Parsetree.expression_desc with
+              | Parsetree.P_BlockExpression block ->
+                  let statements = List.map (fun s -> format_statement s) block in
+                  lbrace
+                  ^^ nest 2 (ifflat empty hardline ^^ separate (blank 1) statements)
+                  ^^ ifflat empty hardline
+                  ^^ rbrace
+              | _ -> format value
+            in
+            nest 2 (ifflat empty (break 1) ^^ string key ^^ equals ^^ formatted_value))
+          lst
+      in
+      group (separate space lst)
 
-let rec format_annotations annotations = concat_map format_annotation annotations
+and format_annotations annotations = concat_map format_annotation annotations
 
 and format_annotation = function
   | Parsetree.P_Comment_Annotation s -> format_comment s ^^ hardline
@@ -184,7 +190,7 @@ and format_tag (tag : Parsetree.tag_desc) =
   let arguments =
     match tag.attributes with
     | [] -> empty
-    | attrs -> parens @@ Helpers.comma_separated_attributes format_expression attrs
+    | attrs -> parens @@ format_comma_separated_attributes format_expression attrs
   in
   let transformer =
     match tag.transformer with
@@ -300,36 +306,33 @@ and format_html_template_node ~html_tag_identifier ~html_tag_attributes ~html_ta
     ^^ string html_tag_identifier
     ^^ (match html_tag_attributes with
       | [] -> empty
-      | attrs -> space ^^ Helpers.html_attributes format_expression attrs)
+      | attrs -> space ^^ format_html_attributes format_expression attrs)
     ^^
     match html_tag_children with
     | [] -> empty
     | _ -> rangle
   in
+  let had_newline, children = format_template_children html_tag_children in
   let close_tag =
     match html_tag_children with
-    | [] -> space ^^ slash ^^ rangle
-    | _ -> langle ^^ slash ^^ string html_tag_identifier ^^ rangle
+    | [] -> blank 1 ^^ slash ^^ rangle
+    | _ ->
+        (if had_newline then
+           ifflat empty hardline
+         else
+           empty)
+        ^^ langle
+        ^^ slash
+        ^^ string html_tag_identifier
+        ^^ rangle
   in
-  let had_newline, children = format_template_children html_tag_children in
-  let end_line =
-    if had_newline then
-      ifflat empty hardline
-    else
-      empty
-  in
-  group (open_tag ^^ nest 2 children ^^ end_line ^^ close_tag)
+  group (open_tag ^^ nest 2 children ^^ close_tag)
 
 and format_fragment_template_node ~fragement_children =
   let open_tag = langle ^^ rangle in
-  let had_newline, children = format_template_children fragement_children in
+  let _had_newline, children = format_template_children fragement_children in
   let close_tag = langle ^^ slash ^^ rangle in
-  let end_line =
-    if had_newline then
-      ifflat empty hardline
-    else
-      empty
-  in
+  let end_line = break 1 in
   open_tag ^^ nest 2 children ^^ end_line ^^ close_tag
 
 and format_component_template_node
@@ -341,7 +344,7 @@ and format_component_template_node
     ^^ format_uppercase_id component_tag_identifier
     ^^ (match component_tag_attributes with
       | [] -> empty
-      | attrs -> space ^^ Helpers.html_attributes format_expression attrs)
+      | attrs -> space ^^ format_html_attributes format_expression attrs)
     ^^
     match component_tag_children with
     | [] -> empty
@@ -349,17 +352,12 @@ and format_component_template_node
   in
   let close_tag =
     match component_tag_children with
-    | [] -> space ^^ slash ^^ rangle
+    | [] -> slash ^^ rangle
     | _ -> langle ^^ slash ^^ format_uppercase_id component_tag_identifier ^^ rangle
   in
-  let had_newline, children = format_template_children component_tag_children in
-  let end_line =
-    if had_newline then
-      ifflat empty hardline
-    else
-      empty
-  in
-  open_tag ^^ nest 2 children ^^ end_line ^^ close_tag
+  let _had_newline, children = format_template_children component_tag_children in
+  let end_line = break 1 in
+  group (open_tag ^^ nest 2 children ^^ end_line ^^ close_tag)
 
 and format_template_node
     ?(had_newline = ref false)
@@ -548,9 +546,7 @@ and format_declaration key (declaration : Parsetree.declaration) =
     | P_Declaration_Store -> string "store"
   in
   let attributes =
-    Helpers.comma_separated_attributes
-      format_expression
-      declaration.declaration_attributes
+    format_comma_separated_attributes format_expression declaration.declaration_attributes
   in
   let body = format_expression declaration.declaration_body in
   annotations ^^ typ ^^ blank 1 ^^ string key ^^ parens attributes ^^ blank 1 ^^ body

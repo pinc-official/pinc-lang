@@ -21,3 +21,33 @@
   
   Declaration with name `Foo` was not found.
   [1]
+
+  $ pincfmt ./data.pi
+  component Component(label: "Section", icon: "/images/icons/group.svg", group: "Structure") {
+    let array = for (i in 0..10) {
+      i
+    };
+    let record = {
+      a: 10,
+      c: "Something",
+    };
+  
+    let matrix = for (i in 0...2) {
+      0...3
+    };
+  
+    /* COMMENT with nested  COMMENT!!  */
+  
+    <section class="Section">
+      {/* <span> {config} </span> */}
+      <HeadlineSecondary
+        tag="h2"
+        data={
+          {
+            text: "Hello, Headline Secondary!",
+          }
+        }
+      />
+      <Matrix matrix={matrix} />
+    </section>
+  }
