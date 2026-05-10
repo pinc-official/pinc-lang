@@ -14,7 +14,7 @@
     let mutable b = "initial";
     if (a == "mutated") {
       b := "mutated";
-    }
+    };
   
     let mutable c = "initial";
     let print_c = fn () -> c;

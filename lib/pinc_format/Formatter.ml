@@ -33,9 +33,15 @@ and format_html_attributes format = function
             let formatted_value =
               match value.Parsetree.expression_desc with
               | Parsetree.P_BlockExpression block ->
-                  let statements = List.map (fun s -> format_statement s) block in
+                  let len = List.length block in
+                  let statements =
+                    separate (blank 1)
+                    @@ List.mapi
+                         (fun index stmt -> format_statement ~last:(index = len - 1) stmt)
+                         block
+                  in
                   lbrace
-                  ^^ nest 2 (ifflat empty hardline ^^ separate (blank 1) statements)
+                  ^^ nest 2 (ifflat empty hardline ^^ statements)
                   ^^ ifflat empty hardline
                   ^^ rbrace
               | _ -> format value
@@ -302,8 +308,14 @@ and format_conditional ~condition ~consequent ~alternate =
        alternate
 
 and format_block statements =
-  let statements = List.map (fun s -> format_statement s) statements in
-  lbrace ^^ nest 2 (break 1 ^^ separate hardline statements) ^^ break 1 ^^ rbrace
+  let len = List.length statements in
+  let statements =
+    separate hardline
+    @@ List.mapi
+         (fun index stmt -> format_statement ~last:(index = len - 1) stmt)
+         statements
+  in
+  lbrace ^^ nest 2 (break 1 ^^ statements) ^^ break 1 ^^ rbrace
 
 and format_template_children children =
   let had_newline = ref false in
@@ -459,7 +471,7 @@ and format_break_stmt i =
     else
       space ^^ string (string_of_int i)
   in
-  string "break" ^^ num ^^ semi
+  string "break" ^^ num
 
 and format_continue_stmt i =
   let num =
@@ -468,7 +480,7 @@ and format_continue_stmt i =
     else
       space ^^ string (string_of_int i)
   in
-  string "continue" ^^ num ^^ semi
+  string "continue" ^^ num
 
 and format_use_stmt id expr =
   string "use"
@@ -477,7 +489,6 @@ and format_use_stmt id expr =
     | None -> empty
     | Some id -> format_uppercase_id id ^^ space ^^ equals ^^ space)
   ^^ format_expression expr
-  ^^ semi
 
 and format_optional_mutable_let id expr =
   string "let"
@@ -490,7 +501,6 @@ and format_optional_mutable_let id expr =
   ^^ equals
   ^^ space
   ^^ format_expression expr
-  ^^ semi
 
 and format_optional_let id expr =
   string "let"
@@ -501,7 +511,6 @@ and format_optional_let id expr =
   ^^ equals
   ^^ space
   ^^ format_expression expr
-  ^^ semi
 
 and format_mutable_let id expr =
   string "let"
@@ -513,7 +522,6 @@ and format_mutable_let id expr =
   ^^ equals
   ^^ space
   ^^ format_expression expr
-  ^^ semi
 
 and format_let id expr =
   string "let"
@@ -523,32 +531,27 @@ and format_let id expr =
   ^^ equals
   ^^ space
   ^^ format_expression expr
-  ^^ semi
 
 and format_mutation id expr =
-  format_lowercase_id id
-  ^^ space
-  ^^ colon
-  ^^ equals
-  ^^ space
-  ^^ format_expression expr
-  ^^ semi
+  format_lowercase_id id ^^ space ^^ colon ^^ equals ^^ space ^^ format_expression expr
 
 and format_expression_stmt expr = format_expression expr
 
-and format_statement (statement : Parsetree.statement) =
+and format_statement ~last (statement : Parsetree.statement) =
   let annotations = format_annotations statement.statement_annotations in
   let desc =
     match statement.statement_desc with
-    | P_BreakStatement s -> format_break_stmt s
-    | P_ContinueStatement s -> format_continue_stmt s
-    | P_UseStatement (id, expr) -> format_use_stmt id expr
-    | P_OptionalMutableLetStatement (id, expr) -> format_optional_mutable_let id expr
-    | P_OptionalLetStatement (id, expr) -> format_optional_let id expr
-    | P_MutableLetStatement (id, expr) -> format_mutable_let id expr
-    | P_LetStatement (id, expr) -> format_let id expr
-    | P_MutationStatement (id, expr) -> format_mutation id expr
-    | P_ExpressionStatement s -> format_expression_stmt s
+    | P_BreakStatement s -> format_break_stmt s ^^ semi
+    | P_ContinueStatement s -> format_continue_stmt s ^^ semi
+    | P_UseStatement (id, expr) -> format_use_stmt id expr ^^ semi
+    | P_OptionalMutableLetStatement (id, expr) ->
+        format_optional_mutable_let id expr ^^ semi
+    | P_OptionalLetStatement (id, expr) -> format_optional_let id expr ^^ semi
+    | P_MutableLetStatement (id, expr) -> format_mutable_let id expr ^^ semi
+    | P_LetStatement (id, expr) -> format_let id expr ^^ semi
+    | P_MutationStatement (id, expr) -> format_mutation id expr ^^ semi
+    | P_ExpressionStatement s when last -> format_expression_stmt s
+    | P_ExpressionStatement s -> format_expression_stmt s ^^ semi
   in
   annotations ^^ desc
 

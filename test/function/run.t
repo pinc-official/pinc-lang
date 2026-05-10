@@ -47,7 +47,7 @@
       for (el in array) {
         if (min(el, until) == until) {
           continue;
-        }
+        };
   
         f(el)
       }

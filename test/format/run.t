@@ -35,7 +35,7 @@
     icon: "/images/icons/page-docs.svg",
     groups: ["Some Group", "Another Group", "And another group"],
   ) {
-    #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/ButtonPrimary.css" />)
+    #Portal(key: "stylesheets", push: <link rel="stylesheet" href="/css/ButtonPrimary.css" />);
   
     let fruits = #Array(key: "fruits", of: #String);
   
@@ -102,7 +102,7 @@
     let mutable b = "initial";
     if (a == "mutated") {
       b := "mutated";
-    }
+    };
   
     let mutable c = "initial";
     let print_c = fn () -> c;

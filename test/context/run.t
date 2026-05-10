@@ -15,7 +15,7 @@
     icon: "/images/icons/group.svg",
     group: "Structure",
   ) {
-    #SetContext(key: "background", value: "grey")
+    #SetContext(key: "background", value: "grey");
   
     <section class="Section">
       <HeadlineSecondary text="Hello, Headline Secondary!" />
@@ -25,7 +25,7 @@
 
   $ pincfmt ./HeadlineSecondary.pi
   component HeadlineSecondary() {
-    #SetContext(key: "test", value: "should never be displayed!")
+    #SetContext(key: "test", value: "should never be displayed!");
   
     let class? = #String :: fn (value) -> if (!value) "";
   

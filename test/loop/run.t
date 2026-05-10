@@ -203,7 +203,7 @@
       {for (c in "String!") {
         if (c == 'i') {
           continue;
-        }
+        };
   
         c
       }}
@@ -211,7 +211,7 @@
       {for (i in 0..5) {
         if (i == 3) {
           break;
-        }
+        };
   
         i
       }}

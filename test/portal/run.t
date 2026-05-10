@@ -10,7 +10,7 @@
 
   $ pincfmt ./main.pi
   component Main() {
-    #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/base.css" />)
+    #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/base.css" />);
   
     <html>
       <Head />
@@ -32,7 +32,7 @@
   }
   
   component Section() {
-    #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/section.css" />)
+    #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/section.css" />);
   
     let foo = #String;
     let content = #Slot(key: "");
@@ -41,7 +41,7 @@
   }
   
   component Text() {
-    #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/text.css" />)
+    #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/text.css" />);
   
     let text = #String;
   
