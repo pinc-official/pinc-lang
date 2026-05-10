@@ -209,31 +209,31 @@ let scan_escape t =
     Uchar.of_int !x
   in
   match t.current with
-  | `Chr '0' .. '9' -> convert_number t ~n:3 ~base:10
-  | `Chr 'b' ->
-      eat t;
-      Uchar.of_char '\008'
-  | `Chr 'n' ->
-      eat t;
-      Uchar.of_char '\010'
-  | `Chr 'r' ->
-      eat t;
-      Uchar.of_char '\013'
-  | `Chr 't' ->
-      eat t;
-      Uchar.of_char '\009'
-  | `Chr 'f' ->
-      eat t;
-      Uchar.of_char '\012'
-  | `Chr 'x' ->
-      eat t;
-      convert_number t ~n:2 ~base:16
+  | `Chr '0' .. '9' -> (`Decimal, convert_number t ~n:3 ~base:10)
   | `Chr 'o' ->
       eat t;
-      convert_number t ~n:3 ~base:8
+      (`Octal, convert_number t ~n:3 ~base:8)
+  | `Chr 'x' ->
+      eat t;
+      (`Hex, convert_number t ~n:2 ~base:16)
+  | `Chr 'b' ->
+      eat t;
+      (`Char, Uchar.of_char '\008')
+  | `Chr 'n' ->
+      eat t;
+      (`Char, Uchar.of_char '\010')
+  | `Chr 'r' ->
+      eat t;
+      (`Char, Uchar.of_char '\013')
+  | `Chr 't' ->
+      eat t;
+      (`Char, Uchar.of_char '\009')
+  | `Chr 'f' ->
+      eat t;
+      (`Char, Uchar.of_char '\012')
   | `Chr ch ->
       eat t;
-      Uchar.of_char ch
+      (`Char, Uchar.of_char ch)
   | `EOF ->
       let pos = make_position t in
       Diagnostics.raise_error
@@ -660,16 +660,16 @@ let scan_char ~start_pos t =
         match peek t with
         | `Chr ' ' ->
             eat2 t;
-            Uchar.of_char ' '
+            (`Char, Uchar.of_char ' ')
         | `Chr '"' ->
             eat2 t;
-            Uchar.of_char '"'
+            (`Char, Uchar.of_char '"')
         | `Chr '\'' ->
             eat2 t;
-            Uchar.of_char '\''
+            (`Char, Uchar.of_char '\'')
         | `Chr '\\' ->
             eat2 t;
-            Uchar.of_char '\\'
+            (`Char, Uchar.of_char '\\')
         | `Chr _ ->
             eat t;
             scan_escape t
@@ -679,7 +679,7 @@ let scan_char ~start_pos t =
               "This char is not terminated. Please add a single-quote (') at the end.")
     | `Chr c ->
         eat t;
-        Uchar.of_char c
+        (`Char, Uchar.of_char c)
   in
   match t.current with
   | `Chr '\'' ->

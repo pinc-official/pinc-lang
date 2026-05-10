@@ -8,7 +8,7 @@ type token_type =
   | INT of int
   | FLOAT of float
   | STRING of string
-  | CHAR of Uchar.t
+  | CHAR of ([ `Octal | `Decimal | `Hex | `Char ] * Uchar.t)
   | TAG of string
   | LEFT_PAREN
   | RIGHT_PAREN

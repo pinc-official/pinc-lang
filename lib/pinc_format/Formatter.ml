@@ -98,10 +98,22 @@ and format_string templates =
   in
   dquotes (concat templates)
 
-and format_char c =
-  let buf = Buffer.create 1 in
-  Buffer.add_utf_8_uchar buf c;
-  squotes (string (Buffer.contents buf))
+and format_char =
+  let uchar_squote = Uchar.of_char '\'' in
+  fun (representation, c) ->
+    let i = Uchar.to_int c in
+    let res =
+      match representation with
+      | `Octal -> string @@ Printf.sprintf "\\o%o" i
+      | `Decimal -> string @@ Printf.sprintf "\\%0.3i" i
+      | `Hex -> string @@ Printf.sprintf "\\x%X" i
+      | `Char when Uchar.equal c uchar_squote -> string "\\'"
+      | `Char ->
+          let buf = Buffer.create 4 in
+          Buffer.add_utf_8_uchar buf c;
+          string (String.escaped @@ Buffer.contents buf)
+    in
+    squotes res
 
 and format_int i = string (string_of_int i)
 and format_float f = string (string_of_float f)

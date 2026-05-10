@@ -8,7 +8,7 @@ type token_type =
   | INT of int
   | FLOAT of float
   | STRING of string
-  | CHAR of Uchar.t
+  | CHAR of ([ `Octal | `Decimal | `Hex | `Char ] * Uchar.t)
   | TAG of string
   | LEFT_PAREN
   | RIGHT_PAREN
@@ -92,7 +92,7 @@ let to_string = function
   | FLOAT f -> string_of_float f
   | INT i -> string_of_int i
   | STRING s -> "\"" ^ s ^ "\""
-  | CHAR c ->
+  | CHAR (_rep, c) ->
       let buf = Buffer.create 32 in
       c |> Buffer.add_utf_8_uchar buf;
       "'" ^ Buffer.contents buf ^ "'"

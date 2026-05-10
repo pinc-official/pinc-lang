@@ -453,7 +453,7 @@ and transform_expression env (exression : Parsetree.expression) =
     match exression.expression_desc with
     | P_Void -> transform_void env
     | P_String templates -> transform_string env templates
-    | P_Char c -> transform_char env c
+    | P_Char (_rep, c) -> transform_char env c
     | P_Int i -> transform_int env i
     | P_Float f -> transform_float env f
     | P_Bool b -> transform_bool env b

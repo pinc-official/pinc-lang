@@ -75,7 +75,7 @@ and expression = {
 and expression_desc =
   | P_Void
   | P_String of string_template list
-  | P_Char of Uchar.t
+  | P_Char of ([ `Octal | `Decimal | `Hex | `Char ] * Uchar.t)
   | P_Int of int
   | P_Float of float
   | P_Bool of bool
