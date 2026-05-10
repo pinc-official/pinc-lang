@@ -1,4 +1,5 @@
 (cram
  (deps
   %{bin:print}
+  %{bin:pincfmt}
   (source_tree .)))
