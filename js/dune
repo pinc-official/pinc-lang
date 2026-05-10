@@ -1,4 +1,6 @@
 (executable
+ (promote
+  (only pincfmt.bc.js))
  (name pincfmt)
  (modules pincfmt)
  (modes js)

@@ -9,6 +9,7 @@ _coverage
 *.byte
 *.orig
 *.native
+js/pincfmt.bc.js
 
 node_modules
 
