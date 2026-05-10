@@ -266,7 +266,7 @@ and format_binary_expression left op right =
   | Parsetree.Operators.Binary.BRACKET_ACCESS -> l ^^ brackets r
   | Parsetree.Operators.Binary.FUNCTION_CALL -> l ^^ parens r
   | Parsetree.Operators.Binary.PIPE -> l ^^ space ^^ bar ^^ rangle ^^ space ^^ r
-  | Parsetree.Operators.Binary.ARRAY_ADD -> l ^^ space ^^ at ^^ space ^^ r
+  | Parsetree.Operators.Binary.ARRAY_ADD -> l ^^ space ^^ langle ^^ minus ^^ space ^^ r
   | Parsetree.Operators.Binary.MERGE -> l ^^ space ^^ twice at ^^ space ^^ r
   | Parsetree.Operators.Binary.RANGE -> l ^^ twice dot ^^ r
   | Parsetree.Operators.Binary.INCLUSIVE_RANGE -> l ^^ repeat 3 dot ^^ r

@@ -48,8 +48,8 @@
     use Base;
   
     let array = 0...3;
-    let new_array = array @ 4;
-    let new_array_2 = array @ 4 @ 5 @ 6;
+    let new_array = array <- 4;
+    let new_array_2 = array <- 4 <- 5 <- 6;
   
     let merged_array = new_array @@ 5...7;
     let merged_array_2 = new_array @@ 5...7 @@ [8, 9];
@@ -69,7 +69,7 @@
       y: 8,
     };
   
-    let nested_array = new_array @ (merged_array @ merged_record_2);
+    let nested_array = new_array <- (merged_array <- merged_record_2);
     let index = 8;
   
     let partitioned = merged_array_2 |> Array.partition(fn (item) -> { item % 2 == 0 });
