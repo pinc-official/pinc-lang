@@ -84,6 +84,7 @@
       <div slot="nothing">Hello Default</div>
     </SlotProvider>
   }
+  
 
   $ pincfmt ./SlotProvider.pi
   component SlotProvider {
@@ -106,6 +107,7 @@
       <area class="slot_nothing">{slot_nothing}</area>
     </div>
   }
+  
 
   $ pincfmt ./SubComponent.pi
   component SubComponent {
@@ -145,3 +147,4 @@
       {shouter}
     </div>
   }
+  

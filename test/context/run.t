@@ -22,6 +22,7 @@
       <SubComponent />
     </section>
   }
+  
 
   $ pincfmt ./HeadlineSecondary.pi
   component HeadlineSecondary {
@@ -58,6 +59,7 @@
       "INVALID TAG!"
     }
   }
+  
 
   $ pincfmt ./SubComponent.pi
   component SubComponent {
@@ -71,3 +73,4 @@
       <p>{test}</p>
     </div>
   }
+  

@@ -586,7 +586,7 @@ and format_declarations declarations =
     |> List.map (fun (key, declaration) -> format_declaration key declaration)
   in
 
-  separate (hardline ^^ hardline) declarations
+  separate (twice hardline) declarations ^^ hardline
 ;;
 
 let format (declarations : Pinc_Parser.parsetree) : string =

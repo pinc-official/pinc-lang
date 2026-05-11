@@ -28,6 +28,7 @@
     title: #String,
     code: #Int :: fn (v) -> v * 2,
   }
+  
 
   $ pincfmt ./StoreValueProvider.pi
   component StoreValueProvider {
@@ -69,3 +70,4 @@
       {products}
     </div>
   }
+  

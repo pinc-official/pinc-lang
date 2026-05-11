@@ -26,3 +26,4 @@
   
     <div>"{attributes.bar}" & "{attributes.lorem}"</div>
   }
+  

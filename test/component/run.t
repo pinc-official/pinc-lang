@@ -55,6 +55,7 @@
       <Matrix matrix={matrix} />
     </section>
   }
+  
 
   $ pincfmt ./Matrix.pi
   component Matrix {
@@ -70,6 +71,7 @@
       }}
     </div>
   }
+  
 
   $ pincfmt ./Sub/SubComponent.pi
   component HeadlineSecondary {
@@ -107,3 +109,4 @@
       "INVALID TAG!"
     }
   }
+  

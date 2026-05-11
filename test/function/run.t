@@ -98,6 +98,7 @@
       {1...10 |> map(fn (item) -> item ** 2)}
     </section>
   }
+  
 
   $ pincfmt ./library.pi
   library Math {
@@ -123,3 +124,4 @@
   library Math__Constants {
     let pi = 3.1415;
   }
+  
