@@ -23,7 +23,7 @@
   </section>
 
   $ pincfmt ./data.pi
-  component C() {
+  component C {
     use Base;
   
     let char = 'c';

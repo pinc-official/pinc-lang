@@ -23,7 +23,7 @@
   </section>
 
   $ pincfmt ./data.pi
-  component Component() {
+  component Component {
     use C = Math.Constants;
   
     let max = fn (a, b) -> {
@@ -100,7 +100,7 @@
   }
 
   $ pincfmt ./library.pi
-  library Math() {
+  library Math {
     use Constants = Math__Constants;
   
     let fibonacci = fn (n) -> {
@@ -120,6 +120,6 @@
     };
   }
   
-  library Math__Constants() {
+  library Math__Constants {
     let pi = 3.1415;
   }

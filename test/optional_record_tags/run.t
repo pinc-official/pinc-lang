@@ -3,7 +3,7 @@
   
 
   $ pincfmt ./data.pi
-  page Docs() {
+  page Docs {
     <>
       <Sub
         attributes={
@@ -16,7 +16,7 @@
     </>
   }
   
-  component Sub() {
+  component Sub {
     let attributes = #Record(
       of: {
         bar: #String,

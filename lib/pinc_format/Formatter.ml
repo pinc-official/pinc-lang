@@ -571,13 +571,14 @@ and format_declaration key (declaration : Parsetree.declaration) =
     | P_Declaration_Store -> string "store"
   in
   let attributes =
-    format_comma_separated_attributes
-      ~force_break_at:3
-      format_expression
-      declaration.declaration_attributes
+    match declaration.declaration_attributes with
+    | [] -> empty
+    | attrs ->
+        parens
+        @@ format_comma_separated_attributes ~force_break_at:3 format_expression attrs
   in
   let body = format_expression declaration.declaration_body in
-  annotations ^^ typ ^^ blank 1 ^^ string key ^^ parens attributes ^^ blank 1 ^^ body
+  annotations ^^ typ ^^ blank 1 ^^ string key ^^ attributes ^^ blank 1 ^^ body
 
 and format_declarations declarations =
   let declarations =

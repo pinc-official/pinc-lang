@@ -24,7 +24,7 @@
   }
 
   $ pincfmt ./HeadlineSecondary.pi
-  component HeadlineSecondary() {
+  component HeadlineSecondary {
     #SetContext(key: "test", value: "should never be displayed!");
   
     let class? = #String :: fn (value) -> if (!value) "";
@@ -60,7 +60,7 @@
   }
 
   $ pincfmt ./SubComponent.pi
-  component SubComponent() {
+  component SubComponent {
     let background = #GetContext;
     let test? = #GetContext;
   

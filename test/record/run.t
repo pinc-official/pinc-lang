@@ -10,7 +10,7 @@
   </section>
 
   $ pincfmt ./data.pi
-  component Component() {
+  component Component {
   
     let record = {
       a: 1,

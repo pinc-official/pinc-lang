@@ -9,7 +9,7 @@
   </html>
 
   $ pincfmt ./main.pi
-  component Main() {
+  component Main {
     #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/base.css" />);
   
     <html>
@@ -23,7 +23,7 @@
     </html>
   }
   
-  component Head() {
+  component Head {
     let stylesheets = #CreatePortal :: Base.Array.unique;
   
     <head>
@@ -31,7 +31,7 @@
     </head>
   }
   
-  component Section() {
+  component Section {
     #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/section.css" />);
   
     let foo = #String;
@@ -40,7 +40,7 @@
     <section class={foo}>{content}</section>
   }
   
-  component Text() {
+  component Text {
     #Portal(key: "stylesheets", push: <link rel="stylesheet" href="path/to/text.css" />);
   
     let text = #String;

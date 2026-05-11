@@ -91,11 +91,11 @@
     </>
   }
   
-  library NoAttributes() {
+  library NoAttributes {
     <div />
   }
   
-  component Mutation() {
+  component Mutation {
     let mutable a = "initial";
     a := "mutated";
   

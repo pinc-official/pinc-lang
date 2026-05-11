@@ -86,7 +86,7 @@
   }
 
   $ pincfmt ./SlotProvider.pi
-  component SlotProvider() {
+  component SlotProvider {
     let slot_default = #Slot(key: "");
   
     let restricted = #Slot(max: 1, constraints: [SubComponent]);
@@ -108,7 +108,7 @@
   }
 
   $ pincfmt ./SubComponent.pi
-  component SubComponent() {
+  component SubComponent {
     let content = #String;
   
     let shouter = #String :: fn (val) -> if (val) val ++ "!!" else "NOTHING!!!";

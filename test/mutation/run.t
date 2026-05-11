@@ -7,7 +7,7 @@
   </section>
 
   $ pincfmt ./data.pi
-  component Component() {
+  component Component {
     let mutable a = "initial";
     a := "mutated";
   

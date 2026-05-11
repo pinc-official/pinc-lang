@@ -77,7 +77,7 @@
 
 
   $ pincfmt ./data.pi
-  component Component() {
+  component Component {
     <div>
       ![1] = {![1]}
       ![] = {![]}

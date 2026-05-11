@@ -57,7 +57,7 @@
   }
 
   $ pincfmt ./Matrix.pi
-  component Matrix() {
+  component Matrix {
     let matrix = #Array(of: #Array(of: #Int));
   
     <div>
@@ -72,7 +72,7 @@
   }
 
   $ pincfmt ./Sub/SubComponent.pi
-  component HeadlineSecondary() {
+  component HeadlineSecondary {
     let class? = #String;
   
     let tag? = #String :: fn (value) -> value |> Base.Fn.default("h3");

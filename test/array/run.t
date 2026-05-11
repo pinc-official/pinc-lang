@@ -44,7 +44,7 @@
   </section>
 
   $ pincfmt ./data.pi
-  component C() {
+  component C {
     use Base;
   
     let array = 0...3;

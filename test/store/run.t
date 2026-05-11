@@ -24,13 +24,13 @@
     ),
   }
   
-  store Products() {
+  store Products {
     title: #String,
     code: #Int :: fn (v) -> v * 2,
   }
 
   $ pincfmt ./StoreValueProvider.pi
-  component StoreValueProvider() {
+  component StoreValueProvider {
     let settings = {
       footerLinks: [
         {
@@ -59,7 +59,7 @@
     <StoreConsumer settings={settings} products={products} />
   }
   
-  component StoreConsumer() {
+  component StoreConsumer {
     let settings = #Store(id: Settings);
     let products = #Store(id: Products);
   

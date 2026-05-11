@@ -78,7 +78,7 @@
   </section>
 
   $ pincfmt ./data.pi
-  component Component() {
+  component Component {
   
     let max = 10;
   
