@@ -64,33 +64,8 @@ and format_uppercase_id = function
   | Parsetree.P_Uppercase_Id (id, _loc) -> string id
 
 and format_comment comment =
-  let starts_with_blank =
-    String.starts_with ~prefix:" " comment || String.starts_with ~prefix:"\t" comment
-  in
-  let ends_with_blank =
-    String.ends_with ~suffix:" " comment || String.ends_with ~suffix:"\t" comment
-  in
-  let comment =
-    nest
-      2
-      (ifflat
-         (if starts_with_blank then
-            empty
-          else
-            blank 1)
-         (break 1)
-      ^^ arbitrary_string comment)
-  in
-  string "/*"
-  ^^ group
-       (comment
-       ^^ ifflat
-            (if ends_with_blank then
-               empty
-             else
-               blank 1)
-            (break 1))
-  ^^ string "*/"
+  let comment = comment |> String.trim |> Dedent.string |> arbitrary_string in
+  slash ^^ star ^^ group (nest 2 (break 1 ^^ comment) ^^ break 1) ^^ star ^^ slash
 
 and format_string templates =
   let templates =

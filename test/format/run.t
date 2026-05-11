@@ -30,6 +30,9 @@
     </>
   }
   
+  /*
+    Some Comment Eiusmod eiusmod tempor eiusmod nostrud nostrud nostrud in nisi ipsum ullamco ipsum esse enim laborum cupidatat. Deserunt duis culpa consectetur est duis.
+  */
   component Component(
     label: "Long Name of $(c)",
     icon: "/images/icons/page-docs.svg",
