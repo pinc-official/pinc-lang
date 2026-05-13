@@ -62,13 +62,13 @@
     let matrix = #Array(of: #Array(of: #Int));
   
     <div>
-      {for (row in matrix) {
-        <ul>
-          {for (col in row) {
-            <li>{col}</li>
-          }}
-        </ul>
-      }}
+      {
+        for (row in matrix) {
+          <ul>
+            {for (col in row) { <li>{col}</li> }}
+          </ul>
+        }
+      }
     </div>
   }
   
@@ -77,7 +77,8 @@
   component HeadlineSecondary {
     let class? = #String;
   
-    let tag? = #String :: fn (value) -> value |> Base.Fn.default("h3");
+    let tag? = #String :: fn (value) -> value
+      |> Base.Fn.default("h3");
   
     let data = #Record(
       of: {

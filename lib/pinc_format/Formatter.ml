@@ -1,6 +1,8 @@
 open PPrint
 module Parsetree = Pinc_Parser.Parsetree
 
+let[@inline] ( ^-^ ) x y = x ^^ ifflat empty hardline ^^ y
+
 let rec format_comma_separated_attributes ?force_break_at format = function
   | [] -> empty
   | lst ->
@@ -246,7 +248,8 @@ and format_binary_expression left op right =
   | Parsetree.Operators.Binary.DOT_ACCESS -> l ^^ dot ^^ r
   | Parsetree.Operators.Binary.BRACKET_ACCESS -> l ^^ brackets r
   | Parsetree.Operators.Binary.FUNCTION_CALL -> l ^^ parens r
-  | Parsetree.Operators.Binary.PIPE -> l ^^ space ^^ bar ^^ rangle ^^ space ^^ r
+  | Parsetree.Operators.Binary.PIPE ->
+      l ^^ break 1 ^^ ifflat empty (twice space) ^^ bar ^^ rangle ^^ space ^^ r
   | Parsetree.Operators.Binary.ARRAY_ADD -> l ^^ space ^^ langle ^^ minus ^^ space ^^ r
   | Parsetree.Operators.Binary.MERGE -> l ^^ space ^^ twice at ^^ space ^^ r
   | Parsetree.Operators.Binary.RANGE -> l ^^ twice dot ^^ r
@@ -275,7 +278,7 @@ and format_for_in ~index ~iterator ~reverse ~iterable ~body =
 and format_conditional ~condition ~consequent ~alternate =
   string "if"
   ^^ space
-  ^^ parens (format_expression condition)
+  ^^ group (nest 2 (lparen ^-^ format_expression condition ^-^ rparen))
   ^^ space
   ^^ format_expression consequent
   ^^ optional
@@ -391,7 +394,9 @@ and format_template_node
     | P_FragmentTemplateNode fragement_children ->
         format_fragment_template_node ~fragement_children
     | P_ExpressionTemplateNode template_expression_node_expression ->
-        braces (format_expression template_expression_node_expression)
+        group
+          (nest 2 (lbrace ^-^ format_expression template_expression_node_expression)
+          ^-^ rbrace)
     | P_TextTemplateNode "\n" when last ->
         had_newline := true;
         empty

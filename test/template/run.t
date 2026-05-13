@@ -52,15 +52,17 @@
         <body>
           <section class="Section">
             <div />
-            {if (intro) {
-              let foobar = "foo";
-              if (foobar) {
-                <div />
-              } else {
-                let barfoo = "3";
-                <span />
+            {
+              if (intro) {
+                let foobar = "foo";
+                if (foobar) {
+                  <div />
+                } else {
+                  let barfoo = "3";
+                  <span />
+                }
               }
-            }}
+            }
             <div class="Section-content">
               {content}
             </div>

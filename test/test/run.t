@@ -22,9 +22,7 @@
         <div class="foo" />
       </>
       <ul>
-        {for (fruit in fruits) {
-          <li>{fruit}</li>
-        }}
+        {for (fruit in fruits) { <li>{fruit}</li> }}
       </ul>
       <p>
         Aliqua in elit sunt in anim culpa nostrud elit.

@@ -20,13 +20,13 @@
         <div class="foo" />
       </>
       <ul>
-        {for (fruit in fruits) {
-          <li>{fruit}</li>
-        }}
+        {for (fruit in fruits) { <li>{fruit}</li> }}
       </ul>
-      <code>{"Aliqua in elit sunt in anim culpa nostrud elit.
+      <code>{
+          "Aliqua in elit sunt in anim culpa nostrud elit.
   Elit voluptate nisi laborum est eu esse non exercitation minim.
-  Nisi ea enim minim quis."}</code>
+  Nisi ea enim minim quis."
+        }</code>
     </>
   }
   
@@ -80,10 +80,12 @@
         <div class="foo" />
       </>
       <ul>
-        {for (fruit in reverse fruits) {
-          let prefix = "fruit:";
-          <li>{prefix} {fruit}</li>
-        }}
+        {
+          for (fruit in reverse fruits) {
+            let prefix = "fruit:";
+            <li>{prefix} {fruit}</li>
+          }
+        }
       </ul>
       <p>
         {/* A Template Comment */}

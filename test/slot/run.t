@@ -65,13 +65,9 @@
         }
       />
   
-      {if (record.a > 9) {
-        <span slot="nope">Yaaay!</span>
-      }}
+      {if (record.a > 9) { <span slot="nope">Yaaay!</span> }}
   
-      {for (i in 0..record.a) {
-        <span slot="multi">Yaaay! {i}</span>
-      }}
+      {for (i in 0..record.a) { <span slot="multi">Yaaay! {i}</span> }}
     </SlotProvider>
   }
   
@@ -93,9 +89,11 @@
     let restricted = #Slot(max: 1, constraints: [SubComponent]);
   
     let multi = #Slot :: fn (els) -> for (el in els) {
-      <div>{el @@ {
-          class: "item",
-        }}</div>
+      <div>{
+          el @@ {
+            class: "item",
+          }
+        }</div>
     };
   
     let slot_nothing = #Slot(key: "nothing", constraints: []);

@@ -72,7 +72,8 @@
     let nested_array = new_array <- (merged_array <- merged_record_2);
     let index = 8;
   
-    let partitioned = merged_array_2 |> Array.partition(fn (item) -> { item % 2 == 0 });
+    let partitioned = merged_array_2
+      |> Array.partition(fn (item) -> { item % 2 == 0 });
     let even = partitioned[0];
     let odd = partitioned[1];
   
@@ -99,34 +100,36 @@
   
       {merged_array_2 |> Array.keep(fn (item) -> { item % 2 == 0 })}
   
-      {if (merged_array_2 |> Array.find(fn (item) -> { item == 3 })) {
-        "FOUND"
-      } else {
-        "NOT FOUND"
-      }}
+      {if (merged_array_2 |> Array.find(fn (item) -> { item == 3 })) { "FOUND" } else { "NOT FOUND" }}
   
-      {if (merged_array_2 |> Array.find(fn (item) -> { item == -10 })) {
-        "FOUND"
-      } else {
-        "NOT FOUND"
-      }}
+      {
+        if (merged_array_2 |> Array.find(fn (item) -> { item == -10 })) {
+          "FOUND"
+        } else {
+          "NOT FOUND"
+        }
+      }
   
       {even |> Array.every(fn (item) -> { item % 2 == 0 })}
       {merged_array_2 |> Array.some(fn (item) -> { item % 2 == 0 })}
       {merged_array_2 |> Array.every(fn (item) -> { item % 2 == 0 })}
       {merged_array_2 |> Array.some(fn (item) -> { item < 0 })}
-      {Array.make(6) |> Array.map(fn (item) -> item + 1) |> Array.reduce(
-        0,
-        fn (acc, item) -> item + acc,
-      )}
+      {
+        Array.make(6)
+          |> Array.map(fn (item) -> item + 1)
+          |> Array.reduce(0, fn (acc, item) -> item + acc)
+      }
   
       {merged_array_2 |> Array.take_until(fn (item) -> item == 5)}
   
       {1...10 |> Array.slice(2, 5)}
   
-      {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] |> Array.chunk(3) |> Array.map(
-        fn (chunk) -> Array.join(chunk, ","),
-      ) |> Array.map(fn (item) -> <div> {item} </div>)}
+      {
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+          |> Array.chunk(3)
+          |> Array.map(fn (chunk) -> Array.join(chunk, ","))
+          |> Array.map(fn (item) -> <div> {item} </div>)
+      }
   
       {[5, 1, 2, 3, 6, 3, 4, 7] |> Array.sort(fn (a, b) -> a - b)}
   

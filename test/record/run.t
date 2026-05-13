@@ -48,9 +48,7 @@
       {record_nested.d.f}
       {record_nested.d.h.y}
   
-      {for (el in record_nested.d.g) {
-        el ** 2
-      }}
+      {for (el in record_nested.d.g) { el ** 2 }}
     </section>
   }
   
