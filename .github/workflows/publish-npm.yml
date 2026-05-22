@@ -1,0 +1,102 @@
+name: Publish npm
+
+on:
+  push:
+    tags:
+      - '**'
+
+  release:
+    types:
+      - created
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and publish npm packages
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+        ocaml-compiler:
+          - 5.4.x
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          opam-repositories: |
+            default: https://github.com/ocaml/opam-repository.git
+            archive: https://github.com/ocaml/opam-repository-archive.git
+
+      - name: Get opam cache
+        id: cache-opam-dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            _opam/
+          key:
+            ${{ matrix.os }}-${{ matrix.ocaml-compiler }}-opam-cache-dependencies-${{ hashFiles('**/*.opam',
+            '**/*.opam.locked') }}
+
+      - name: Install opam dependencies
+        if: steps.cache-opam-dependencies.outputs.cache-hit != 'true'
+        run: opam install . --deps-only --yes
+
+      - name: Save opam cache
+        if: always() && steps.cache-opam-dependencies.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            _opam/
+          key:
+            ${{ matrix.os }}-${{ matrix.ocaml-compiler }}-opam-cache-dependencies-${{ hashFiles('**/*.opam',
+            '**/*.opam.locked') }}
+
+      - name: Build Production Executables
+        run: opam exec -- dune build --profile=release
+
+      - name: Upload JS build
+        uses: actions/upload-artifact@v7
+        with:
+          name: js
+          path: js
+
+  publish:
+    name: Publish to registry
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download JS build
+        uses: actions/download-artifact@v8
+        with:
+          name: js
+          path: js
+
+      - name: Install NPM Dependencies
+        run: |
+          cd js
+          npm ci
+
+      - name: Publish to Package Registry
+        run: |
+          cd js
+          npm publish

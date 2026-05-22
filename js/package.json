@@ -1,0 +1,18 @@
+{
+  "name": "@pinc-official/pincfmt",
+  "version": "0.0.1",
+  "description": "Provides functions to format pinc-lang source code",
+  "homepage": "https://github.com/pinc-official/pinc-lang#readme",
+  "bugs": {
+    "url": "https://github.com/pinc-official/pinc-lang/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pinc-official/pinc-lang.git"
+  },
+  "license": "MIT",
+  "author": "Torben Ewert <torben@ewert-online.com>",
+  "type": "commonjs",
+  "main": "./pincfmt.bc.js",
+  "types": "./pincfmt.bc.d.ts"
+}
