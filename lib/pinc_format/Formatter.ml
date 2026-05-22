@@ -48,7 +48,9 @@ and format_html_attributes format = function
                   ^^ rbrace
               | _ -> format value
             in
-            nest 2 (ifflat empty (break 1) ^^ string key ^^ equals ^^ formatted_value))
+            nest
+              2
+              (ifflat empty (break 1) ^^ group (string key ^^ equals ^^ formatted_value)))
           lst
       in
       group (separate space lst)

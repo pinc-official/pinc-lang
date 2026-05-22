@@ -54,15 +54,9 @@
       <SubComponent
         slot="restricted"
         content="Hello, SubComponent!"
-        num={
-          3
-        }
-        array_things={
-          array
-        }
-        record={
-          record
-        }
+        num={3}
+        array_things={array}
+        record={record}
       />
   
       {if (record.a > 9) { <span slot="nope">Yaaay!</span> }}
