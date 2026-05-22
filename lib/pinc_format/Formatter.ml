@@ -316,15 +316,16 @@ and format_template_children children =
 and format_html_template_node ~html_tag_identifier ~html_tag_attributes ~html_tag_children
     =
   let open_tag =
-    langle
-    ^^ string html_tag_identifier
-    ^^ (match html_tag_attributes with
+    group
+      (langle
+      ^^ string html_tag_identifier
+      ^^ (match html_tag_attributes with
+        | [] -> empty
+        | attrs -> space ^^ format_html_attributes format_expression attrs)
+      ^^
+      match html_tag_children with
       | [] -> empty
-      | attrs -> space ^^ format_html_attributes format_expression attrs)
-    ^^
-    match html_tag_children with
-    | [] -> empty
-    | _ -> rangle
+      | _ -> ifflat empty hardline ^^ rangle)
   in
   let had_newline, children = format_template_children html_tag_children in
   let close_tag =
@@ -354,15 +355,16 @@ and format_component_template_node
     ~component_tag_attributes
     ~component_tag_children =
   let open_tag =
-    langle
-    ^^ format_uppercase_id component_tag_identifier
-    ^^ (match component_tag_attributes with
+    group
+      (langle
+      ^^ format_uppercase_id component_tag_identifier
+      ^^ (match component_tag_attributes with
+        | [] -> empty
+        | attrs -> space ^^ format_html_attributes format_expression attrs)
+      ^^
+      match component_tag_children with
       | [] -> empty
-      | attrs -> space ^^ format_html_attributes format_expression attrs)
-    ^^
-    match component_tag_children with
-    | [] -> empty
-    | _ -> rangle
+      | _ -> ifflat empty hardline ^^ rangle)
   in
   let close_tag =
     match component_tag_children with

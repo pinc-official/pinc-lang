@@ -87,6 +87,15 @@
           }
         }
       </ul>
+      <a
+        class="test $(class)"
+        href={href}
+        title={title}
+        target={target}
+        rel={if (target == "_blank") "noopener" else ""}
+      >
+        {content}
+      </a>
       <p>
         {/* A Template Comment */}
         Aliqua in elit sunt in anim culpa nostrud elit.
