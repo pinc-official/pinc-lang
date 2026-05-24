@@ -324,13 +324,13 @@ and format_html_template_node ~html_tag_identifier ~html_tag_attributes ~html_ta
         | attrs -> space ^^ format_html_attributes format_expression attrs)
       ^^
       match html_tag_children with
-      | [] -> empty
+      | [] -> break 1 ^^ slash ^^ rangle
       | _ -> ifflat empty hardline ^^ rangle)
   in
   let had_newline, children = format_template_children html_tag_children in
   let close_tag =
     match html_tag_children with
-    | [] -> blank 1 ^^ slash ^^ rangle
+    | [] -> empty
     | _ ->
         (if had_newline then
            ifflat empty hardline
@@ -363,17 +363,21 @@ and format_component_template_node
         | attrs -> space ^^ format_html_attributes format_expression attrs)
       ^^
       match component_tag_children with
-      | [] -> empty
+      | [] -> break 1 ^^ slash ^^ rangle
       | _ -> ifflat empty hardline ^^ rangle)
   in
   let close_tag =
     match component_tag_children with
-    | [] -> slash ^^ rangle
-    | _ -> langle ^^ slash ^^ format_uppercase_id component_tag_identifier ^^ rangle
+    | [] -> empty
+    | _ ->
+        break 1
+        ^^ langle
+        ^^ slash
+        ^^ format_uppercase_id component_tag_identifier
+        ^^ rangle
   in
   let _had_newline, children = format_template_children component_tag_children in
-  let end_line = break 1 in
-  group (open_tag ^^ nest 2 children ^^ end_line ^^ close_tag)
+  group (open_tag ^^ nest 2 children ^^ close_tag)
 
 and format_template_node
     ?(had_newline = ref false)

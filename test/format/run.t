@@ -96,6 +96,13 @@
       >
         {content}
       </a>
+      <img
+        style="width: 100%; height: auto;"
+        width={image.width}
+        height={image.height}
+        src={image.src}
+        alt={image.alt}
+      />
       <p>
         {/* A Template Comment */}
         Aliqua in elit sunt in anim culpa nostrud elit.
