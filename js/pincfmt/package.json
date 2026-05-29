@@ -1,6 +1,6 @@
 {
   "name": "@pinc-official/pincfmt",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Provides functions to format pinc-lang source code",
   "homepage": "https://github.com/pinc-official/pinc-lang#readme",
   "bugs": {
