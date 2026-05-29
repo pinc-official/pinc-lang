@@ -839,8 +839,8 @@ and eval_binary_bracket_access ~state left right =
       let output =
         try
           a
-          |> CCUtf8_string.of_string_exn
-          |> CCUtf8_string.to_list
+          |> Pinc_Core.Utf8String.of_string_exn
+          |> Pinc_Core.Utf8String.to_list
           |> Fun.flip List.nth b
           |> Helpers.Value.char
                ~loc:(Location.merge ~s:left.expression_loc ~e:right.expression_loc ())
@@ -1116,16 +1116,17 @@ and eval_for_in ~state ~index_ident ~ident ~reverse ~iterable body =
       let map s =
         if reverse then
           s
-          |> CCUtf8_string.to_seq
-          |> CCSeq.to_rev_list
-          |> List.to_seq
-          |> Seq.map (fun c -> c |> Helpers.Value.char ~loc:iterable_value.value_loc)
+          |> Pinc_Core.Utf8String.to_list
+          |> List.rev
+          |> List.map (fun c -> c |> Helpers.Value.char ~loc:iterable_value.value_loc)
         else
           s
-          |> CCUtf8_string.to_seq
-          |> Seq.map (fun c -> c |> Helpers.Value.char ~loc:iterable_value.value_loc)
+          |> Pinc_Core.Utf8String.to_list
+          |> List.map (fun c -> c |> Helpers.Value.char ~loc:iterable_value.value_loc)
       in
-      let state, res = s |> CCUtf8_string.of_string_exn |> map |> loop ~state [] in
+      let state, res =
+        s |> Pinc_Core.Utf8String.of_string_exn |> map |> List.to_seq |> loop ~state []
+      in
       state
       |> State.add_output ~output:(res |> Helpers.Value.list ~loc:body.expression_loc)
   | Portal l ->

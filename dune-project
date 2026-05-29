@@ -29,7 +29,6 @@
   dune
   pprint
   crunch
-  containers
   ppx_deriving
   js_of_ocaml
   js_of_ocaml-compiler

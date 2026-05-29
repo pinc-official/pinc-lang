@@ -2,6 +2,7 @@ include StdlibExtension
 module StringMap = StringMap
 module StringSet = StringSet
 module Identifier = Identifier
+module Utf8String = Utf8String
 
 module Dedent = struct
   let indentation =
@@ -25,12 +26,12 @@ module Dedent = struct
 
   let lines string =
     let lines = String.split_on_char '\n' string in
-    let lines = List.map Containers.String.rtrim lines in
+    let lines = List.map String.trim_right lines in
     let lines =
       match lines with
       | [] -> []
       | "" :: rest -> drop_indentation rest
-      | first :: rest -> Containers.String.ltrim first :: drop_indentation rest
+      | first :: rest -> String.trim_left first :: drop_indentation rest
     in
     lines
   ;;

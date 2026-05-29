@@ -119,4 +119,30 @@ module String = struct
     in
     take_first index s
   ;;
+
+  let trim_left s =
+    let len = length s in
+    let i = ref 0 in
+    while !i < len && Char.is_whitespace (unsafe_get s !i) do
+      incr i
+    done;
+    let j = len - 1 in
+    if j >= !i then
+      sub s !i (j - !i + 1)
+    else
+      empty
+  ;;
+
+  let trim_right s =
+    let len = length s in
+    let i = 0 in
+    let j = ref (len - 1) in
+    while !j >= i && Char.is_whitespace (unsafe_get s !j) do
+      decr j
+    done;
+    if !j >= i then
+      sub s i (!j - i + 1)
+    else
+      empty
+  ;;
 end

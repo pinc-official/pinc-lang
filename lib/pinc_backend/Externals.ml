@@ -43,8 +43,7 @@ module PincString = struct
             value_loc
             (Printf.sprintf
                "The argument given to the String.length function is not of type string")
-      | Ok v ->
-          v |> Containers.Utf8_string.of_string_exn |> Containers.Utf8_string.n_chars
+      | Ok v -> v |> Pinc_Core.Utf8String.of_string_exn |> Pinc_Core.Utf8String.n_chars
     in
 
     let output = Helpers.Value.int result in
@@ -100,12 +99,12 @@ module PincString = struct
 
     let result =
       str
-      |> Containers.Utf8_string.of_string_exn
-      |> Containers.Utf8_string.to_list
-      |> Containers.List.drop offset
-      |> Containers.List.take length
-      |> Containers.Utf8_string.of_list
-      |> Containers.Utf8_string.to_string
+      |> Pinc_Core.Utf8String.of_string_exn
+      |> Pinc_Core.Utf8String.to_list
+      |> List.drop offset
+      |> List.take length
+      |> Pinc_Core.Utf8String.of_list
+      |> Pinc_Core.Utf8String.to_string
     in
 
     let output = Helpers.Value.string result in
