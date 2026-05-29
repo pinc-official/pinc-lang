@@ -1,4 +1,4 @@
-library Base__Array {
+library Base_Array {
   let make = fn (length) -> {
     0..length
   };
@@ -17,38 +17,43 @@ library Base__Array {
 
   let last = fn (array) -> {
     let len = length(array);
-    if len > 0 {
+    if (len > 0) {
       array[len - 1]
     }
   };
 
   let take_until = fn (array, condition) -> {
     for (item in array) {
-      if(condition(item)) break;
+      if (condition(item)) {
+        break;
+      };
       item
     }
   };
 
   let slice = fn (array, offset, length) -> {
     for (index, item in array) {
-      if(index < offset) continue;
-      if(index == length + offset) break;
+      if (index < offset) {
+        continue;
+      };
+      if (index == length + offset) {
+        break;
+      };
       item
     }
   };
 
   let chunk = fn (array, size) -> {
-    let len = Base.Array.length(array);
-    let x = Base.Math.ceil(len / size);
-    0..x |> Base.Array.mapi(fn (index, item) -> {
-      Base.Array.slice(array, index * size, size)
-    });
+    let len = length(array);
+    let x = Base_Math.ceil(len / size);
+    0..x
+      |> mapi(fn (index, item) -> { slice(array, index * size, size) })
   };
 
   let join = fn (array, sep) -> {
     let mutable result = "";
     for (index, item in array) {
-      if(index > 0) {
+      if (index > 0) {
         result := result ++ sep;
       };
       result := result ++ item;
@@ -81,16 +86,16 @@ library Base__Array {
   };
 
   let partition = fn (array, condition) -> {
-    let len = Base.Array.length(array);
+    let len = length(array);
     let part = fn (yes, no, index) -> {
-      if index == len {
+      if (index == len) {
         [yes, no]
       } else {
         let item = array[index];
-        if condition(item) {
-          part(yes <- item, no, index + 1);
+        if (condition(item)) {
+          part(yes <- item, no, index + 1)
         } else {
-          part(yes, no <- item, index + 1);
+          part(yes, no <- item, index + 1)
         }
       }
     };
@@ -98,16 +103,16 @@ library Base__Array {
   };
 
   let filter = fn (array, condition) -> {
-    let len = Base.Array.length(array);
+    let len = length(array);
     let aux = fn (acc, index) -> {
-      if index == len {
+      if (index == len) {
         acc
       } else {
         let item = array[index];
-        if condition(item) {
-          aux(acc <- item, index + 1);
+        if (condition(item)) {
+          aux(acc <- item, index + 1)
         } else {
-          aux(acc, index + 1);
+          aux(acc, index + 1)
         }
       }
     };
@@ -118,14 +123,14 @@ library Base__Array {
   let keep = filter;
 
   let find = fn (array, condition) -> {
-    let len = Base.Array.length(array);
+    let len = length(array);
     let aux = fn (index) -> {
-      if index < len {
+      if (index < len) {
         let item = array[index];
-        if condition(item) {
+        if (condition(item)) {
           item
         } else {
-          aux(index + 1);
+          aux(index + 1)
         }
       }
     };
@@ -134,33 +139,33 @@ library Base__Array {
   };
 
   let exists = fn (array, condition) -> {
-    let len = Base.Array.length(array);
+    let len = length(array);
     let aux = fn (index) -> {
-      if index < len {
+      if (index < len) {
         let item = array[index];
-        if condition(item) {
+        if (condition(item)) {
           true
         } else {
-          aux(index + 1);
+          aux(index + 1)
         }
       } else {
         false
       }
     };
 
-    aux(0);
+    aux(0)
   };
 
   let some = exists;
 
   let for_all = fn (array, condition) -> {
-    let len = Base.Array.length(array);
+    let len = length(array);
     let aux = fn (acc, index) -> {
-      if index == len || acc == false {
+      if (index == len || acc == false) {
         acc
       } else {
         let item = array[index];
-        aux(acc && condition(item), index + 1);
+        aux(acc && condition(item), index + 1)
       }
     };
 
@@ -169,15 +174,15 @@ library Base__Array {
 
   let every = for_all;
 
-  let fold_lefti = fn(array, init, f) -> {
-    let len = Base.Array.length(array);
+  let fold_lefti = fn (array, init, f) -> {
+    let len = length(array);
     let aux = fn (acc, index) -> {
       if (index == len || acc == false) {
         acc
       } else {
         let item = array[index];
         let acc = f(acc, item, index);
-        aux(acc, index + 1);
+        aux(acc, index + 1)
       }
     };
 
@@ -186,25 +191,23 @@ library Base__Array {
 
   let reducei = fold_lefti;
 
-  let fold_left = fn(array, init, f) -> {
-    fold_lefti(array, init, fn (acc, curr, index) -> {
-      f(acc, curr);
-    });
+  let fold_left = fn (array, init, f) -> {
+    fold_lefti(array, init, fn (acc, curr, index) -> { f(acc, curr) })
   };
 
   let reduce = fold_left;
 
   let group = fn (array, size) -> {
-    let array_length = Base.Array.length(array);
-    let group_size = Base.Math.floor(array_length / size);
+    let array_length = length(array);
+    let group_size = Base_Math.floor(array_length / size);
 
-    0..size |> fold_lefti([], fn (acc, curr, index) -> {
-      acc <- Base.Array.slice(
-        array,
-        index * group_size,
-        if(index == size - 1) array_length else group_size
-      );
-    });
+    0..size
+      |> fold_lefti(
+      [],
+      fn (acc, curr, index) -> {
+        acc <- slice(array, index * group_size, if (index == size - 1) array_length else group_size)
+      },
+    )
   };
 
   let nth = fn (array, index) -> {
@@ -213,33 +216,35 @@ library Base__Array {
 
   let sort = fn (array, f) -> {
     let merge = fn (a, b) -> {
-      let len_a = Base.Array.length(a);
-      if len_a == 0 {
+      let len_a = length(a);
+      if (len_a == 0) {
         b
       } else {
-        let len_b = Base.Array.length(b);
-        if len_b == 0 {
+        let len_b = length(b);
+        if (len_b == 0) {
           a
         } else {
           let first_a = a[0];
           let first_b = b[0];
-          if f(first_a, first_b) < 0 {
-            [first_a] @@ merge(Base.Array.slice(a, 1, len_a), b)
+          if (f(first_a, first_b) < 0) {
+            [first_a] @@ merge(slice(a, 1, len_a), b)
           } else {
-            [first_b] @@ merge(a, Base.Array.slice(b, 1, len_b))
+            [first_b] @@ merge(a, slice(b, 1, len_b))
           }
         }
       }
     };
 
-    let len = Base.Array.length(array);
-    if len < 2 {
+    let len = length(array);
+    if (len < 2) {
       array
     } else {
-        let h = Base.Math.ceil(len / 2);
-        let first_half = array |> Base.Array.slice(0, h);
-        let second_half = array |> Base.Array.slice(h, len);
-        merge(sort(first_half, f), sort(second_half, f));
+      let h = Base_Math.ceil(len / 2);
+      let first_half = array
+        |> slice(0, h);
+      let second_half = array
+        |> slice(h, len);
+      merge(sort(first_half, f), sort(second_half, f))
     }
   };
 

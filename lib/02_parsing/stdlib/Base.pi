@@ -1,7 +1,0 @@
-library Base {
-  use Array = Base__Array;
-  use Char = Base__Char;
-  use Fn = Base__Fn;
-  use Math = Base__Math;
-  use String = Base__String;
-}

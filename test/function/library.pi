@@ -1,6 +1,4 @@
 library Math {
-  use Constants = Math__Constants;
-
   let fibonacci = fn (n) -> {
       if (n <= 1) {
         n

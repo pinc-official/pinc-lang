@@ -93,7 +93,6 @@ and expression_desc =
       function_definition : expression;
       arguments : expression list;
     }
-  | P_UppercaseIdentifierPathExpression of string list
   | P_UppercaseIdentifierExpression of string
   | P_LowercaseIdentifierExpression of string
   | P_TagExpression of tag
@@ -123,7 +122,6 @@ and statement = {
 and statement_desc =
   | P_BreakStatement of int
   | P_ContinueStatement of int
-  | P_UseStatement of uppercase_identifier option * expression
   | P_OptionalMutableLetStatement of lowercase_identifier * expression
   | P_OptionalLetStatement of lowercase_identifier * expression
   | P_MutableLetStatement of lowercase_identifier * expression

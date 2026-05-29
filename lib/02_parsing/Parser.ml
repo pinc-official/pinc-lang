@@ -497,32 +497,6 @@ module Rules = struct
           Some
             (Parsetree.P_MutationStatement
                (P_Lowercase_Id (identifier, identifier_location), expression))
-      (* PARSING USE STATEMENT *)
-      | Token.KEYWORD_USE ->
-          next t;
-          let is_assignment = peek t = Token.EQUAL in
-          if is_assignment then (
-            let identifier = Helpers.expect_identifier ~typ:`Upper t in
-            t |> expect Token.EQUAL;
-            let expression =
-              match parse_expression t with
-              | Some expression -> expression
-              | None ->
-                  Diagnostics.raise_error
-                    t.token.location
-                    "Expected expression as right hand side of use statement"
-            in
-            Some (Parsetree.P_UseStatement (Some (P_Uppercase_Id identifier), expression)))
-          else (
-            let expression =
-              match parse_expression t with
-              | Some expression -> expression
-              | None ->
-                  Diagnostics.raise_error
-                    t.token.location
-                    "Expected to see a library next to the use keyword."
-            in
-            Some (Parsetree.P_UseStatement (None, expression)))
       | _ ->
           let* expr = parse_expression t in
           Some (Parsetree.P_ExpressionStatement expr)
@@ -731,31 +705,11 @@ module Rules = struct
           next t;
           Option.some
           @@ (false, Parsetree.P_LowercaseIdentifierExpression identifier, end_location)
-      | Token.IDENT_UPPER identifier -> (
+      | Token.IDENT_UPPER identifier ->
           let end_location = t.token.location in
           next t;
-          let rec get_path list =
-            match t.token.typ with
-            | Token.DOT -> (
-                match peek t with
-                | Token.IDENT_UPPER i ->
-                    next t;
-                    next t;
-                    get_path (i :: list)
-                | _ -> List.rev list)
-            | _ -> List.rev list
-          in
-          match get_path [ identifier ] with
-          | [ identifier ] ->
-              Option.some
-              @@ ( false,
-                   Parsetree.P_UppercaseIdentifierExpression identifier,
-                   end_location )
-          | path ->
-              Option.some
-              @@ ( false,
-                   Parsetree.P_UppercaseIdentifierPathExpression path,
-                   t.prev_token.location ))
+          Option.some
+          @@ (false, Parsetree.P_UppercaseIdentifierExpression identifier, end_location)
       (* PARSING VALUE EXPRESSION *)
       | Token.DOUBLE_QUOTE ->
           next t;

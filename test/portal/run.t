@@ -24,7 +24,7 @@
   }
   
   component Head {
-    let stylesheets = #CreatePortal :: Base.Array.unique;
+    let stylesheets = #CreatePortal :: Base_Array.unique;
   
     <head>
       {stylesheets}

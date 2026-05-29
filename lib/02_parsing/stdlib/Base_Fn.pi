@@ -1,4 +1,4 @@
-library Base__Fn {
+library Base_Fn {
   let default = fn (value, default) -> {
     if (!value) {
       default
@@ -7,5 +7,5 @@ library Base__Fn {
     }
   };
 
-  let id = fn x -> x;
+  let id = fn (x) -> x;
 }

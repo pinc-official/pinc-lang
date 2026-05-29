@@ -74,11 +74,17 @@
   
 
   $ pincfmt ./Sub/SubComponent.pi
+  component Subheadline {
+    let text = #String;
+  
+    <span>{text}</span>
+  }
+  
   component HeadlineSecondary {
     let class? = #String;
   
     let tag? = #String :: fn (value) -> value
-      |> Base.Fn.default("h3");
+      |> Base_Fn.default("h3");
   
     let data = #Record(
       of: {

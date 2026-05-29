@@ -12,8 +12,7 @@
   1 |> add_curry(5)() = 6
   5 |> Math.factorial = 120
   
-  Math.Constants.pi = 3.1415
-  C.pi = 3.1415
+  Math__Constants.pi = 3.1415
   
   Map:
   14916
@@ -24,8 +23,6 @@
 
   $ pincfmt ./data.pi
   component Component {
-    use C = Math.Constants;
-  
     let max = fn (a, b) -> {
       if (a > b) {
         a
@@ -88,8 +85,7 @@
       1 |> add_curry(5)() = {1 |> add_curry(5)()}
       5 |> Math.factorial = {5 |> Math.factorial}
   
-      Math.Constants.pi = {Math.Constants.pi}
-      C.pi = {C.pi}
+      Math__Constants.pi = {Math__Constants.pi}
   
       Map:
       {map(1...10, fn (item) -> item ** 2)}
@@ -102,8 +98,6 @@
 
   $ pincfmt ./library.pi
   library Math {
-    use Constants = Math__Constants;
-  
     let fibonacci = fn (n) -> {
       if (n <= 1) {
         n

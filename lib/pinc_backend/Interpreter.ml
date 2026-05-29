@@ -85,7 +85,6 @@ and eval_statement ~state statement =
       eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
   | Ast.MutationStatement (Lowercase_Id ident, expression) ->
       eval_mutation ~state ~ident expression
-  | Ast.UseStatement (ident, expression) -> eval_use ~state ~ident expression
   | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
   | Ast.ContinueStatement _ -> raise_notrace (Loop_Continue state)
   | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
@@ -159,54 +158,6 @@ and eval_expression ~state expression =
         body
   | Ast.FunctionCall { function_definition; arguments } ->
       eval_function_call ~state ~arguments function_definition
-  | Ast.UppercaseIdentifierPathExpression path -> (
-      let rec eval_library_path ~state (name, library) path =
-        match path with
-        | [] -> (state, name, library)
-        | hd :: tl -> (
-            match library |> Type_Library.get_include hd with
-            | Some l -> eval_library_path ~state (hd, l) tl
-            | None ->
-                Diagnostics.raise_error
-                  expression.expression_loc
-                  (Printf.sprintf
-                     "Library with name `%s` could not be found inside `%s`."
-                     hd
-                     name))
-      in
-      match path with
-      | [] -> assert false
-      | hd :: tl -> (
-          let state, library =
-            state
-            |> State.get_used_values
-            |> StringMap.find_opt hd
-            |> Option.fold
-                 ~some:(fun l -> (state, Some (Definition_Library l)))
-                 ~none:(get_uppercase_identifier_typ ~state hd)
-          in
-          match library with
-          | Some (Definition_Library l) ->
-              let state, name, library = eval_library_path ~state (hd, l) tl in
-              let output =
-                {
-                  value_loc = expression.expression_loc;
-                  value_desc =
-                    DefinitionInfo (name, Some (Definition_Library library), `NotNegated);
-                }
-              in
-              state |> State.add_output ~output
-          | Some _ ->
-              Diagnostics.raise_error
-                expression.expression_loc
-                (Printf.sprintf
-                   "`%s` is not a library. Cannot construct a path with non library \
-                    definitions."
-                   hd)
-          | None ->
-              Diagnostics.raise_error
-                expression.expression_loc
-                (Printf.sprintf "Library with name `%s` could not be found." hd)))
   | Ast.UppercaseIdentifierExpression id ->
       let state, typ =
         state
@@ -999,32 +950,6 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
       state
       |> State.add_value_to_scope ~ident ~value ~is_mutable ~is_optional
       |> State.add_output ~output:(Helpers.Value.null ~loc:expression.expression_loc ())
-
-and eval_use ~state ~ident expression =
-  let value = expression |> eval_expression ~state |> State.get_output in
-  match value with
-  | { value_desc = DefinitionInfo (_, Some (Definition_Library library), _); _ } -> (
-      match ident with
-      | Some (Uppercase_Id ident) ->
-          let ident, _ident_location = ident in
-          state |> State.add_value_to_use_scope ~ident ~value:library
-      | None ->
-          let state =
-            StringMap.fold
-              (fun ident { is_optional; value; _ } ->
-                State.add_value_to_scope ~ident ~is_mutable:false ~is_optional ~value)
-              (Type_Library.get_bindings library)
-              state
-          in
-          StringMap.fold
-            (fun ident value -> State.add_value_to_use_scope ~ident ~value)
-            (Type_Library.get_includes library)
-            state)
-  | _ ->
-      Diagnostics.raise_error
-        expression.expression_loc
-        "Attempted to use a non library definition. \n\
-         Expected to see a Library at the right hand side of the `use` statement."
 
 and eval_mutation ~state ~ident expression =
   let ident, ident_location = ident in

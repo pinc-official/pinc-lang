@@ -1,3 +1,0 @@
-component UseNonLibrary {
-  use NotALibrary;
-}

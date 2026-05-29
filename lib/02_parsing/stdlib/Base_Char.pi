@@ -1,4 +1,4 @@
-library Base__Char {
+library Base_Char {
   let is_whitespace = fn (char) -> {
     char == ' ' || char == '\012' || char == '\n' || char == '\r' || char == '\t'
   };

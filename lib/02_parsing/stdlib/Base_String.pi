@@ -1,4 +1,4 @@
-library Base__String {
+library Base_String {
   let length = fn (string) -> %%pinc_string_length%%;
 
   let map = fn (string, f) -> {
@@ -58,27 +58,21 @@ library Base__String {
   };
 
   let uppercase_ascii = fn (string) -> {
-    map(string, fn (c) -> {
-      if (c >= 'a' && c <= 'z') c - 32 else c
-    })
+    map(string, fn (c) -> { if (c >= 'a' && c <= 'z') c - 32 else c })
   };
 
   let lowercase_ascii = fn (string) -> {
-    map(string, fn (c) -> {
-      if (c >= 'A' && c <= 'Z') c + 32 else c
-    })
+    map(string, fn (c) -> { if (c >= 'A' && c <= 'Z') c + 32 else c })
   };
 
   let capitalize_ascii = fn (string) -> {
-    mapi(string, fn (index, c) -> {
-      if (index == 0 && c >= 'a' && c <= 'z') c - 32 else c
-    })
+    mapi(string, fn (index, c) -> { if (index == 0 && c >= 'a' && c <= 'z') c - 32 else c })
   };
 
   let nl2br = fn (string) -> {
     let mutable result = "";
     for (char in string) {
-      if (Base.Char.is_newline(char)) {
+      if (Base_Char.is_newline(char)) {
         result := result ++ "<br>";
       } else {
         result := result ++ char;
@@ -92,7 +86,7 @@ library Base__String {
     let mutable i = 0;
     let mutable j = len - 1;
     for (char in string) {
-      if (Base.Char.is_whitespace(char)) {
+      if (Base_Char.is_whitespace(char)) {
         i := i + 1;
       } else {
         break;
@@ -100,7 +94,7 @@ library Base__String {
     };
 
     for (char in reverse string) {
-      if (Base.Char.is_whitespace(char)) {
+      if (Base_Char.is_whitespace(char)) {
         j := j - 1;
       } else {
         break;

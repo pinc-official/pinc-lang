@@ -187,9 +187,6 @@ and format_function_call function_definition arguments =
   in
   format_expression function_definition ^^ parens arguments
 
-and format_uppercase_id_path_expression path =
-  separate_map dot format_uppercase_id_expression path
-
 and format_uppercase_id_expression id = string id
 and format_lowercase_id_expression id = string id
 
@@ -432,7 +429,6 @@ and format_expression (exression : Parsetree.expression) =
     | P_Function { parameters; body } -> format_function parameters body
     | P_FunctionCall { function_definition; arguments } ->
         format_function_call function_definition arguments
-    | P_UppercaseIdentifierPathExpression path -> format_uppercase_id_path_expression path
     | P_UppercaseIdentifierExpression id -> format_uppercase_id_expression id
     | P_LowercaseIdentifierExpression id -> format_lowercase_id_expression id
     | P_TagExpression { tag_desc; tag_loc = _ } -> format_tag tag_desc
@@ -469,14 +465,6 @@ and format_continue_stmt i =
       space ^^ string (string_of_int i)
   in
   string "continue" ^^ num
-
-and format_use_stmt id expr =
-  string "use"
-  ^^ space
-  ^^ (match id with
-    | None -> empty
-    | Some id -> format_uppercase_id id ^^ space ^^ equals ^^ space)
-  ^^ format_expression expr
 
 and format_optional_mutable_let id expr =
   string "let"
@@ -531,7 +519,6 @@ and format_statement ~last (statement : Parsetree.statement) =
     match statement.statement_desc with
     | P_BreakStatement s -> format_break_stmt s ^^ semi
     | P_ContinueStatement s -> format_continue_stmt s ^^ semi
-    | P_UseStatement (id, expr) -> format_use_stmt id expr ^^ semi
     | P_OptionalMutableLetStatement (id, expr) ->
         format_optional_mutable_let id expr ^^ semi
     | P_OptionalLetStatement (id, expr) -> format_optional_let id expr ^^ semi

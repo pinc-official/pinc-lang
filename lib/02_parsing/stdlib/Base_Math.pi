@@ -1,5 +1,5 @@
-library Base__Math {
-  let floor = fn n -> {
+library Base_Math {
+  let floor = fn (n) -> {
     let mod = n % 1;
     if (mod >= 0) {
       n - mod
@@ -8,5 +8,5 @@ library Base__Math {
     }
   };
 
-  let ceil = fn n -> -(Base.Math.floor(-n));
+  let ceil = fn (n) -> -(floor(-n));
 }

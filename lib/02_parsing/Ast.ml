@@ -89,7 +89,6 @@ and expression_desc =
       function_definition : expression;
       arguments : expression list;
     }
-  | UppercaseIdentifierPathExpression of string list
   | UppercaseIdentifierExpression of string
   | LowercaseIdentifierExpression of string
   | TagExpression of tag
@@ -118,7 +117,6 @@ and statement = {
 and statement_desc =
   | BreakStatement of int
   | ContinueStatement of int
-  | UseStatement of uppercase_identifier option * expression
   | OptionalMutableLetStatement of lowercase_identifier * expression
   | OptionalLetStatement of lowercase_identifier * expression
   | MutableLetStatement of lowercase_identifier * expression
@@ -163,8 +161,6 @@ let show_expression expr =
   | { expression_loc = _; expression_desc = ExternalFunction _ } -> "ExternalFunction"
   | { expression_loc = _; expression_desc = Function _ } -> "Function"
   | { expression_loc = _; expression_desc = FunctionCall _ } -> "FunctionCall"
-  | { expression_loc = _; expression_desc = UppercaseIdentifierPathExpression _ } ->
-      "UppercaseIdentifierPathExpression"
   | { expression_loc = _; expression_desc = UppercaseIdentifierExpression _ } ->
       "UppercaseIdentifierExpression"
   | { expression_loc = _; expression_desc = LowercaseIdentifierExpression _ } ->

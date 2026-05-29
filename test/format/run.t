@@ -3,8 +3,6 @@
     Some Comment Eiusmod eiusmod tempor eiusmod nostrud nostrud nostrud in nisi ipsum ullamco ipsum esse enim laborum cupidatat. Deserunt duis culpa consectetur est duis.
   */
   page Docs(label: "Docs", icon: "/images/icons/page-docs.svg") {
-    use Math = Base.Math;
-  
     /* Another comment! */
     let fruits = ["apples", "oranges", "bannanas", "melons"];
   
@@ -70,7 +68,7 @@
           value: "h6",
         },
       ],
-    ) :: fn (v) -> Base.Fn.default(v, "h1");
+    ) :: fn (v) -> Base_Fn.default(v, "h1");
   
     let tags = #Array(label: "Tags", initialSize: 1, max: 5, of: #String(label: "Tag"));
   

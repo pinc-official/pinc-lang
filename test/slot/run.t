@@ -129,7 +129,7 @@
     <div class="SubComponent" data-foo={num}>
       {content}
   
-      {array_things |> Base.Array.map(fn (r) -> r.i)}
+      {array_things |> Base_Array.map(fn (r) -> r.i)}
   
       {record.a}
       {record.b}

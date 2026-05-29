@@ -118,9 +118,6 @@ and transform_function_call env function_definition arguments =
   let env, arguments = List.fold_map ~init:env ~f:transform_expression arguments in
   (env, FunctionCall { function_definition; arguments })
 
-and transform_uppercase_id_path_expression env path =
-  (env, UppercaseIdentifierPathExpression path)
-
 and transform_uppercase_id_expression env id = (env, UppercaseIdentifierExpression id)
 and transform_lowercase_id_expression env id = (env, LowercaseIdentifierExpression id)
 
@@ -464,8 +461,6 @@ and transform_expression env (exression : Parsetree.expression) =
     | P_Function { parameters; body } -> transform_function env parameters body
     | P_FunctionCall { function_definition; arguments } ->
         transform_function_call env function_definition arguments
-    | P_UppercaseIdentifierPathExpression path ->
-        transform_uppercase_id_path_expression env path
     | P_UppercaseIdentifierExpression id -> transform_uppercase_id_expression env id
     | P_LowercaseIdentifierExpression id -> transform_lowercase_id_expression env id
     | P_TagExpression tag -> transform_tag env tag
@@ -483,11 +478,6 @@ and transform_expression env (exression : Parsetree.expression) =
 
 and transform_break_stmt env s = (env, BreakStatement s)
 and transform_continue_stmt env s = (env, ContinueStatement s)
-
-and transform_use_stmt env id expr =
-  let env, id = Option.fold_map ~init:env ~f:transform_uppercase_id id in
-  let env, expr = transform_expression env expr in
-  (env, UseStatement (id, expr))
 
 and transform_optional_mutable_let env id expr =
   let env = { env with Env.current_identifier = Some (`Optional, id) } in
@@ -531,7 +521,6 @@ and transform_statement env (statement : Parsetree.statement) =
     match statement.statement_desc with
     | P_BreakStatement s -> transform_break_stmt env s
     | P_ContinueStatement s -> transform_continue_stmt env s
-    | P_UseStatement (id, expr) -> transform_use_stmt env id expr
     | P_OptionalMutableLetStatement (id, expr) ->
         transform_optional_mutable_let env id expr
     | P_OptionalLetStatement (id, expr) -> transform_optional_let env id expr

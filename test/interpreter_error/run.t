@@ -5,25 +5,12 @@
   Declaration with name `NotExistingDefinition` was not found.
   [1]
 
-  $ NO_COLOR="1" print . UseNonLibrary
-  
-  ERROR in file ./use_non_library.pi:2:7-18
-  
-     1 │ component UseNonLibrary {
-     2 │   use NotALibrary;
-       │       ^^^^^^^^^^^ 
-     3 │ }
-  
-  Attempted to use a non library definition. 
-  Expected to see a Library at the right hand side of the `use` statement.
-  [1]
-
   $ NO_COLOR="1" print . BadTransformer_Arity
   
   ERROR in file ./tag_transformer_arity.pi:6:25-37
   
      5 │ component BadTransformer_Arity_Child {
-     6 │   let text = #String :: fn (a, b) -> Base.String.uppercase(a);
+     6 │   let text = #String :: fn (a, b) -> Base_String.uppercase(a);
        │                         ^^^^^^^^^^^^                          
      7 │ 
   

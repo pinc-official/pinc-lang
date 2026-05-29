@@ -45,8 +45,6 @@
 
   $ pincfmt ./data.pi
   component C {
-    use Base;
-  
     let array = 0...3;
     let new_array = array <- 4;
     let new_array_2 = array <- 4 <- 5 <- 6;
@@ -73,7 +71,7 @@
     let index = 8;
   
     let partitioned = merged_array_2
-      |> Array.partition(fn (item) -> { item % 2 == 0 });
+      |> Base_Array.partition(fn (item) -> { item % 2 == 0 });
     let even = partitioned[0];
     let odd = partitioned[1];
   
@@ -98,42 +96,48 @@
   
       {odd}
   
-      {merged_array_2 |> Array.keep(fn (item) -> { item % 2 == 0 })}
-  
-      {if (merged_array_2 |> Array.find(fn (item) -> { item == 3 })) { "FOUND" } else { "NOT FOUND" }}
+      {merged_array_2 |> Base_Array.keep(fn (item) -> { item % 2 == 0 })}
   
       {
-        if (merged_array_2 |> Array.find(fn (item) -> { item == -10 })) {
+        if (merged_array_2 |> Base_Array.find(fn (item) -> { item == 3 })) {
           "FOUND"
         } else {
           "NOT FOUND"
         }
       }
   
-      {even |> Array.every(fn (item) -> { item % 2 == 0 })}
-      {merged_array_2 |> Array.some(fn (item) -> { item % 2 == 0 })}
-      {merged_array_2 |> Array.every(fn (item) -> { item % 2 == 0 })}
-      {merged_array_2 |> Array.some(fn (item) -> { item < 0 })}
       {
-        Array.make(6)
-          |> Array.map(fn (item) -> item + 1)
-          |> Array.reduce(0, fn (acc, item) -> item + acc)
+        if (merged_array_2 |> Base_Array.find(fn (item) -> { item == -10 })) {
+          "FOUND"
+        } else {
+          "NOT FOUND"
+        }
       }
   
-      {merged_array_2 |> Array.take_until(fn (item) -> item == 5)}
+      {even |> Base_Array.every(fn (item) -> { item % 2 == 0 })}
+      {merged_array_2 |> Base_Array.some(fn (item) -> { item % 2 == 0 })}
+      {merged_array_2 |> Base_Array.every(fn (item) -> { item % 2 == 0 })}
+      {merged_array_2 |> Base_Array.some(fn (item) -> { item < 0 })}
+      {
+        Base_Array.make(6)
+          |> Base_Array.map(fn (item) -> item + 1)
+          |> Base_Array.reduce(0, fn (acc, item) -> item + acc)
+      }
   
-      {1...10 |> Array.slice(2, 5)}
+      {merged_array_2 |> Base_Array.take_until(fn (item) -> item == 5)}
+  
+      {1...10 |> Base_Array.slice(2, 5)}
   
       {
         ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
-          |> Array.chunk(3)
-          |> Array.map(fn (chunk) -> Array.join(chunk, ","))
-          |> Array.map(fn (item) -> <div> {item} </div>)
+          |> Base_Array.chunk(3)
+          |> Base_Array.map(fn (chunk) -> Base_Array.join(chunk, ","))
+          |> Base_Array.map(fn (item) -> <div> {item} </div>)
       }
   
-      {[5, 1, 2, 3, 6, 3, 4, 7] |> Array.sort(fn (a, b) -> a - b)}
+      {[5, 1, 2, 3, 6, 3, 4, 7] |> Base_Array.sort(fn (a, b) -> a - b)}
   
-      {[1, 1, 2, 3, 4, 3, 4, 7] |> Array.unique}
+      {[1, 1, 2, 3, 4, 3, 4, 7] |> Base_Array.unique}
     </section>
   }
   
