@@ -93,10 +93,10 @@ jobs:
 
       - name: Install NPM Dependencies
         run: |
-          cd js
+          cd js/pincfmt
           npm ci
 
       - name: Publish to Package Registry
         run: |
-          cd js
+          cd js/pincfmt
           npm publish
