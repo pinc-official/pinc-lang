@@ -1,8 +1,7 @@
 open Types
 module Diagnostics = Pinc_Diagnostics
 module Types = Types
-module Ast = Pinc_Parser.Ast
-module Parser = Pinc_Parser
+module Ast = Pinc_Types.Ast
 module Location = Diagnostics.Location
 module Source = Pinc_Source
 
@@ -1278,8 +1277,7 @@ and eval_template ~state template =
              }
 ;;
 
-let eval_meta sources =
-  let declarations = Parser.get_ast sources in
+let eval_meta declarations =
   let state =
     State.make
       ~mode:`Portal_Collection
@@ -1352,10 +1350,4 @@ let eval_declarations
   let meta_tree = state.tag_meta in
 
   (html, meta_tree)
-;;
-
-let eval_sources ?tag_meta_provider ~tag_data_provider ~root sources =
-  sources
-  |> Parser.get_ast
-  |> eval_declarations ?tag_meta_provider ~tag_data_provider ~root
 ;;

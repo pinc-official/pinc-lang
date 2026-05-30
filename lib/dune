@@ -3,6 +3,7 @@
  (public_name pinc-lang)
  (libraries
   Pinc_Core
+  Pinc_Types
   Pinc_Source
   Pinc_Diagnostics
   Pinc_Parser

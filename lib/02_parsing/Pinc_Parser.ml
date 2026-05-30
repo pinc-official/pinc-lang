@@ -1,6 +1,5 @@
 module Parsetree = Parsetree
 module Transformer = Transformer
-module Ast = Ast
 
 type t = Parser.t
 type parsetree = Parsetree.t

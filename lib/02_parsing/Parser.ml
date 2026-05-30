@@ -1,5 +1,6 @@
 module Parsetree = Parsetree
 module Diagnostics = Pinc_Diagnostics
+module Operators = Pinc_Types.Operators
 open Diagnostics
 
 type t = {
@@ -826,7 +827,12 @@ module Rules = struct
                     | Some right -> Parsetree.P_BinaryExpression (left, operator, right))
               in
               let expect_close token = expect token t in
-              Operators.Binary.get_closing_token operator |> Option.iter expect_close;
+              let () =
+                match operator with
+                | Operators.Binary.FUNCTION_CALL -> expect_close Token.RIGHT_PAREN
+                | Operators.Binary.BRACKET_ACCESS -> expect_close Token.RIGHT_BRACK
+                | _ -> ()
+              in
               let expression_end = t.token.location in
               let expression_loc =
                 Location.merge ~s:expression_start ~e:expression_end ()

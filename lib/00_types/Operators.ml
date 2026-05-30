@@ -49,12 +49,6 @@ module Binary = struct
     | _ -> Assoc_Left
   ;;
 
-  let get_closing_token = function
-    | FUNCTION_CALL -> Some Token.RIGHT_PAREN
-    | BRACKET_ACCESS -> Some Token.RIGHT_BRACK
-    | _ -> None
-  ;;
-
   let to_string = function
     | DOT_ACCESS -> "."
     | POW -> "**"

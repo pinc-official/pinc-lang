@@ -24,5 +24,5 @@ type public_tag = {
   public_tag_initial_value : primitive_value option;
 }
 
-val transform : Parsetree.t -> Ast.t
+val transform : Parsetree.t -> Pinc_Types.Ast.t
 val all_tags : string -> Parsetree.t -> public_tag list

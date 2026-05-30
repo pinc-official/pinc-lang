@@ -1,6 +1,6 @@
 module Diagnostics = Pinc_Diagnostics
 module Source = Pinc_Source
-module Ast = Pinc_Parser.Ast
+module Ast = Pinc_Types.Ast
 module Parser = Pinc_Parser
 module Formatter = Pinc_Format
 

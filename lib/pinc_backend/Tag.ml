@@ -1,7 +1,7 @@
 open State
-open Pinc_Parser.Ast
+open Pinc_Types.Ast
 open Types.Type_Value
-module Ast = Pinc_Parser.Ast
+module Ast = Pinc_Types.Ast
 
 let find_path path value =
   let rec aux path value =
@@ -672,8 +672,8 @@ module Tag_Array = struct
     let output, child_meta =
       data
       |> Option.map (function
-        | { value_desc = Array _; value_loc } as x -> begin
-            match Helpers.Expect.(required (array (required string))) x with
+        | { value_desc = Array _; value_loc } as x ->
+            begin match Helpers.Expect.(required (array (required string))) x with
             | Ok v -> v
             | Error (`UnexpectedType value_loc) ->
                 Pinc_Diagnostics.raise_error
@@ -688,7 +688,7 @@ module Tag_Array = struct
                      "Expected attribute %s to be an array of keys. Did not recieve the \
                       array at all."
                      (key |> List.rev |> List.hd))
-          end
+            end
         | { value_desc = _; value_loc } ->
             Pinc_Diagnostics.raise_error
               value_loc

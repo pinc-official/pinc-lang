@@ -2,7 +2,7 @@
  (name Pinc_Backend)
  (public_name pinc-lang.backend)
  (flags :standard -open Pinc_Core)
- (libraries Pinc_Core Pinc_Source Pinc_Diagnostics Pinc_Parser)
+ (libraries Pinc_Core Pinc_Types Pinc_Source Pinc_Diagnostics)
  (preprocess
   (pps ppx_deriving.show))
  (instrumentation

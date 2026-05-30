@@ -1,4 +1,4 @@
-module Operators = Operators
+module Operators = Pinc_Types.Operators
 
 type annotation =
   | P_Comment_Annotation of string

@@ -15,7 +15,7 @@ let get_files_with_ext ~ext dir =
   loop [] [ dir ]
 ;;
 
-let get_declarations_from ~directory () =
+let get_sources_from ~directory () =
   directory |> get_files_with_ext ~ext:".pi" |> List.map Source.of_file
 ;;
 
@@ -24,10 +24,11 @@ let main =
 
   let directory = Sys.argv.(1) in
   let root = Sys.argv.(2) in
-  let declarations = get_declarations_from ~directory () in
+  let sources = get_sources_from ~directory () in
   try
-    declarations
-    |> Interpreter.eval_sources ~root ~tag_data_provider:Helpers.noop_data_provider
+    sources
+    |> Parser.get_ast
+    |> Interpreter.eval_declarations ~root ~tag_data_provider:Helpers.noop_data_provider
     |> fst
     |> print_endline
   with Diagnostics.Pinc_error -> exit 1

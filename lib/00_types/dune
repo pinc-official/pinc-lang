@@ -1,0 +1,5 @@
+(library
+ (name Pinc_Types)
+ (public_name pinc-lang.types)
+ (flags :standard -open Pinc_Core)
+ (libraries Pinc_Core Pinc_Source Pinc_Diagnostics))

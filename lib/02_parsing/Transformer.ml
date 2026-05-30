@@ -1,4 +1,4 @@
-open Ast
+open Pinc_Types.Ast
 
 type primitive_value =
   [ `String of string
@@ -559,7 +559,7 @@ and transform_declarations env declarations =
   |> StringMap.fold_map ~init:env ~f:transform_declaration
 ;;
 
-let transform (declarations : Parsetree.t) : Ast.t =
+let transform (declarations : Parsetree.t) : Pinc_Types.Ast.t =
   let env = Env.empty in
   let _env, ast = transform_declarations env declarations in
   ast
