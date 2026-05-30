@@ -2,4 +2,4 @@
  (name Pinc_Diagnostics)
  (public_name pinc-lang.diagnostics)
  (flags :standard -open Pinc_Core)
- (libraries Pinc_Core Pinc_Source fmt))
+ (libraries Pinc_Core Pinc_Source))

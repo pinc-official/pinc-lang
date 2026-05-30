@@ -63,5 +63,5 @@ let to_string loc =
 let pp ppf loc =
   match (Pinc_Source.name loc.loc_start.source, loc = none) with
   | None, _ | _, true -> ()
-  | Some _, _ -> Fmt.pf ppf "%a" Fmt.(styled `Faint string) (to_string loc)
+  | Some _, _ -> Format.fprintf ppf "%s" (Style.faint (to_string loc))
 ;;

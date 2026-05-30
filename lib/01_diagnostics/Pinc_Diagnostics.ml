@@ -28,26 +28,17 @@ let print_code ~color ~loc source_code =
 
   let buf = Buffer.create 400 in
   let ppf = Format.formatter_of_buffer buf in
-  Fmt.set_style_renderer
-    ppf
-    (if color <> `None then
-       `Ansi_tty
-     else
-       `None);
 
   let () =
     lines
     |> List.iter @@ fun (line_number, line) ->
-       if line_number >= highlight_line_start && line_number <= highlight_line_end then
-         Fmt.pf
-           ppf
-           "%a"
-           Fmt.(styled `Bold (styled color (fun ppf -> Fmt.pf ppf "%4d")))
-           line_number
+       if line_number >= highlight_line_start && line_number <= highlight_line_end then (
+         let num_str = Printf.sprintf "%4d" line_number in
+         Format.fprintf ppf "%s" (Style.wrap ~bold:true ?color num_str))
        else
-         Fmt.pf ppf "%4d" line_number;
+         Format.fprintf ppf "%4d" line_number;
 
-       Fmt.pf ppf " %a " Fmt.(styled `Faint string) "│";
+       Format.fprintf ppf " %s " (Style.faint "│");
 
        let did_highlight = ref false in
 
@@ -73,22 +64,23 @@ let print_code ~color ~loc source_code =
          |> String.iteri @@ fun column_index ch ->
             let column_number = column_index + 1 in
             if should_highlight column_number then (
-              Fmt.pf ppf "%a" Fmt.(styled `Bold (styled color char)) ch;
+              let ch_str = String.make 1 ch in
+              Format.fprintf ppf "%s" (Style.wrap ~bold:true ?color ch_str);
               did_highlight := true)
             else
-              Fmt.pf ppf "%a" Fmt.(styled `None char) ch
+              Format.fprintf ppf "%c" ch
        in
 
        let () =
-         if !did_highlight && color = `None then (
+         if !did_highlight && color = None then (
            Format.pp_print_newline ppf ();
-           Fmt.pf ppf "     %a " Fmt.(styled `Faint string) "│";
+           Format.fprintf ppf "     %s " (Style.faint "│");
            line
            |> String.iteri @@ fun column_index _ch ->
               if should_highlight (succ column_index) then
-                Fmt.pf ppf "^"
+                Format.fprintf ppf "^"
               else
-                Fmt.pf ppf " ")
+                Format.fprintf ppf " ")
        in
 
        Format.pp_print_newline ppf ()
@@ -98,15 +90,15 @@ let print_code ~color ~loc source_code =
 ;;
 
 let print_header ppf ~color text =
-  Fmt.pf ppf "%a" Fmt.(styled `Bold (styled color string)) text
+  Format.fprintf ppf "%s" (Style.wrap ~bold:true ?color text)
 ;;
 
 let print ~kind ppf (loc : Location.t) =
   let color =
     match (Sys.getenv_opt "NO_COLOR", kind) with
-    | (None | Some ""), `warning -> `Yellow
-    | (None | Some ""), `error -> `Red
-    | _ -> `None
+    | (None | Some ""), `warning -> Some `Yellow
+    | (None | Some ""), `error -> Some `Red
+    | _ -> None
   in
 
   let header =
@@ -114,24 +106,17 @@ let print ~kind ppf (loc : Location.t) =
     | `warning -> "WARNING"
     | `error -> "ERROR"
   in
-  Fmt.pf ppf "@[%a@] " (print_header ~color) header;
-  Fmt.pf ppf "@[%a@]@," Location.pp loc;
+  Format.fprintf ppf "@[%a@] " (print_header ~color) header;
+  Format.fprintf ppf "@[%a@]@," Location.pp loc;
 
   let source_code = loc |> Location.get_source |> Source.content in
   if source_code <> "" then
-    Fmt.pf ppf "@,%s" (print_code ~color ~loc source_code)
-;;
-
-let set_renderer ppf =
-  match Sys.getenv_opt "NO_COLOR" with
-  | None | Some "" -> Fmt.set_style_renderer ppf `Ansi_tty
-  | Some _ -> Fmt.set_style_renderer ppf `None
+    Format.fprintf ppf "@,%s" (print_code ~color ~loc source_code)
 ;;
 
 let print_error location message =
   let ppf = Format.err_formatter in
-  set_renderer ppf;
-  Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`error) location message
+  Format.fprintf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`error) location message
 ;;
 
 let raise_error location message =
@@ -141,6 +126,10 @@ let raise_error location message =
 
 let warn location message =
   let ppf = Format.err_formatter in
-  set_renderer ppf;
-  Fmt.pf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`warning) location message
+  Format.fprintf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`warning) location message
+;;
+
+let flush () =
+  let ppf = Format.err_formatter in
+  Format.fprintf ppf "%!"
 ;;

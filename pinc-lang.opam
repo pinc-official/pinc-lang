@@ -8,7 +8,6 @@ homepage: "https://github.com/pinc-official/pinc-lang"
 bug-reports: "https://github.com/pinc-official/pinc-lang/issues"
 depends: [
   "ocaml" {>= "4.12"}
-  "fmt"
   "dune" {>= "3.17"}
   "pprint"
   "crunch"

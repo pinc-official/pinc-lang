@@ -25,7 +25,6 @@
  (depends
   (ocaml
    (>= 4.12))
-  fmt
   dune
   pprint
   crunch
