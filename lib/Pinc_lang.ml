@@ -10,4 +10,5 @@ module Interpreter = struct
 end
 
 module StringMap = Pinc_Core.StringMap
+module StringSet = Pinc_Core.StringSet
 module Helpers = Pinc_Backend.Helpers

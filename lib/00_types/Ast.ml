@@ -139,6 +139,13 @@ and declaration_kind =
 
 and t = declaration StringMap.t
 
+let marshal (d : t) = Marshal.to_string d []
+
+let unmarshal s =
+  let result : t = Marshal.from_string s 0 in
+  result
+;;
+
 module Declaration = struct
   let marshal (d : declaration) = Marshal.to_string d []
 

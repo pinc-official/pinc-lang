@@ -94,12 +94,14 @@ jobs:
           name: js
           path: js
 
-      - name: Install NPM Dependencies
+      - name: Publish pincfmt
         run: |
           cd js/pincfmt
           npm ci
+          node ./.github/workflows/publish-if-not-exists.js
 
-      - name: Publish to Package Registry
+      - name: Publish pincjsc
         run: |
-          cd js/pincfmt
-          npm publish
+          cd js/pincjsc
+          npm ci
+          node ./.github/workflows/publish-if-not-exists.js
