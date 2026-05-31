@@ -8,7 +8,7 @@ let main =
   try
     let result = Formatter.format [ source ] in
     print_endline result
-  with Diagnostics.Pinc_error -> exit 1
+  with Diagnostics.Pinc_error _ -> exit 1
 ;;
 
 let () = main
