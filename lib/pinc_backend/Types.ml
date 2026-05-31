@@ -54,10 +54,7 @@ and Type_State : sig
     mode : [ `Portal_Collection | `Portal_Render ];
   }
 
-  and environment = {
-    mutable scope : binding StringMap.t list;
-    mutable use_scope : Type_Library.t StringMap.t;
-  }
+  and environment = { mutable scope : binding StringMap.t list }
 
   and binding = {
     is_mutable : bool;
@@ -70,22 +67,15 @@ end =
 and Type_Library : sig
   type t
 
-  val make : bindings:Type_State.binding StringMap.t -> includes:t StringMap.t -> t
+  val make : bindings:Type_State.binding StringMap.t -> t
   val get_bindings : t -> Type_State.binding StringMap.t
   val get_binding : string -> t -> Type_State.binding option
-  val get_includes : t -> t StringMap.t
-  val get_include : string -> t -> t option
 end = struct
-  type t = {
-    bindings : Type_State.binding StringMap.t;
-    includes : t StringMap.t;
-  }
+  type t = { bindings : Type_State.binding StringMap.t }
 
-  let make ~bindings ~includes = { bindings; includes }
+  let make ~bindings = { bindings }
   let get_bindings t = t.bindings
   let get_binding id t = t.bindings |> StringMap.find_opt id
-  let get_includes t = t.includes
-  let get_include id t = t.includes |> StringMap.find_opt id
 end
 
 and Type_Store : sig
@@ -117,7 +107,6 @@ and Type_Tag : sig
     | `TemplatePlaceholder
     | `Errors of string list
     ]
-  [@@deriving show]
 
   type kind =
     | Tag_String

@@ -14,7 +14,7 @@ let make
   {
     declarations;
     output = { value_desc = Null; value_loc = Pinc_Diagnostics.Location.none };
-    environment = { scope = []; use_scope = StringMap.empty };
+    environment = { scope = [] };
     tag_data_provider;
     root_tag_data_provider;
     tag_meta_provider;
@@ -28,10 +28,7 @@ let make
 ;;
 
 let add_scope t =
-  {
-    t with
-    environment = { t.environment with scope = StringMap.empty :: t.environment.scope };
-  }
+  { t with environment = { scope = StringMap.empty :: t.environment.scope } }
 ;;
 
 let remove_scope t =
@@ -41,7 +38,7 @@ let remove_scope t =
     | [ hd ] -> [ hd ]
     | _hd :: tl -> tl
   in
-  { t with environment = { t.environment with scope = new_scope } }
+  { t with environment = { scope = new_scope } }
 ;;
 
 let add_value_to_scope ~ident ~value ~is_optional ~is_mutable t =
@@ -51,13 +48,7 @@ let add_value_to_scope ~ident ~value ~is_optional ~is_mutable t =
     | scope :: rest ->
         StringMap.add ident { is_mutable; is_optional; value } scope :: rest
   in
-  let environment = { t.environment with scope = update_scope t } in
-  { t with environment }
-;;
-
-let add_value_to_use_scope ~ident ~value t =
-  let use_scope = StringMap.add ident value t.environment.use_scope in
-  let environment = { t.environment with use_scope } in
+  let environment = { scope = update_scope t } in
   { t with environment }
 ;;
 
@@ -121,7 +112,6 @@ let get_value_from_scope ~ident t =
 let get_output t = t.output
 let add_output ~output t = { t with output }
 let get_bindings t = t.environment.scope |> List.hd
-let get_used_values t = t.environment.use_scope
 
 let add_tag_meta ~meta key t =
   match meta with

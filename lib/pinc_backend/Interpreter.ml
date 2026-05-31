@@ -63,12 +63,11 @@ let rec get_uppercase_identifier_typ ~state ident =
       | None ->
           let s =
             eval_expression
-              ~state:{ state with environment = { state.environment with scope = [] } }
+              ~state:{ state with environment = { scope = [] } }
               declaration_body
           in
           let bindings = s |> State.get_bindings in
-          let includes = s |> State.get_used_values in
-          let library = Type_Library.make ~bindings ~includes in
+          let library = Type_Library.make ~bindings in
           add_library ~library ~ident;
           (state, Some (Definition_Library library)))
 
@@ -158,14 +157,7 @@ and eval_expression ~state expression =
   | Ast.FunctionCall { function_definition; arguments } ->
       eval_function_call ~state ~arguments function_definition
   | Ast.UppercaseIdentifierExpression id ->
-      let state, typ =
-        state
-        |> State.get_used_values
-        |> StringMap.find_opt id
-        |> Option.fold
-             ~some:(fun l -> (state, Some (Definition_Library l)))
-             ~none:(get_uppercase_identifier_typ ~state id)
-      in
+      let state, typ = get_uppercase_identifier_typ ~state id in
       let output =
         {
           value_desc = DefinitionInfo (id, typ, `NotNegated);
