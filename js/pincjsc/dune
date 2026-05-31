@@ -1,0 +1,17 @@
+(executable
+ (promote
+  (only compile.bc.js))
+ (name compile)
+ (modules compile)
+ (modes js)
+ (libraries
+  pinc-lang.core
+  pinc-lang.source
+  pinc-lang.types
+  pinc-lang.parser
+  pinc-lang.backend
+  js_of_ocaml)
+ (js_of_ocaml
+  (compilation_mode whole_program)
+  (sourcemap no)
+  (flags --target-env=nodejs)))

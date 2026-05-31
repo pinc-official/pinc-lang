@@ -1,3 +1,4 @@
+module DependencyGraph = DependencyGraph
 module Parsetree = Parsetree
 module Transformer = Transformer
 

@@ -145,4 +145,34 @@ module String = struct
     else
       empty
   ;;
+
+  let to_hex d =
+    let char_hex n =
+      Char.chr
+        (if n < 10 then
+           Char.code '0' + n
+         else
+           Char.code 'a' + n - 10)
+    in
+    let len = String.length d in
+    let result = Bytes.create (len * 2) in
+    for i = 0 to len - 1 do
+      let x = Char.code d.[i] in
+      Bytes.unsafe_set result (i * 2) (char_hex (x lsr 4));
+      Bytes.unsafe_set result ((i * 2) + 1) (char_hex (x land 0x0f))
+    done;
+    Bytes.unsafe_to_string result
+  ;;
+
+  let of_hex s =
+    let digit c =
+      match c with
+      | '0' .. '9' -> Char.code c - Char.code '0'
+      | 'A' .. 'F' -> Char.code c - Char.code 'A' + 10
+      | 'a' .. 'f' -> Char.code c - Char.code 'a' + 10
+      | _ -> invalid_arg "String.of_hex"
+    in
+    let byte i = (digit s.[i] lsl 4) + digit s.[i + 1] in
+    String.init (String.length s / 2) (fun i -> Char.chr (byte (2 * i)))
+  ;;
 end
