@@ -1,7 +1,7 @@
 module Location = Location
 module Source = Pinc_Source
 
-exception Pinc_error
+exception Pinc_error of string
 
 let print_code ~color ~loc source_code =
   let context_lines = 1 in
@@ -121,7 +121,11 @@ let print_error location message =
 
 let raise_error location message =
   print_error location message;
-  raise Pinc_error
+
+  let buf = Buffer.create 1 in
+  let ppf = Format.formatter_of_buffer buf in
+  Format.fprintf ppf "@[<v>@,%a@,%s@,@]" (print ~kind:`error) location message;
+  raise (Pinc_error (Buffer.contents buf))
 ;;
 
 let warn location message =
