@@ -117,8 +117,10 @@ and Type_Tag : sig
     | Tag_Record
     | Tag_Slot of
         (tag:string ->
+        ?additional_declarations:Ast.t ->
+        ?tag_meta_provider:Type_Tag.meta_provider ->
         tag_data_provider:Type_Tag.data_provider ->
-        tag_meta_provider:Type_Tag.meta_provider ->
+        unit ->
         (string * Type_Tag.meta) list * Type_Value.value)
     | Tag_Store of Type_Store.t
     | Tag_Custom of string
