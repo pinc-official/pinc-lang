@@ -105,3 +105,9 @@ jobs:
           cd js/pincjsc
           npm ci
           node ./.github/workflows/publish-if-not-exists.js
+
+      - name: Publish pincjs
+        run: |
+          cd js/pincjs
+          npm ci
+          node ./.github/workflows/publish-if-not-exists.js
