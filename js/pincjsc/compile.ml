@@ -51,7 +51,21 @@ let compile input out =
         |> List.rev
         |> String.concat ","
       in
-      let export = Printf.sprintf "export default [%S,%s];" key code in
+      let export =
+        Printf.sprintf
+          {|
+            export default function(data, defaultSlot) {
+              return {
+                name: %S,
+                code: [%s],
+                data: data,
+                defaultSlot: defaultSlot,
+              };
+            };
+          |}
+          key
+          code
+      in
       let result = imports ^ code_export ^ export in
 
       let filename = Printf.sprintf "%s.pi.mjs" key in
