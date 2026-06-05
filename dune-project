@@ -31,5 +31,6 @@
   ppx_deriving
   js_of_ocaml
   js_of_ocaml-compiler
+  js_of_ocaml-ppx
   (ocaml-lsp-server :with-dev-setup)
   (ocamlformat :with-dev-setup)))

@@ -1,5 +1,5 @@
 {
-  "name": "@pinc-official/pincjsc",
+  "name": "@pinc-official/pincjs",
   "version": "0.0.1",
   "description": "Provides functions to compile pinc-lang source code to be executable in JavaScript",
   "homepage": "https://github.com/pinc-official/pinc-lang#readme",
@@ -13,11 +13,10 @@
   "license": "MIT",
   "author": "Torben Ewert <torben@ewert-online.com>",
   "type": "commonjs",
-  "main": "./pincjsc.js",
-  "types": "./pincjsc.d.ts",
+  "main": "./pincjs.js",
   "files": [
-    "./compile.bc.js",
-    "./pincjsc.js"
+    "./pincjs.bc.js",
+    "./pincjs.js"
   ],
   "dependencies": {}
 }

@@ -1,0 +1,19 @@
+(executable
+ (promote
+  (only pincjs.bc.js))
+ (name pincjs)
+ (modules pincjs)
+ (modes js)
+ (libraries
+  pinc-lang.core
+  pinc-lang.diagnostics
+  pinc-lang.types
+  pinc-lang.backend
+  js_of_ocaml)
+ (js_of_ocaml
+  (compilation_mode whole_program)
+  (sourcemap no)
+  (flags
+   (--opt 3)))
+ (preprocess
+  (pps js_of_ocaml-ppx)))
