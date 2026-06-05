@@ -540,7 +540,18 @@ module Tag_Slot = struct
 
     let tag =
       Types.Type_Tag.Tag_Slot
-        (fun ~tag ~tag_data_provider ~tag_meta_provider ->
+        (fun ~tag
+             ?(additional_declarations = StringMap.empty)
+             ?(tag_meta_provider = Helpers.noop_meta_provider)
+             ~tag_data_provider
+             ()
+           ->
+          let declarations =
+            StringMap.union
+              (fun _ _ b -> Some b)
+              additional_declarations
+              state.declarations
+          in
           let state =
             State.make
               ~context:state.context
@@ -550,7 +561,7 @@ module Tag_Slot = struct
               ~tag_data_provider
               ~root_tag_meta_provider:state.root_tag_meta_provider
               ~tag_meta_provider
-              state.declarations
+              declarations
           in
 
           let state = tag |> DeclarationEvaluator.eval ~eval_expression ~state in
