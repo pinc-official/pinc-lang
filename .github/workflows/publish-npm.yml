@@ -73,6 +73,13 @@ jobs:
   publish:
     name: Publish to registry
     needs: [build]
+    strategy:
+      fail-fast: false
+      matrix:
+        package-directory:
+          - js/pincfmt
+          - js/pincjsc
+          - js/pincjs
     permissions:
       id-token: write
       contents: read
@@ -94,20 +101,8 @@ jobs:
           name: js
           path: js
 
-      - name: Publish pincfmt
+      - name: Publish ${{ matrix.package-directory }}
         run: |
-          cd js/pincfmt
+          cd ${{ matrix.package-directory }}
           npm ci
-          node ./.github/workflows/publish-if-not-exists.js
-
-      - name: Publish pincjsc
-        run: |
-          cd js/pincjsc
-          npm ci
-          node ./.github/workflows/publish-if-not-exists.js
-
-      - name: Publish pincjs
-        run: |
-          cd js/pincjs
-          npm ci
-          node ./.github/workflows/publish-if-not-exists.js
+          node ${{ github.workspace }}/.github/workflows/publish-if-not-exists.js
