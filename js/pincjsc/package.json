@@ -1,6 +1,6 @@
 {
   "name": "@pinc-official/pincjsc",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Provides functions to compile pinc-lang source code to be executable in JavaScript",
   "homepage": "https://github.com/pinc-official/pinc-lang#readme",
   "bugs": {
@@ -17,7 +17,13 @@
   "types": "./pincjsc.d.ts",
   "files": [
     "./compile.bc.js",
-    "./pincjsc.js"
+    "./pincjsc.js",
+    "./pincjsc-cli.js"
   ],
-  "dependencies": {}
+  "bin": {
+    "pincjsc": "./pincjsc-cli.js"
+  },
+  "dependencies": {
+    "commander": "^15.0.0"
+  }
 }
