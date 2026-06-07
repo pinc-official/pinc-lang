@@ -8,7 +8,7 @@
   pinc-lang.core
   pinc-lang.diagnostics
   pinc-lang.types
-  pinc-lang.backend
+  pinc-lang.interpreter
   js_of_ocaml)
  (js_of_ocaml
   (compilation_mode whole_program)

@@ -1,6 +1,6 @@
 (library
  (name Pinc_Backend)
- (public_name pinc-lang.backend)
+ (public_name pinc-lang.interpreter)
  (flags :standard -open Pinc_Core)
  (libraries Pinc_Core Pinc_Types Pinc_Source Pinc_Diagnostics)
  (preprocess
