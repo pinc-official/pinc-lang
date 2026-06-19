@@ -321,7 +321,7 @@ and transform_unary_expression env op right =
 and transform_binary_expression env left op right =
   let env, left = transform_expression env left in
   let env, right = transform_expression env right in
-  match (op, left.expression_desc, right.expression_desc) with
+  (* match (op, left.expression_desc, right.expression_desc) with
   (* ADDITION *)
   | Operators.Binary.PLUS, Int x, Int y -> (env, Int (x + y))
   | Operators.Binary.PLUS, Float x, Int y -> (env, Float (x +. float_of_int y))
@@ -344,7 +344,8 @@ and transform_binary_expression env left op right =
   | Operators.Binary.DIV, Int x, Float y when y <> 0. -> (env, Float (float_of_int x /. y))
   | Operators.Binary.DIV, Float x, Float y when y <> 0. -> (env, Float (x /. y))
   (* BASE CASE *)
-  | _ -> (env, BinaryExpression (left, op, right))
+  | _ -> (env, BinaryExpression (left, op, right)) *)
+  (env, BinaryExpression (left, op, right))
 
 and transform_for_in env ~index ~iterator ~reverse ~iterable ~body =
   let env, index = Option.fold_map ~init:env ~f:transform_lowercase_id index in
