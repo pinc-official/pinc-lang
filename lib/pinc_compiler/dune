@@ -1,0 +1,5 @@
+(library
+ (name Pinc_Compiler)
+ (public_name pinc-lang.compiler)
+ (flags :standard -open Pinc_Core)
+ (libraries Pinc_Core Pinc_Types Pinc_Source Pinc_Parser Pinc_Bytecode))

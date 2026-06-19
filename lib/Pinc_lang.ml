@@ -9,6 +9,9 @@ module Interpreter = struct
   module Types = Pinc_Backend.Interpreter.Types
 end
 
+module Compiler = Pinc_Compiler.Compiler
+module Bytecode = Pinc_Bytecode.Bytecode
+module Vm = Pinc_Vm.Vm
 module StringMap = Pinc_Core.StringMap
 module StringSet = Pinc_Core.StringSet
 module Helpers = Pinc_Backend.Helpers

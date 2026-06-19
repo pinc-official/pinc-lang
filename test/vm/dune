@@ -1,0 +1,5 @@
+(cram
+ (deps
+  %{bin:print_vm}
+  %{bin:print_instructions}
+  (source_tree .)))

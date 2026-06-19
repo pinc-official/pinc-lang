@@ -8,4 +8,7 @@
   Pinc_Diagnostics
   Pinc_Parser
   Pinc_Format
-  Pinc_Backend))
+  Pinc_Backend
+  Pinc_Bytecode
+  Pinc_Compiler
+  Pinc_Vm))

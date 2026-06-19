@@ -1,0 +1,28 @@
+module T = struct
+  include Int
+
+  let make i =
+    if i > 65535 then
+      raise (Invalid_argument "UInt16.make")
+    else
+      i
+  ;;
+
+  let width _ = 2
+
+  let write bytes offset t =
+    Bytes.set_uint16_be bytes offset t;
+    offset + width t
+  ;;
+
+  let read bytes offset =
+    let result = Bytes.get_uint16_be bytes offset in
+    (offset + width result, result)
+  ;;
+
+  let incr = incr
+  let pp fmt = Format.fprintf fmt "0x%04X"
+end
+
+include T
+module Map = Map.Make (T)

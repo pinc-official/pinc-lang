@@ -1,0 +1,8 @@
+(library
+ (name Pinc_Vm)
+ (public_name pinc-lang.vm)
+ (flags :standard -open Pinc_Core)
+ (libraries Pinc_Core Pinc_Types Pinc_Bytecode)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect ppx_inline_test)))

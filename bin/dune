@@ -7,6 +7,22 @@
  (libraries pinc_lang))
 
 (executable
+ (name print_vm)
+ (public_name print_vm)
+ (modules print_vm)
+ (modes native)
+ (ocamlopt_flags -O3)
+ (libraries pinc_lang))
+
+(executable
+ (name print_instructions)
+ (public_name print_instructions)
+ (modules print_instructions)
+ (modes native)
+ (ocamlopt_flags -O3)
+ (libraries pinc_lang))
+
+(executable
  (name pincfmt)
  (public_name pincfmt)
  (modules pincfmt)

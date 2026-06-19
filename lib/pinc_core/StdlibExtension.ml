@@ -176,3 +176,22 @@ module String = struct
     String.init (String.length s / 2) (fun i -> Char.chr (byte (2 * i)))
   ;;
 end
+
+module Bytes = struct
+  include Bytes
+
+  let to_hex t = t |> Bytes.to_string |> String.to_hex
+  let of_hex str = str |> String.of_hex |> Bytes.of_string
+
+  let pp_hum t =
+    let buf = Buffer.create 16 in
+    Bytes.iter (fun c -> Printf.bprintf buf "0x%02X " (Char.code c)) t;
+    String.trim (Buffer.contents buf)
+  ;;
+end
+
+module Buffer = struct
+  include Buffer
+
+  let pp_bytes t = t |> Buffer.to_bytes |> Bytes.pp_hum
+end
