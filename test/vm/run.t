@@ -5,3 +5,4 @@
   0000 I_Constant 0x0001
   0003 I_Constant 0x0002
   0006 I_Add
+  0007 I_Pop

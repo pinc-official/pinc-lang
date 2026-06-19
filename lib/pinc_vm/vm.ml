@@ -37,6 +37,8 @@ let stack_top t =
   | n -> t.stack.(n - 1)
 ;;
 
+let last_popped_stack_element t = t.stack.(t.stack_pointer)
+
 let run t =
   let ip = ref 0 in
   let instruction_length = Bytes.length t.bytecode.instructions in
@@ -44,6 +46,7 @@ let run t =
     let new_ip, op = Instruction.decode t.bytecode.instructions !ip in
     let () =
       match op with
+      | Instruction.I_Pop -> ignore @@ pop t
       | Instruction.I_Constant addr ->
           let constant = UInt16.Map.find addr t.bytecode.constants in
           push t constant
@@ -62,4 +65,6 @@ let run t =
   t
 ;;
 
-let eval bytecode = bytecode |> make |> run |> stack_top |> Value.to_string
+let eval bytecode =
+  bytecode |> make |> run |> last_popped_stack_element |> Value.to_string
+;;

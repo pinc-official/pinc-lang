@@ -69,7 +69,9 @@ and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
   | OptionalLetStatement (_, e)
   | OptionalMutableLetStatement (_, e)
   | MutationStatement (_, e)
-  | ExpressionStatement e -> compile_expr t e
+  | ExpressionStatement e ->
+      let t = compile_expr t e in
+      emit t Pinc_Bytecode.Instruction.I_Pop
 
 and compile_tag t (_tag : Pinc_Types.Ast.tag) = t
 

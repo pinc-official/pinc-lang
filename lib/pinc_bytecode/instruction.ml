@@ -1,13 +1,16 @@
 type t =
+  | I_Pop
   | I_Constant of UInt16.t
   | I_Add
 
 let byte = function
+  | I_Pop -> 0x00
   | I_Constant _ -> 0x01
   | I_Add -> 0x02
 ;;
 
 let operands_length = function
+  | I_Pop -> 0
   | I_Constant addr -> UInt16.width addr
   | I_Add -> 0
 ;;
@@ -16,6 +19,7 @@ let decode bytes offset =
   let instruction = Bytes.get_uint8 bytes offset in
   let offset = offset + 1 in
   match instruction with
+  | 0x00 -> (offset, I_Pop)
   | 0x01 ->
       let offset, addr = UInt16.read bytes offset in
       (offset, I_Constant addr)
@@ -26,6 +30,7 @@ let decode bytes offset =
 ;;
 
 let pp fmt = function
+  | I_Pop -> Format.fprintf fmt "I_Pop"
   | I_Constant addr -> Format.fprintf fmt "I_Constant %a" UInt16.pp addr
   | I_Add -> Format.fprintf fmt "I_Add"
 ;;
@@ -42,6 +47,7 @@ let to_bytes t =
 
   let () =
     match t with
+    | I_Pop -> ()
     | I_Constant addr -> offset := UInt16.write bytes !offset addr
     | I_Add -> ()
   in
