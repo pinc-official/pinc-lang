@@ -1,0 +1,27 @@
+component Add {
+  7 + 5
+}
+
+component Sub {
+  7 - 5
+}
+
+component Div {
+  7 / 5
+}
+
+component Mul {
+  7 * 5
+}
+
+component Mod {
+  7 % 5
+}
+
+component Pow {
+  7 ** 5
+}
+
+component Math {
+  5 * 3 + 2 / (6 + 4 * 8) ** 10
+}
