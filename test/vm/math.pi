@@ -22,6 +22,14 @@ component Pow {
   7 ** 5
 }
 
+component MinusInt {
+  -5
+}
+
+component MinusFloat {
+  -3.14
+}
+
 component Math {
-  5 * 3 + 2 / (6 + 4 * 8) ** 10
+  5 * 3 + 2 / (6 + 4 * 8) ** 10 + -10
 }

@@ -54,7 +54,14 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | TemplateExpression node -> compile_template_node t node
   | BlockExpression stmts -> List.fold_left compile_stmt t stmts
   | ConditionalExpression _ -> t
-  | UnaryExpression (_, e) -> compile_expr t e
+  | UnaryExpression (op, e) ->
+      let t = compile_expr t e in
+      let t =
+        match op with
+        | Pinc_Types.Operators.Unary.MINUS -> emit t Pinc_Bytecode.Instruction.I_Minus
+        | Pinc_Types.Operators.Unary.NOT -> emit t Pinc_Bytecode.Instruction.I_Not
+      in
+      t
   | BinaryExpression (l, op, r) ->
       let t = compile_expr t l in
       let t = compile_expr t r in

@@ -17,6 +17,8 @@ type t =
   | I_Less_Equal
   | I_And
   | I_Or
+  | I_Minus
+  | I_Not
 
 let byte = function
   | I_Pop -> 0x00
@@ -37,6 +39,8 @@ let byte = function
   | I_Less_Equal -> 0x0F
   | I_And -> 0x10
   | I_Or -> 0x11
+  | I_Minus -> 0x12
+  | I_Not -> 0x13
 ;;
 
 let operands_length = function
@@ -57,7 +61,9 @@ let operands_length = function
   | I_Less
   | I_Less_Equal
   | I_And
-  | I_Or -> 0
+  | I_Or
+  | I_Minus
+  | I_Not -> 0
 ;;
 
 let decode bytes offset =
@@ -84,6 +90,8 @@ let decode bytes offset =
   | 0x0F -> (offset, I_Less_Equal)
   | 0x10 -> (offset, I_And)
   | 0x11 -> (offset, I_Or)
+  | 0x12 -> (offset, I_Minus)
+  | 0x13 -> (offset, I_Not)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -108,6 +116,8 @@ let pp fmt = function
   | I_Less_Equal -> Format.fprintf fmt "I_Less_Equal"
   | I_And -> Format.fprintf fmt "I_And"
   | I_Or -> Format.fprintf fmt "I_Or"
+  | I_Minus -> Format.fprintf fmt "I_Minus"
+  | I_Not -> Format.fprintf fmt "I_Not"
 ;;
 
 let to_bytes t =
@@ -139,7 +149,9 @@ let to_bytes t =
     | I_Less
     | I_Less_Equal
     | I_And
-    | I_Or -> ()
+    | I_Or
+    | I_Minus
+    | I_Not -> ()
   in
 
   bytes

@@ -37,3 +37,7 @@ component Less {
 component LessEqual {
   3 <= 5
 }
+
+component Not {
+  !true
+}

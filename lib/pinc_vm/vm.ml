@@ -160,6 +160,32 @@ and execute_binary_or l r =
     Value.constant_false
 ;;
 
+let rec execute_unary_operation t op =
+  let r = Stack.pop t.stack in
+  let result =
+    match op with
+    | Operators.Unary.MINUS -> execute_unary_minus r
+    | Operators.Unary.NOT -> execute_unary_not r
+  in
+  Stack.push t.stack result
+
+and execute_unary_minus r =
+  match r with
+  | Value.Int i -> Value.Int (Int.neg i)
+  | Float f -> Value.Float (Float.neg f)
+  | _ ->
+      raise_notrace
+        (Invalid_argument
+           "Invalid usage of unary `-` operator. You are only able to negate integers or \
+            floats.")
+
+and execute_unary_not r =
+  if Value.is_true r then
+    Value.constant_false
+  else
+    Value.constant_true
+;;
+
 let run t =
   let ip = ref 0 in
   let instruction_length = Bytes.length t.bytecode.instructions in
@@ -188,6 +214,8 @@ let run t =
       | Instruction.I_Less_Equal -> execute_binary_operation t Operators.Binary.LESS_EQUAL
       | Instruction.I_And -> execute_binary_operation t Operators.Binary.AND
       | Instruction.I_Or -> execute_binary_operation t Operators.Binary.OR
+      | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
+      | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
     in
     ip := new_ip
   done;

@@ -52,8 +52,24 @@
   0006 I_Pow
   0007 I_Pop
 
+  $ NO_COLOR="1" print_vm . MinusInt
+  -5
+
+  $ NO_COLOR="1" print_instructions . MinusInt
+  0000 I_Constant 0x0001
+  0003 I_Minus
+  0004 I_Pop
+
+  $ NO_COLOR="1" print_vm . MinusFloat
+  -3.14
+
+  $ NO_COLOR="1" print_instructions . MinusFloat
+  0000 I_Constant 0x0001
+  0003 I_Minus
+  0004 I_Pop
+
   $ NO_COLOR="1" print_vm . Math
-  15
+  5
 
   $ NO_COLOR="1" print_instructions . Math
   0000 I_Constant 0x0001
@@ -69,7 +85,10 @@
   0024 I_Pow
   0025 I_Div
   0026 I_Add
-  0027 I_Pop
+  0027 I_Constant 0x0008
+  0030 I_Minus
+  0031 I_Add
+  0032 I_Pop
 
   $ NO_COLOR="1" print_vm . True
   true
@@ -156,3 +175,11 @@
   0003 I_Constant 0x0002
   0006 I_Less_Equal
   0007 I_Pop
+
+  $ NO_COLOR="1" print_vm . Not
+  false
+
+  $ NO_COLOR="1" print_instructions . Not
+  0000 I_True
+  0001 I_Not
+  0002 I_Pop
