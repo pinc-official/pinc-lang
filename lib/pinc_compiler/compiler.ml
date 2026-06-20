@@ -66,7 +66,27 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
         | Pinc_Types.Operators.Binary.TIMES -> emit t Pinc_Bytecode.Instruction.I_Mul
         | Pinc_Types.Operators.Binary.MODULO -> emit t Pinc_Bytecode.Instruction.I_Mod
         | Pinc_Types.Operators.Binary.POW -> emit t Pinc_Bytecode.Instruction.I_Pow
-        | _ -> assert false
+        | Pinc_Types.Operators.Binary.EQUAL -> emit t Pinc_Bytecode.Instruction.I_Equal
+        | Pinc_Types.Operators.Binary.NOT_EQUAL ->
+            emit t Pinc_Bytecode.Instruction.I_Not_Equal
+        | Pinc_Types.Operators.Binary.GREATER ->
+            emit t Pinc_Bytecode.Instruction.I_Greater
+        | Pinc_Types.Operators.Binary.GREATER_EQUAL ->
+            emit t Pinc_Bytecode.Instruction.I_Greater_Equal
+        | Pinc_Types.Operators.Binary.LESS -> emit t Pinc_Bytecode.Instruction.I_Less
+        | Pinc_Types.Operators.Binary.LESS_EQUAL ->
+            emit t Pinc_Bytecode.Instruction.I_Less_Equal
+        | Pinc_Types.Operators.Binary.AND -> emit t Pinc_Bytecode.Instruction.I_And
+        | Pinc_Types.Operators.Binary.OR -> emit t Pinc_Bytecode.Instruction.I_Or
+        | Pinc_Types.Operators.Binary.CONCAT -> assert false
+        | Pinc_Types.Operators.Binary.DOT_ACCESS -> assert false
+        | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> assert false
+        | Pinc_Types.Operators.Binary.FUNCTION_CALL -> assert false
+        | Pinc_Types.Operators.Binary.PIPE -> assert false
+        | Pinc_Types.Operators.Binary.ARRAY_ADD -> assert false
+        | Pinc_Types.Operators.Binary.MERGE -> assert false
+        | Pinc_Types.Operators.Binary.RANGE -> assert false
+        | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE -> assert false
       in
       t
 

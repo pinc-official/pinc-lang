@@ -24,7 +24,23 @@ let rec execute_binary_operation t op =
     | Operators.Binary.DIV -> execute_binary_div l r
     | Operators.Binary.POW -> execute_binary_pow l r
     | Operators.Binary.MODULO -> execute_binary_mod l r
-    | _ -> assert false
+    | Pinc_Types.Operators.Binary.EQUAL -> execute_binary_equal l r
+    | Pinc_Types.Operators.Binary.NOT_EQUAL -> execute_binary_not_equal l r
+    | Pinc_Types.Operators.Binary.GREATER -> execute_binary_greater l r
+    | Pinc_Types.Operators.Binary.GREATER_EQUAL -> execute_binary_greater_equal l r
+    | Pinc_Types.Operators.Binary.LESS -> execute_binary_less l r
+    | Pinc_Types.Operators.Binary.LESS_EQUAL -> execute_binary_less_equal l r
+    | Pinc_Types.Operators.Binary.AND -> execute_binary_and l r
+    | Pinc_Types.Operators.Binary.OR -> execute_binary_or l r
+    | Pinc_Types.Operators.Binary.CONCAT -> assert false
+    | Pinc_Types.Operators.Binary.DOT_ACCESS -> assert false
+    | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> assert false
+    | Pinc_Types.Operators.Binary.FUNCTION_CALL -> assert false
+    | Pinc_Types.Operators.Binary.PIPE -> assert false
+    | Pinc_Types.Operators.Binary.ARRAY_ADD -> assert false
+    | Pinc_Types.Operators.Binary.MERGE -> assert false
+    | Pinc_Types.Operators.Binary.RANGE -> assert false
+    | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE -> assert false
   in
   Stack.push t.stack result
 
@@ -94,6 +110,54 @@ and execute_binary_pow l r =
   | Value.Int l, Value.Float r -> Value.Float (float_of_int l ** r)
   | (Value.Int _ | Value.Float _), _ | _, (Value.Int _ | Value.Float _) | _ ->
       raise_notrace (Invalid_argument "Trying to raise non numeric values.")
+
+and execute_binary_equal l r =
+  if Value.equal l r then
+    Value.constant_true
+  else
+    Value.constant_false
+
+and execute_binary_not_equal l r =
+  if not @@ Value.equal l r then
+    Value.constant_true
+  else
+    Value.constant_false
+
+and execute_binary_greater l r =
+  if Value.compare l r > 0 then
+    Value.constant_true
+  else
+    Value.constant_false
+
+and execute_binary_greater_equal l r =
+  if Value.compare l r >= 0 then
+    Value.constant_true
+  else
+    Value.constant_false
+
+and execute_binary_less l r =
+  if Value.compare l r < 0 then
+    Value.constant_true
+  else
+    Value.constant_false
+
+and execute_binary_less_equal l r =
+  if Value.compare l r <= 0 then
+    Value.constant_true
+  else
+    Value.constant_false
+
+and execute_binary_and l r =
+  if Value.is_true l && Value.is_true r then
+    Value.constant_true
+  else
+    Value.constant_false
+
+and execute_binary_or l r =
+  if Value.is_true l || Value.is_true r then
+    Value.constant_true
+  else
+    Value.constant_false
 ;;
 
 let run t =
@@ -115,6 +179,15 @@ let run t =
       | Instruction.I_Pow -> execute_binary_operation t Operators.Binary.POW
       | Instruction.I_True -> Stack.push t.stack Value.constant_true
       | Instruction.I_False -> Stack.push t.stack Value.constant_false
+      | Instruction.I_Equal -> execute_binary_operation t Operators.Binary.EQUAL
+      | Instruction.I_Not_Equal -> execute_binary_operation t Operators.Binary.NOT_EQUAL
+      | Instruction.I_Greater -> execute_binary_operation t Operators.Binary.GREATER
+      | Instruction.I_Greater_Equal ->
+          execute_binary_operation t Operators.Binary.GREATER_EQUAL
+      | Instruction.I_Less -> execute_binary_operation t Operators.Binary.LESS
+      | Instruction.I_Less_Equal -> execute_binary_operation t Operators.Binary.LESS_EQUAL
+      | Instruction.I_And -> execute_binary_operation t Operators.Binary.AND
+      | Instruction.I_Or -> execute_binary_operation t Operators.Binary.OR
     in
     ip := new_ip
   done;

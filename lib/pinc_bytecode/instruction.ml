@@ -9,6 +9,14 @@ type t =
   | I_Pow
   | I_True
   | I_False
+  | I_Equal
+  | I_Not_Equal
+  | I_Greater
+  | I_Greater_Equal
+  | I_Less
+  | I_Less_Equal
+  | I_And
+  | I_Or
 
 let byte = function
   | I_Pop -> 0x00
@@ -21,19 +29,35 @@ let byte = function
   | I_Pow -> 0x07
   | I_True -> 0x08
   | I_False -> 0x09
+  | I_Equal -> 0x0A
+  | I_Not_Equal -> 0x0B
+  | I_Greater -> 0x0C
+  | I_Greater_Equal -> 0x0D
+  | I_Less -> 0x0E
+  | I_Less_Equal -> 0x0F
+  | I_And -> 0x10
+  | I_Or -> 0x11
 ;;
 
 let operands_length = function
-  | I_Pop -> 0
   | I_Constant addr -> UInt16.width addr
-  | I_Add -> 0
-  | I_Sub -> 0
-  | I_Div -> 0
-  | I_Mul -> 0
-  | I_Mod -> 0
-  | I_Pow -> 0
-  | I_True -> 0
-  | I_False -> 0
+  | I_Pop
+  | I_Add
+  | I_Sub
+  | I_Div
+  | I_Mul
+  | I_Mod
+  | I_Pow
+  | I_True
+  | I_False
+  | I_Equal
+  | I_Not_Equal
+  | I_Greater
+  | I_Greater_Equal
+  | I_Less
+  | I_Less_Equal
+  | I_And
+  | I_Or -> 0
 ;;
 
 let decode bytes offset =
@@ -52,6 +76,14 @@ let decode bytes offset =
   | 0x07 -> (offset, I_Pow)
   | 0x08 -> (offset, I_True)
   | 0x09 -> (offset, I_False)
+  | 0x0A -> (offset, I_Equal)
+  | 0x0B -> (offset, I_Not_Equal)
+  | 0x0C -> (offset, I_Greater)
+  | 0x0D -> (offset, I_Greater_Equal)
+  | 0x0E -> (offset, I_Less)
+  | 0x0F -> (offset, I_Less_Equal)
+  | 0x10 -> (offset, I_And)
+  | 0x11 -> (offset, I_Or)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -68,6 +100,14 @@ let pp fmt = function
   | I_Pow -> Format.fprintf fmt "I_Pow"
   | I_True -> Format.fprintf fmt "I_True"
   | I_False -> Format.fprintf fmt "I_False"
+  | I_Equal -> Format.fprintf fmt "I_Equal"
+  | I_Not_Equal -> Format.fprintf fmt "I_Not_Equal"
+  | I_Greater -> Format.fprintf fmt "I_Greater"
+  | I_Greater_Equal -> Format.fprintf fmt "I_Greater_Equal"
+  | I_Less -> Format.fprintf fmt "I_Less"
+  | I_Less_Equal -> Format.fprintf fmt "I_Less_Equal"
+  | I_And -> Format.fprintf fmt "I_And"
+  | I_Or -> Format.fprintf fmt "I_Or"
 ;;
 
 let to_bytes t =
@@ -83,7 +123,23 @@ let to_bytes t =
   let () =
     match t with
     | I_Constant addr -> offset := UInt16.write bytes !offset addr
-    | I_Pop | I_Add | I_Sub | I_Div | I_Mul | I_Mod | I_Pow | I_True | I_False -> ()
+    | I_Pop
+    | I_Add
+    | I_Sub
+    | I_Div
+    | I_Mul
+    | I_Mod
+    | I_Pow
+    | I_True
+    | I_False
+    | I_Equal
+    | I_Not_Equal
+    | I_Greater
+    | I_Greater_Equal
+    | I_Less
+    | I_Less_Equal
+    | I_And
+    | I_Or -> ()
   in
 
   bytes

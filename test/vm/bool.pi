@@ -5,3 +5,35 @@ component True {
 component False {
   false
 }
+
+component And {
+  false && true
+}
+
+component Or {
+  false || true
+}
+
+component Equal {
+  3 == 5
+}
+
+component NotEqual {
+  3 != 5
+}
+
+component Greater {
+  3 > 5
+}
+
+component GreaterEqual {
+  3 >= 5
+}
+
+component Less {
+  3 < 5
+}
+
+component LessEqual {
+  3 <= 5
+}

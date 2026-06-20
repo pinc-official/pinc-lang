@@ -19,5 +19,34 @@ let to_string = function
   | Bool b -> string_of_bool b
 ;;
 
+let is_true = function
+  | Null -> false
+  | Bool b -> b
+  | Int _ -> true
+  | Float _ -> true
+;;
+
+let equal a b =
+  match (a, b) with
+  | Int a, Int b -> a = b
+  | Float a, Float b -> a = b
+  | Float a, Int b -> a = float_of_int b
+  | Int a, Float b -> float_of_int a = b
+  | Bool a, Bool b -> a = b
+  | Null, Null -> true
+  | _ -> false
+;;
+
+let compare a b =
+  match (a, b) with
+  | Int a, Int b -> Int.compare a b
+  | Float a, Float b -> Float.compare a b
+  | Float a, Int b -> Float.compare a (float_of_int b)
+  | Int a, Float b -> Float.compare (float_of_int a) b
+  | Bool a, Bool b -> Bool.compare a b
+  | Null, Null -> 0
+  | _ -> 0
+;;
+
 let constant_true = Bool true
 let constant_false = Bool false
