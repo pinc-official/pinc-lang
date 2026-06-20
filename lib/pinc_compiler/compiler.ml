@@ -36,7 +36,7 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | String _ -> t
   | Char _ -> t
   | Int i -> emit_constant t (Pinc_Bytecode.Value.Int i)
-  | Float _ -> t
+  | Float f -> emit_constant t (Pinc_Bytecode.Value.Float f)
   | Bool b ->
       if b then
         emit t Pinc_Bytecode.Instruction.I_True
