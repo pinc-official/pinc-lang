@@ -113,6 +113,8 @@ let run t =
       | Instruction.I_Mul -> execute_binary_operation t Operators.Binary.TIMES
       | Instruction.I_Mod -> execute_binary_operation t Operators.Binary.MODULO
       | Instruction.I_Pow -> execute_binary_operation t Operators.Binary.POW
+      | Instruction.I_True -> Stack.push t.stack Value.constant_true
+      | Instruction.I_False -> Stack.push t.stack Value.constant_false
     in
     ip := new_ip
   done;

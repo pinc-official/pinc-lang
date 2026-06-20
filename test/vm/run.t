@@ -70,3 +70,17 @@
   0025 I_Div
   0026 I_Add
   0027 I_Pop
+
+  $ NO_COLOR="1" print_vm . True
+  true
+
+  $ NO_COLOR="1" print_instructions . True
+  0000 I_True
+  0001 I_Pop
+
+  $ NO_COLOR="1" print_vm . False
+  false
+
+  $ NO_COLOR="1" print_instructions . False
+  0000 I_False
+  0001 I_Pop

@@ -37,7 +37,11 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | Char _ -> t
   | Int i -> emit_constant t (Pinc_Bytecode.Value.Int i)
   | Float _ -> t
-  | Bool _ -> t
+  | Bool b ->
+      if b then
+        emit t Pinc_Bytecode.Instruction.I_True
+      else
+        emit t Pinc_Bytecode.Instruction.I_False
   | LowercaseIdentifierExpression _ -> t
   | ExternalFunction _ -> t
   | UppercaseIdentifierExpression _ -> t

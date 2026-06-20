@@ -7,6 +7,8 @@ type t =
   | I_Mul
   | I_Mod
   | I_Pow
+  | I_True
+  | I_False
 
 let byte = function
   | I_Pop -> 0x00
@@ -17,6 +19,8 @@ let byte = function
   | I_Mul -> 0x05
   | I_Mod -> 0x06
   | I_Pow -> 0x07
+  | I_True -> 0x08
+  | I_False -> 0x09
 ;;
 
 let operands_length = function
@@ -28,6 +32,8 @@ let operands_length = function
   | I_Mul -> 0
   | I_Mod -> 0
   | I_Pow -> 0
+  | I_True -> 0
+  | I_False -> 0
 ;;
 
 let decode bytes offset =
@@ -44,6 +50,8 @@ let decode bytes offset =
   | 0x05 -> (offset, I_Mul)
   | 0x06 -> (offset, I_Mod)
   | 0x07 -> (offset, I_Pow)
+  | 0x08 -> (offset, I_True)
+  | 0x09 -> (offset, I_False)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -58,6 +66,8 @@ let pp fmt = function
   | I_Mul -> Format.fprintf fmt "I_Mul"
   | I_Mod -> Format.fprintf fmt "I_Mod"
   | I_Pow -> Format.fprintf fmt "I_Pow"
+  | I_True -> Format.fprintf fmt "I_True"
+  | I_False -> Format.fprintf fmt "I_False"
 ;;
 
 let to_bytes t =
@@ -72,14 +82,8 @@ let to_bytes t =
 
   let () =
     match t with
-    | I_Pop -> ()
     | I_Constant addr -> offset := UInt16.write bytes !offset addr
-    | I_Add -> ()
-    | I_Sub -> ()
-    | I_Div -> ()
-    | I_Mul -> ()
-    | I_Mod -> ()
-    | I_Pow -> ()
+    | I_Pop | I_Add | I_Sub | I_Div | I_Mul | I_Mod | I_Pow | I_True | I_False -> ()
   in
 
   bytes

@@ -1,0 +1,7 @@
+component True {
+  true
+}
+
+component False {
+  false
+}
