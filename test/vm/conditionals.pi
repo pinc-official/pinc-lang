@@ -1,0 +1,27 @@
+component IfTrue {
+  if (true) {
+    true
+  }
+}
+
+component IfTrueElse {
+  if (true) {
+    true
+  } else {
+    false
+  }
+}
+
+component IfFalse {
+  if (false) {
+    true
+  }
+}
+
+component IfFalseElse {
+  if (false) {
+    true
+  } else {
+    false
+  }
+}

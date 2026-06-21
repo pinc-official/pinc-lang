@@ -8,6 +8,7 @@ module T = struct
       i
   ;;
 
+  let to_int t = t
   let width _ = 2
 
   let write bytes offset t =
@@ -21,7 +22,7 @@ module T = struct
   ;;
 
   let incr = incr
-  let pp fmt = Format.fprintf fmt "0x%04X"
+  let pp fmt t = Format.fprintf fmt "0x%04X (%04i)" t t
 end
 
 include T

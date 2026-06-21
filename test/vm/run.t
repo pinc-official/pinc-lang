@@ -2,8 +2,8 @@
   12
 
   $ NO_COLOR="1" print_instructions . Add
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Add
   0007 I_Pop
 
@@ -11,8 +11,8 @@
   2
 
   $ NO_COLOR="1" print_instructions . Sub
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Sub
   0007 I_Pop
 
@@ -20,8 +20,8 @@
   1.4
 
   $ NO_COLOR="1" print_instructions . Div
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Div
   0007 I_Pop
 
@@ -29,8 +29,8 @@
   35
 
   $ NO_COLOR="1" print_instructions . Mul
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Mul
   0007 I_Pop
 
@@ -38,8 +38,8 @@
   2
 
   $ NO_COLOR="1" print_instructions . Mod
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Mod
   0007 I_Pop
 
@@ -47,8 +47,8 @@
   16807
 
   $ NO_COLOR="1" print_instructions . Pow
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Pow
   0007 I_Pop
 
@@ -56,7 +56,7 @@
   -5
 
   $ NO_COLOR="1" print_instructions . MinusInt
-  0000 I_Constant 0x0001
+  0000 I_Constant 0x0001 (0001)
   0003 I_Minus
   0004 I_Pop
 
@@ -64,7 +64,7 @@
   -3.14
 
   $ NO_COLOR="1" print_instructions . MinusFloat
-  0000 I_Constant 0x0001
+  0000 I_Constant 0x0001 (0001)
   0003 I_Minus
   0004 I_Pop
 
@@ -72,20 +72,20 @@
   5
 
   $ NO_COLOR="1" print_instructions . Math
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Mul
-  0007 I_Constant 0x0003
-  0010 I_Constant 0x0004
-  0013 I_Constant 0x0005
-  0016 I_Constant 0x0006
+  0007 I_Constant 0x0003 (0003)
+  0010 I_Constant 0x0004 (0004)
+  0013 I_Constant 0x0005 (0005)
+  0016 I_Constant 0x0006 (0006)
   0019 I_Mul
   0020 I_Add
-  0021 I_Constant 0x0007
+  0021 I_Constant 0x0007 (0007)
   0024 I_Pow
   0025 I_Div
   0026 I_Add
-  0027 I_Constant 0x0008
+  0027 I_Constant 0x0008 (0008)
   0030 I_Minus
   0031 I_Add
   0032 I_Pop
@@ -126,8 +126,8 @@
   false
 
   $ NO_COLOR="1" print_instructions . Equal
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Equal
   0007 I_Pop
 
@@ -135,8 +135,8 @@
   true
 
   $ NO_COLOR="1" print_instructions . NotEqual
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Not_Equal
   0007 I_Pop
 
@@ -144,8 +144,8 @@
   false
 
   $ NO_COLOR="1" print_instructions . Greater
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Greater
   0007 I_Pop
 
@@ -153,8 +153,8 @@
   false
 
   $ NO_COLOR="1" print_instructions . GreaterEqual
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Greater_Equal
   0007 I_Pop
 
@@ -162,8 +162,8 @@
   true
 
   $ NO_COLOR="1" print_instructions . Less
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Less
   0007 I_Pop
 
@@ -171,8 +171,8 @@
   true
 
   $ NO_COLOR="1" print_instructions . LessEqual
-  0000 I_Constant 0x0001
-  0003 I_Constant 0x0002
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Constant 0x0002 (0002)
   0006 I_Less_Equal
   0007 I_Pop
 
@@ -183,3 +183,47 @@
   0000 I_True
   0001 I_Not
   0002 I_Pop
+
+  $ NO_COLOR="1" print_vm . IfTrue
+  true
+
+  $ NO_COLOR="1" print_instructions . IfTrue
+  0000 I_True
+  0001 I_Jump_If_False 0x0008 (0008)
+  0004 I_True
+  0005 I_Jump 0x0009 (0009)
+  0008 I_Null
+  0009 I_Pop
+
+  $ NO_COLOR="1" print_vm . IfTrueElse
+  true
+
+  $ NO_COLOR="1" print_instructions . IfTrueElse
+  0000 I_True
+  0001 I_Jump_If_False 0x0008 (0008)
+  0004 I_True
+  0005 I_Jump 0x0009 (0009)
+  0008 I_False
+  0009 I_Pop
+
+  $ NO_COLOR="1" print_vm . IfFalse
+  
+
+  $ NO_COLOR="1" print_instructions . IfFalse
+  0000 I_False
+  0001 I_Jump_If_False 0x0008 (0008)
+  0004 I_True
+  0005 I_Jump 0x0009 (0009)
+  0008 I_Null
+  0009 I_Pop
+
+  $ NO_COLOR="1" print_vm . IfFalseElse
+  false
+
+  $ NO_COLOR="1" print_instructions . IfFalseElse
+  0000 I_False
+  0001 I_Jump_If_False 0x0008 (0008)
+  0004 I_True
+  0005 I_Jump 0x0009 (0009)
+  0008 I_False
+  0009 I_Pop

@@ -1,6 +1,7 @@
 type t
 
 val make : int -> t
+val to_int : t -> int
 val width : t -> int
 val write : Bytes.t -> int -> t -> int
 val read : Bytes.t -> int -> int * t

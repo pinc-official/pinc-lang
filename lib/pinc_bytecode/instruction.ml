@@ -1,4 +1,5 @@
 type t =
+  | I_Null
   | I_Pop
   | I_Constant of UInt16.t
   | I_Add
@@ -19,6 +20,8 @@ type t =
   | I_Or
   | I_Minus
   | I_Not
+  | I_Jump of UInt16.t
+  | I_Jump_If_False of UInt16.t
 
 let byte = function
   | I_Pop -> 0x00
@@ -41,10 +44,15 @@ let byte = function
   | I_Or -> 0x11
   | I_Minus -> 0x12
   | I_Not -> 0x13
+  | I_Jump _ -> 0x14
+  | I_Jump_If_False _ -> 0x15
+  | I_Null -> 0x16
 ;;
 
 let operands_length = function
   | I_Constant addr -> UInt16.width addr
+  | I_Jump addr -> UInt16.width addr
+  | I_Jump_If_False addr -> UInt16.width addr
   | I_Pop
   | I_Add
   | I_Sub
@@ -63,7 +71,8 @@ let operands_length = function
   | I_And
   | I_Or
   | I_Minus
-  | I_Not -> 0
+  | I_Not
+  | I_Null -> 0
 ;;
 
 let decode bytes offset =
@@ -92,6 +101,13 @@ let decode bytes offset =
   | 0x11 -> (offset, I_Or)
   | 0x12 -> (offset, I_Minus)
   | 0x13 -> (offset, I_Not)
+  | 0x14 ->
+      let offset, addr = UInt16.read bytes offset in
+      (offset, I_Jump addr)
+  | 0x15 ->
+      let offset, addr = UInt16.read bytes offset in
+      (offset, I_Jump_If_False addr)
+  | 0x16 -> (offset, I_Null)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -118,6 +134,9 @@ let pp fmt = function
   | I_Or -> Format.fprintf fmt "I_Or"
   | I_Minus -> Format.fprintf fmt "I_Minus"
   | I_Not -> Format.fprintf fmt "I_Not"
+  | I_Jump addr -> Format.fprintf fmt "I_Jump %a" UInt16.pp addr
+  | I_Jump_If_False addr -> Format.fprintf fmt "I_Jump_If_False %a" UInt16.pp addr
+  | I_Null -> Format.fprintf fmt "I_Null"
 ;;
 
 let to_bytes t =
@@ -133,6 +152,8 @@ let to_bytes t =
   let () =
     match t with
     | I_Constant addr -> offset := UInt16.write bytes !offset addr
+    | I_Jump addr -> offset := UInt16.write bytes !offset addr
+    | I_Jump_If_False addr -> offset := UInt16.write bytes !offset addr
     | I_Pop
     | I_Add
     | I_Sub
@@ -151,7 +172,8 @@ let to_bytes t =
     | I_And
     | I_Or
     | I_Minus
-    | I_Not -> ()
+    | I_Not
+    | I_Null -> ()
   in
 
   bytes

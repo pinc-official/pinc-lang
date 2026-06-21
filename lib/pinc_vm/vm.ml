@@ -191,6 +191,7 @@ let run t =
   let instruction_length = Bytes.length t.bytecode.instructions in
   while !ip < instruction_length do
     let new_ip, op = Instruction.decode t.bytecode.instructions !ip in
+    let () = ip := new_ip in
     let () =
       match op with
       | Instruction.I_Pop -> ignore @@ Stack.pop t.stack
@@ -216,8 +217,17 @@ let run t =
       | Instruction.I_Or -> execute_binary_operation t Operators.Binary.OR
       | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
       | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
+      | Instruction.I_Jump addr -> ip := UInt16.to_int addr
+      | Instruction.I_Jump_If_False addr ->
+          let condition = Stack.pop t.stack in
+          let () =
+            if not @@ Value.is_true condition then
+              ip := UInt16.to_int addr
+          in
+          ()
+      | Instruction.I_Null -> Stack.push t.stack Value.Null
     in
-    ip := new_ip
+    ()
   done;
   t
 ;;
