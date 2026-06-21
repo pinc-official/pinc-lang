@@ -122,10 +122,8 @@ and statement = {
 and statement_desc =
   | P_BreakStatement of int
   | P_ContinueStatement of int
-  | P_OptionalMutableLetStatement of lowercase_identifier * expression
-  | P_OptionalLetStatement of lowercase_identifier * expression
-  | P_MutableLetStatement of lowercase_identifier * expression
-  | P_LetStatement of lowercase_identifier * expression
+  | P_LetStatement of
+      (is_optional:bool * is_mutable:bool * lowercase_identifier * expression)
   | P_MutationStatement of lowercase_identifier * expression
   | P_ExpressionStatement of expression
 

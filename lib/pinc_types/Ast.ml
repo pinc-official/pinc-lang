@@ -117,10 +117,8 @@ and statement = {
 and statement_desc =
   | BreakStatement of int
   | ContinueStatement of int
-  | OptionalMutableLetStatement of lowercase_identifier * expression
-  | OptionalLetStatement of lowercase_identifier * expression
-  | MutableLetStatement of lowercase_identifier * expression
-  | LetStatement of lowercase_identifier * expression
+  | LetStatement of
+      (is_optional:bool * is_mutable:bool * lowercase_identifier * expression)
   | MutationStatement of lowercase_identifier * expression
   | ExpressionStatement of expression
 

@@ -480,33 +480,18 @@ and transform_expression env (exression : Parsetree.expression) =
 and transform_break_stmt env s = (env, BreakStatement s)
 and transform_continue_stmt env s = (env, ContinueStatement s)
 
-and transform_optional_mutable_let env id expr =
-  let env = { env with Env.current_identifier = Some (`Optional, id) } in
+and transform_let env ~is_optional ~is_mutable id expr =
+  let requirement =
+    if is_optional then
+      `Optional
+    else
+      `Required
+  in
+  let env = { env with Env.current_identifier = Some (requirement, id) } in
   let env, id = transform_lowercase_id env id in
   let env, expr = transform_expression env expr in
   let env = { env with Env.current_identifier = None } in
-  (env, OptionalMutableLetStatement (id, expr))
-
-and transform_optional_let env id expr =
-  let env = { env with Env.current_identifier = Some (`Optional, id) } in
-  let env, id = transform_lowercase_id env id in
-  let env, expr = transform_expression env expr in
-  let env = { env with Env.current_identifier = None } in
-  (env, OptionalLetStatement (id, expr))
-
-and transform_mutable_let env id expr =
-  let env = { env with Env.current_identifier = Some (`Required, id) } in
-  let env, id = transform_lowercase_id env id in
-  let env, expr = transform_expression env expr in
-  let env = { env with Env.current_identifier = None } in
-  (env, MutableLetStatement (id, expr))
-
-and transform_let env id expr =
-  let env = { env with Env.current_identifier = Some (`Required, id) } in
-  let env, id = transform_lowercase_id env id in
-  let env, expr = transform_expression env expr in
-  let env = { env with Env.current_identifier = None } in
-  (env, LetStatement (id, expr))
+  (env, LetStatement (~is_optional, ~is_mutable, id, expr))
 
 and transform_mutation env id expr =
   let env, id = transform_lowercase_id env id in
@@ -522,11 +507,8 @@ and transform_statement env (statement : Parsetree.statement) =
     match statement.statement_desc with
     | P_BreakStatement s -> transform_break_stmt env s
     | P_ContinueStatement s -> transform_continue_stmt env s
-    | P_OptionalMutableLetStatement (id, expr) ->
-        transform_optional_mutable_let env id expr
-    | P_OptionalLetStatement (id, expr) -> transform_optional_let env id expr
-    | P_MutableLetStatement (id, expr) -> transform_mutable_let env id expr
-    | P_LetStatement (id, expr) -> transform_let env id expr
+    | P_LetStatement (~is_optional, ~is_mutable, id, expr) ->
+        transform_let env ~is_optional ~is_mutable id expr
     | P_MutationStatement (id, expr) -> transform_mutation env id expr
     | P_ExpressionStatement s -> transform_expression_stmt env s
   in

@@ -73,14 +73,8 @@ let rec get_uppercase_identifier_typ ~state ident =
 
 and eval_statement ~state statement =
   match statement.Ast.statement_desc with
-  | Ast.LetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:false ~is_optional:false expression
-  | Ast.OptionalLetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:false ~is_optional:true expression
-  | Ast.OptionalMutableLetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:true ~is_optional:true expression
-  | Ast.MutableLetStatement (Lowercase_Id ident, expression) ->
-      eval_let ~state ~ident ~is_mutable:true ~is_optional:false expression
+  | Ast.LetStatement (~is_optional, ~is_mutable, Lowercase_Id ident, expression) ->
+      eval_let ~state ~ident ~is_mutable ~is_optional expression
   | Ast.MutationStatement (Lowercase_Id ident, expression) ->
       eval_mutation ~state ~ident expression
   | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)

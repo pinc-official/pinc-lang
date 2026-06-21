@@ -459,24 +459,16 @@ module Rules = struct
           next t;
           let is_mutable = t |> optional Token.KEYWORD_MUTABLE in
           let identifier = Helpers.expect_identifier ~typ:`Lower t in
-          let is_nullable = t |> optional Token.QUESTIONMARK in
+          let is_optional = t |> optional Token.QUESTIONMARK in
           t |> expect Token.EQUAL;
           let end_token = t.token in
           let expression = parse_expression t in
-          match (is_mutable, is_nullable, expression) with
-          | false, true, Some expression ->
+          match expression with
+          | Some expression ->
               Some
-                (Parsetree.P_OptionalLetStatement (P_Lowercase_Id identifier, expression))
-          | true, true, Some expression ->
-              Some
-                (Parsetree.P_OptionalMutableLetStatement
-                   (P_Lowercase_Id identifier, expression))
-          | false, false, Some expression ->
-              Some (Parsetree.P_LetStatement (P_Lowercase_Id identifier, expression))
-          | true, false, Some expression ->
-              Some
-                (Parsetree.P_MutableLetStatement (P_Lowercase_Id identifier, expression))
-          | _, _, None ->
+                (Parsetree.P_LetStatement
+                   (~is_optional, ~is_mutable, P_Lowercase_Id identifier, expression))
+          | None ->
               Diagnostics.raise_error
                 (Location.merge ~s:start_token.location ~e:end_token.location ())
                 "Expected expression as right hand side of let declaration")

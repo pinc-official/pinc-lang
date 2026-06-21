@@ -466,43 +466,24 @@ and format_continue_stmt i =
   in
   string "continue" ^^ num
 
-and format_optional_mutable_let id expr =
+and format_let ~is_optional ~is_mutable id expr =
+  let maybe_mutable =
+    if is_mutable then
+      space ^^ string "mutable"
+    else
+      empty
+  in
+  let maybe_optional =
+    if is_optional then
+      qmark
+    else
+      empty
+  in
   string "let"
-  ^^ space
-  ^^ string "mutable"
+  ^^ maybe_mutable
   ^^ space
   ^^ format_lowercase_id id
-  ^^ qmark
-  ^^ space
-  ^^ equals
-  ^^ space
-  ^^ format_expression expr
-
-and format_optional_let id expr =
-  string "let"
-  ^^ space
-  ^^ format_lowercase_id id
-  ^^ qmark
-  ^^ space
-  ^^ equals
-  ^^ space
-  ^^ format_expression expr
-
-and format_mutable_let id expr =
-  string "let"
-  ^^ space
-  ^^ string "mutable"
-  ^^ space
-  ^^ format_lowercase_id id
-  ^^ space
-  ^^ equals
-  ^^ space
-  ^^ format_expression expr
-
-and format_let id expr =
-  string "let"
-  ^^ space
-  ^^ format_lowercase_id id
+  ^^ maybe_optional
   ^^ space
   ^^ equals
   ^^ space
@@ -519,11 +500,8 @@ and format_statement ~last (statement : Parsetree.statement) =
     match statement.statement_desc with
     | P_BreakStatement s -> format_break_stmt s ^^ semi
     | P_ContinueStatement s -> format_continue_stmt s ^^ semi
-    | P_OptionalMutableLetStatement (id, expr) ->
-        format_optional_mutable_let id expr ^^ semi
-    | P_OptionalLetStatement (id, expr) -> format_optional_let id expr ^^ semi
-    | P_MutableLetStatement (id, expr) -> format_mutable_let id expr ^^ semi
-    | P_LetStatement (id, expr) -> format_let id expr ^^ semi
+    | P_LetStatement (~is_optional, ~is_mutable, id, expr) ->
+        format_let ~is_optional ~is_mutable id expr ^^ semi
     | P_MutationStatement (id, expr) -> format_mutation id expr ^^ semi
     | P_ExpressionStatement s when last -> format_expression_stmt s
     | P_ExpressionStatement s -> format_expression_stmt s ^^ semi

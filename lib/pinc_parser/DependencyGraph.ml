@@ -37,12 +37,8 @@ let rec collect_expr acc (expr : Pinc_Types.Ast.expression) =
 and collect_stmt acc (stmt : Pinc_Types.Ast.statement) =
   match stmt.statement_desc with
   | BreakStatement _ | ContinueStatement _ -> acc
-  | LetStatement (_, e)
-  | MutableLetStatement (_, e)
-  | OptionalLetStatement (_, e)
-  | OptionalMutableLetStatement (_, e)
-  | MutationStatement (_, e)
-  | ExpressionStatement e -> collect_expr acc e
+  | LetStatement (_, e, ..) | MutationStatement (_, e) | ExpressionStatement e ->
+      collect_expr acc e
 
 and collect_tag acc (tag : Pinc_Types.Ast.tag) =
   let acc = StringMap.fold (fun _ e a -> collect_expr a e) tag.tag_desc.attributes acc in
