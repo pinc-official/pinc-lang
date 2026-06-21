@@ -71,11 +71,8 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | Char _ -> t
   | Int i -> emit_constant t (Pinc_Bytecode.Value.Int i)
   | Float f -> emit_constant t (Pinc_Bytecode.Value.Float f)
-  | Bool b ->
-      if b then
-        emit t Pinc_Bytecode.Instruction.I_True
-      else
-        emit t Pinc_Bytecode.Instruction.I_False
+  | Bool true -> emit t Pinc_Bytecode.Instruction.I_True
+  | Bool false -> emit t Pinc_Bytecode.Instruction.I_False
   | LowercaseIdentifierExpression _ -> t
   | ExternalFunction _ -> t
   | UppercaseIdentifierExpression _ -> t
@@ -88,80 +85,79 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | TemplateExpression node -> compile_template_node t node
   | BlockExpression stmts -> List.fold_left compile_stmt t stmts
   | ConditionalExpression { condition; consequent; alternate } ->
-      (* Condition *)
-      let t = compile_expr t condition in
+      compile_conditional_expression t ~condition ~consequent ~alternate
+  | UnaryExpression (op, right) -> compile_unary_expression t ~op ~right
+  | BinaryExpression (left, op, right) -> compile_binary_expression t ~left ~op ~right
 
-      (* Consequent *)
-      (* We create a conditional jump with a temporary address first, because we do not know where we should jump to next. *)
-      let t = emit t (Pinc_Bytecode.Instruction.I_Jump_If_False (UInt16.make 0xFFFF)) in
-      let jump_consequent_offset = t.last_instruction.offset in
-      let t = compile_expr t consequent in
-      let t = remove_last_pop t in
+and compile_unary_expression t ~op ~right =
+  let t = compile_expr t right in
+  match op with
+  | Pinc_Types.Operators.Unary.MINUS -> emit t Pinc_Bytecode.Instruction.I_Minus
+  | Pinc_Types.Operators.Unary.NOT -> emit t Pinc_Bytecode.Instruction.I_Not
 
-      (* Alternate *)
-      let t = emit t (Pinc_Bytecode.Instruction.I_Jump (UInt16.make 0xFFFF)) in
-      let jump_alternate_offset = t.last_instruction.offset in
-      let jump_address = UInt16.make (Buffer.length t.instructions) in
-      let t =
-        replace_instruction t jump_consequent_offset
-        @@ Pinc_Bytecode.Instruction.I_Jump_If_False jump_address
-      in
-      let t =
-        match alternate with
-        | None -> emit t Pinc_Bytecode.Instruction.I_Null
-        | Some alternate ->
-            let t = compile_expr t alternate in
-            let t = remove_last_pop t in
-            t
-      in
-      let jump_address = UInt16.make (Buffer.length t.instructions) in
-      let t =
-        replace_instruction t jump_alternate_offset
-        @@ Pinc_Bytecode.Instruction.I_Jump jump_address
-      in
-      t
-  | UnaryExpression (op, e) ->
-      let t = compile_expr t e in
-      let t =
-        match op with
-        | Pinc_Types.Operators.Unary.MINUS -> emit t Pinc_Bytecode.Instruction.I_Minus
-        | Pinc_Types.Operators.Unary.NOT -> emit t Pinc_Bytecode.Instruction.I_Not
-      in
-      t
-  | BinaryExpression (l, op, r) ->
-      let t = compile_expr t l in
-      let t = compile_expr t r in
-      let t =
-        match op with
-        | Pinc_Types.Operators.Binary.PLUS -> emit t Pinc_Bytecode.Instruction.I_Add
-        | Pinc_Types.Operators.Binary.MINUS -> emit t Pinc_Bytecode.Instruction.I_Sub
-        | Pinc_Types.Operators.Binary.DIV -> emit t Pinc_Bytecode.Instruction.I_Div
-        | Pinc_Types.Operators.Binary.TIMES -> emit t Pinc_Bytecode.Instruction.I_Mul
-        | Pinc_Types.Operators.Binary.MODULO -> emit t Pinc_Bytecode.Instruction.I_Mod
-        | Pinc_Types.Operators.Binary.POW -> emit t Pinc_Bytecode.Instruction.I_Pow
-        | Pinc_Types.Operators.Binary.EQUAL -> emit t Pinc_Bytecode.Instruction.I_Equal
-        | Pinc_Types.Operators.Binary.NOT_EQUAL ->
-            emit t Pinc_Bytecode.Instruction.I_Not_Equal
-        | Pinc_Types.Operators.Binary.GREATER ->
-            emit t Pinc_Bytecode.Instruction.I_Greater
-        | Pinc_Types.Operators.Binary.GREATER_EQUAL ->
-            emit t Pinc_Bytecode.Instruction.I_Greater_Equal
-        | Pinc_Types.Operators.Binary.LESS -> emit t Pinc_Bytecode.Instruction.I_Less
-        | Pinc_Types.Operators.Binary.LESS_EQUAL ->
-            emit t Pinc_Bytecode.Instruction.I_Less_Equal
-        | Pinc_Types.Operators.Binary.AND -> emit t Pinc_Bytecode.Instruction.I_And
-        | Pinc_Types.Operators.Binary.OR -> emit t Pinc_Bytecode.Instruction.I_Or
-        | Pinc_Types.Operators.Binary.CONCAT -> assert false
-        | Pinc_Types.Operators.Binary.DOT_ACCESS -> assert false
-        | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> assert false
-        | Pinc_Types.Operators.Binary.FUNCTION_CALL -> assert false
-        | Pinc_Types.Operators.Binary.PIPE -> assert false
-        | Pinc_Types.Operators.Binary.ARRAY_ADD -> assert false
-        | Pinc_Types.Operators.Binary.MERGE -> assert false
-        | Pinc_Types.Operators.Binary.RANGE -> assert false
-        | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE -> assert false
-      in
-      t
+and compile_binary_expression t ~left ~op ~right =
+  let t = compile_expr t left in
+  let t = compile_expr t right in
+  match op with
+  | Pinc_Types.Operators.Binary.PLUS -> emit t Pinc_Bytecode.Instruction.I_Add
+  | Pinc_Types.Operators.Binary.MINUS -> emit t Pinc_Bytecode.Instruction.I_Sub
+  | Pinc_Types.Operators.Binary.DIV -> emit t Pinc_Bytecode.Instruction.I_Div
+  | Pinc_Types.Operators.Binary.TIMES -> emit t Pinc_Bytecode.Instruction.I_Mul
+  | Pinc_Types.Operators.Binary.MODULO -> emit t Pinc_Bytecode.Instruction.I_Mod
+  | Pinc_Types.Operators.Binary.POW -> emit t Pinc_Bytecode.Instruction.I_Pow
+  | Pinc_Types.Operators.Binary.EQUAL -> emit t Pinc_Bytecode.Instruction.I_Equal
+  | Pinc_Types.Operators.Binary.NOT_EQUAL -> emit t Pinc_Bytecode.Instruction.I_Not_Equal
+  | Pinc_Types.Operators.Binary.GREATER -> emit t Pinc_Bytecode.Instruction.I_Greater
+  | Pinc_Types.Operators.Binary.GREATER_EQUAL ->
+      emit t Pinc_Bytecode.Instruction.I_Greater_Equal
+  | Pinc_Types.Operators.Binary.LESS -> emit t Pinc_Bytecode.Instruction.I_Less
+  | Pinc_Types.Operators.Binary.LESS_EQUAL ->
+      emit t Pinc_Bytecode.Instruction.I_Less_Equal
+  | Pinc_Types.Operators.Binary.AND -> emit t Pinc_Bytecode.Instruction.I_And
+  | Pinc_Types.Operators.Binary.OR -> emit t Pinc_Bytecode.Instruction.I_Or
+  | Pinc_Types.Operators.Binary.CONCAT -> assert false
+  | Pinc_Types.Operators.Binary.DOT_ACCESS -> assert false
+  | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> assert false
+  | Pinc_Types.Operators.Binary.FUNCTION_CALL -> assert false
+  | Pinc_Types.Operators.Binary.PIPE -> assert false
+  | Pinc_Types.Operators.Binary.ARRAY_ADD -> assert false
+  | Pinc_Types.Operators.Binary.MERGE -> assert false
+  | Pinc_Types.Operators.Binary.RANGE -> assert false
+  | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE -> assert false
+
+and compile_conditional_expression t ~condition ~consequent ~alternate =
+  (* Condition *)
+  let t = compile_expr t condition in
+
+  (* Consequent *)
+  (* We create a conditional jump with a temporary address first, because we do not know where we should jump to next. *)
+  let t = emit t (Pinc_Bytecode.Instruction.I_Jump_If_False (UInt16.make 0xFFFF)) in
+  let jump_consequent_offset = t.last_instruction.offset in
+  let t = compile_expr t consequent in
+  let t = remove_last_pop t in
+
+  (* Alternate *)
+  let t = emit t (Pinc_Bytecode.Instruction.I_Jump (UInt16.make 0xFFFF)) in
+  let jump_alternate_offset = t.last_instruction.offset in
+  let jump_address = UInt16.make (Buffer.length t.instructions) in
+  let t =
+    replace_instruction t jump_consequent_offset
+    @@ Pinc_Bytecode.Instruction.I_Jump_If_False jump_address
+  in
+  let t =
+    match alternate with
+    | None -> emit t Pinc_Bytecode.Instruction.I_Null
+    | Some alternate ->
+        let t = compile_expr t alternate in
+        let t = remove_last_pop t in
+        t
+  in
+  let jump_address = UInt16.make (Buffer.length t.instructions) in
+  let t =
+    replace_instruction t jump_alternate_offset
+    @@ Pinc_Bytecode.Instruction.I_Jump jump_address
+  in
+  t
 
 and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
   match stmt.statement_desc with
