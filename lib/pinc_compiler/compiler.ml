@@ -1,3 +1,5 @@
+exception TODO
+
 type emitted_instruction = {
   offset : int;
   instruction : Pinc_Bytecode.Instruction.t;
@@ -67,21 +69,21 @@ let emit_constant t constant =
 let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   match expr.expression_desc with
   | Void -> t
-  | String _ -> t
-  | Char _ -> t
+  | String _ -> raise_notrace TODO
+  | Char _ -> raise_notrace TODO
   | Int i -> emit_constant t (Pinc_Bytecode.Value.Int i)
   | Float f -> emit_constant t (Pinc_Bytecode.Value.Float f)
   | Bool true -> emit t Pinc_Bytecode.Instruction.I_True
   | Bool false -> emit t Pinc_Bytecode.Instruction.I_False
-  | LowercaseIdentifierExpression _ -> t
-  | ExternalFunction _ -> t
-  | UppercaseIdentifierExpression _ -> t
-  | Array _ -> t
-  | Record _ -> t
-  | Function _ -> t
-  | FunctionCall _ -> t
-  | TagExpression _ -> t
-  | ForInExpression _ -> t
+  | LowercaseIdentifierExpression _ -> raise_notrace TODO
+  | ExternalFunction _ -> raise_notrace TODO
+  | UppercaseIdentifierExpression _ -> raise_notrace TODO
+  | Array _ -> raise_notrace TODO
+  | Record _ -> raise_notrace TODO
+  | Function _ -> raise_notrace TODO
+  | FunctionCall _ -> raise_notrace TODO
+  | TagExpression _ -> raise_notrace TODO
+  | ForInExpression _ -> raise_notrace TODO
   | TemplateExpression node -> compile_template_node t node
   | BlockExpression stmts -> List.fold_left compile_stmt t stmts
   | ConditionalExpression { condition; consequent; alternate } ->
@@ -115,15 +117,15 @@ and compile_binary_expression t ~left ~op ~right =
       emit t Pinc_Bytecode.Instruction.I_Less_Equal
   | Pinc_Types.Operators.Binary.AND -> emit t Pinc_Bytecode.Instruction.I_And
   | Pinc_Types.Operators.Binary.OR -> emit t Pinc_Bytecode.Instruction.I_Or
-  | Pinc_Types.Operators.Binary.CONCAT -> assert false
-  | Pinc_Types.Operators.Binary.DOT_ACCESS -> assert false
-  | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> assert false
-  | Pinc_Types.Operators.Binary.FUNCTION_CALL -> assert false
-  | Pinc_Types.Operators.Binary.PIPE -> assert false
-  | Pinc_Types.Operators.Binary.ARRAY_ADD -> assert false
-  | Pinc_Types.Operators.Binary.MERGE -> assert false
-  | Pinc_Types.Operators.Binary.RANGE -> assert false
-  | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE -> assert false
+  | Pinc_Types.Operators.Binary.CONCAT -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.DOT_ACCESS -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.FUNCTION_CALL -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.PIPE -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.ARRAY_ADD -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.MERGE -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.RANGE -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE -> raise_notrace TODO
 
 and compile_conditional_expression t ~condition ~consequent ~alternate =
   (* Condition *)
@@ -161,25 +163,26 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
 
 and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
   match stmt.statement_desc with
-  | BreakStatement _ | ContinueStatement _ -> t
-  | LetStatement (_, e)
-  | MutableLetStatement (_, e)
-  | OptionalLetStatement (_, e)
-  | OptionalMutableLetStatement (_, e)
-  | MutationStatement (_, e)
+  | BreakStatement _ -> raise_notrace TODO
+  | ContinueStatement _ -> raise_notrace TODO
+  | LetStatement (_, _) -> raise_notrace TODO
+  | MutableLetStatement (_, _) -> raise_notrace TODO
+  | OptionalLetStatement (_, _) -> raise_notrace TODO
+  | OptionalMutableLetStatement (_, _) -> raise_notrace TODO
+  | MutationStatement (_, _) -> raise_notrace TODO
   | ExpressionStatement e ->
       let t = compile_expr t e in
       emit t Pinc_Bytecode.Instruction.I_Pop
 
-and compile_tag t (_tag : Pinc_Types.Ast.tag) = t
+and compile_tag _t (_tag : Pinc_Types.Ast.tag) = raise_notrace TODO
 
-and compile_template_node t (node : Pinc_Types.Ast.template_node) =
+and compile_template_node _t (node : Pinc_Types.Ast.template_node) =
   match node.template_node_desc with
-  | TextTemplateNode _ -> t
-  | FragmentTemplateNode _ -> t
-  | ExpressionTemplateNode e -> compile_expr t e
-  | HtmlTemplateNode _ -> t
-  | ComponentTemplateNode _ -> t
+  | TextTemplateNode _ -> raise_notrace TODO
+  | FragmentTemplateNode _ -> raise_notrace TODO
+  | ExpressionTemplateNode _ -> raise_notrace TODO
+  | HtmlTemplateNode _ -> raise_notrace TODO
+  | ComponentTemplateNode _ -> raise_notrace TODO
 ;;
 
 let compile_declaration (decl : Pinc_Types.Ast.declaration) t =

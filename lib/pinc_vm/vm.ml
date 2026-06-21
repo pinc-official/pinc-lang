@@ -2,6 +2,8 @@ open Pinc_Types
 open Pinc_Bytecode
 module Stack = Vm_stack
 
+exception TODO
+
 type t = {
   bytecode : Bytecode.t;
   stack : Value.t Stack.t;
@@ -32,15 +34,15 @@ let rec execute_binary_operation t op =
     | Pinc_Types.Operators.Binary.LESS_EQUAL -> execute_binary_less_equal l r
     | Pinc_Types.Operators.Binary.AND -> execute_binary_and l r
     | Pinc_Types.Operators.Binary.OR -> execute_binary_or l r
-    | Pinc_Types.Operators.Binary.CONCAT -> assert false
-    | Pinc_Types.Operators.Binary.DOT_ACCESS -> assert false
-    | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> assert false
-    | Pinc_Types.Operators.Binary.FUNCTION_CALL -> assert false
-    | Pinc_Types.Operators.Binary.PIPE -> assert false
-    | Pinc_Types.Operators.Binary.ARRAY_ADD -> assert false
-    | Pinc_Types.Operators.Binary.MERGE -> assert false
-    | Pinc_Types.Operators.Binary.RANGE -> assert false
-    | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE -> assert false
+    | Pinc_Types.Operators.Binary.CONCAT -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.DOT_ACCESS -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.FUNCTION_CALL -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.PIPE -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.ARRAY_ADD -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.MERGE -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.RANGE -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE -> raise_notrace TODO
   in
   Stack.push t.stack result
 
