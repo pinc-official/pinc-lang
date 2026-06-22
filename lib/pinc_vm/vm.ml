@@ -7,12 +7,17 @@ exception TODO
 type t = {
   bytecode : Bytecode.t;
   stack : Value.t Stack.t;
+  globals : Value.t Array.t;
 }
 
 let stack_size = 2048
 
 let make (bytecode : Bytecode.t) =
-  { bytecode; stack = Stack.make ~size:stack_size ~default_value:Value.Null }
+  {
+    bytecode;
+    stack = Stack.make ~size:stack_size ~default_value:Value.Null;
+    globals = Array.make UInt16.max_value Value.Null;
+  }
 ;;
 
 let rec execute_binary_operation t op =
@@ -228,6 +233,12 @@ let run t =
           in
           ()
       | Instruction.I_Null -> Stack.push t.stack Value.Null
+      | Instruction.I_Set_Global addr ->
+          let value = Stack.pop t.stack in
+          t.globals.(UInt16.to_int addr) <- value
+      | Instruction.I_Get_Global addr ->
+          let value = t.globals.(UInt16.to_int addr) in
+          Stack.push t.stack value
     in
     ()
   done;

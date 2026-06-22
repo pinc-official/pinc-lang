@@ -10,6 +10,7 @@ module T = struct
 
   let to_int t = t
   let width _ = 2
+  let max_value = 65535
 
   let write bytes offset t =
     Bytes.set_uint16_be bytes offset t;

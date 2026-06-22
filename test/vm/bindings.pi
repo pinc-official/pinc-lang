@@ -1,0 +1,10 @@
+component Let {
+  let one = 1;
+  let two = one;
+  two
+}
+
+component UnboundIdentifier {
+  let two = one;
+  two
+}

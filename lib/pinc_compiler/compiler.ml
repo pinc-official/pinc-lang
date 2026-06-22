@@ -10,6 +10,7 @@ type t = {
   constants : Pinc_Bytecode.Value.t UInt16.Map.t;
   mutable last_instruction : emitted_instruction;
   mutable previous_instruction : emitted_instruction;
+  symbol_table : SymbolTable.t;
 }
 
 let set_last_instruction t offset instruction =
@@ -66,6 +67,11 @@ let emit_constant t constant =
   emit t constant
 ;;
 
+let add_symbol t name =
+  let symbol_table = SymbolTable.define_symbol t.symbol_table ~name in
+  ({ t with symbol_table }, SymbolTable.length symbol_table)
+;;
+
 let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   match expr.expression_desc with
   | Void -> t
@@ -75,7 +81,17 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | Float f -> emit_constant t (Pinc_Bytecode.Value.Float f)
   | Bool true -> emit t Pinc_Bytecode.Instruction.I_True
   | Bool false -> emit t Pinc_Bytecode.Instruction.I_False
-  | LowercaseIdentifierExpression _ -> raise_notrace TODO
+  | LowercaseIdentifierExpression name ->
+      let symbol = SymbolTable.resolve_symbol t.symbol_table ~name in
+      let t =
+        match symbol with
+        | None ->
+            Pinc_Diagnostics.raise_error
+              expr.expression_loc
+              ("Unbound identifier `" ^ name ^ "`")
+        | Some symbol -> emit t @@ Pinc_Bytecode.Instruction.I_Get_Global symbol.address
+      in
+      t
   | ExternalFunction _ -> raise_notrace TODO
   | UppercaseIdentifierExpression _ -> raise_notrace TODO
   | Array _ -> raise_notrace TODO
@@ -165,10 +181,11 @@ and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
   match stmt.statement_desc with
   | BreakStatement _ -> raise_notrace TODO
   | ContinueStatement _ -> raise_notrace TODO
-  | LetStatement (_, _) -> raise_notrace TODO
-  | MutableLetStatement (_, _) -> raise_notrace TODO
-  | OptionalLetStatement (_, _) -> raise_notrace TODO
-  | OptionalMutableLetStatement (_, _) -> raise_notrace TODO
+  | LetStatement (~is_optional:_, ~is_mutable:_, Lowercase_Id (name, _), expr) ->
+      let t = compile_expr t expr in
+      let t, addr = add_symbol t name in
+      let t = emit t (Pinc_Bytecode.Instruction.I_Set_Global addr) in
+      t
   | MutationStatement (_, _) -> raise_notrace TODO
   | ExpressionStatement e ->
       let t = compile_expr t e in
@@ -197,6 +214,7 @@ let compile (ast : Pinc_Types.Ast.t) =
       constants = UInt16.Map.empty;
       previous_instruction = empty_instruction;
       last_instruction = empty_instruction;
+      symbol_table = SymbolTable.make ();
     }
   in
   let t = StringMap.fold (fun _ -> compile_declaration) ast t in

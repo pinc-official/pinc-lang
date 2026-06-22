@@ -1,6 +1,7 @@
 include StdlibExtension
 module StringMap = StringMap
 module StringSet = StringSet
+module SymbolTable = SymbolTable
 module Identifier = Identifier
 module Utf8String = Utf8String
 module UInt16 = UInt16

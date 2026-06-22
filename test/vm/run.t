@@ -227,3 +227,26 @@
   0005 I_Jump 0x0009 (0009)
   0008 I_False
   0009 I_Pop
+
+  $ NO_COLOR="1" print_vm . Let
+  1
+
+  $ NO_COLOR="1" print_instructions . Let
+  0000 I_Constant 0x0001 (0001)
+  0003 I_Set_Global 0x0001 (0001)
+  0006 I_Get_Global 0x0000 (0000)
+  0009 I_Set_Global 0x0002 (0002)
+  0012 I_Get_Global 0x0001 (0001)
+  0015 I_Pop
+
+  $ NO_COLOR="1" print_instructions . UnboundIdentifier
+  
+  ERROR in file ./bindings.pi:8:13-16
+  
+     7 │ component UnboundIdentifier {
+     8 │   let two = one;
+       │             ^^^ 
+     9 │   two
+  
+  Unbound identifier `one`
+  [1]

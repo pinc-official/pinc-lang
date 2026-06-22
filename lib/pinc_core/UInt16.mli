@@ -3,6 +3,7 @@ type t
 val make : int -> t
 val to_int : t -> int
 val width : t -> int
+val max_value : int
 val write : Bytes.t -> int -> t -> int
 val read : Bytes.t -> int -> int * t
 val compare : t -> t -> int

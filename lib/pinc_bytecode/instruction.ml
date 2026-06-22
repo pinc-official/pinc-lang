@@ -22,6 +22,8 @@ type t =
   | I_Not
   | I_Jump of UInt16.t
   | I_Jump_If_False of UInt16.t
+  | I_Set_Global of UInt16.t
+  | I_Get_Global of UInt16.t
 
 let byte = function
   | I_Pop -> 0x00
@@ -47,12 +49,13 @@ let byte = function
   | I_Jump _ -> 0x14
   | I_Jump_If_False _ -> 0x15
   | I_Null -> 0x16
+  | I_Set_Global _ -> 0x17
+  | I_Get_Global _ -> 0x18
 ;;
 
 let operands_length = function
-  | I_Constant addr -> UInt16.width addr
-  | I_Jump addr -> UInt16.width addr
-  | I_Jump_If_False addr -> UInt16.width addr
+  | I_Constant op | I_Jump op | I_Jump_If_False op | I_Set_Global op | I_Get_Global op ->
+      UInt16.width op
   | I_Pop
   | I_Add
   | I_Sub
@@ -108,6 +111,12 @@ let decode bytes offset =
       let offset, addr = UInt16.read bytes offset in
       (offset, I_Jump_If_False addr)
   | 0x16 -> (offset, I_Null)
+  | 0x17 ->
+      let offset, addr = UInt16.read bytes offset in
+      (offset, I_Set_Global addr)
+  | 0x18 ->
+      let offset, addr = UInt16.read bytes offset in
+      (offset, I_Get_Global addr)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -137,6 +146,8 @@ let pp fmt = function
   | I_Jump addr -> Format.fprintf fmt "I_Jump %a" UInt16.pp addr
   | I_Jump_If_False addr -> Format.fprintf fmt "I_Jump_If_False %a" UInt16.pp addr
   | I_Null -> Format.fprintf fmt "I_Null"
+  | I_Get_Global addr -> Format.fprintf fmt "I_Get_Global %a" UInt16.pp addr
+  | I_Set_Global addr -> Format.fprintf fmt "I_Set_Global %a" UInt16.pp addr
 ;;
 
 let to_bytes t =
@@ -151,9 +162,8 @@ let to_bytes t =
 
   let () =
     match t with
-    | I_Constant addr -> offset := UInt16.write bytes !offset addr
-    | I_Jump addr -> offset := UInt16.write bytes !offset addr
-    | I_Jump_If_False addr -> offset := UInt16.write bytes !offset addr
+    | I_Constant op | I_Jump op | I_Jump_If_False op | I_Set_Global op | I_Get_Global op
+      -> offset := UInt16.write bytes !offset op
     | I_Pop
     | I_Add
     | I_Sub
