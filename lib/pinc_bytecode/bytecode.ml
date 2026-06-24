@@ -1,6 +1,6 @@
 type t = {
   instructions : Bytes.t;
-  constants : Value.t UInt16.Map.t;
+  constants : Value.t Int32.Map.t;
 }
 
 let make ~instructions ~constants = { instructions; constants }

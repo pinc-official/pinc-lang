@@ -4,7 +4,6 @@ module StringSet = StringSet
 module SymbolTable = SymbolTable
 module Identifier = Identifier
 module Utf8String = Utf8String
-module UInt16 = UInt16
 
 module Dedent = struct
   let indentation =

@@ -1,21 +1,21 @@
 type t = {
   store : symbol StringMap.t;
-  length : UInt16.t;
+  length : Int32.t;
 }
 
 and symbol = {
   name : string;
   scope : scope;
-  address : UInt16.t;
+  address : Int32.t;
 }
 
 and scope = Global
 
-let make () = { store = StringMap.empty; length = UInt16.make 0 }
+let make () = { store = StringMap.empty; length = Int32.zero }
 
 let define_symbol t ~name =
   let symbol = { name; scope = Global; address = t.length } in
-  { store = StringMap.add name symbol t.store; length = UInt16.succ t.length }
+  { store = StringMap.add name symbol t.store; length = Int32.succ t.length }
 ;;
 
 let resolve_symbol t ~name = StringMap.find_opt name t.store

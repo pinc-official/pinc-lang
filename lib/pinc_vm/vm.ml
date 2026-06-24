@@ -7,7 +7,7 @@ exception TODO
 type t = {
   bytecode : Bytecode.t;
   stack : Value.t Stack.t;
-  globals : Value.t Array.t;
+  mutable globals : Value.t Int32.Map.t;
 }
 
 let stack_size = 2048
@@ -16,7 +16,7 @@ let make (bytecode : Bytecode.t) =
   {
     bytecode;
     stack = Stack.make ~size:stack_size ~default_value:Value.Null;
-    globals = Array.make UInt16.max_value Value.Null;
+    globals = Int32.Map.empty;
   }
 ;;
 
@@ -203,7 +203,7 @@ let run t =
       match op with
       | Instruction.I_Pop -> ignore @@ Stack.pop t.stack
       | Instruction.I_Constant addr ->
-          let constant = UInt16.Map.find addr t.bytecode.constants in
+          let constant = Int32.Map.find addr t.bytecode.constants in
           Stack.push t.stack constant
       | Instruction.I_Add -> execute_binary_operation t Operators.Binary.PLUS
       | Instruction.I_Sub -> execute_binary_operation t Operators.Binary.MINUS
@@ -224,20 +224,20 @@ let run t =
       | Instruction.I_Or -> execute_binary_operation t Operators.Binary.OR
       | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
       | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
-      | Instruction.I_Jump addr -> ip := UInt16.to_int addr
+      | Instruction.I_Jump addr -> ip := Int32.to_int addr
       | Instruction.I_Jump_If_False addr ->
           let condition = Stack.pop t.stack in
           let () =
             if not @@ Value.is_true condition then
-              ip := UInt16.to_int addr
+              ip := Int32.to_int addr
           in
           ()
       | Instruction.I_Null -> Stack.push t.stack Value.Null
       | Instruction.I_Set_Global addr ->
           let value = Stack.pop t.stack in
-          t.globals.(UInt16.to_int addr) <- value
+          t.globals <- Int32.Map.add addr value t.globals
       | Instruction.I_Get_Global addr ->
-          let value = t.globals.(UInt16.to_int addr) in
+          let value = Int32.Map.find addr t.globals in
           Stack.push t.stack value
     in
     ()

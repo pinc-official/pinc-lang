@@ -195,3 +195,23 @@ module Buffer = struct
 
   let pp_bytes t = t |> Buffer.to_bytes |> Bytes.pp_hum
 end
+
+module Int32 = struct
+  include Int32
+
+  let byte_width (_ : Int32.t) = 4
+
+  let write_bytes bytes offset t =
+    Bytes.set_int32_be bytes offset t;
+    offset + byte_width t
+  ;;
+
+  let read_bytes bytes offset =
+    let result = Bytes.get_int32_be bytes offset in
+    (offset + byte_width result, result)
+  ;;
+
+  let pp fmt t = Format.fprintf fmt "0x%08lX (%08li)" t t
+
+  module Map = Map.Make (Int32)
+end

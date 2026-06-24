@@ -7,7 +7,7 @@ type emitted_instruction = {
 
 type t = {
   instructions : Buffer.t;
-  constants : Pinc_Bytecode.Value.t UInt16.Map.t;
+  constants : Pinc_Bytecode.Value.t Int32.Map.t;
   mutable last_instruction : emitted_instruction;
   mutable previous_instruction : emitted_instruction;
   symbol_table : SymbolTable.t;
@@ -43,14 +43,14 @@ let remove_last_pop t =
 
 let add_constant =
   let id =
-    let id' = ref (UInt16.make 0) in
+    let id' = ref Int32.zero in
     fun () ->
-      UInt16.incr id';
+      id' := Int32.succ !id';
       !id'
   in
   fun t constant ->
     let new_id = id () in
-    let constants = UInt16.Map.add new_id constant t.constants in
+    let constants = Int32.Map.add new_id constant t.constants in
     (new_id, { t with constants })
 ;;
 
@@ -149,15 +149,15 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
 
   (* Consequent *)
   (* We create a conditional jump with a temporary address first, because we do not know where we should jump to next. *)
-  let t = emit t (Pinc_Bytecode.Instruction.I_Jump_If_False (UInt16.make 0xFFFF)) in
+  let t = emit t (Pinc_Bytecode.Instruction.I_Jump_If_False 0xFFFFFFFl) in
   let jump_consequent_offset = t.last_instruction.offset in
   let t = compile_expr t consequent in
   let t = remove_last_pop t in
 
   (* Alternate *)
-  let t = emit t (Pinc_Bytecode.Instruction.I_Jump (UInt16.make 0xFFFF)) in
+  let t = emit t (Pinc_Bytecode.Instruction.I_Jump 0xFFFFFFFl) in
   let jump_alternate_offset = t.last_instruction.offset in
-  let jump_address = UInt16.make (Buffer.length t.instructions) in
+  let jump_address = Int32.of_int (Buffer.length t.instructions) in
   let t =
     replace_instruction t jump_consequent_offset
     @@ Pinc_Bytecode.Instruction.I_Jump_If_False jump_address
@@ -170,7 +170,7 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
         let t = remove_last_pop t in
         t
   in
-  let jump_address = UInt16.make (Buffer.length t.instructions) in
+  let jump_address = Int32.of_int (Buffer.length t.instructions) in
   let t =
     replace_instruction t jump_alternate_offset
     @@ Pinc_Bytecode.Instruction.I_Jump jump_address
@@ -211,7 +211,7 @@ let compile (ast : Pinc_Types.Ast.t) =
   let t =
     {
       instructions = Buffer.create 8;
-      constants = UInt16.Map.empty;
+      constants = Int32.Map.empty;
       previous_instruction = empty_instruction;
       last_instruction = empty_instruction;
       symbol_table = SymbolTable.make ();

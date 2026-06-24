@@ -1,7 +1,7 @@
 type t =
   | I_Null
   | I_Pop
-  | I_Constant of UInt16.t
+  | I_Constant of Int32.t
   | I_Add
   | I_Sub
   | I_Div
@@ -20,10 +20,10 @@ type t =
   | I_Or
   | I_Minus
   | I_Not
-  | I_Jump of UInt16.t
-  | I_Jump_If_False of UInt16.t
-  | I_Set_Global of UInt16.t
-  | I_Get_Global of UInt16.t
+  | I_Jump of Int32.t
+  | I_Jump_If_False of Int32.t
+  | I_Set_Global of Int32.t
+  | I_Get_Global of Int32.t
 
 let byte = function
   | I_Pop -> 0x00
@@ -55,7 +55,7 @@ let byte = function
 
 let operands_length = function
   | I_Constant op | I_Jump op | I_Jump_If_False op | I_Set_Global op | I_Get_Global op ->
-      UInt16.width op
+      Int32.byte_width op
   | I_Pop
   | I_Add
   | I_Sub
@@ -84,7 +84,7 @@ let decode bytes offset =
   match instruction with
   | 0x00 -> (offset, I_Pop)
   | 0x01 ->
-      let offset, addr = UInt16.read bytes offset in
+      let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Constant addr)
   | 0x02 -> (offset, I_Add)
   | 0x03 -> (offset, I_Sub)
@@ -105,17 +105,17 @@ let decode bytes offset =
   | 0x12 -> (offset, I_Minus)
   | 0x13 -> (offset, I_Not)
   | 0x14 ->
-      let offset, addr = UInt16.read bytes offset in
+      let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Jump addr)
   | 0x15 ->
-      let offset, addr = UInt16.read bytes offset in
+      let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Jump_If_False addr)
   | 0x16 -> (offset, I_Null)
   | 0x17 ->
-      let offset, addr = UInt16.read bytes offset in
+      let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Set_Global addr)
   | 0x18 ->
-      let offset, addr = UInt16.read bytes offset in
+      let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Get_Global addr)
   | _ ->
       raise_notrace
@@ -124,7 +124,7 @@ let decode bytes offset =
 
 let pp fmt = function
   | I_Pop -> Format.fprintf fmt "I_Pop"
-  | I_Constant addr -> Format.fprintf fmt "I_Constant %a" UInt16.pp addr
+  | I_Constant addr -> Format.fprintf fmt "I_Constant %a" Int32.pp addr
   | I_Add -> Format.fprintf fmt "I_Add"
   | I_Sub -> Format.fprintf fmt "I_Sub"
   | I_Div -> Format.fprintf fmt "I_Div"
@@ -143,11 +143,11 @@ let pp fmt = function
   | I_Or -> Format.fprintf fmt "I_Or"
   | I_Minus -> Format.fprintf fmt "I_Minus"
   | I_Not -> Format.fprintf fmt "I_Not"
-  | I_Jump addr -> Format.fprintf fmt "I_Jump %a" UInt16.pp addr
-  | I_Jump_If_False addr -> Format.fprintf fmt "I_Jump_If_False %a" UInt16.pp addr
+  | I_Jump addr -> Format.fprintf fmt "I_Jump %a" Int32.pp addr
+  | I_Jump_If_False addr -> Format.fprintf fmt "I_Jump_If_False %a" Int32.pp addr
   | I_Null -> Format.fprintf fmt "I_Null"
-  | I_Get_Global addr -> Format.fprintf fmt "I_Get_Global %a" UInt16.pp addr
-  | I_Set_Global addr -> Format.fprintf fmt "I_Set_Global %a" UInt16.pp addr
+  | I_Get_Global addr -> Format.fprintf fmt "I_Get_Global %a" Int32.pp addr
+  | I_Set_Global addr -> Format.fprintf fmt "I_Set_Global %a" Int32.pp addr
 ;;
 
 let to_bytes t =
@@ -163,7 +163,7 @@ let to_bytes t =
   let () =
     match t with
     | I_Constant op | I_Jump op | I_Jump_If_False op | I_Set_Global op | I_Get_Global op
-      -> offset := UInt16.write bytes !offset op
+      -> offset := Int32.write_bytes bytes !offset op
     | I_Pop
     | I_Add
     | I_Sub
