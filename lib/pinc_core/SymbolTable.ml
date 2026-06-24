@@ -14,8 +14,9 @@ and scope = Global
 let make () = { store = StringMap.empty; length = Int32.zero }
 
 let define_symbol t ~name =
-  let symbol = { name; scope = Global; address = t.length } in
-  { store = StringMap.add name symbol t.store; length = Int32.succ t.length }
+  let address = Int32.succ t.length in
+  let symbol = { name; scope = Global; address } in
+  { store = StringMap.add name symbol t.store; length = address }
 ;;
 
 let resolve_symbol t ~name = StringMap.find_opt name t.store

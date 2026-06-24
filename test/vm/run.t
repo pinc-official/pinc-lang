@@ -234,9 +234,9 @@
   $ NO_COLOR="1" print_instructions . Let
   0000 I_Constant 0x00000001 (00000001)
   0005 I_Set_Global 0x00000001 (00000001)
-  0010 I_Get_Global 0x00000000 (00000000)
+  0010 I_Get_Global 0x00000001 (00000001)
   0015 I_Set_Global 0x00000002 (00000002)
-  0020 I_Get_Global 0x00000001 (00000001)
+  0020 I_Get_Global 0x00000002 (00000002)
   0025 I_Pop
 
   $ NO_COLOR="1" print_instructions . UnboundIdentifier
