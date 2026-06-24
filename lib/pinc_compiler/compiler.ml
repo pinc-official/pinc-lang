@@ -72,26 +72,47 @@ let add_symbol t name =
   ({ t with symbol_table }, SymbolTable.length symbol_table)
 ;;
 
+let get_symbol ~loc t name =
+  let symbol = SymbolTable.resolve_symbol t.symbol_table ~name in
+  match symbol with
+  | None -> Pinc_Diagnostics.raise_error loc ("Unbound identifier `" ^ name ^ "`")
+  | Some symbol -> symbol
+;;
+
+let compile_string_template t s =
+  s
+  |> List.fold_left
+       (fun (t, index) template ->
+         let t =
+           match template.Pinc_Types.Ast.string_template_desc with
+           | StringInterpolation (Lowercase_Id (name, loc)) ->
+               let symbol = get_symbol t ~loc name in
+               emit t @@ Pinc_Bytecode.Instruction.I_Get_Global symbol.address
+           | StringText s -> emit_constant t (Pinc_Bytecode.Value.String s)
+         in
+         let t =
+           if index > 0 then
+             emit t @@ Pinc_Bytecode.Instruction.I_Concat
+           else
+             t
+         in
+         (t, succ index))
+       (t, 0)
+  |> fst
+;;
+
 let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   match expr.expression_desc with
   | Void -> t
-  | String _ -> raise_notrace TODO
+  | String s -> compile_string_template t s
   | Char _ -> raise_notrace TODO
   | Int i -> emit_constant t (Pinc_Bytecode.Value.Int i)
   | Float f -> emit_constant t (Pinc_Bytecode.Value.Float f)
   | Bool true -> emit t Pinc_Bytecode.Instruction.I_True
   | Bool false -> emit t Pinc_Bytecode.Instruction.I_False
   | LowercaseIdentifierExpression name ->
-      let symbol = SymbolTable.resolve_symbol t.symbol_table ~name in
-      let t =
-        match symbol with
-        | None ->
-            Pinc_Diagnostics.raise_error
-              expr.expression_loc
-              ("Unbound identifier `" ^ name ^ "`")
-        | Some symbol -> emit t @@ Pinc_Bytecode.Instruction.I_Get_Global symbol.address
-      in
-      t
+      let symbol = get_symbol ~loc:expr.expression_loc t name in
+      emit t @@ Pinc_Bytecode.Instruction.I_Get_Global symbol.address
   | ExternalFunction _ -> raise_notrace TODO
   | UppercaseIdentifierExpression _ -> raise_notrace TODO
   | Array _ -> raise_notrace TODO
@@ -133,7 +154,7 @@ and compile_binary_expression t ~left ~op ~right =
       emit t Pinc_Bytecode.Instruction.I_Less_Equal
   | Pinc_Types.Operators.Binary.AND -> emit t Pinc_Bytecode.Instruction.I_And
   | Pinc_Types.Operators.Binary.OR -> emit t Pinc_Bytecode.Instruction.I_Or
-  | Pinc_Types.Operators.Binary.CONCAT -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.CONCAT -> emit t Pinc_Bytecode.Instruction.I_Concat
   | Pinc_Types.Operators.Binary.DOT_ACCESS -> raise_notrace TODO
   | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> raise_notrace TODO
   | Pinc_Types.Operators.Binary.FUNCTION_CALL -> raise_notrace TODO

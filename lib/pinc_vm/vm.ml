@@ -39,7 +39,7 @@ let rec execute_binary_operation t op =
     | Pinc_Types.Operators.Binary.LESS_EQUAL -> execute_binary_less_equal l r
     | Pinc_Types.Operators.Binary.AND -> execute_binary_and l r
     | Pinc_Types.Operators.Binary.OR -> execute_binary_or l r
-    | Pinc_Types.Operators.Binary.CONCAT -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.CONCAT -> execute_binary_concat l r
     | Pinc_Types.Operators.Binary.DOT_ACCESS -> raise_notrace TODO
     | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> raise_notrace TODO
     | Pinc_Types.Operators.Binary.FUNCTION_CALL -> raise_notrace TODO
@@ -117,6 +117,26 @@ and execute_binary_pow l r =
   | Value.Int l, Value.Float r -> Value.Float (float_of_int l ** r)
   | (Value.Int _ | Value.Float _), _ | _, (Value.Int _ | Value.Float _) | _ ->
       raise_notrace (Invalid_argument "Trying to raise non numeric values.")
+
+and execute_binary_concat l r =
+  let buf = Buffer.create 32 in
+  let () =
+    match (l, r) with
+    | Value.String a, Value.String b ->
+        Buffer.add_string buf a;
+        Buffer.add_string buf b
+    (* | Value.String a, Value.Char b ->
+        Buffer.add_string buf a;
+        Buffer.add_utf_8_uchar buf b
+    | Value.Char a, Value.String b ->
+        Buffer.add_utf_8_uchar buf a;
+        Buffer.add_string buf b
+    | Value.Char a, Value.Char b ->
+        Buffer.add_utf_8_uchar buf a;
+        Buffer.add_utf_8_uchar buf b *)
+    | _ -> raise_notrace (Invalid_argument "Trying to concat non string literals.")
+  in
+  Value.String (Buffer.contents buf)
 
 and execute_binary_equal l r =
   if Value.equal l r then
@@ -222,6 +242,7 @@ let run t =
       | Instruction.I_Less_Equal -> execute_binary_operation t Operators.Binary.LESS_EQUAL
       | Instruction.I_And -> execute_binary_operation t Operators.Binary.AND
       | Instruction.I_Or -> execute_binary_operation t Operators.Binary.OR
+      | Instruction.I_Concat -> execute_binary_operation t Operators.Binary.CONCAT
       | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
       | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
       | Instruction.I_Jump addr -> ip := Int32.to_int addr

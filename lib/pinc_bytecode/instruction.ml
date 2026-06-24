@@ -24,6 +24,7 @@ type t =
   | I_Jump_If_False of Int32.t
   | I_Set_Global of Int32.t
   | I_Get_Global of Int32.t
+  | I_Concat
 
 let byte = function
   | I_Pop -> 0x00
@@ -51,6 +52,7 @@ let byte = function
   | I_Null -> 0x16
   | I_Set_Global _ -> 0x17
   | I_Get_Global _ -> 0x18
+  | I_Concat -> 0x19
 ;;
 
 let operands_length = function
@@ -75,7 +77,8 @@ let operands_length = function
   | I_Or
   | I_Minus
   | I_Not
-  | I_Null -> 0
+  | I_Null
+  | I_Concat -> 0
 ;;
 
 let decode bytes offset =
@@ -117,6 +120,7 @@ let decode bytes offset =
   | 0x18 ->
       let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Get_Global addr)
+  | 0x19 -> (offset, I_Concat)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -148,6 +152,7 @@ let pp fmt = function
   | I_Null -> Format.fprintf fmt "I_Null"
   | I_Get_Global addr -> Format.fprintf fmt "I_Get_Global %a" Int32.pp addr
   | I_Set_Global addr -> Format.fprintf fmt "I_Set_Global %a" Int32.pp addr
+  | I_Concat -> Format.fprintf fmt "I_Concat"
 ;;
 
 let to_bytes t =
@@ -183,7 +188,8 @@ let to_bytes t =
     | I_Or
     | I_Minus
     | I_Not
-    | I_Null -> ()
+    | I_Null
+    | I_Concat -> ()
   in
 
   bytes

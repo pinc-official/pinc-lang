@@ -1,0 +1,12 @@
+component String {
+  "Hello!"
+}
+
+component StringConcat {
+  "Hello " ++ "World" ++ "!"
+}
+
+component StringInterpolation {
+  let subject = "World";
+  "Hello $(subject)!"
+}
