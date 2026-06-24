@@ -115,7 +115,9 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       emit t @@ Pinc_Bytecode.Instruction.I_Get_Global symbol.address
   | ExternalFunction _ -> raise_notrace TODO
   | UppercaseIdentifierExpression _ -> raise_notrace TODO
-  | Array _ -> raise_notrace TODO
+  | Array a ->
+      let t = Array.fold_left compile_expr t a in
+      emit t @@ Pinc_Bytecode.Instruction.I_Array (Int32.of_int @@ Array.length a)
   | Record _ -> raise_notrace TODO
   | Function _ -> raise_notrace TODO
   | FunctionCall _ -> raise_notrace TODO

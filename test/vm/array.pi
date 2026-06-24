@@ -1,0 +1,11 @@
+component EmptyArray {
+  []
+}
+
+component Array {
+  [1, 2, 3, 4, 5]
+}
+
+component ExpressionArray {
+  [1 + 2, 3 - 4, 5 * 6, 7 / 8]
+}

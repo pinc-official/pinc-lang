@@ -281,3 +281,41 @@
   0021 I_Constant 0x00000003 (00000003)
   0026 I_Concat
   0027 I_Pop
+
+  $ NO_COLOR="1" print_vm . EmptyArray
+  
+
+  $ NO_COLOR="1" print_instructions . EmptyArray
+  0000 I_Array 0
+  0005 I_Pop
+
+  $ NO_COLOR="1" print_vm . Array
+  1 2 3 4 5
+
+  $ NO_COLOR="1" print_instructions . Array
+  0000 I_Constant 0x00000001 (00000001)
+  0005 I_Constant 0x00000002 (00000002)
+  0010 I_Constant 0x00000003 (00000003)
+  0015 I_Constant 0x00000004 (00000004)
+  0020 I_Constant 0x00000005 (00000005)
+  0025 I_Array 5
+  0030 I_Pop
+
+  $ NO_COLOR="1" print_vm . ExpressionArray
+  3 -1 30 0.875
+
+  $ NO_COLOR="1" print_instructions . ExpressionArray
+  0000 I_Constant 0x00000001 (00000001)
+  0005 I_Constant 0x00000002 (00000002)
+  0010 I_Add
+  0011 I_Constant 0x00000003 (00000003)
+  0016 I_Constant 0x00000004 (00000004)
+  0021 I_Sub
+  0022 I_Constant 0x00000005 (00000005)
+  0027 I_Constant 0x00000006 (00000006)
+  0032 I_Mul
+  0033 I_Constant 0x00000007 (00000007)
+  0038 I_Constant 0x00000008 (00000008)
+  0043 I_Div
+  0044 I_Array 4
+  0049 I_Pop

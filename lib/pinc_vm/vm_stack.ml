@@ -33,6 +33,15 @@ let pop t =
     value)
 ;;
 
+let pop_n t n =
+  if t.stack_pointer < n then
+    assert false
+  else (
+    let elements = List.init n (fun index -> t.stack.(t.stack_pointer - n + index)) in
+    t.stack_pointer <- t.stack_pointer - n;
+    elements)
+;;
+
 let top t =
   match t.stack_pointer with
   | 0 -> t.default_value

@@ -260,6 +260,10 @@ let run t =
       | Instruction.I_Get_Global addr ->
           let value = Int32.Map.find addr t.globals in
           Stack.push t.stack value
+      | Instruction.I_Array length ->
+          let elements = Array.of_list @@ Stack.pop_n t.stack (Int32.to_int length) in
+          let value = Value.Array elements in
+          Stack.push t.stack value
     in
     ()
   done;

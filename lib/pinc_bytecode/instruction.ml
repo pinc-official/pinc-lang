@@ -25,6 +25,7 @@ type t =
   | I_Set_Global of Int32.t
   | I_Get_Global of Int32.t
   | I_Concat
+  | I_Array of Int32.t
 
 let byte = function
   | I_Pop -> 0x00
@@ -53,11 +54,16 @@ let byte = function
   | I_Set_Global _ -> 0x17
   | I_Get_Global _ -> 0x18
   | I_Concat -> 0x19
+  | I_Array _ -> 0x1A
 ;;
 
 let operands_length = function
-  | I_Constant op | I_Jump op | I_Jump_If_False op | I_Set_Global op | I_Get_Global op ->
-      Int32.byte_width op
+  | I_Constant op
+  | I_Jump op
+  | I_Jump_If_False op
+  | I_Set_Global op
+  | I_Get_Global op
+  | I_Array op -> Int32.byte_width op
   | I_Pop
   | I_Add
   | I_Sub
@@ -121,6 +127,9 @@ let decode bytes offset =
       let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Get_Global addr)
   | 0x19 -> (offset, I_Concat)
+  | 0x1A ->
+      let offset, length = Int32.read_bytes bytes offset in
+      (offset, I_Array length)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -152,6 +161,7 @@ let pp fmt = function
   | I_Null -> Format.fprintf fmt "I_Null"
   | I_Get_Global addr -> Format.fprintf fmt "I_Get_Global %a" Int32.pp addr
   | I_Set_Global addr -> Format.fprintf fmt "I_Set_Global %a" Int32.pp addr
+  | I_Array length -> Format.fprintf fmt "I_Array %i" (Int32.to_int length)
   | I_Concat -> Format.fprintf fmt "I_Concat"
 ;;
 
@@ -167,8 +177,12 @@ let to_bytes t =
 
   let () =
     match t with
-    | I_Constant op | I_Jump op | I_Jump_If_False op | I_Set_Global op | I_Get_Global op
-      -> offset := Int32.write_bytes bytes !offset op
+    | I_Constant op
+    | I_Jump op
+    | I_Jump_If_False op
+    | I_Set_Global op
+    | I_Get_Global op
+    | I_Array op -> offset := Int32.write_bytes bytes !offset op
     | I_Pop
     | I_Add
     | I_Sub
