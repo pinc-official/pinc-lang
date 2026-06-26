@@ -46,8 +46,9 @@ let rec execute_binary_operation t op =
     | Pinc_Types.Operators.Binary.PIPE -> raise_notrace TODO
     | Pinc_Types.Operators.Binary.ARRAY_ADD -> raise_notrace TODO
     | Pinc_Types.Operators.Binary.MERGE -> raise_notrace TODO
-    | Pinc_Types.Operators.Binary.RANGE -> raise_notrace TODO
-    | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.RANGE -> execute_binary_range ~inclusive:false l r
+    | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE ->
+        execute_binary_range ~inclusive:true l r
   in
   Stack.push t.stack result
 
@@ -179,6 +180,43 @@ and execute_binary_bracket_access l r =
            ("Trying to access a property on a non record or array value: "
            ^ Value.to_string l)
 
+and execute_binary_range ~inclusive l r =
+  let get_range from upto =
+    match (from, upto) with
+    | Value.Int from, Value.Int upto -> (from, upto)
+    | Value.Int from, Value.Float upto when Float.is_integer upto ->
+        (from, int_of_float upto)
+    | Value.Float from, Value.Int upto when Float.is_integer from ->
+        (int_of_float from, upto)
+    | Value.Float from, Value.Float upto
+      when Float.is_integer from && Float.is_integer upto ->
+        (int_of_float from, int_of_float upto)
+    | Int _, _ ->
+        raise_notrace
+        @@ Invalid_argument
+             "Can't construct range. The end of your range is not of type int."
+    | _, Int _ ->
+        raise_notrace
+        @@ Invalid_argument
+             "Can't construct range. The start of your range is not of type int."
+    | _, _ ->
+        raise_notrace
+        @@ Invalid_argument
+             "Can't construct range. The start and end of your range are not of type int."
+  in
+  let from_int, upto_int = get_range l r in
+  if from_int > upto_int then
+    Value.Array [||]
+  else (
+    let start = from_int in
+    let stop =
+      if inclusive then
+        upto_int + 1
+      else
+        upto_int
+    in
+    Value.Array (Array.init (stop - start) (fun i -> Value.Int (i + start))))
+
 and execute_binary_equal l r =
   if Value.equal l r then
     Value.constant_true
@@ -286,6 +324,9 @@ let run t =
       | Instruction.I_Concat -> execute_binary_operation t Operators.Binary.CONCAT
       | Instruction.I_Index -> execute_binary_operation t Operators.Binary.BRACKET_ACCESS
       | Instruction.I_Dot_Index -> execute_binary_operation t Operators.Binary.DOT_ACCESS
+      | Instruction.I_Range -> execute_binary_operation t Operators.Binary.RANGE
+      | Instruction.I_Range_Inclusive ->
+          execute_binary_operation t Operators.Binary.INCLUSIVE_RANGE
       | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
       | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
       | Instruction.I_Jump addr -> ip := Int32.to_int addr

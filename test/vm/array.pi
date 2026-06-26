@@ -13,3 +13,11 @@ component ExpressionArray {
 component ArrayAccess {
   [1 + 2, 3 - 4, 5 * 6, 7 / 8][3 - 2]
 }
+
+component ArrayRange {
+  1..10
+}
+
+component ArrayRangeInclusive {
+  1...10
+}

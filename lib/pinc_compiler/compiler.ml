@@ -226,8 +226,14 @@ and compile_binary_expression t ~left ~op ~right =
   | Pinc_Types.Operators.Binary.PIPE -> raise_notrace TODO
   | Pinc_Types.Operators.Binary.ARRAY_ADD -> raise_notrace TODO
   | Pinc_Types.Operators.Binary.MERGE -> raise_notrace TODO
-  | Pinc_Types.Operators.Binary.RANGE -> raise_notrace TODO
-  | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.RANGE ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Range
+  | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Range_Inclusive
 
 and compile_conditional_expression t ~condition ~consequent ~alternate =
   (* Condition *)

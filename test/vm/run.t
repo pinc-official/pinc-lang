@@ -352,6 +352,24 @@
   0060 I_Index
   0061 I_Pop
 
+  $ NO_COLOR="1" print_vm . ArrayRange
+  1 2 3 4 5 6 7 8 9
+
+  $ NO_COLOR="1" print_instructions . ArrayRange
+  0000 I_Constant 0x00000001 (00000001)
+  0005 I_Constant 0x00000002 (00000002)
+  0010 I_Range
+  0011 I_Pop
+
+  $ NO_COLOR="1" print_vm . ArrayRangeInclusive
+  1 2 3 4 5 6 7 8 9 10
+
+  $ NO_COLOR="1" print_instructions . ArrayRangeInclusive
+  0000 I_Constant 0x00000001 (00000001)
+  0005 I_Constant 0x00000002 (00000002)
+  0010 I_Range_Inclusive
+  0011 I_Pop
+
   $ NO_COLOR="1" print_vm . Record
   1
   foo
