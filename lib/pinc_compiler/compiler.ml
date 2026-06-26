@@ -5,40 +5,97 @@ type emitted_instruction = {
   instruction : Pinc_Bytecode.Instruction.t;
 }
 
-type t = {
+type scope = {
   instructions : Buffer.t;
-  constants : Pinc_Bytecode.Value.t Int32.Map.t;
-  mutable last_instruction : emitted_instruction;
-  mutable previous_instruction : emitted_instruction;
-  symbol_table : SymbolTable.t;
+  last_instruction : emitted_instruction;
+  previous_instruction : emitted_instruction;
 }
 
+type t = {
+  constants : Pinc_Bytecode.Value.t Int32.Map.t;
+  symbol_table : SymbolTable.t;
+  scopes : scope list;
+}
+
+let current_scope t =
+  match t.scopes with
+  | [] -> assert false
+  | scope :: _ -> scope
+;;
+
+let current_instructions t =
+  let scope = current_scope t in
+  scope.instructions
+;;
+
+let last_instruction t =
+  let scope = current_scope t in
+  scope.last_instruction.instruction
+;;
+
+let last_instruction_offset t =
+  let scope = current_scope t in
+  scope.last_instruction.offset
+;;
+
 let set_last_instruction t offset instruction =
-  t.previous_instruction <- t.last_instruction;
-  t.last_instruction <- { offset; instruction }
+  match t.scopes with
+  | [] -> assert false
+  | scope :: scopes ->
+      let scope' =
+        {
+          scope with
+          previous_instruction = scope.last_instruction;
+          last_instruction = { offset; instruction };
+        }
+      in
+      { t with scopes = scope' :: scopes }
 ;;
 
 let replace_instruction t offset instruction =
-  let current_instructions = Buffer.to_bytes t.instructions in
-  let src = Pinc_Bytecode.Instruction.to_bytes instruction in
-  let srcoff = 0 in
-  let len = Bytes.length src in
-  Bytes.blit src srcoff current_instructions offset len;
-  Buffer.truncate t.instructions 0;
-  Buffer.add_bytes t.instructions current_instructions;
-  t
+  match t.scopes with
+  | [] -> assert false
+  | scope :: _ ->
+      let current_instructions = Buffer.to_bytes scope.instructions in
+      let src = Pinc_Bytecode.Instruction.to_bytes instruction in
+      let srcoff = 0 in
+      let len = Bytes.length src in
+      Bytes.blit src srcoff current_instructions offset len;
+      Buffer.truncate scope.instructions 0;
+      Buffer.add_bytes scope.instructions current_instructions;
+      t
 ;;
 
 let remove_last_instruction t =
-  Buffer.truncate t.instructions t.last_instruction.offset;
-  t.last_instruction <- t.previous_instruction;
-  t
+  match t.scopes with
+  | [] -> assert false
+  | scope :: scopes ->
+      Buffer.truncate scope.instructions scope.last_instruction.offset;
+      let scope' = { scope with last_instruction = scope.previous_instruction } in
+      { t with scopes = scope' :: scopes }
 ;;
 
-let remove_last_pop t =
-  match t.last_instruction.instruction with
-  | I_Pop -> remove_last_instruction t
-  | _ -> t
+let match_last_instruction t check =
+  let scope = current_scope t in
+  scope.last_instruction.instruction == check
+;;
+
+let add_scope t =
+  let empty_instruction = { offset = 0; instruction = I_Null } in
+  let scope =
+    {
+      instructions = Buffer.create 8;
+      previous_instruction = empty_instruction;
+      last_instruction = empty_instruction;
+    }
+  in
+  { t with scopes = scope :: t.scopes }
+;;
+
+let pop_scope t =
+  match t.scopes with
+  | [] -> assert false
+  | scope :: scopes -> ({ t with scopes }, scope)
 ;;
 
 let add_constant =
@@ -55,9 +112,10 @@ let add_constant =
 ;;
 
 let emit t opcode =
-  let offset = Buffer.length t.instructions in
-  Buffer.add_bytes t.instructions @@ Pinc_Bytecode.Instruction.to_bytes @@ opcode;
-  set_last_instruction t offset opcode;
+  let scope = current_scope t in
+  let offset = Buffer.length scope.instructions in
+  Buffer.add_bytes scope.instructions @@ Pinc_Bytecode.Instruction.to_bytes @@ opcode;
+  let t = set_last_instruction t offset opcode in
   t
 ;;
 
@@ -128,8 +186,37 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       let length = Int32.of_int @@ List.length keys in
       let t = emit t @@ Pinc_Bytecode.Instruction.I_Record length in
       t
-  | Function _ -> raise_notrace TODO
-  | FunctionCall _ -> raise_notrace TODO
+  | Function { identifier = _; parameters = _; body } ->
+      let t = add_scope t in
+      let t =
+        match body.expression_desc with
+        | Pinc_Types.Ast.BlockExpression _ -> compile_expr t body
+        | _ ->
+            let t = compile_expr t body in
+            emit t @@ Pinc_Bytecode.Instruction.I_Return
+      in
+      let t =
+        if match_last_instruction t I_Pop then (
+          let t = remove_last_instruction t in
+          emit t @@ Pinc_Bytecode.Instruction.I_Return)
+        else
+          t
+      in
+      let t =
+        if not @@ match_last_instruction t I_Return then (
+          let t = emit t @@ Pinc_Bytecode.Instruction.I_Null in
+          emit t @@ Pinc_Bytecode.Instruction.I_Return)
+        else
+          t
+      in
+      let t, scope = pop_scope t in
+      let instructions = Buffer.to_bytes scope.instructions in
+      let t = emit_constant t @@ Pinc_Bytecode.Value.Function instructions in
+      t
+  | FunctionCall { function_definition; arguments = _ } ->
+      let t = compile_expr t function_definition in
+      let t = emit t @@ Pinc_Bytecode.Instruction.I_Call in
+      t
   | TagExpression _ -> raise_notrace TODO
   | ForInExpression _ -> raise_notrace TODO
   | TemplateExpression node -> compile_template_node t node
@@ -242,14 +329,19 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
   (* Consequent *)
   (* We create a conditional jump with a temporary address first, because we do not know where we should jump to next. *)
   let t = emit t (Pinc_Bytecode.Instruction.I_Jump_If_False 0xFFFFFFFl) in
-  let jump_consequent_offset = t.last_instruction.offset in
+  let jump_consequent_offset = last_instruction_offset t in
   let t = compile_expr t consequent in
-  let t = remove_last_pop t in
+  let t =
+    if match_last_instruction t I_Pop then
+      remove_last_instruction t
+    else
+      t
+  in
 
   (* Alternate *)
   let t = emit t (Pinc_Bytecode.Instruction.I_Jump 0xFFFFFFFl) in
-  let jump_alternate_offset = t.last_instruction.offset in
-  let jump_address = Int32.of_int (Buffer.length t.instructions) in
+  let jump_alternate_offset = last_instruction_offset t in
+  let jump_address = Int32.of_int (Buffer.length @@ current_instructions t) in
   let t =
     replace_instruction t jump_consequent_offset
     @@ Pinc_Bytecode.Instruction.I_Jump_If_False jump_address
@@ -259,10 +351,15 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
     | None -> emit t Pinc_Bytecode.Instruction.I_Null
     | Some alternate ->
         let t = compile_expr t alternate in
-        let t = remove_last_pop t in
+        let t =
+          if match_last_instruction t I_Pop then
+            remove_last_instruction t
+          else
+            t
+        in
         t
   in
-  let jump_address = Int32.of_int (Buffer.length t.instructions) in
+  let jump_address = Int32.of_int (Buffer.length @@ current_instructions t) in
   let t =
     replace_instruction t jump_alternate_offset
     @@ Pinc_Bytecode.Instruction.I_Jump jump_address
@@ -299,18 +396,12 @@ let compile_declaration (decl : Pinc_Types.Ast.declaration) t =
 ;;
 
 let compile (ast : Pinc_Types.Ast.t) =
-  let empty_instruction = { offset = 0; instruction = I_Null } in
   let t =
-    {
-      instructions = Buffer.create 8;
-      constants = Int32.Map.empty;
-      previous_instruction = empty_instruction;
-      last_instruction = empty_instruction;
-      symbol_table = SymbolTable.make ();
-    }
+    { constants = Int32.Map.empty; symbol_table = SymbolTable.make (); scopes = [] }
   in
+  let t = add_scope t in
   let t = StringMap.fold (fun _ -> compile_declaration) ast t in
   Pinc_Bytecode.Bytecode.make
-    ~instructions:(Buffer.to_bytes t.instructions)
+    ~instructions:(Buffer.to_bytes @@ current_instructions t)
     ~constants:t.constants
 ;;

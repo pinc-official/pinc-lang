@@ -500,3 +500,36 @@
   0051 I_Constant 0x00000007 (00000007)
   0056 I_Index
   0057 I_Pop
+
+  $ NO_COLOR="1" print_vm . FunctionEmpty
+  
+
+  $ NO_COLOR="1" print_instructions . FunctionEmpty
+  0000 I_Constant 0x00000001 (00000001)
+  0005 I_Set_Global 0x00000001 (00000001)
+  0010 I_Get_Global 0x00000001 (00000001)
+  0015 I_Call
+  0016 I_Pop
+
+  $ NO_COLOR="1" print_vm . Function
+  3
+
+  $ NO_COLOR="1" print_instructions . Function
+  0000 I_Constant 0x00000003 (00000003)
+  0005 I_Set_Global 0x00000003 (00000003)
+  0010 I_Get_Global 0x00000003 (00000003)
+  0015 I_Call
+  0016 I_Pop
+
+  $ NO_COLOR="1" print_vm . FunctionCurried
+  1
+
+  $ NO_COLOR="1" print_instructions . FunctionCurried
+  0000 I_Constant 0x00000003 (00000003)
+  0005 I_Set_Global 0x00000001 (00000001)
+  0010 I_Constant 0x00000004 (00000004)
+  0015 I_Set_Global 0x00000002 (00000002)
+  0020 I_Get_Global 0x00000002 (00000002)
+  0025 I_Call
+  0026 I_Call
+  0027 I_Pop

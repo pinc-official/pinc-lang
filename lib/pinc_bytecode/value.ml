@@ -7,6 +7,7 @@ type t =
   | String of string
   | Array of t array
   | Record of t StringMap.t
+  | Function of Bytes.t
 
 let rec to_string = function
   | Null -> ""
@@ -38,6 +39,7 @@ let rec to_string = function
           is_first := false)
         m;
       Buffer.contents b
+  | Function _ -> ""
 ;;
 
 let is_true = function
@@ -50,6 +52,7 @@ let is_true = function
   | Array [||] -> false
   | Array _ -> true
   | Record m -> not (StringMap.is_empty m)
+  | Function _ -> true
 ;;
 
 let rec equal a b =
@@ -64,6 +67,7 @@ let rec equal a b =
   | Null, Null -> true
   | Array a, Array b -> Array.equal equal a b
   | Record a, Record b -> StringMap.equal equal a b
+  | Function a, Function b -> Bytes.equal a b
   | _ -> false
 ;;
 
@@ -81,6 +85,7 @@ let compare a b =
   | Null, Null -> 0
   | Array a, Array b -> Int.compare (Array.length a) (Array.length b)
   | Record a, Record b -> StringMap.compare compare a b
+  | Function _, Function _ -> 0
   | _ -> 0
 ;;
 

@@ -31,6 +31,8 @@ type t =
   | I_Dot_Index
   | I_Range
   | I_Range_Inclusive
+  | I_Call
+  | I_Return
 
 let byte = function
   | I_Pop -> 0x00
@@ -65,6 +67,8 @@ let byte = function
   | I_Dot_Index -> 0x1D
   | I_Range -> 0x1E
   | I_Range_Inclusive -> 0x1F
+  | I_Call -> 0x20
+  | I_Return -> 0x21
 ;;
 
 let operands_length = function
@@ -99,7 +103,9 @@ let operands_length = function
   | I_Index
   | I_Dot_Index
   | I_Range
-  | I_Range_Inclusive -> 0
+  | I_Range_Inclusive
+  | I_Call
+  | I_Return -> 0
 ;;
 
 let decode bytes offset =
@@ -152,6 +158,8 @@ let decode bytes offset =
   | 0x1D -> (offset, I_Dot_Index)
   | 0x1E -> (offset, I_Range)
   | 0x1F -> (offset, I_Range_Inclusive)
+  | 0x20 -> (offset, I_Call)
+  | 0x21 -> (offset, I_Return)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -190,6 +198,8 @@ let pp fmt = function
   | I_Dot_Index -> Format.fprintf fmt "I_Dot_Index"
   | I_Range -> Format.fprintf fmt "I_Range"
   | I_Range_Inclusive -> Format.fprintf fmt "I_Range_Inclusive"
+  | I_Call -> Format.fprintf fmt "I_Call"
+  | I_Return -> Format.fprintf fmt "I_Return"
 ;;
 
 let to_bytes t =
@@ -235,7 +245,9 @@ let to_bytes t =
     | I_Index
     | I_Dot_Index
     | I_Range
-    | I_Range_Inclusive -> ()
+    | I_Range_Inclusive
+    | I_Call
+    | I_Return -> ()
   in
 
   bytes

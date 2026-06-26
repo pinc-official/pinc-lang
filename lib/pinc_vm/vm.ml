@@ -1,23 +1,43 @@
 open Pinc_Types
 open Pinc_Bytecode
 module Stack = Vm_stack
+module Frame = Vm_frame
 
 exception TODO
 
 type t = {
-  bytecode : Bytecode.t;
   stack : Value.t Stack.t;
   mutable globals : Value.t Int32.Map.t;
+  mutable frames : Frame.t list;
+  constants : Value.t Int32.Map.t;
 }
 
 let stack_size = 2048
 
 let make (bytecode : Bytecode.t) =
+  let main_frame = Frame.make bytecode.instructions in
   {
-    bytecode;
+    constants = bytecode.constants;
     stack = Stack.make ~size:stack_size ~default_value:Value.Null;
     globals = Int32.Map.empty;
+    frames = [ main_frame ];
   }
+;;
+
+let current_frame t =
+  match t.frames with
+  | [] -> assert false
+  | hd :: _ -> hd
+;;
+
+let push_frame t frame = t.frames <- frame :: t.frames
+
+let pop_frame t =
+  match t.frames with
+  | [] -> assert false
+  | frame :: frames ->
+      t.frames <- frames;
+      frame
 ;;
 
 let rec execute_binary_operation t op =
@@ -293,16 +313,16 @@ and execute_unary_not r =
 ;;
 
 let run t =
-  let ip = ref 0 in
-  let instruction_length = Bytes.length t.bytecode.instructions in
-  while !ip < instruction_length do
-    let new_ip, op = Instruction.decode t.bytecode.instructions !ip in
-    let () = ip := new_ip in
+  Printexc.record_backtrace true;
+  while (current_frame t).pointer < Bytes.length (current_frame t).instructions do
+    let frame = current_frame t in
+    let new_ip, op = Instruction.decode frame.instructions frame.pointer in
+    Frame.set_pointer frame new_ip;
     let () =
       match op with
       | Instruction.I_Pop -> ignore @@ Stack.pop t.stack
       | Instruction.I_Constant addr ->
-          let constant = Int32.Map.find addr t.bytecode.constants in
+          let constant = Int32.Map.find addr t.constants in
           Stack.push t.stack constant
       | Instruction.I_Add -> execute_binary_operation t Operators.Binary.PLUS
       | Instruction.I_Sub -> execute_binary_operation t Operators.Binary.MINUS
@@ -329,12 +349,12 @@ let run t =
           execute_binary_operation t Operators.Binary.INCLUSIVE_RANGE
       | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
       | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
-      | Instruction.I_Jump addr -> ip := Int32.to_int addr
+      | Instruction.I_Jump addr -> Frame.set_pointer frame @@ Int32.to_int addr
       | Instruction.I_Jump_If_False addr ->
           let condition = Stack.pop t.stack in
           let () =
             if not @@ Value.is_true condition then
-              ip := Int32.to_int addr
+              Frame.set_pointer frame @@ Int32.to_int addr
           in
           ()
       | Instruction.I_Null -> Stack.push t.stack Value.Null
@@ -359,6 +379,19 @@ let run t =
           in
           let record = StringMap.of_list @@ List.combine keys values in
           let value = Value.Record record in
+          Stack.push t.stack value
+      | Instruction.I_Call -> (
+          let fn = Stack.top t.stack in
+          match fn with
+          | Value.Function instructions -> push_frame t @@ Frame.make instructions
+          | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value")
+      | Instruction.I_Return ->
+          let value = Stack.pop t.stack in
+          let () = ignore @@ pop_frame t in
+          let () =
+            (* This is the function from the I_Call instruction *)
+            ignore @@ Stack.pop t.stack
+          in
           Stack.push t.stack value
     in
     ()

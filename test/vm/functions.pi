@@ -1,0 +1,24 @@
+component FunctionEmpty {
+  let noop = fn () -> {
+
+  };
+
+  noop()
+}
+
+component Function {
+  let onePlusTwo = fn () -> {
+    let one = 1;
+    let two = 2;
+    one + two
+  };
+
+  onePlusTwo()
+}
+
+component FunctionCurried {
+  let returns_one = fn () -> if (true) 1 else 2;
+  let returns_returns_one = fn () -> returns_one;
+
+  returns_returns_one()()
+}
