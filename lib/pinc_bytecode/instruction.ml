@@ -27,6 +27,8 @@ type t =
   | I_Concat
   | I_Array of Int32.t
   | I_Record of Int32.t
+  | I_Index
+  | I_Dot_Index
 
 let byte = function
   | I_Pop -> 0x00
@@ -57,6 +59,8 @@ let byte = function
   | I_Concat -> 0x19
   | I_Array _ -> 0x1A
   | I_Record _ -> 0x1B
+  | I_Index -> 0x1C
+  | I_Dot_Index -> 0x1D
 ;;
 
 let operands_length = function
@@ -87,7 +91,9 @@ let operands_length = function
   | I_Minus
   | I_Not
   | I_Null
-  | I_Concat -> 0
+  | I_Concat
+  | I_Index
+  | I_Dot_Index -> 0
 ;;
 
 let decode bytes offset =
@@ -136,6 +142,8 @@ let decode bytes offset =
   | 0x1B ->
       let offset, length = Int32.read_bytes bytes offset in
       (offset, I_Record length)
+  | 0x1C -> (offset, I_Index)
+  | 0x1D -> (offset, I_Dot_Index)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -170,6 +178,8 @@ let pp fmt = function
   | I_Array length -> Format.fprintf fmt "I_Array %i" (Int32.to_int length)
   | I_Concat -> Format.fprintf fmt "I_Concat"
   | I_Record length -> Format.fprintf fmt "I_Record %i" (Int32.to_int length)
+  | I_Index -> Format.fprintf fmt "I_Index"
+  | I_Dot_Index -> Format.fprintf fmt "I_Dot_Index"
 ;;
 
 let to_bytes t =
@@ -211,7 +221,9 @@ let to_bytes t =
     | I_Minus
     | I_Not
     | I_Null
-    | I_Concat -> ()
+    | I_Concat
+    | I_Index
+    | I_Dot_Index -> ()
   in
 
   bytes

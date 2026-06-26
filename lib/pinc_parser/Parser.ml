@@ -796,6 +796,18 @@ module Rules = struct
               let expression_annotations = parse_annotations t in
               let expression_start = t.token.location in
               next t;
+              (* 
+                NOTE: 
+                The new_prio was moved out of the | operator branch, so it now also updates the prio
+                on function calls. Tests are still passing, but if there are precendence errors with functions
+                in the future, this is probably the reason.
+                - 2026-06-26
+              *)
+              let new_prio =
+                match Operators.Binary.get_associativity operator with
+                | Assoc_Left -> precedence + 1
+                | Assoc_Right -> precedence
+              in
               let expression_desc =
                 match operator with
                 | Operators.Binary.FUNCTION_CALL ->
@@ -803,12 +815,19 @@ module Rules = struct
                       t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression
                     in
                     Parsetree.P_FunctionCall { function_definition = left; arguments }
-                | operator -> (
-                    let new_prio =
-                      match Operators.Binary.get_associativity operator with
-                      | Assoc_Left -> precedence + 1
-                      | Assoc_Right -> precedence
+                | Operators.Binary.DOT_ACCESS ->
+                    let id, loc = Helpers.expect_identifier ~typ:`Lower t in
+                    let expr =
+                      Parsetree.
+                        {
+                          expression_loc = loc;
+                          expression_desc = Parsetree.P_LowercaseIdentifierExpression id;
+                          expression_parenthesized = false;
+                          expression_annotations = [];
+                        }
                     in
+                    Parsetree.P_BinaryExpression (left, operator, expr)
+                | operator -> (
                     match parse_expression ~prio:new_prio t with
                     | None ->
                         Diagnostics.raise_error

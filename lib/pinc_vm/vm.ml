@@ -40,8 +40,8 @@ let rec execute_binary_operation t op =
     | Pinc_Types.Operators.Binary.AND -> execute_binary_and l r
     | Pinc_Types.Operators.Binary.OR -> execute_binary_or l r
     | Pinc_Types.Operators.Binary.CONCAT -> execute_binary_concat l r
-    | Pinc_Types.Operators.Binary.DOT_ACCESS -> raise_notrace TODO
-    | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> raise_notrace TODO
+    | Pinc_Types.Operators.Binary.DOT_ACCESS -> execute_binary_dot_access l r
+    | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> execute_binary_bracket_access l r
     | Pinc_Types.Operators.Binary.FUNCTION_CALL -> raise_notrace TODO
     | Pinc_Types.Operators.Binary.PIPE -> raise_notrace TODO
     | Pinc_Types.Operators.Binary.ARRAY_ADD -> raise_notrace TODO
@@ -137,6 +137,41 @@ and execute_binary_concat l r =
     | _ -> raise_notrace (Invalid_argument "Trying to concat non string literals.")
   in
   Value.String (Buffer.contents buf)
+
+and execute_binary_dot_access l r =
+  match (l, r) with
+  | Record a, String b -> a |> StringMap.find_opt b |> Option.value ~default:Value.Null
+  | Null, _ -> Value.Null
+  | _ ->
+      raise_notrace
+      @@ Invalid_argument
+           ("Trying to access a property on a non record value: " ^ Value.to_string l)
+
+and execute_binary_bracket_access l r =
+  match (l, r) with
+  | Value.Array a, Value.Int b -> (
+      try Array.get a b with Invalid_argument _ -> Value.Null)
+  (* | Value.String a, Value.Int b -> (
+      try
+        let chr =
+          a
+          |> Pinc_Core.Utf8String.of_string_exn
+          |> Pinc_Core.Utf8String.to_list
+          |> Fun.flip List.nth b
+        in
+        Value.Char chr
+      with Failure _ | Invalid_argument _ -> Value.Null) *)
+  | Record a, String b -> a |> StringMap.find_opt b |> Option.value ~default:Value.Null
+  | Null, _ -> Value.Null
+  | Array _, _ ->
+      raise_notrace @@ Invalid_argument "Cannot access array with a non integer value."
+  | Record _, _ ->
+      raise_notrace @@ Invalid_argument "Cannot access record with a non string value."
+  | _ ->
+      raise_notrace
+      @@ Invalid_argument
+           ("Trying to access a property on a non record or array value: "
+           ^ Value.to_string l)
 
 and execute_binary_equal l r =
   if Value.equal l r then
@@ -243,6 +278,8 @@ let run t =
       | Instruction.I_And -> execute_binary_operation t Operators.Binary.AND
       | Instruction.I_Or -> execute_binary_operation t Operators.Binary.OR
       | Instruction.I_Concat -> execute_binary_operation t Operators.Binary.CONCAT
+      | Instruction.I_Index -> execute_binary_operation t Operators.Binary.BRACKET_ACCESS
+      | Instruction.I_Dot_Index -> execute_binary_operation t Operators.Binary.DOT_ACCESS
       | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
       | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
       | Instruction.I_Jump addr -> ip := Int32.to_int addr

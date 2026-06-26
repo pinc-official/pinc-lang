@@ -146,28 +146,82 @@ and compile_unary_expression t ~op ~right =
   | Pinc_Types.Operators.Unary.NOT -> emit t Pinc_Bytecode.Instruction.I_Not
 
 and compile_binary_expression t ~left ~op ~right =
-  let t = compile_expr t left in
-  let t = compile_expr t right in
   match op with
-  | Pinc_Types.Operators.Binary.PLUS -> emit t Pinc_Bytecode.Instruction.I_Add
-  | Pinc_Types.Operators.Binary.MINUS -> emit t Pinc_Bytecode.Instruction.I_Sub
-  | Pinc_Types.Operators.Binary.DIV -> emit t Pinc_Bytecode.Instruction.I_Div
-  | Pinc_Types.Operators.Binary.TIMES -> emit t Pinc_Bytecode.Instruction.I_Mul
-  | Pinc_Types.Operators.Binary.MODULO -> emit t Pinc_Bytecode.Instruction.I_Mod
-  | Pinc_Types.Operators.Binary.POW -> emit t Pinc_Bytecode.Instruction.I_Pow
-  | Pinc_Types.Operators.Binary.EQUAL -> emit t Pinc_Bytecode.Instruction.I_Equal
-  | Pinc_Types.Operators.Binary.NOT_EQUAL -> emit t Pinc_Bytecode.Instruction.I_Not_Equal
-  | Pinc_Types.Operators.Binary.GREATER -> emit t Pinc_Bytecode.Instruction.I_Greater
+  | Pinc_Types.Operators.Binary.PLUS ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Add
+  | Pinc_Types.Operators.Binary.MINUS ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Sub
+  | Pinc_Types.Operators.Binary.DIV ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Div
+  | Pinc_Types.Operators.Binary.TIMES ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Mul
+  | Pinc_Types.Operators.Binary.MODULO ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Mod
+  | Pinc_Types.Operators.Binary.POW ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Pow
+  | Pinc_Types.Operators.Binary.EQUAL ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Equal
+  | Pinc_Types.Operators.Binary.NOT_EQUAL ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Not_Equal
+  | Pinc_Types.Operators.Binary.GREATER ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Greater
   | Pinc_Types.Operators.Binary.GREATER_EQUAL ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
       emit t Pinc_Bytecode.Instruction.I_Greater_Equal
-  | Pinc_Types.Operators.Binary.LESS -> emit t Pinc_Bytecode.Instruction.I_Less
+  | Pinc_Types.Operators.Binary.LESS ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Less
   | Pinc_Types.Operators.Binary.LESS_EQUAL ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
       emit t Pinc_Bytecode.Instruction.I_Less_Equal
-  | Pinc_Types.Operators.Binary.AND -> emit t Pinc_Bytecode.Instruction.I_And
-  | Pinc_Types.Operators.Binary.OR -> emit t Pinc_Bytecode.Instruction.I_Or
-  | Pinc_Types.Operators.Binary.CONCAT -> emit t Pinc_Bytecode.Instruction.I_Concat
-  | Pinc_Types.Operators.Binary.DOT_ACCESS -> raise_notrace TODO
-  | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.AND ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_And
+  | Pinc_Types.Operators.Binary.OR ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Or
+  | Pinc_Types.Operators.Binary.CONCAT ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Concat
+  | Pinc_Types.Operators.Binary.DOT_ACCESS ->
+      let t = compile_expr t left in
+      let t =
+        match right.expression_desc with
+        | Pinc_Types.Ast.LowercaseIdentifierExpression id ->
+            emit_constant t (Pinc_Bytecode.Value.String id)
+        | _ ->
+            (* TODO: We should be able to encode this into the type system *)
+            assert false
+      in
+      emit t Pinc_Bytecode.Instruction.I_Dot_Index
+  | Pinc_Types.Operators.Binary.BRACKET_ACCESS ->
+      let t = compile_expr t left in
+      let t = compile_expr t right in
+      emit t Pinc_Bytecode.Instruction.I_Index
   | Pinc_Types.Operators.Binary.FUNCTION_CALL -> raise_notrace TODO
   | Pinc_Types.Operators.Binary.PIPE -> raise_notrace TODO
   | Pinc_Types.Operators.Binary.ARRAY_ADD -> raise_notrace TODO

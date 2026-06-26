@@ -23,3 +23,25 @@ component RecordNested {
     d: true,
   }
 }
+
+component RecordAccessDot {
+  let record = {
+    a: 1,
+    c: {
+      e: "123",
+    },
+  };
+
+  record.c.e
+}
+
+component RecordAccessBracket {
+  let record = {
+    a: 1,
+    c: {
+      e: "123",
+    },
+  };
+
+  record["c"]["e"]
+}
