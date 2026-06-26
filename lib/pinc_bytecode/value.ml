@@ -3,18 +3,10 @@ type t =
   | Int of int
   | Float of float
   | Bool of bool
+  | Char of Uchar.t
   | String of string
   | Array of t array
   | Record of t StringMap.t
-(* 
-let pp fmt = function
-  | Null -> Format.fprintf fmt "<NULL>\n%!"
-  | Int i -> Format.fprintf fmt "%i\n%!" i
-  | Float f -> Format.fprintf fmt "%f\n%!" f
-  | Bool b -> Format.fprintf fmt "%b\n%!" b
-  | String s -> Format.fprintf fmt "%S\n%!" s
-  | Array _ -> Format.fprintf fmt "<ARRAY>\n%!"
-;; *)
 
 let rec to_string = function
   | Null -> ""
@@ -22,6 +14,10 @@ let rec to_string = function
   | Float f when Float.is_integer f -> string_of_int (int_of_float f)
   | Float f -> string_of_float f
   | Bool b -> string_of_bool b
+  | Char c ->
+      let buf = Buffer.create 32 in
+      c |> Buffer.add_utf_8_uchar buf;
+      Buffer.contents buf
   | String s -> s
   | Array a ->
       let buf = Buffer.create 200 in
@@ -49,6 +45,7 @@ let is_true = function
   | Bool b -> b
   | Int _ -> true
   | Float _ -> true
+  | Char _ -> true
   | String s -> s <> ""
   | Array [||] -> false
   | Array _ -> true
@@ -62,6 +59,7 @@ let rec equal a b =
   | Float a, Int b -> a = float_of_int b
   | Int a, Float b -> float_of_int a = b
   | Bool a, Bool b -> a = b
+  | Char a, Char b -> Uchar.equal a b
   | String a, String b -> a = b
   | Null, Null -> true
   | Array a, Array b -> Array.equal equal a b
@@ -76,6 +74,9 @@ let compare a b =
   | Float a, Int b -> Float.compare a (float_of_int b)
   | Int a, Float b -> Float.compare (float_of_int a) b
   | Bool a, Bool b -> Bool.compare a b
+  | Char a, Char b -> Uchar.compare a b
+  | Char a, Int b -> Int.compare (Uchar.to_int a) b
+  | Int a, Char b -> Int.compare a (Uchar.to_int b)
   | String a, String b -> String.compare a b
   | Null, Null -> 0
   | Array a, Array b -> Int.compare (Array.length a) (Array.length b)

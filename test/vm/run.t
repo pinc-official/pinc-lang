@@ -251,6 +251,15 @@
   Unbound identifier `one`
   [1]
 
+  $ NO_COLOR="1" print_vm . Char
+  d
+
+  $ NO_COLOR="1" print_instructions . Char
+  0000 I_Constant 0x00000001 (00000001)
+  0005 I_Constant 0x00000002 (00000002)
+  0010 I_Add
+  0011 I_Pop
+
   $ NO_COLOR="1" print_vm . String
   Hello!
 

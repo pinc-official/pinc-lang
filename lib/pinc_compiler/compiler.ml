@@ -105,7 +105,7 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   match expr.expression_desc with
   | Void -> t
   | String s -> compile_string_template t s
-  | Char _ -> raise_notrace TODO
+  | Char c -> emit_constant t (Pinc_Bytecode.Value.Char c)
   | Int i -> emit_constant t (Pinc_Bytecode.Value.Int i)
   | Float f -> emit_constant t (Pinc_Bytecode.Value.Float f)
   | Bool true -> emit t Pinc_Bytecode.Instruction.I_True

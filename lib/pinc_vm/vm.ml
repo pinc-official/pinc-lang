@@ -57,8 +57,10 @@ and execute_binary_add l r =
   | Value.Float x, Value.Int y -> Value.Float (x +. float_of_int y)
   | Value.Int x, Value.Float y -> Value.Float (float_of_int x +. y)
   | Value.Float x, Value.Float y -> Value.Float (x +. y)
-  | (Value.Int _ | Value.Float _), _ | _, (Value.Int _ | Value.Float _) | _ ->
-      raise_notrace (Invalid_argument "Trying to add non numeric values.")
+  | Char a, Char b -> Value.Char Uchar.(of_int (to_int a + to_int b))
+  | Char a, Int b -> Value.Char Uchar.(of_int (to_int a + b))
+  | Int a, Char b -> Value.Char Uchar.(of_int (a + to_int b))
+  | _ -> raise_notrace (Invalid_argument "Trying to add non numeric values.")
 
 and execute_binary_sub l r =
   match (l, r) with
@@ -66,8 +68,10 @@ and execute_binary_sub l r =
   | Value.Float x, Value.Int y -> Value.Float (x -. float_of_int y)
   | Value.Int x, Value.Float y -> Value.Float (float_of_int x -. y)
   | Value.Float x, Value.Float y -> Value.Float (x -. y)
-  | (Value.Int _ | Value.Float _), _ | _, (Value.Int _ | Value.Float _) | _ ->
-      raise_notrace (Invalid_argument "Trying to subtract non numeric values.")
+  | Char a, Char b -> Value.Char Uchar.(of_int (to_int a - to_int b))
+  | Char a, Int b -> Value.Char Uchar.(of_int (to_int a - b))
+  | Int a, Char b -> Value.Char Uchar.(of_int (a - to_int b))
+  | _ -> raise_notrace (Invalid_argument "Trying to subtract non numeric values.")
 
 and execute_binary_times l r =
   match (l, r) with
@@ -75,8 +79,10 @@ and execute_binary_times l r =
   | Value.Float x, Value.Int y -> Value.Float (x *. float_of_int y)
   | Value.Int x, Value.Float y -> Value.Float (float_of_int x *. y)
   | Value.Float x, Value.Float y -> Value.Float (x *. y)
-  | (Value.Int _ | Value.Float _), _ | _, (Value.Int _ | Value.Float _) | _ ->
-      raise_notrace (Invalid_argument "Trying to multiply non numeric values.")
+  | Char a, Char b -> Value.Char Uchar.(of_int (to_int a * to_int b))
+  | Char a, Int b -> Value.Char Uchar.(of_int (to_int a * b))
+  | Int a, Char b -> Value.Char Uchar.(of_int (a * to_int b))
+  | _ -> raise_notrace (Invalid_argument "Trying to multiply non numeric values.")
 
 and execute_binary_div l r =
   match (l, r) with
@@ -125,7 +131,7 @@ and execute_binary_concat l r =
     | Value.String a, Value.String b ->
         Buffer.add_string buf a;
         Buffer.add_string buf b
-    (* | Value.String a, Value.Char b ->
+    | Value.String a, Value.Char b ->
         Buffer.add_string buf a;
         Buffer.add_utf_8_uchar buf b
     | Value.Char a, Value.String b ->
@@ -133,7 +139,7 @@ and execute_binary_concat l r =
         Buffer.add_string buf b
     | Value.Char a, Value.Char b ->
         Buffer.add_utf_8_uchar buf a;
-        Buffer.add_utf_8_uchar buf b *)
+        Buffer.add_utf_8_uchar buf b
     | _ -> raise_notrace (Invalid_argument "Trying to concat non string literals.")
   in
   Value.String (Buffer.contents buf)
@@ -151,7 +157,7 @@ and execute_binary_bracket_access l r =
   match (l, r) with
   | Value.Array a, Value.Int b -> (
       try Array.get a b with Invalid_argument _ -> Value.Null)
-  (* | Value.String a, Value.Int b -> (
+  | Value.String a, Value.Int b -> (
       try
         let chr =
           a
@@ -160,7 +166,7 @@ and execute_binary_bracket_access l r =
           |> Fun.flip List.nth b
         in
         Value.Char chr
-      with Failure _ | Invalid_argument _ -> Value.Null) *)
+      with Failure _ | Invalid_argument _ -> Value.Null)
   | Record a, String b -> a |> StringMap.find_opt b |> Option.value ~default:Value.Null
   | Null, _ -> Value.Null
   | Array _, _ ->
