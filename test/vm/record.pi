@@ -1,0 +1,25 @@
+component RecordEmpty {
+  {}
+}
+
+component Record {
+  {
+    a: 1,
+    b: "foo",
+    c: true,
+    d: 3.1415,
+  }
+}
+
+component RecordNested {
+  {
+    a: 1,
+    b: "foo",
+    c: {
+      e: "123",
+      f: 321,
+      g: [1, 2, 3, 4, 5, 6, 7, 8],
+    },
+    d: true,
+  }
+}

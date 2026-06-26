@@ -5,7 +5,8 @@ type t =
   | Bool of bool
   | String of string
   | Array of t array
-
+  | Record of t StringMap.t
+(* 
 let pp fmt = function
   | Null -> Format.fprintf fmt "<NULL>\n%!"
   | Int i -> Format.fprintf fmt "%i\n%!" i
@@ -13,7 +14,7 @@ let pp fmt = function
   | Bool b -> Format.fprintf fmt "%b\n%!" b
   | String s -> Format.fprintf fmt "%S\n%!" s
   | Array _ -> Format.fprintf fmt "<ARRAY>\n%!"
-;;
+;; *)
 
 let rec to_string = function
   | Null -> ""
@@ -30,6 +31,17 @@ let rec to_string = function
             Buffer.add_string buf " ";
           Buffer.add_string buf (to_string it));
       Buffer.contents buf
+  | Record m ->
+      let b = Buffer.create 1024 in
+      let is_first = ref true in
+      StringMap.iter
+        (fun _key value ->
+          if not @@ !is_first then
+            Buffer.add_string b "\n";
+          Buffer.add_string b (to_string value);
+          is_first := false)
+        m;
+      Buffer.contents b
 ;;
 
 let is_true = function
@@ -40,6 +52,7 @@ let is_true = function
   | String s -> s <> ""
   | Array [||] -> false
   | Array _ -> true
+  | Record m -> not (StringMap.is_empty m)
 ;;
 
 let rec equal a b =
@@ -52,6 +65,7 @@ let rec equal a b =
   | String a, String b -> a = b
   | Null, Null -> true
   | Array a, Array b -> Array.equal equal a b
+  | Record a, Record b -> StringMap.equal equal a b
   | _ -> false
 ;;
 
@@ -65,6 +79,7 @@ let compare a b =
   | String a, String b -> String.compare a b
   | Null, Null -> 0
   | Array a, Array b -> Int.compare (Array.length a) (Array.length b)
+  | Record a, Record b -> StringMap.compare compare a b
   | _ -> 0
 ;;
 

@@ -264,6 +264,18 @@ let run t =
           let elements = Array.of_list @@ Stack.pop_n t.stack (Int32.to_int length) in
           let value = Value.Array elements in
           Stack.push t.stack value
+      | Instruction.I_Record length ->
+          let int_length = Int32.to_int length in
+          let values = Stack.pop_n t.stack int_length in
+          let keys =
+            Stack.pop_n t.stack int_length
+            |> List.map (function
+              | Value.String s -> s
+              | _ -> assert false)
+          in
+          let record = StringMap.of_list @@ List.combine keys values in
+          let value = Value.Record record in
+          Stack.push t.stack value
     in
     ()
   done;

@@ -118,7 +118,16 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | Array a ->
       let t = Array.fold_left compile_expr t a in
       emit t @@ Pinc_Bytecode.Instruction.I_Array (Int32.of_int @@ Array.length a)
-  | Record _ -> raise_notrace TODO
+  | Record map ->
+      let bindings = StringMap.bindings map in
+      let keys, values = List.split bindings in
+      let emit_key t key = emit_constant t (Pinc_Bytecode.Value.String key) in
+      let t = List.fold_left emit_key t keys in
+      let emit_value t (_, expr) = compile_expr t expr in
+      let t = List.fold_left emit_value t values in
+      let length = Int32.of_int @@ List.length keys in
+      let t = emit t @@ Pinc_Bytecode.Instruction.I_Record length in
+      t
   | Function _ -> raise_notrace TODO
   | FunctionCall _ -> raise_notrace TODO
   | TagExpression _ -> raise_notrace TODO
