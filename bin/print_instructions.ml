@@ -26,12 +26,14 @@ let main =
   let root = Sys.argv.(2) in
   let sources = get_sources_from ~directory () in
   try
-    sources
-    |> Parser.get_ast ~include_stdlib:false
-    |> StringMap.find root
-    |> StringMap.singleton root
-    |> Compiler.compile
-    |> Bytecode.pp_instructions Format.std_formatter
+    let bytecode =
+      sources
+      |> Parser.get_ast ~include_stdlib:false
+      |> StringMap.find root
+      |> StringMap.singleton root
+      |> Compiler.compile
+    in
+    Bytecode.pp Format.std_formatter bytecode
   with Diagnostics.Pinc_error _ -> exit 1
 ;;
 
