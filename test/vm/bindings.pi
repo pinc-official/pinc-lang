@@ -14,3 +14,12 @@ component Shadowing {
   let a = a + 1;
   a
 }
+
+component LocalBindings {
+  let f = fn () -> {
+    let n = 21;
+    n
+  };
+
+  f()
+}
