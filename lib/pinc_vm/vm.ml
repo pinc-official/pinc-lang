@@ -312,6 +312,25 @@ and execute_unary_not r =
     Value.constant_true
 ;;
 
+let execute_function_call t num_arguments =
+  let num_arguments = Int32.to_int num_arguments in
+  let fn = Stack.nth t.stack num_arguments in
+  match fn with
+  | Value.Function { num_parameters; _ }
+    when not @@ Int.equal num_parameters num_arguments ->
+      raise_notrace
+      @@ Invalid_argument
+           ("Trying to call a function with the wrong number of arguments. Wanted "
+           ^ string_of_int num_parameters
+           ^ ", got "
+           ^ string_of_int num_arguments)
+  | Value.Function fn ->
+      let frame = Frame.make (t.stack.stack_pointer - num_arguments) fn.instructions in
+      push_frame t frame;
+      Stack.set_pointer t.stack (frame.base_pointer + fn.num_locals)
+  | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value"
+;;
+
 let run t =
   Printexc.record_backtrace true;
   while
@@ -383,14 +402,7 @@ let run t =
           let record = StringMap.of_list @@ List.combine keys values in
           let value = Value.Record record in
           Stack.push t.stack value
-      | Instruction.I_Call -> (
-          let fn = Stack.top t.stack in
-          match fn with
-          | Value.Function fn ->
-              let frame = Frame.make t.stack.stack_pointer fn.instructions in
-              push_frame t frame;
-              Stack.set_pointer t.stack (frame.base_pointer + fn.locals)
-          | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value")
+      | Instruction.I_Call num_arguments -> execute_function_call t num_arguments
       | Instruction.I_Return ->
           let value = Stack.pop t.stack in
           let frame = pop_frame t in

@@ -205,8 +205,14 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       let length = Int32.of_int @@ List.length keys in
       let t = emit t @@ Pinc_Bytecode.Instruction.I_Record length in
       t
-  | Function { identifier = _; parameters = _; body } ->
+  | Function { identifier = _; parameters; body } ->
       let t = add_scope t in
+      let t =
+        List.fold_left
+          (fun t (Pinc_Types.Ast.Lowercase_Id (name, _)) -> fst @@ add_symbol t name)
+          t
+          parameters
+      in
       let t =
         match body.expression_desc with
         | Pinc_Types.Ast.BlockExpression _ -> compile_expr t body
@@ -228,14 +234,20 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
         else
           t
       in
-      let locals = SymbolTable.length t.symbol_table in
+      let num_locals = SymbolTable.length t.symbol_table in
+      let num_parameters = List.length parameters in
       let t, scope = pop_scope t in
       let instructions = Buffer.to_bytes scope.instructions in
-      let t = emit_constant t @@ Pinc_Bytecode.Value.Function { locals; instructions } in
+      let t =
+        emit_constant t
+        @@ Pinc_Bytecode.Value.Function { num_locals; num_parameters; instructions }
+      in
       t
-  | FunctionCall { function_definition; arguments = _ } ->
+  | FunctionCall { function_definition; arguments } ->
       let t = compile_expr t function_definition in
-      let t = emit t @@ Pinc_Bytecode.Instruction.I_Call in
+      let t = List.fold_left compile_expr t arguments in
+      let num_arguments = Int32.of_int @@ List.length arguments in
+      let t = emit t @@ Pinc_Bytecode.Instruction.I_Call num_arguments in
       t
   | TagExpression _ -> raise_notrace TODO
   | ForInExpression _ -> raise_notrace TODO

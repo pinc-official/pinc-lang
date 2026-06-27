@@ -31,7 +31,7 @@ type t =
   | I_Dot_Index
   | I_Range
   | I_Range_Inclusive
-  | I_Call
+  | I_Call of Int32.t
   | I_Return
   | I_Set_Local of Int32.t
   | I_Get_Local of Int32.t
@@ -69,7 +69,7 @@ let byte = function
   | I_Dot_Index -> 0x1D
   | I_Range -> 0x1E
   | I_Range_Inclusive -> 0x1F
-  | I_Call -> 0x20
+  | I_Call _ -> 0x20
   | I_Return -> 0x21
   | I_Set_Local _ -> 0x22
   | I_Get_Local _ -> 0x23
@@ -84,7 +84,8 @@ let operands_length = function
   | I_Array op
   | I_Record op
   | I_Set_Local op
-  | I_Get_Local op -> Int32.byte_width op
+  | I_Get_Local op
+  | I_Call op -> Int32.byte_width op
   | I_Pop
   | I_Add
   | I_Sub
@@ -110,7 +111,6 @@ let operands_length = function
   | I_Dot_Index
   | I_Range
   | I_Range_Inclusive
-  | I_Call
   | I_Return -> 0
 ;;
 
@@ -164,7 +164,9 @@ let decode bytes offset =
   | 0x1D -> (offset, I_Dot_Index)
   | 0x1E -> (offset, I_Range)
   | 0x1F -> (offset, I_Range_Inclusive)
-  | 0x20 -> (offset, I_Call)
+  | 0x20 ->
+      let offset, arguments = Int32.read_bytes bytes offset in
+      (offset, I_Call arguments)
   | 0x21 -> (offset, I_Return)
   | 0x22 ->
       let offset, addr = Int32.read_bytes bytes offset in
@@ -210,7 +212,7 @@ let pp fmt = function
   | I_Dot_Index -> Format.fprintf fmt "I_Dot_Index"
   | I_Range -> Format.fprintf fmt "I_Range"
   | I_Range_Inclusive -> Format.fprintf fmt "I_Range_Inclusive"
-  | I_Call -> Format.fprintf fmt "I_Call"
+  | I_Call arguments -> Format.fprintf fmt "I_Call %li" arguments
   | I_Return -> Format.fprintf fmt "I_Return"
   | I_Get_Local addr -> Format.fprintf fmt "I_Get_Local %a" Int32.pp addr
   | I_Set_Local addr -> Format.fprintf fmt "I_Set_Local %a" Int32.pp addr
@@ -236,7 +238,8 @@ let to_bytes t =
     | I_Array op
     | I_Record op
     | I_Set_Local op
-    | I_Get_Local op -> offset := Int32.write_bytes bytes !offset op
+    | I_Get_Local op
+    | I_Call op -> offset := Int32.write_bytes bytes !offset op
     | I_Pop
     | I_Add
     | I_Sub
@@ -262,7 +265,6 @@ let to_bytes t =
     | I_Dot_Index
     | I_Range
     | I_Range_Inclusive
-    | I_Call
     | I_Return -> ()
   in
 

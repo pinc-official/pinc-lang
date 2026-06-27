@@ -49,11 +49,13 @@ let pop_n t n =
     elements)
 ;;
 
-let top t =
-  match t.stack_pointer with
+let nth t n =
+  match t.stack_pointer - n with
   | 0 -> t.default_value
   | n -> t.stack.(n - 1)
 ;;
+
+let top t = nth t 0
 
 let set t address value =
   if address > t.stack_size then

@@ -8,7 +8,8 @@ type t =
   | Array of t array
   | Record of t StringMap.t
   | Function of {
-      locals : int;
+      num_locals : int;
+      num_parameters : int;
       instructions : Bytes.t;
     }
 
@@ -71,7 +72,9 @@ let rec equal a b =
   | Array a, Array b -> Array.equal equal a b
   | Record a, Record b -> StringMap.equal equal a b
   | Function a, Function b ->
-      Int.equal a.locals b.locals && Bytes.equal a.instructions b.instructions
+      Int.equal a.num_locals b.num_locals
+      && Int.equal a.num_parameters b.num_parameters
+      && Bytes.equal a.instructions b.instructions
   | _ -> false
 ;;
 

@@ -9,8 +9,8 @@
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Set_Global 0x00000000 (00000000)
   0010 I_Get_Global 0x00000000 (00000000)
-  0015 I_Call
-  0016 I_Pop
+  0015 I_Call 0
+  0020 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Function
@@ -32,8 +32,8 @@
   0000 I_Constant 0x00000002 (00000002)
   0005 I_Set_Global 0x00000000 (00000000)
   0010 I_Get_Global 0x00000000 (00000000)
-  0015 I_Call
-  0016 I_Pop
+  0015 I_Call 0
+  0020 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . FunctionCurried
@@ -59,9 +59,9 @@
   0010 I_Constant 0x00000003 (00000003)
   0015 I_Set_Global 0x00000001 (00000001)
   0020 I_Get_Global 0x00000001 (00000001)
-  0025 I_Call
-  0026 I_Call
-  0027 I_Pop
+  0025 I_Call 0
+  0030 I_Call 0
+  0035 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . FunctionScope
@@ -97,8 +97,43 @@
   0030 I_Constant 0x00000005 (00000005)
   0035 I_Set_Global 0x00000003 (00000003)
   0040 I_Get_Global 0x00000002 (00000002)
-  0045 I_Call
-  0046 I_Get_Global 0x00000003 (00000003)
-  0051 I_Call
-  0052 I_Add
-  0053 I_Pop
+  0045 I_Call 0
+  0050 I_Get_Global 0x00000003 (00000003)
+  0055 I_Call 0
+  0060 I_Add
+  0061 I_Pop
+
+  $ NO_COLOR="1" print_instructions . FunctionArguments
+  [CONSTANTS]
+  0x00000000 (00000000) : <FUNCTION> [
+    0000 I_Get_Local 0x00000000 (00000000)
+    0005 I_Get_Local 0x00000001 (00000001)
+    0010 I_Add
+    0011 I_Return
+  ]
+  0x00000001 (00000001) : 1
+  0x00000002 (00000002) : <FUNCTION> [
+    0000 I_Constant 0x00000001 (00000001)
+    0005 I_Set_Local 0x00000001 (00000001)
+    0010 I_Get_Global 0x00000000 (00000000)
+    0015 I_Get_Local 0x00000000 (00000000)
+    0020 I_Get_Local 0x00000001 (00000001)
+    0025 I_Call 2
+    0030 I_Return
+  ]
+  0x00000003 (00000003) : 4
+  0x00000004 (00000004) : 9
+  
+  [INSTRUCTIONS]
+  0000 I_Constant 0x00000000 (00000000)
+  0005 I_Set_Global 0x00000000 (00000000)
+  0010 I_Constant 0x00000002 (00000002)
+  0015 I_Set_Global 0x00000001 (00000001)
+  0020 I_Get_Global 0x00000001 (00000001)
+  0025 I_Constant 0x00000003 (00000003)
+  0030 I_Call 1
+  0035 I_Get_Global 0x00000001 (00000001)
+  0040 I_Constant 0x00000004 (00000004)
+  0045 I_Call 1
+  0050 I_Add
+  0051 I_Pop

@@ -39,3 +39,26 @@ component FunctionScope {
 
   minusOne() + minusTwo()
 }
+
+component FunctionArguments {
+  let add = fn (a, b) -> a + b;
+
+  let addOne = fn (arg) -> {
+    let one = 1;
+    add(arg, one)
+  };
+
+  addOne(4) + addOne(9)
+}
+
+component FunctionTooManyArguments {
+  let add = fn (a, b) -> a + b;
+
+  add(4, 5, 6)
+}
+
+component FunctionTooFewArguments {
+  let add = fn (a, b) -> a + b;
+
+  add(4)
+}
