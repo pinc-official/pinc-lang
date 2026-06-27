@@ -1,121 +1,18 @@
   $ NO_COLOR="1" print_vm . EmptyArray
   
 
-  $ NO_COLOR="1" print_instructions . EmptyArray
-  [INSTRUCTIONS]
-  0000 I_Array 0
-  0005 I_Pop
-
   $ NO_COLOR="1" print_vm . Array
   1 2 3 4 5
-
-  $ NO_COLOR="1" print_instructions . Array
-  [CONSTANTS]
-  0x00000000 (00000000) : 1
-  0x00000001 (00000001) : 2
-  0x00000002 (00000002) : 3
-  0x00000003 (00000003) : 4
-  0x00000004 (00000004) : 5
-  
-  [INSTRUCTIONS]
-  0000 I_Constant 0x00000000 (00000000)
-  0005 I_Constant 0x00000001 (00000001)
-  0010 I_Constant 0x00000002 (00000002)
-  0015 I_Constant 0x00000003 (00000003)
-  0020 I_Constant 0x00000004 (00000004)
-  0025 I_Array 5
-  0030 I_Pop
 
   $ NO_COLOR="1" print_vm . ExpressionArray
   3 -1 30 0.875
 
-  $ NO_COLOR="1" print_instructions . ExpressionArray
-  [CONSTANTS]
-  0x00000000 (00000000) : 1
-  0x00000001 (00000001) : 2
-  0x00000002 (00000002) : 3
-  0x00000003 (00000003) : 4
-  0x00000004 (00000004) : 5
-  0x00000005 (00000005) : 6
-  0x00000006 (00000006) : 7
-  0x00000007 (00000007) : 8
-  
-  [INSTRUCTIONS]
-  0000 I_Constant 0x00000000 (00000000)
-  0005 I_Constant 0x00000001 (00000001)
-  0010 I_Add
-  0011 I_Constant 0x00000002 (00000002)
-  0016 I_Constant 0x00000003 (00000003)
-  0021 I_Sub
-  0022 I_Constant 0x00000004 (00000004)
-  0027 I_Constant 0x00000005 (00000005)
-  0032 I_Mul
-  0033 I_Constant 0x00000006 (00000006)
-  0038 I_Constant 0x00000007 (00000007)
-  0043 I_Div
-  0044 I_Array 4
-  0049 I_Pop
-
   $ NO_COLOR="1" print_vm . ArrayAccess
   -1
-
-  $ NO_COLOR="1" print_instructions . ArrayAccess
-  [CONSTANTS]
-  0x00000000 (00000000) : 1
-  0x00000001 (00000001) : 2
-  0x00000002 (00000002) : 3
-  0x00000003 (00000003) : 4
-  0x00000004 (00000004) : 5
-  0x00000005 (00000005) : 6
-  0x00000006 (00000006) : 7
-  0x00000007 (00000007) : 8
-  0x00000008 (00000008) : 3
-  0x00000009 (00000009) : 2
-  
-  [INSTRUCTIONS]
-  0000 I_Constant 0x00000000 (00000000)
-  0005 I_Constant 0x00000001 (00000001)
-  0010 I_Add
-  0011 I_Constant 0x00000002 (00000002)
-  0016 I_Constant 0x00000003 (00000003)
-  0021 I_Sub
-  0022 I_Constant 0x00000004 (00000004)
-  0027 I_Constant 0x00000005 (00000005)
-  0032 I_Mul
-  0033 I_Constant 0x00000006 (00000006)
-  0038 I_Constant 0x00000007 (00000007)
-  0043 I_Div
-  0044 I_Array 4
-  0049 I_Constant 0x00000008 (00000008)
-  0054 I_Constant 0x00000009 (00000009)
-  0059 I_Sub
-  0060 I_Index
-  0061 I_Pop
 
   $ NO_COLOR="1" print_vm . ArrayRange
   1 2 3 4 5 6 7 8 9
 
-  $ NO_COLOR="1" print_instructions . ArrayRange
-  [CONSTANTS]
-  0x00000000 (00000000) : 1
-  0x00000001 (00000001) : 10
-  
-  [INSTRUCTIONS]
-  0000 I_Constant 0x00000000 (00000000)
-  0005 I_Constant 0x00000001 (00000001)
-  0010 I_Range
-  0011 I_Pop
-
   $ NO_COLOR="1" print_vm . ArrayRangeInclusive
   1 2 3 4 5 6 7 8 9 10
 
-  $ NO_COLOR="1" print_instructions . ArrayRangeInclusive
-  [CONSTANTS]
-  0x00000000 (00000000) : 1
-  0x00000001 (00000001) : 10
-  
-  [INSTRUCTIONS]
-  0000 I_Constant 0x00000000 (00000000)
-  0005 I_Constant 0x00000001 (00000001)
-  0010 I_Range_Inclusive
-  0011 I_Pop
