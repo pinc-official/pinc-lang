@@ -126,8 +126,8 @@ let emit_constant t constant =
 ;;
 
 let add_symbol t name =
-  let symbol_table = SymbolTable.define_symbol t.symbol_table ~name in
-  ({ t with symbol_table }, SymbolTable.length symbol_table)
+  let symbol_table, address = SymbolTable.define_symbol t.symbol_table ~name in
+  ({ t with symbol_table }, address)
 ;;
 
 let get_symbol ~loc t name =
