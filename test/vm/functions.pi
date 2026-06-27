@@ -22,3 +22,20 @@ component FunctionCurried {
 
   returns_returns_one()()
 }
+
+component FunctionScope {
+  let trap = "123";
+  let globalSeed = 50;
+
+  let minusOne = fn () -> {
+    let n = 1;
+    globalSeed - n
+  };
+
+  let minusTwo = fn () -> {
+    let n = 2;
+    globalSeed - n
+  };
+
+  minusOne() + minusTwo()
+}

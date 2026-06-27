@@ -15,7 +15,7 @@ type t = {
 let stack_size = 2048
 
 let make (bytecode : Bytecode.t) =
-  let main_frame = Frame.make bytecode.instructions in
+  let main_frame = Frame.make 0 bytecode.instructions in
   {
     constants = bytecode.constants;
     stack = Stack.make ~size:stack_size ~default_value:Value.Null;
@@ -314,10 +314,12 @@ and execute_unary_not r =
 
 let run t =
   Printexc.record_backtrace true;
-  while (current_frame t).pointer < Bytes.length (current_frame t).instructions do
+  while
+    (current_frame t).instruction_pointer < Bytes.length (current_frame t).instructions
+  do
     let frame = current_frame t in
-    let new_ip, op = Instruction.decode frame.instructions frame.pointer in
-    Frame.set_pointer frame new_ip;
+    let new_ip, op = Instruction.decode frame.instructions frame.instruction_pointer in
+    Frame.set_instruction_pointer frame new_ip;
     let () =
       match op with
       | Instruction.I_Pop -> ignore @@ Stack.pop t.stack
@@ -349,12 +351,13 @@ let run t =
           execute_binary_operation t Operators.Binary.INCLUSIVE_RANGE
       | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
       | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
-      | Instruction.I_Jump addr -> Frame.set_pointer frame @@ Int32.to_int addr
+      | Instruction.I_Jump addr ->
+          Frame.set_instruction_pointer frame @@ Int32.to_int addr
       | Instruction.I_Jump_If_False addr ->
           let condition = Stack.pop t.stack in
           let () =
             if not @@ Value.is_true condition then
-              Frame.set_pointer frame @@ Int32.to_int addr
+              Frame.set_instruction_pointer frame @@ Int32.to_int addr
           in
           ()
       | Instruction.I_Null -> Stack.push t.stack Value.Null
@@ -383,15 +386,27 @@ let run t =
       | Instruction.I_Call -> (
           let fn = Stack.top t.stack in
           match fn with
-          | Value.Function instructions -> push_frame t @@ Frame.make instructions
+          | Value.Function fn ->
+              let frame = Frame.make t.stack.stack_pointer fn.instructions in
+              push_frame t frame;
+              Stack.set_pointer t.stack (frame.base_pointer + fn.locals)
           | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value")
       | Instruction.I_Return ->
           let value = Stack.pop t.stack in
-          let () = ignore @@ pop_frame t in
+          let frame = pop_frame t in
+          Stack.set_pointer t.stack frame.base_pointer;
           let () =
             (* This is the function from the I_Call instruction *)
             ignore @@ Stack.pop t.stack
           in
+          Stack.push t.stack value
+      | Instruction.I_Set_Local addr ->
+          let value = Stack.pop t.stack in
+          let address = frame.base_pointer + Int32.to_int addr in
+          Stack.set t.stack address value
+      | Instruction.I_Get_Local addr ->
+          let address = frame.base_pointer + Int32.to_int addr in
+          let value = Stack.get t.stack address in
           Stack.push t.stack value
     in
     ()

@@ -1,8 +1,12 @@
 type t = {
+  base_pointer : int;
   instructions : Bytes.t;
-  mutable pointer : int;
+  mutable instruction_pointer : int;
 }
 
-let make instructions = { instructions; pointer = 0 }
+let make base_pointer instructions =
+  { base_pointer; instructions; instruction_pointer = 0 }
+;;
+
 let instructions t = t.instructions
-let set_pointer t i = t.pointer <- i
+let set_instruction_pointer t i = t.instruction_pointer <- i

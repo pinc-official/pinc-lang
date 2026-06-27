@@ -17,6 +17,8 @@ type t = {
   scopes : scope list;
 }
 
+let empty_instruction = { offset = 0; instruction = I_Null }
+
 let current_scope t =
   match t.scopes with
   | [] -> assert false
@@ -81,7 +83,6 @@ let match_last_instruction t check =
 ;;
 
 let add_scope t =
-  let empty_instruction = { offset = 0; instruction = I_Null } in
   let scope =
     {
       instructions = Buffer.create 8;
@@ -89,18 +90,23 @@ let add_scope t =
       last_instruction = empty_instruction;
     }
   in
-  { t with scopes = scope :: t.scopes }
+  {
+    t with
+    scopes = scope :: t.scopes;
+    symbol_table = SymbolTable.add_scope t.symbol_table;
+  }
 ;;
 
 let pop_scope t =
   match t.scopes with
   | [] -> assert false
-  | scope :: scopes -> ({ t with scopes }, scope)
+  | scope :: scopes ->
+      ({ t with scopes; symbol_table = SymbolTable.pop_scope t.symbol_table }, scope)
 ;;
 
 let add_constant =
   let id =
-    let id' = ref Int32.zero in
+    let id' = ref Int32.minus_one in
     fun () ->
       id' := Int32.succ !id';
       !id'
@@ -137,15 +143,30 @@ let get_symbol ~loc t name =
   | Some symbol -> symbol
 ;;
 
+let emit_get_symbol t ~loc name =
+  (* 
+    REFACTOR: 
+    This should only be needed in the indentifier.
+    Currently the string interpolation is also getting symbols directly.
+    The String interpolation should be rewritten, in the transformer so that 
+    it becomes just plain strings with concatenated identifiers.
+  *)
+  let symbol = get_symbol t ~loc name in
+  let instruction =
+    match SymbolTable.Symbol.scope symbol with
+    | SymbolTable.Scope.Global -> Pinc_Bytecode.Instruction.I_Get_Global symbol.address
+    | SymbolTable.Scope.Local -> Pinc_Bytecode.Instruction.I_Get_Local symbol.address
+  in
+  emit t instruction
+;;
+
 let compile_string_template t s =
   s
   |> List.fold_left
        (fun (t, index) template ->
          let t =
            match template.Pinc_Types.Ast.string_template_desc with
-           | StringInterpolation (Lowercase_Id (name, loc)) ->
-               let symbol = get_symbol t ~loc name in
-               emit t @@ Pinc_Bytecode.Instruction.I_Get_Global symbol.address
+           | StringInterpolation (Lowercase_Id (name, loc)) -> emit_get_symbol t ~loc name
            | StringText s -> emit_constant t (Pinc_Bytecode.Value.String s)
          in
          let t =
@@ -168,9 +189,7 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | Float f -> emit_constant t (Pinc_Bytecode.Value.Float f)
   | Bool true -> emit t Pinc_Bytecode.Instruction.I_True
   | Bool false -> emit t Pinc_Bytecode.Instruction.I_False
-  | LowercaseIdentifierExpression name ->
-      let symbol = get_symbol ~loc:expr.expression_loc t name in
-      emit t @@ Pinc_Bytecode.Instruction.I_Get_Global symbol.address
+  | LowercaseIdentifierExpression name -> emit_get_symbol t ~loc:expr.expression_loc name
   | ExternalFunction _ -> raise_notrace TODO
   | UppercaseIdentifierExpression _ -> raise_notrace TODO
   | Array a ->
@@ -209,9 +228,10 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
         else
           t
       in
+      let locals = SymbolTable.length t.symbol_table in
       let t, scope = pop_scope t in
       let instructions = Buffer.to_bytes scope.instructions in
-      let t = emit_constant t @@ Pinc_Bytecode.Value.Function instructions in
+      let t = emit_constant t @@ Pinc_Bytecode.Value.Function { locals; instructions } in
       t
   | FunctionCall { function_definition; arguments = _ } ->
       let t = compile_expr t function_definition in
@@ -372,8 +392,15 @@ and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
   | ContinueStatement _ -> raise_notrace TODO
   | LetStatement (~is_optional:_, ~is_mutable:_, Lowercase_Id (name, _), expr) ->
       let t = compile_expr t expr in
-      let t, addr = add_symbol t name in
-      let t = emit t (Pinc_Bytecode.Instruction.I_Set_Global addr) in
+      let t, symbol = add_symbol t name in
+      let instruction =
+        match SymbolTable.Symbol.scope symbol with
+        | SymbolTable.Scope.Global ->
+            Pinc_Bytecode.Instruction.I_Set_Global (SymbolTable.Symbol.address symbol)
+        | SymbolTable.Scope.Local ->
+            Pinc_Bytecode.Instruction.I_Set_Local (SymbolTable.Symbol.address symbol)
+      in
+      let t = emit t instruction in
       t
   | MutationStatement (_, _) -> raise_notrace TODO
   | ExpressionStatement e ->
@@ -396,10 +423,20 @@ let compile_declaration (decl : Pinc_Types.Ast.declaration) t =
 ;;
 
 let compile (ast : Pinc_Types.Ast.t) =
-  let t =
-    { constants = Int32.Map.empty; symbol_table = SymbolTable.make (); scopes = [] }
+  let scope =
+    {
+      instructions = Buffer.create 8;
+      previous_instruction = empty_instruction;
+      last_instruction = empty_instruction;
+    }
   in
-  let t = add_scope t in
+  let t =
+    {
+      constants = Int32.Map.empty;
+      symbol_table = SymbolTable.make ();
+      scopes = [ scope ];
+    }
+  in
   let t = StringMap.fold (fun _ -> compile_declaration) ast t in
   Pinc_Bytecode.Bytecode.make
     ~instructions:(Buffer.to_bytes @@ current_instructions t)

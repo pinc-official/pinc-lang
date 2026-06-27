@@ -29,8 +29,8 @@ let pp_value fmt = function
       Format.fprintf fmt "'%s'" @@ Buffer.contents buf
   | Value.Array _ -> Format.fprintf fmt "<ARRAY>"
   | Value.Record _ -> Format.fprintf fmt "<RECORD>"
-  | Value.Function instructions ->
-      Format.fprintf fmt "<FUNCTION> [@;@[<v2>  %a@]@;]" pp_instructions instructions
+  | Value.Function fn ->
+      Format.fprintf fmt "<FUNCTION> [@;@[<v2>  %a@]@;]" pp_instructions fn.instructions
 ;;
 
 let pp_constants fmt constants =

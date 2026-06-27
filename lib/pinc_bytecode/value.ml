@@ -7,7 +7,10 @@ type t =
   | String of string
   | Array of t array
   | Record of t StringMap.t
-  | Function of Bytes.t
+  | Function of {
+      locals : int;
+      instructions : Bytes.t;
+    }
 
 let rec to_string = function
   | Null -> ""
@@ -67,7 +70,8 @@ let rec equal a b =
   | Null, Null -> true
   | Array a, Array b -> Array.equal equal a b
   | Record a, Record b -> StringMap.equal equal a b
-  | Function a, Function b -> Bytes.equal a b
+  | Function a, Function b ->
+      Int.equal a.locals b.locals && Bytes.equal a.instructions b.instructions
   | _ -> false
 ;;
 

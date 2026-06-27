@@ -33,6 +33,8 @@ type t =
   | I_Range_Inclusive
   | I_Call
   | I_Return
+  | I_Set_Local of Int32.t
+  | I_Get_Local of Int32.t
 
 let byte = function
   | I_Pop -> 0x00
@@ -69,6 +71,8 @@ let byte = function
   | I_Range_Inclusive -> 0x1F
   | I_Call -> 0x20
   | I_Return -> 0x21
+  | I_Set_Local _ -> 0x22
+  | I_Get_Local _ -> 0x23
 ;;
 
 let operands_length = function
@@ -78,7 +82,9 @@ let operands_length = function
   | I_Set_Global op
   | I_Get_Global op
   | I_Array op
-  | I_Record op -> Int32.byte_width op
+  | I_Record op
+  | I_Set_Local op
+  | I_Get_Local op -> Int32.byte_width op
   | I_Pop
   | I_Add
   | I_Sub
@@ -160,6 +166,12 @@ let decode bytes offset =
   | 0x1F -> (offset, I_Range_Inclusive)
   | 0x20 -> (offset, I_Call)
   | 0x21 -> (offset, I_Return)
+  | 0x22 ->
+      let offset, addr = Int32.read_bytes bytes offset in
+      (offset, I_Set_Local addr)
+  | 0x23 ->
+      let offset, addr = Int32.read_bytes bytes offset in
+      (offset, I_Get_Local addr)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -200,6 +212,8 @@ let pp fmt = function
   | I_Range_Inclusive -> Format.fprintf fmt "I_Range_Inclusive"
   | I_Call -> Format.fprintf fmt "I_Call"
   | I_Return -> Format.fprintf fmt "I_Return"
+  | I_Get_Local addr -> Format.fprintf fmt "I_Get_Local %a" Int32.pp addr
+  | I_Set_Local addr -> Format.fprintf fmt "I_Set_Local %a" Int32.pp addr
 ;;
 
 let to_bytes t =
@@ -220,7 +234,9 @@ let to_bytes t =
     | I_Set_Global op
     | I_Get_Global op
     | I_Array op
-    | I_Record op -> offset := Int32.write_bytes bytes !offset op
+    | I_Record op
+    | I_Set_Local op
+    | I_Get_Local op -> offset := Int32.write_bytes bytes !offset op
     | I_Pop
     | I_Add
     | I_Sub
