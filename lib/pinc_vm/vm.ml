@@ -62,7 +62,6 @@ let rec execute_binary_operation t op =
     | Pinc_Types.Operators.Binary.CONCAT -> execute_binary_concat l r
     | Pinc_Types.Operators.Binary.DOT_ACCESS -> execute_binary_dot_access l r
     | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> execute_binary_bracket_access l r
-    | Pinc_Types.Operators.Binary.FUNCTION_CALL -> raise_notrace TODO
     | Pinc_Types.Operators.Binary.PIPE -> raise_notrace TODO
     | Pinc_Types.Operators.Binary.ARRAY_ADD -> raise_notrace TODO
     | Pinc_Types.Operators.Binary.MERGE -> raise_notrace TODO

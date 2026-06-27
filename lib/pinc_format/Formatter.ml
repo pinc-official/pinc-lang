@@ -246,7 +246,6 @@ and format_binary_expression left op right =
   | Parsetree.Operators.Binary.OR -> l ^^ space ^^ twice bar ^^ space ^^ r
   | Parsetree.Operators.Binary.DOT_ACCESS -> l ^^ dot ^^ r
   | Parsetree.Operators.Binary.BRACKET_ACCESS -> l ^^ brackets r
-  | Parsetree.Operators.Binary.FUNCTION_CALL -> l ^^ parens r
   | Parsetree.Operators.Binary.PIPE ->
       l ^^ break 1 ^^ ifflat empty (twice space) ^^ bar ^^ rangle ^^ space ^^ r
   | Parsetree.Operators.Binary.ARRAY_ADD -> l ^^ space ^^ langle ^^ minus ^^ space ^^ r

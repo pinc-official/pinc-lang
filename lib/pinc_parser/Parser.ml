@@ -773,7 +773,6 @@ module Rules = struct
     | Token.ARROW_LEFT -> Some Operators.Binary.ARRAY_ADD
     | Token.ATAT -> Some Operators.Binary.MERGE
     | Token.LEFT_BRACK -> Some Operators.Binary.BRACKET_ACCESS
-    | Token.LEFT_PAREN -> Some Operators.Binary.FUNCTION_CALL
     | Token.DOTDOT -> Some Operators.Binary.RANGE
     | Token.DOTDOTDOT -> Some Operators.Binary.INCLUSIVE_RANGE
     | Token.PIPE -> Some Operators.Binary.PIPE
@@ -781,83 +780,97 @@ module Rules = struct
 
   and parse_expression ?(prio = -999) t =
     let rec loop ~prio ~left t =
-      if t.token.typ = Token.SEMICOLON then
-        left
-      else (
-        match
-          parse_binary_operator t
-        with
-        | None -> left
-        | Some operator ->
-            let precedence = Operators.Binary.get_precedence operator in
-            if precedence < prio then
-              left
-            else (
-              let expression_annotations = parse_annotations t in
-              let expression_start = t.token.location in
-              next t;
-              (* 
+      let expression_start = t.token.location in
+      match t.token.typ with
+      | Token.SEMICOLON -> left
+      | Token.LEFT_PAREN ->
+          let expression_annotations = parse_annotations t in
+          next t;
+          let arguments =
+            t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression
+          in
+          let expression_desc =
+            Parsetree.P_FunctionCall { function_definition = left; arguments }
+          in
+          expect Token.RIGHT_PAREN t;
+          let expression_end = t.token.location in
+          let expression_loc = Location.merge ~s:expression_start ~e:expression_end () in
+          let left =
+            Parsetree.
+              {
+                expression_desc;
+                expression_loc;
+                expression_annotations;
+                expression_parenthesized = false;
+              }
+          in
+          loop ~left ~prio t
+      | _ -> (
+          match parse_binary_operator t with
+          | None -> left
+          | Some operator ->
+              let precedence = Operators.Binary.get_precedence operator in
+              if precedence < prio then
+                left
+              else (
+                let expression_annotations = parse_annotations t in
+                next t;
+                (* 
                 NOTE: 
                 The new_prio was moved out of the | operator branch, so it now also updates the prio
                 on function calls. Tests are still passing, but if there are precendence errors with functions
                 in the future, this is probably the reason.
                 - 2026-06-26
               *)
-              let new_prio =
-                match Operators.Binary.get_associativity operator with
-                | Assoc_Left -> precedence + 1
-                | Assoc_Right -> precedence
-              in
-              let expression_desc =
-                match operator with
-                | Operators.Binary.FUNCTION_CALL ->
-                    let arguments =
-                      t |> Helpers.separated_list ~sep:Token.COMMA ~fn:parse_expression
-                    in
-                    Parsetree.P_FunctionCall { function_definition = left; arguments }
-                | Operators.Binary.DOT_ACCESS ->
-                    let id, loc = Helpers.expect_identifier ~typ:`Lower t in
-                    let expr =
-                      Parsetree.
-                        {
-                          expression_loc = loc;
-                          expression_desc = Parsetree.P_LowercaseIdentifierExpression id;
-                          expression_parenthesized = false;
-                          expression_annotations = [];
-                        }
-                    in
-                    Parsetree.P_BinaryExpression (left, operator, expr)
-                | operator -> (
-                    match parse_expression ~prio:new_prio t with
-                    | None ->
-                        Diagnostics.raise_error
-                          t.token.location
-                          ("Expected expression on right hand side of `"
-                          ^ Operators.Binary.to_string operator
-                          ^ "`")
-                    | Some right -> Parsetree.P_BinaryExpression (left, operator, right))
-              in
-              let expect_close token = expect token t in
-              let () =
-                match operator with
-                | Operators.Binary.FUNCTION_CALL -> expect_close Token.RIGHT_PAREN
-                | Operators.Binary.BRACKET_ACCESS -> expect_close Token.RIGHT_BRACK
-                | _ -> ()
-              in
-              let expression_end = t.token.location in
-              let expression_loc =
-                Location.merge ~s:expression_start ~e:expression_end ()
-              in
-              let left =
-                Parsetree.
-                  {
-                    expression_desc;
-                    expression_loc;
-                    expression_annotations;
-                    expression_parenthesized = false;
-                  }
-              in
-              loop ~left ~prio t))
+                let new_prio =
+                  match Operators.Binary.get_associativity operator with
+                  | Assoc_Left -> precedence + 1
+                  | Assoc_Right -> precedence
+                in
+                let expression_desc =
+                  match operator with
+                  | Operators.Binary.DOT_ACCESS ->
+                      let id, loc = Helpers.expect_identifier ~typ:`Lower t in
+                      let expr =
+                        Parsetree.
+                          {
+                            expression_loc = loc;
+                            expression_desc = Parsetree.P_LowercaseIdentifierExpression id;
+                            expression_parenthesized = false;
+                            expression_annotations = [];
+                          }
+                      in
+                      Parsetree.P_BinaryExpression (left, operator, expr)
+                  | operator -> (
+                      match parse_expression ~prio:new_prio t with
+                      | None ->
+                          Diagnostics.raise_error
+                            t.token.location
+                            ("Expected expression on right hand side of `"
+                            ^ Operators.Binary.to_string operator
+                            ^ "`")
+                      | Some right -> Parsetree.P_BinaryExpression (left, operator, right)
+                      )
+                in
+                let () =
+                  match operator with
+                  | Operators.Binary.BRACKET_ACCESS -> expect Token.RIGHT_BRACK t
+                  | _ -> ()
+                in
+                let expression_end = t.token.location in
+                let expression_loc =
+                  Location.merge ~s:expression_start ~e:expression_end ()
+                in
+                let left =
+                  Parsetree.
+                    {
+                      expression_desc;
+                      expression_loc;
+                      expression_annotations;
+                      expression_parenthesized = false;
+                    }
+                in
+                loop ~left ~prio t))
     in
     let* left = parse_expression_part t in
     Some (loop ~prio ~left t)

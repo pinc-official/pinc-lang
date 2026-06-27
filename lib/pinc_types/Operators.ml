@@ -23,7 +23,6 @@ module Binary = struct
     | OR
     | DOT_ACCESS
     | BRACKET_ACCESS
-    | FUNCTION_CALL
     | PIPE
     | ARRAY_ADD
     | MERGE
@@ -32,7 +31,6 @@ module Binary = struct
 
   let get_precedence = function
     | DOT_ACCESS -> 110
-    | FUNCTION_CALL -> 100
     | POW -> 70
     | MODULO | TIMES | DIV -> 60
     | PLUS | MINUS -> 50
@@ -69,7 +67,6 @@ module Binary = struct
     | ARRAY_ADD -> "<-"
     | MERGE -> "@@"
     | BRACKET_ACCESS -> "["
-    | FUNCTION_CALL -> "("
     | RANGE -> ".."
     | INCLUSIVE_RANGE -> "..."
     | PIPE -> "|>"

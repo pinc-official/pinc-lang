@@ -215,8 +215,6 @@ and eval_expression ~state expression =
       eval_range ~state ~inclusive:false left right
   | Ast.BinaryExpression (left, Ast.Operators.Binary.INCLUSIVE_RANGE, right) ->
       eval_range ~state ~inclusive:true left right
-  | Ast.BinaryExpression (left, Ast.Operators.Binary.FUNCTION_CALL, right) ->
-      eval_function_call ~state ~arguments:[ right ] left
   | Ast.BinaryExpression (left, Ast.Operators.Binary.PIPE, right) ->
       eval_binary_pipe ~state left right
 
