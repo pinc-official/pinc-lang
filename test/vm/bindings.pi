@@ -8,3 +8,9 @@ component UnboundIdentifier {
   let two = one;
   two
 }
+
+component Shadowing {
+  let a = 1;
+  let a = a + 1;
+  a
+}
