@@ -341,7 +341,7 @@ and compile_binary_expression t ~left ~op ~right =
       let t = compile_expr t left in
       let t = compile_expr t right in
       emit t Pinc_Bytecode.Instruction.I_Index
-  | Pinc_Types.Operators.Binary.PIPE -> raise_notrace TODO
+  | Pinc_Types.Operators.Binary.PIPE -> assert false
   | Pinc_Types.Operators.Binary.ARRAY_ADD -> raise_notrace TODO
   | Pinc_Types.Operators.Binary.MERGE -> raise_notrace TODO
   | Pinc_Types.Operators.Binary.RANGE ->
