@@ -13,6 +13,18 @@ type t =
       instructions : Bytes.t;
     }
 
+let pp fmt = function
+  | Null -> Format.fprintf fmt "<NULL>\n%!"
+  | Int i -> Format.fprintf fmt "%i\n%!" i
+  | Float f -> Format.fprintf fmt "%f\n%!" f
+  | Bool b -> Format.fprintf fmt "%b\n%!" b
+  | Char c -> Format.fprintf fmt "%x\n%!" (Uchar.to_int c)
+  | String s -> Format.fprintf fmt "%S\n%!" s
+  | Array _ -> Format.fprintf fmt "<ARRAY>\n%!"
+  | Record _ -> Format.fprintf fmt "<RECORD>\n%!"
+  | Function _ -> Format.fprintf fmt "<FUNCTION>\n%!"
+;;
+
 let rec to_string = function
   | Null -> ""
   | Int i -> string_of_int i

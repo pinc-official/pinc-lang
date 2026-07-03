@@ -35,6 +35,7 @@ type t =
   | I_Return
   | I_Set_Local of Int32.t
   | I_Get_Local of Int32.t
+  | I_Debug_Print_Stack
 
 let byte = function
   | I_Pop -> 0x00
@@ -73,6 +74,7 @@ let byte = function
   | I_Return -> 0x21
   | I_Set_Local _ -> 0x22
   | I_Get_Local _ -> 0x23
+  | I_Debug_Print_Stack -> 0xFF
 ;;
 
 let operands_length = function
@@ -111,7 +113,8 @@ let operands_length = function
   | I_Dot_Index
   | I_Range
   | I_Range_Inclusive
-  | I_Return -> 0
+  | I_Return
+  | I_Debug_Print_Stack -> 0
 ;;
 
 let decode bytes offset =
@@ -174,6 +177,7 @@ let decode bytes offset =
   | 0x23 ->
       let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Get_Local addr)
+  | 0xFF -> (offset, I_Debug_Print_Stack)
   | _ ->
       raise_notrace
         (Invalid_argument (Printf.sprintf "unknown instruction: 0x%.2X" instruction))
@@ -216,6 +220,7 @@ let pp fmt = function
   | I_Return -> Format.fprintf fmt "I_Return"
   | I_Get_Local addr -> Format.fprintf fmt "I_Get_Local %a" Int32.pp addr
   | I_Set_Local addr -> Format.fprintf fmt "I_Set_Local %a" Int32.pp addr
+  | I_Debug_Print_Stack -> Format.fprintf fmt "I_Debug_Print_Stack (!nocommit)"
 ;;
 
 let to_bytes t =
@@ -265,7 +270,8 @@ let to_bytes t =
     | I_Dot_Index
     | I_Range
     | I_Range_Inclusive
-    | I_Return -> ()
+    | I_Return
+    | I_Debug_Print_Stack -> ()
   in
 
   bytes

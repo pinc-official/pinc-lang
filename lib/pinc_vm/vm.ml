@@ -340,6 +340,10 @@ let run t =
     Frame.set_instruction_pointer frame new_ip;
     let () =
       match op with
+      | Instruction.I_Debug_Print_Stack ->
+          Format.printf "--------- (STACK) -------\n%!";
+          Stack.iter (fun value -> Format.printf "%a%!" Value.pp value) t.stack;
+          Format.printf "--------- (/STACK) -------\n%!"
       | Instruction.I_Pop -> ignore @@ Stack.pop t.stack
       | Instruction.I_Constant addr ->
           let constant = Int32.Map.find addr t.constants in

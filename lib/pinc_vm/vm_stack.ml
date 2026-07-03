@@ -72,3 +72,9 @@ let get t address =
 ;;
 
 let last_popped_element t = t.stack.(t.stack_pointer)
+
+let iter fn t =
+  for i = 0 to t.stack_pointer - 1 do
+    fn @@ nth t i
+  done
+;;
