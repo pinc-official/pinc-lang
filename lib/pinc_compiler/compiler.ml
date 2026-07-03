@@ -149,6 +149,7 @@ let emit_get_symbol t symbol =
     | SymbolTable.Scope.Global -> Pinc_Bytecode.Instruction.I_Get_Global symbol.address
     | SymbolTable.Scope.Local -> Pinc_Bytecode.Instruction.I_Get_Local symbol.address
     | SymbolTable.Scope.Free -> Pinc_Bytecode.Instruction.I_Get_Free symbol.address
+    | SymbolTable.Scope.Function -> Pinc_Bytecode.Instruction.I_Current_Closure
   in
   emit t instruction
 ;;
@@ -161,6 +162,7 @@ let emit_set_symbol t symbol =
     | SymbolTable.Scope.Local ->
         Pinc_Bytecode.Instruction.I_Set_Local (SymbolTable.Symbol.address symbol)
     | SymbolTable.Scope.Free -> assert false
+    | SymbolTable.Scope.Function -> assert false
   in
   let t = emit t instruction in
   t
@@ -242,8 +244,17 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       let length = Int32.of_int @@ List.length keys in
       let t = emit t @@ Pinc_Bytecode.Instruction.I_Record length in
       t
-  | Function { identifier = _; parameters; body } ->
+  | Function { identifier; parameters; body } ->
       let t = add_scope t in
+      let t =
+        match identifier with
+        | None -> t
+        | Some (Pinc_Types.Ast.Lowercase_Id (name, _)) ->
+            let symbol_table, _symbol =
+              SymbolTable.define_function_symbol t.symbol_table ~name
+            in
+            { t with symbol_table }
+      in
       let t =
         List.fold_left
           (fun t (Pinc_Types.Ast.Lowercase_Id (name, _)) -> fst @@ add_symbol t name)

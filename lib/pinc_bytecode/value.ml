@@ -1,9 +1,3 @@
-type compiled_function = {
-  num_locals : int;
-  num_parameters : int;
-  instructions : Bytes.t;
-}
-
 type t =
   | Null
   | Int of int
@@ -14,14 +8,24 @@ type t =
   | Array of t array
   | Record of t StringMap.t
   | Function of compiled_function
-  | Closure of {
-      fn : compiled_function;
-      free_variables : t Int32.Map.t;
-    }
-  | BuiltinFunction of {
-      num_parameters : int;
-      fn : arguments:t list -> t;
-    }
+  | Closure of closure
+  | BuiltinFunction of builtin_function
+
+and builtin_function = {
+  num_parameters : int;
+  fn : arguments:t list -> t;
+}
+
+and compiled_function = {
+  num_locals : int;
+  num_parameters : int;
+  instructions : Bytes.t;
+}
+
+and closure = {
+  fn : compiled_function;
+  free_variables : t Int32.Map.t;
+}
 
 let pp fmt = function
   | Null -> Format.fprintf fmt "<NULL>\n%!"

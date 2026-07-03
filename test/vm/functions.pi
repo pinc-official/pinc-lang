@@ -76,3 +76,27 @@ component FunctionClosure {
   };
   adder(3)(7)(9, 2)
 }
+
+component RecursiveFunction {
+  let fact_and_fib = fn (a, b) -> {
+    let fibonacci = fn (n) -> {
+      if (n <= 1) {
+        n
+      } else {
+        fibonacci(n - 1) + fibonacci(n - 2)
+      }
+    };
+
+    let factorial = fn (n) -> {
+      if (n <= 1) {
+        1
+      } else {
+        n * factorial(n - 1)
+      }
+    };
+
+    factorial(a) + fibonacci(b)
+  };
+
+  fact_and_fib(5, 9)
+}

@@ -3,6 +3,7 @@ module Scope = struct
     | Global
     | Local
     | Free
+    | Function
 end
 
 module Symbol = struct
@@ -77,6 +78,12 @@ let define_free_symbol t symbol =
   (t', free_symbol)
 ;;
 
+let define_function_symbol t ~name =
+  let symbol = Symbol.make ~name ~scope:Function ~address:0l in
+  let t' = { t with store = StringMap.add name symbol t.store } in
+  (t', symbol)
+;;
+
 let rec resolve_symbol t ~name =
   let symbol = StringMap.find_opt name t.store in
   match (symbol, t.outer) with
@@ -88,7 +95,7 @@ let rec resolve_symbol t ~name =
       | outer, Some outer_symbol ->
           begin match Symbol.scope outer_symbol with
           | Global -> ({ t with outer = Some outer }, Some outer_symbol)
-          | Local | Free ->
+          | Local | Free | Function ->
               let t', free_symbol = define_free_symbol t outer_symbol in
               ({ t' with outer = Some outer }, Some free_symbol)
           end

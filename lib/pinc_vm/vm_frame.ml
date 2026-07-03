@@ -1,13 +1,10 @@
 type t = {
   base_pointer : int;
-  instructions : Bytes.t;
-  free_variables : Pinc_Bytecode.Value.t Int32.Map.t;
+  closure : Pinc_Bytecode.Value.closure;
   mutable instruction_pointer : int;
 }
 
-let make ~base_pointer ~instructions ~free_variables =
-  { base_pointer; instructions; instruction_pointer = 0; free_variables }
-;;
-
-let instructions t = t.instructions
+let make ~base_pointer ~closure = { base_pointer; closure; instruction_pointer = 0 }
+let instructions t = t.closure.fn.instructions
+let free_variables t = t.closure.free_variables
 let set_instruction_pointer t i = t.instruction_pointer <- i

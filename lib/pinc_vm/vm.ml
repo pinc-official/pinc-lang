@@ -15,15 +15,17 @@ type t = {
 let stack_size = 2048
 
 let make (bytecode : Bytecode.t) =
-  let main_frame =
-    Frame.make
-      ~base_pointer:0
-      ~instructions:bytecode.instructions
-      ~free_variables:Int32.Map.empty
+  let closure =
+    Value.
+      {
+        fn = { num_locals = 0; num_parameters = 0; instructions = bytecode.instructions };
+        free_variables = Int32.Map.empty;
+      }
   in
+  let main_frame = Frame.make ~base_pointer:0 ~closure in
   {
     constants = bytecode.constants;
-    stack = Stack.make ~size:stack_size ~default_value:Value.Null;
+    stack = Stack.make ~size:stack_size;
     globals = Int32.Map.empty;
     frames = [ main_frame ];
   }
@@ -329,8 +331,7 @@ let rec execute_function_call t num_arguments =
            ^ string_of_int num_parameters
            ^ ", got "
            ^ string_of_int num_arguments)
-  | Value.Closure { fn; free_variables } ->
-      call_closure t ~fn ~num_arguments ~free_variables
+  | Value.Closure closure -> call_closure t ~closure ~num_arguments
   | Value.BuiltinFunction { fn; _ } -> call_builtin t ~fn ~num_arguments
   | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value"
 
@@ -341,24 +342,22 @@ and call_builtin t ~fn ~num_arguments =
   let () = ignore @@ Stack.pop t.stack in
   Stack.push t.stack value
 
-and call_closure t ~fn ~num_arguments ~free_variables =
-  let frame =
-    Frame.make
-      ~base_pointer:(t.stack.stack_pointer - num_arguments)
-      ~instructions:fn.instructions
-      ~free_variables
-  in
+and call_closure t ~closure ~num_arguments =
+  let frame = Frame.make ~base_pointer:(t.stack.stack_pointer - num_arguments) ~closure in
   push_frame t frame;
-  Stack.set_pointer t.stack (frame.base_pointer + fn.num_locals)
+  Stack.set_pointer t.stack (frame.base_pointer + closure.fn.num_locals)
 ;;
 
 let run t =
   Printexc.record_backtrace true;
   while
-    (current_frame t).instruction_pointer < Bytes.length (current_frame t).instructions
+    (current_frame t).instruction_pointer
+    < Bytes.length @@ Frame.instructions (current_frame t)
   do
     let frame = current_frame t in
-    let new_ip, op = Instruction.decode frame.instructions frame.instruction_pointer in
+    let new_ip, op =
+      Instruction.decode (Frame.instructions frame) frame.instruction_pointer
+    in
     Frame.set_instruction_pointer frame new_ip;
     let () =
       match op with
@@ -416,7 +415,7 @@ let run t =
           let value = Value.BuiltinFunction { num_parameters; fn } in
           Stack.push t.stack value
       | Instruction.I_Get_Free addr ->
-          let value = Int32.Map.find addr frame.free_variables in
+          let value = Int32.Map.find addr (Frame.free_variables frame) in
           Stack.push t.stack value
       | Instruction.I_Dynamic_Array ->
           let value = Stack.pop t.stack in
@@ -490,6 +489,9 @@ let run t =
                      "Trying to call length a non array, string or record value"
           in
           Stack.push t.stack (Value.Int len)
+      | Instruction.I_Current_Closure ->
+          let closure = Value.Closure frame.closure in
+          Stack.push t.stack closure
     in
     ()
   done;

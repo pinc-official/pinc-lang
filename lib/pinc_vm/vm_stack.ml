@@ -1,18 +1,16 @@
 exception Pinc_stack_overflow
 
 type 'a t = {
-  default_value : 'a;
   stack_size : int;
   mutable stack_pointer : int;
-  mutable stack : 'a Array.t;
+  mutable stack : Pinc_Bytecode.Value.t Array.t;
 }
 
-let make ~size ~default_value =
+let make ~size =
   {
-    default_value;
     stack_size = size;
     stack_pointer = 0;
-    stack = Array.make size default_value;
+    stack = Array.make size Pinc_Bytecode.Value.Null;
   }
 ;;
 
@@ -51,7 +49,7 @@ let pop_n t n =
 
 let nth t n =
   match t.stack_pointer - n with
-  | 0 -> t.default_value
+  | 0 -> Pinc_Bytecode.Value.Null
   | n -> t.stack.(n - 1)
 ;;
 

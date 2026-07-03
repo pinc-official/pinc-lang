@@ -238,3 +238,79 @@
   0058 I_Constant 0x00000008 (00000008)
   0063 I_Call 2
   0068 I_Pop
+
+  $ NO_COLOR="1" print_instructions . RecursiveFunction
+  [CONSTANTS]
+  0x00000000 (00000000) : 1
+  0x00000001 (00000001) : 1
+  0x00000002 (00000002) : 2
+  0x00000003 (00000003) : <FUNCTION> [
+    0000 I_Get_Local 0x00000000 (00000000)
+    0005 I_Constant 0x00000000 (00000000)
+    0010 I_Less_Equal
+    0011 I_Jump_If_False 0x0000001A (00000026)
+    0016 I_Get_Local 0x00000000 (00000000)
+    0021 I_Jump 0x0000003D (00000061)
+    0026 I_Current_Closure
+    0027 I_Get_Local 0x00000000 (00000000)
+    0032 I_Constant 0x00000001 (00000001)
+    0037 I_Sub
+    0038 I_Call 1
+    0043 I_Current_Closure
+    0044 I_Get_Local 0x00000000 (00000000)
+    0049 I_Constant 0x00000002 (00000002)
+    0054 I_Sub
+    0055 I_Call 1
+    0060 I_Add
+    0061 I_Return
+  ]
+  0x00000004 (00000004) : 1
+  0x00000005 (00000005) : 1
+  0x00000006 (00000006) : 1
+  0x00000007 (00000007) : <FUNCTION> [
+    0000 I_Get_Local 0x00000000 (00000000)
+    0005 I_Constant 0x00000004 (00000004)
+    0010 I_Less_Equal
+    0011 I_Jump_If_False 0x0000001A (00000026)
+    0016 I_Constant 0x00000005 (00000005)
+    0021 I_Jump 0x00000031 (00000049)
+    0026 I_Get_Local 0x00000000 (00000000)
+    0031 I_Current_Closure
+    0032 I_Get_Local 0x00000000 (00000000)
+    0037 I_Constant 0x00000006 (00000006)
+    0042 I_Sub
+    0043 I_Call 1
+    0048 I_Mul
+    0049 I_Return
+  ]
+  0x00000008 (00000008) : <FUNCTION> [
+    0000 I_Closure 0x00000003 (00000003) (free variables: 0)
+    0009 I_Set_Local 0x00000002 (00000002)
+    0014 I_Null
+    0015 I_Pop
+    0016 I_Closure 0x00000007 (00000007) (free variables: 0)
+    0025 I_Set_Local 0x00000003 (00000003)
+    0030 I_Null
+    0031 I_Pop
+    0032 I_Get_Local 0x00000003 (00000003)
+    0037 I_Get_Local 0x00000000 (00000000)
+    0042 I_Call 1
+    0047 I_Get_Local 0x00000002 (00000002)
+    0052 I_Get_Local 0x00000001 (00000001)
+    0057 I_Call 1
+    0062 I_Add
+    0063 I_Return
+  ]
+  0x00000009 (00000009) : 5
+  0x0000000A (00000010) : 9
+  
+  [INSTRUCTIONS]
+  0000 I_Closure 0x00000008 (00000008) (free variables: 0)
+  0009 I_Set_Global 0x00000000 (00000000)
+  0014 I_Null
+  0015 I_Pop
+  0016 I_Get_Global 0x00000000 (00000000)
+  0021 I_Constant 0x00000009 (00000009)
+  0026 I_Constant 0x0000000A (00000010)
+  0031 I_Call 2
+  0036 I_Pop

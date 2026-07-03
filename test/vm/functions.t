@@ -23,3 +23,6 @@
 
   $ NO_COLOR="1" print_vm . FunctionClosure
   464
+
+  $ NO_COLOR="1" print_vm . RecursiveFunction
+  154
