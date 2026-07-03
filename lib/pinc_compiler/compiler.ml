@@ -413,6 +413,8 @@ and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
       let t = compile_expr t expr in
       let t, symbol = add_symbol t name in
       let t = emit_set_symbol t symbol in
+      let t = emit t @@ Pinc_Bytecode.Instruction.I_Null in
+      let t = emit t Pinc_Bytecode.Instruction.I_Pop in
       t
   | MutationStatement (_, _) -> raise_notrace TODO
   | ExpressionStatement e ->

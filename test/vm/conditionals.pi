@@ -25,3 +25,9 @@ component IfFalseElse {
     false
   }
 }
+
+component IfNoReturn {
+  if (true) {
+    let a = 3;
+  }
+}

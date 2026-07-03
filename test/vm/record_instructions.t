@@ -144,12 +144,14 @@
   0025 I_Record 1
   0030 I_Record 2
   0035 I_Set_Global 0x00000000 (00000000)
-  0040 I_Get_Global 0x00000000 (00000000)
-  0045 I_Constant 0x00000005 (00000005)
-  0050 I_Dot_Index
-  0051 I_Constant 0x00000006 (00000006)
-  0056 I_Dot_Index
-  0057 I_Pop
+  0040 I_Null
+  0041 I_Pop
+  0042 I_Get_Global 0x00000000 (00000000)
+  0047 I_Constant 0x00000005 (00000005)
+  0052 I_Dot_Index
+  0053 I_Constant 0x00000006 (00000006)
+  0058 I_Dot_Index
+  0059 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . RecordAccessBracket
@@ -171,9 +173,11 @@
   0025 I_Record 1
   0030 I_Record 2
   0035 I_Set_Global 0x00000000 (00000000)
-  0040 I_Get_Global 0x00000000 (00000000)
-  0045 I_Constant 0x00000005 (00000005)
-  0050 I_Index
-  0051 I_Constant 0x00000006 (00000006)
-  0056 I_Index
-  0057 I_Pop
+  0040 I_Null
+  0041 I_Pop
+  0042 I_Get_Global 0x00000000 (00000000)
+  0047 I_Constant 0x00000005 (00000005)
+  0052 I_Index
+  0053 I_Constant 0x00000006 (00000006)
+  0058 I_Index
+  0059 I_Pop

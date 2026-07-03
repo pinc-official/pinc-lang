@@ -5,10 +5,14 @@
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Set_Global 0x00000000 (00000000)
-  0010 I_Get_Global 0x00000000 (00000000)
-  0015 I_Set_Global 0x00000001 (00000001)
-  0020 I_Get_Global 0x00000001 (00000001)
-  0025 I_Pop
+  0010 I_Null
+  0011 I_Pop
+  0012 I_Get_Global 0x00000000 (00000000)
+  0017 I_Set_Global 0x00000001 (00000001)
+  0022 I_Null
+  0023 I_Pop
+  0024 I_Get_Global 0x00000001 (00000001)
+  0029 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Shadowing
@@ -19,12 +23,16 @@
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Set_Global 0x00000000 (00000000)
-  0010 I_Get_Global 0x00000000 (00000000)
-  0015 I_Constant 0x00000001 (00000001)
-  0020 I_Add
-  0021 I_Set_Global 0x00000001 (00000001)
-  0026 I_Get_Global 0x00000001 (00000001)
-  0031 I_Pop
+  0010 I_Null
+  0011 I_Pop
+  0012 I_Get_Global 0x00000000 (00000000)
+  0017 I_Constant 0x00000001 (00000001)
+  0022 I_Add
+  0023 I_Set_Global 0x00000001 (00000001)
+  0028 I_Null
+  0029 I_Pop
+  0030 I_Get_Global 0x00000001 (00000001)
+  0035 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . UnboundIdentifier
@@ -46,13 +54,17 @@
   0x00000001 (00000001) : <FUNCTION> [
     0000 I_Constant 0x00000000 (00000000)
     0005 I_Set_Local 0x00000000 (00000000)
-    0010 I_Get_Local 0x00000000 (00000000)
-    0015 I_Return
+    0010 I_Null
+    0011 I_Pop
+    0012 I_Get_Local 0x00000000 (00000000)
+    0017 I_Return
   ]
   
   [INSTRUCTIONS]
   0000 I_Constant 0x00000001 (00000001)
   0005 I_Set_Global 0x00000000 (00000000)
-  0010 I_Get_Global 0x00000000 (00000000)
-  0015 I_Call 0
-  0020 I_Pop
+  0010 I_Null
+  0011 I_Pop
+  0012 I_Get_Global 0x00000000 (00000000)
+  0017 I_Call 0
+  0022 I_Pop

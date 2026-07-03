@@ -9,3 +9,6 @@
 
   $ NO_COLOR="1" print_vm . IfFalseElse
   false
+
+  $ NO_COLOR="1" print_vm . IfNoReturn
+  
