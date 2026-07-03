@@ -25,6 +25,7 @@ type t =
   | I_Set_Global of Int32.t
   | I_Get_Global of Int32.t
   | I_Concat
+  | I_Dynamic_Array
   | I_Array of Int32.t
   | I_Record of Int32.t
   | I_Index
@@ -35,6 +36,7 @@ type t =
   | I_Return
   | I_Set_Local of Int32.t
   | I_Get_Local of Int32.t
+  | I_Length
   | I_Debug_Print_Stack
 
 let byte = function
@@ -74,6 +76,8 @@ let byte = function
   | I_Return -> 0x21
   | I_Set_Local _ -> 0x22
   | I_Get_Local _ -> 0x23
+  | I_Length -> 0x24
+  | I_Dynamic_Array -> 0x25
   | I_Debug_Print_Stack -> 0xFF
 ;;
 
@@ -114,6 +118,8 @@ let operands_length = function
   | I_Range
   | I_Range_Inclusive
   | I_Return
+  | I_Length
+  | I_Dynamic_Array
   | I_Debug_Print_Stack -> 0
 ;;
 
@@ -177,6 +183,8 @@ let decode bytes offset =
   | 0x23 ->
       let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Get_Local addr)
+  | 0x24 -> (offset, I_Length)
+  | 0x25 -> (offset, I_Dynamic_Array)
   | 0xFF -> (offset, I_Debug_Print_Stack)
   | _ ->
       raise_notrace
@@ -220,7 +228,9 @@ let pp fmt = function
   | I_Return -> Format.fprintf fmt "I_Return"
   | I_Get_Local addr -> Format.fprintf fmt "I_Get_Local %a" Int32.pp addr
   | I_Set_Local addr -> Format.fprintf fmt "I_Set_Local %a" Int32.pp addr
-  | I_Debug_Print_Stack -> Format.fprintf fmt "I_Debug_Print_Stack (!nocommit)"
+  | I_Length -> Format.fprintf fmt "I_Length"
+  | I_Dynamic_Array -> Format.fprintf fmt "I_Dynamic_Array"
+  | I_Debug_Print_Stack -> Format.fprintf fmt "I_Debug_Print_Stack"
 ;;
 
 let to_bytes t =
@@ -271,6 +281,8 @@ let to_bytes t =
     | I_Range
     | I_Range_Inclusive
     | I_Return
+    | I_Length
+    | I_Dynamic_Array
     | I_Debug_Print_Stack -> ()
   in
 

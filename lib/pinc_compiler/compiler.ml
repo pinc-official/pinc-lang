@@ -258,7 +258,8 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       let t = emit t @@ Pinc_Bytecode.Instruction.I_Call num_arguments in
       t
   | TagExpression _ -> raise_notrace TODO
-  | ForInExpression _ -> raise_notrace TODO
+  | ForInExpression { index; iterator; reverse; iterable; body } ->
+      compile_loop_expression t ~index ~iterator ~reverse ~iterable ~body
   | TemplateExpression node -> compile_template_node t node
   | BlockExpression stmts -> List.fold_left compile_stmt t stmts
   | ConditionalExpression { condition; consequent; alternate } ->
@@ -403,6 +404,56 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
     replace_instruction t jump_alternate_offset
     @@ Pinc_Bytecode.Instruction.I_Jump jump_address
   in
+  t
+
+and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
+  let (Lowercase_Id (iterator, _)) = iterator in
+  (* TODO: Add scope *)
+  let t, iterator_symbol = add_symbol t iterator in
+  let t, length_symbol = add_symbol t ".length" in
+  (* Index *)
+  let index_identifier =
+    match index with
+    | Some (Lowercase_Id (name, _)) -> name
+    | None -> ".index"
+  in
+  let t = emit_constant t @@ Pinc_Bytecode.Value.Int 0 in
+  let t, index_symbol = add_symbol t index_identifier in
+  let t = emit_set_symbol t index_symbol in
+  (* Iterable *)
+  let t = compile_expr t iterable in
+  let t, iterable_symbol = add_symbol t ".iterable" in
+  let t = emit_set_symbol t iterable_symbol in
+  let t = emit_get_symbol t iterable_symbol in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Length in
+  let t = emit_set_symbol t length_symbol in
+  (* Set Iterator *)
+  let jump_address = Int32.of_int (Buffer.length @@ current_instructions t) in
+  let t = emit_get_symbol t iterable_symbol in
+  let t = emit_get_symbol t index_symbol in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Index in
+  let t = emit_set_symbol t iterator_symbol in
+  (* Run body *)
+  let t = compile_expr t body in
+  let t =
+    if match_last_instruction t I_Pop then
+      remove_last_instruction t
+    else
+      t
+  in
+  (* Increment and set new index *)
+  let t = emit_constant t @@ Pinc_Bytecode.Value.Int 1 in
+  let t = emit_get_symbol t index_symbol in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Add in
+  let t = emit_set_symbol t index_symbol in
+  (* Check array length and jump to loop start *)
+  let t = emit_get_symbol t index_symbol in
+  let t = emit_get_symbol t length_symbol in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Greater_Equal in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Jump_If_False jump_address in
+  (* Create array with values left on stack *)
+  let t = emit_get_symbol t length_symbol in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Dynamic_Array in
   t
 
 and compile_stmt t (stmt : Pinc_Types.Ast.statement) =

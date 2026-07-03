@@ -389,6 +389,16 @@ let run t =
       | Instruction.I_Get_Global addr ->
           let value = Int32.Map.find addr t.globals in
           Stack.push t.stack value
+      | Instruction.I_Dynamic_Array ->
+          let value = Stack.pop t.stack in
+          let length =
+            match value with
+            | Value.Int i -> i
+            | _ -> assert false
+          in
+          let elements = Array.of_list @@ Stack.pop_n t.stack length in
+          let value = Value.Array elements in
+          Stack.push t.stack value
       | Instruction.I_Array length ->
           let elements = Array.of_list @@ Stack.pop_n t.stack (Int32.to_int length) in
           let value = Value.Array elements in
@@ -423,6 +433,19 @@ let run t =
           let address = frame.base_pointer + Int32.to_int addr in
           let value = Stack.get t.stack address in
           Stack.push t.stack value
+      | Instruction.I_Length ->
+          let value = Stack.pop t.stack in
+          let len =
+            match value with
+            | Value.Array a -> Array.length a
+            | Value.String s -> String.length s
+            | Record r -> StringMap.cardinal r
+            | _ ->
+                raise_notrace
+                @@ Invalid_argument
+                     "Trying to call length a non array, string or record value"
+          in
+          Stack.push t.stack (Value.Int len)
     in
     ()
   done;
