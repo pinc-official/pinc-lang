@@ -165,25 +165,28 @@ let emit_set_symbol t symbol =
 ;;
 
 let compile_string_template t s =
-  s
-  |> List.fold_left
-       (fun (t, index) template ->
-         let t =
-           match template.Pinc_Types.Ast.string_template_desc with
-           | StringInterpolation (Lowercase_Id (name, loc)) ->
-               let symbol = get_symbol t ~loc name in
-               emit_get_symbol t symbol
-           | StringText s -> emit_constant t (Pinc_Bytecode.Value.String s)
-         in
-         let t =
-           if index > 0 then
-             emit t @@ Pinc_Bytecode.Instruction.I_Concat
-           else
-             t
-         in
-         (t, succ index))
-       (t, 0)
-  |> fst
+  match s with
+  | [] -> emit_constant t (Pinc_Bytecode.Value.String "")
+  | s ->
+      fst
+      @@ List.fold_left
+           (fun (t, index) template ->
+             let t =
+               match template.Pinc_Types.Ast.string_template_desc with
+               | StringInterpolation (Lowercase_Id (name, loc)) ->
+                   let symbol = get_symbol t ~loc name in
+                   emit_get_symbol t symbol
+               | StringText s -> emit_constant t (Pinc_Bytecode.Value.String s)
+             in
+             let t =
+               if index > 0 then
+                 emit t @@ Pinc_Bytecode.Instruction.I_Concat
+               else
+                 t
+             in
+             (t, succ index))
+           (t, 0)
+           s
 ;;
 
 let rec compile_expr t (expr : Pinc_Types.Ast.expression) =

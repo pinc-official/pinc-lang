@@ -10,3 +10,7 @@ component StringInterpolation {
   let subject = "World";
   "Hello $(subject)!"
 }
+
+component EmptyString {
+  ""
+}

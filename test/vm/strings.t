@@ -6,3 +6,6 @@
 
   $ NO_COLOR="1" print_vm . StringInterpolation
   Hello World!
+
+  $ NO_COLOR="1" print_vm . EmptyString
+  
