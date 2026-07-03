@@ -143,15 +143,7 @@ let get_symbol ~loc t name =
   | Some symbol -> symbol
 ;;
 
-let emit_get_symbol t ~loc name =
-  (* 
-    REFACTOR: 
-    This should only be needed in the indentifier.
-    Currently the string interpolation is also getting symbols directly.
-    The String interpolation should be rewritten, in the transformer so that 
-    it becomes just plain strings with concatenated identifiers.
-  *)
-  let symbol = get_symbol t ~loc name in
+let emit_get_symbol t symbol =
   let instruction =
     match SymbolTable.Symbol.scope symbol with
     | SymbolTable.Scope.Global -> Pinc_Bytecode.Instruction.I_Get_Global symbol.address
@@ -160,13 +152,27 @@ let emit_get_symbol t ~loc name =
   emit t instruction
 ;;
 
+let emit_set_symbol t symbol =
+  let instruction =
+    match SymbolTable.Symbol.scope symbol with
+    | SymbolTable.Scope.Global ->
+        Pinc_Bytecode.Instruction.I_Set_Global (SymbolTable.Symbol.address symbol)
+    | SymbolTable.Scope.Local ->
+        Pinc_Bytecode.Instruction.I_Set_Local (SymbolTable.Symbol.address symbol)
+  in
+  let t = emit t instruction in
+  t
+;;
+
 let compile_string_template t s =
   s
   |> List.fold_left
        (fun (t, index) template ->
          let t =
            match template.Pinc_Types.Ast.string_template_desc with
-           | StringInterpolation (Lowercase_Id (name, loc)) -> emit_get_symbol t ~loc name
+           | StringInterpolation (Lowercase_Id (name, loc)) ->
+               let symbol = get_symbol t ~loc name in
+               emit_get_symbol t symbol
            | StringText s -> emit_constant t (Pinc_Bytecode.Value.String s)
          in
          let t =
@@ -189,7 +195,9 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | Float f -> emit_constant t (Pinc_Bytecode.Value.Float f)
   | Bool true -> emit t Pinc_Bytecode.Instruction.I_True
   | Bool false -> emit t Pinc_Bytecode.Instruction.I_False
-  | LowercaseIdentifierExpression name -> emit_get_symbol t ~loc:expr.expression_loc name
+  | LowercaseIdentifierExpression name ->
+      let symbol = get_symbol t ~loc:expr.expression_loc name in
+      emit_get_symbol t symbol
   | ExternalFunction _ -> raise_notrace TODO
   | UppercaseIdentifierExpression _ -> raise_notrace TODO
   | Array a ->
@@ -404,14 +412,7 @@ and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
   | LetStatement (~is_optional:_, ~is_mutable:_, Lowercase_Id (name, _), expr) ->
       let t = compile_expr t expr in
       let t, symbol = add_symbol t name in
-      let instruction =
-        match SymbolTable.Symbol.scope symbol with
-        | SymbolTable.Scope.Global ->
-            Pinc_Bytecode.Instruction.I_Set_Global (SymbolTable.Symbol.address symbol)
-        | SymbolTable.Scope.Local ->
-            Pinc_Bytecode.Instruction.I_Set_Local (SymbolTable.Symbol.address symbol)
-      in
-      let t = emit t instruction in
+      let t = emit_set_symbol t symbol in
       t
   | MutationStatement (_, _) -> raise_notrace TODO
   | ExpressionStatement e ->
