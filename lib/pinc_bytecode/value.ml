@@ -12,6 +12,10 @@ type t =
       num_parameters : int;
       instructions : Bytes.t;
     }
+  | BuiltinFunction of {
+      num_parameters : int;
+      fn : arguments:t list -> t;
+    }
 
 let pp fmt = function
   | Null -> Format.fprintf fmt "<NULL>\n%!"
@@ -23,6 +27,7 @@ let pp fmt = function
   | Array _ -> Format.fprintf fmt "<ARRAY>\n%!"
   | Record _ -> Format.fprintf fmt "<RECORD>\n%!"
   | Function _ -> Format.fprintf fmt "<FUNCTION>\n%!"
+  | BuiltinFunction _ -> Format.fprintf fmt "<BUILTIN>\n%!"
 ;;
 
 let rec to_string = function
@@ -56,6 +61,7 @@ let rec to_string = function
         m;
       Buffer.contents b
   | Function _ -> ""
+  | BuiltinFunction _ -> ""
 ;;
 
 let is_true = function
@@ -69,6 +75,7 @@ let is_true = function
   | Array _ -> true
   | Record m -> not (StringMap.is_empty m)
   | Function _ -> true
+  | BuiltinFunction _ -> true
 ;;
 
 let rec equal a b =
@@ -87,6 +94,8 @@ let rec equal a b =
       Int.equal a.num_locals b.num_locals
       && Int.equal a.num_parameters b.num_parameters
       && Bytes.equal a.instructions b.instructions
+  | BuiltinFunction a, BuiltinFunction b ->
+      Int.equal a.num_parameters b.num_parameters && a.fn == b.fn
   | _ -> false
 ;;
 
@@ -105,6 +114,7 @@ let compare a b =
   | Array a, Array b -> Int.compare (Array.length a) (Array.length b)
   | Record a, Record b -> StringMap.compare compare a b
   | Function _, Function _ -> 0
+  | BuiltinFunction _, BuiltinFunction _ -> 0
   | _ -> 0
 ;;
 

@@ -201,7 +201,31 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | LowercaseIdentifierExpression name ->
       let symbol = get_symbol t ~loc:expr.expression_loc name in
       emit_get_symbol t symbol
-  | ExternalFunction _ -> raise_notrace TODO
+  | ExternalFunction { identifier = _; parameters; name } ->
+      let index =
+        Pinc_Bytecode.Externals.find_index name |> function
+        | None ->
+            Pinc_Diagnostics.raise_error
+              expr.expression_loc
+              ("Unbound external function `" ^ name ^ "`")
+        | Some i -> i
+      in
+      let expected_parameters = Pinc_Bytecode.Externals.expected_parameters index in
+      let parameters = List.length parameters in
+      let t =
+        if not @@ Int.equal expected_parameters parameters then
+          Pinc_Diagnostics.raise_error
+            expr.expression_loc
+            ("External function %%"
+            ^ name
+            ^ "%% expected "
+            ^ string_of_int expected_parameters
+            ^ " parameters, but got "
+            ^ string_of_int parameters)
+        else
+          emit t @@ Pinc_Bytecode.Instruction.I_Get_Builtin (Int32.of_int index)
+      in
+      t
   | UppercaseIdentifierExpression _ -> raise_notrace TODO
   | Array a ->
       let t = Array.fold_left compile_expr t a in

@@ -1,0 +1,23 @@
+component BuiltinFunctionWrongParameters {
+  let length = fn (a, b) -> %%pinc_array_length%%;
+
+  length([1, 2, 3, 4])
+}
+
+component BuiltinFunctionArrayLength {
+  let length = fn (array) -> %%pinc_array_length%%;
+
+  length([1, 2, 3, 4])
+}
+
+component BuiltinFunctionStringLength {
+  let length = fn (string) -> %%pinc_string_length%%;
+
+  length("Hello, World!")
+}
+
+component BuiltinFunctionStringSub {
+  let sub = fn (string, offset, length) -> %%pinc_string_sub%%;
+
+  sub("Hello, World!", 7, 5)
+}

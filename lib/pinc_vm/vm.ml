@@ -315,7 +315,7 @@ let execute_function_call t num_arguments =
   let num_arguments = Int32.to_int num_arguments in
   let fn = Stack.nth t.stack num_arguments in
   match fn with
-  | Value.Function { num_parameters; _ }
+  | (Value.Function { num_parameters; _ } | Value.BuiltinFunction { num_parameters; _ })
     when not @@ Int.equal num_parameters num_arguments ->
       raise_notrace
       @@ Invalid_argument
@@ -327,6 +327,12 @@ let execute_function_call t num_arguments =
       let frame = Frame.make (t.stack.stack_pointer - num_arguments) fn.instructions in
       push_frame t frame;
       Stack.set_pointer t.stack (frame.base_pointer + fn.num_locals)
+  | Value.BuiltinFunction { fn; _ } ->
+      let arguments = Stack.pop_n t.stack num_arguments in
+      let value = fn ~arguments in
+      (* Pop the builtin function from the stack *)
+      let () = ignore @@ Stack.pop t.stack in
+      Stack.push t.stack value
   | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value"
 ;;
 
@@ -388,6 +394,10 @@ let run t =
           t.globals <- Int32.Map.add addr value t.globals
       | Instruction.I_Get_Global addr ->
           let value = Int32.Map.find addr t.globals in
+          Stack.push t.stack value
+      | Instruction.I_Get_Builtin addr ->
+          let num_parameters, fn = Pinc_Bytecode.Externals.all.(Int32.to_int addr) in
+          let value = Value.BuiltinFunction { num_parameters; fn } in
           Stack.push t.stack value
       | Instruction.I_Dynamic_Array ->
           let value = Stack.pop t.stack in

@@ -31,6 +31,7 @@ let pp_value fmt = function
   | Value.Record _ -> Format.fprintf fmt "<RECORD>"
   | Value.Function fn ->
       Format.fprintf fmt "<FUNCTION> [@;@[<v2>  %a@]@;]" pp_instructions fn.instructions
+  | Value.BuiltinFunction _ -> Format.fprintf fmt "<BUILTIN_FUNCTION>"
 ;;
 
 let pp_constants fmt constants =

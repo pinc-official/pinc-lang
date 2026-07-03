@@ -37,6 +37,7 @@ type t =
   | I_Set_Local of Int32.t
   | I_Get_Local of Int32.t
   | I_Length
+  | I_Get_Builtin of Int32.t
   | I_Debug_Print_Stack
 
 let byte = function
@@ -78,6 +79,7 @@ let byte = function
   | I_Get_Local _ -> 0x23
   | I_Length -> 0x24
   | I_Dynamic_Array -> 0x25
+  | I_Get_Builtin _ -> 0x26
   | I_Debug_Print_Stack -> 0xFF
 ;;
 
@@ -91,6 +93,7 @@ let operands_length = function
   | I_Record op
   | I_Set_Local op
   | I_Get_Local op
+  | I_Get_Builtin op
   | I_Call op -> Int32.byte_width op
   | I_Pop
   | I_Add
@@ -185,6 +188,9 @@ let decode bytes offset =
       (offset, I_Get_Local addr)
   | 0x24 -> (offset, I_Length)
   | 0x25 -> (offset, I_Dynamic_Array)
+  | 0x26 ->
+      let offset, addr = Int32.read_bytes bytes offset in
+      (offset, I_Get_Builtin addr)
   | 0xFF -> (offset, I_Debug_Print_Stack)
   | _ ->
       raise_notrace
@@ -230,6 +236,7 @@ let pp fmt = function
   | I_Set_Local addr -> Format.fprintf fmt "I_Set_Local %a" Int32.pp addr
   | I_Length -> Format.fprintf fmt "I_Length"
   | I_Dynamic_Array -> Format.fprintf fmt "I_Dynamic_Array"
+  | I_Get_Builtin addr -> Format.fprintf fmt "I_Get_Builtin %a" Int32.pp addr
   | I_Debug_Print_Stack -> Format.fprintf fmt "I_Debug_Print_Stack"
 ;;
 
@@ -254,6 +261,7 @@ let to_bytes t =
     | I_Record op
     | I_Set_Local op
     | I_Get_Local op
+    | I_Get_Builtin op
     | I_Call op -> offset := Int32.write_bytes bytes !offset op
     | I_Pop
     | I_Add
