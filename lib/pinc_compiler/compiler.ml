@@ -499,8 +499,6 @@ and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
       let t = compile_expr t e in
       emit t Pinc_Bytecode.Instruction.I_Pop
 
-and compile_tag _t (_tag : Pinc_Types.Ast.tag) = raise_notrace TODO
-
 and compile_template_node _t (node : Pinc_Types.Ast.template_node) =
   match node.template_node_desc with
   | TextTemplateNode _ -> raise_notrace TODO
