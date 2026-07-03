@@ -6,13 +6,13 @@
   ]
   
   [INSTRUCTIONS]
-  0000 I_Constant 0x00000000 (00000000)
-  0005 I_Set_Global 0x00000000 (00000000)
-  0010 I_Null
-  0011 I_Pop
-  0012 I_Get_Global 0x00000000 (00000000)
-  0017 I_Call 0
-  0022 I_Pop
+  0000 I_Closure 0x00000000 (00000000) (free variables: 0)
+  0009 I_Set_Global 0x00000000 (00000000)
+  0014 I_Null
+  0015 I_Pop
+  0016 I_Get_Global 0x00000000 (00000000)
+  0021 I_Call 0
+  0026 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Function
@@ -35,13 +35,13 @@
   ]
   
   [INSTRUCTIONS]
-  0000 I_Constant 0x00000002 (00000002)
-  0005 I_Set_Global 0x00000000 (00000000)
-  0010 I_Null
-  0011 I_Pop
-  0012 I_Get_Global 0x00000000 (00000000)
-  0017 I_Call 0
-  0022 I_Pop
+  0000 I_Closure 0x00000002 (00000002) (free variables: 0)
+  0009 I_Set_Global 0x00000000 (00000000)
+  0014 I_Null
+  0015 I_Pop
+  0016 I_Get_Global 0x00000000 (00000000)
+  0021 I_Call 0
+  0026 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . FunctionCurried
@@ -62,18 +62,18 @@
   ]
   
   [INSTRUCTIONS]
-  0000 I_Constant 0x00000002 (00000002)
-  0005 I_Set_Global 0x00000000 (00000000)
-  0010 I_Null
-  0011 I_Pop
-  0012 I_Constant 0x00000003 (00000003)
-  0017 I_Set_Global 0x00000001 (00000001)
-  0022 I_Null
-  0023 I_Pop
-  0024 I_Get_Global 0x00000001 (00000001)
-  0029 I_Call 0
-  0034 I_Call 0
-  0039 I_Pop
+  0000 I_Closure 0x00000002 (00000002) (free variables: 0)
+  0009 I_Set_Global 0x00000000 (00000000)
+  0014 I_Null
+  0015 I_Pop
+  0016 I_Closure 0x00000003 (00000003) (free variables: 0)
+  0025 I_Set_Global 0x00000001 (00000001)
+  0030 I_Null
+  0031 I_Pop
+  0032 I_Get_Global 0x00000001 (00000001)
+  0037 I_Call 0
+  0042 I_Call 0
+  0047 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . FunctionScope
@@ -112,20 +112,20 @@
   0017 I_Set_Global 0x00000001 (00000001)
   0022 I_Null
   0023 I_Pop
-  0024 I_Constant 0x00000003 (00000003)
-  0029 I_Set_Global 0x00000002 (00000002)
-  0034 I_Null
-  0035 I_Pop
-  0036 I_Constant 0x00000005 (00000005)
-  0041 I_Set_Global 0x00000003 (00000003)
-  0046 I_Null
-  0047 I_Pop
-  0048 I_Get_Global 0x00000002 (00000002)
-  0053 I_Call 0
-  0058 I_Get_Global 0x00000003 (00000003)
-  0063 I_Call 0
-  0068 I_Add
-  0069 I_Pop
+  0024 I_Closure 0x00000003 (00000003) (free variables: 0)
+  0033 I_Set_Global 0x00000002 (00000002)
+  0038 I_Null
+  0039 I_Pop
+  0040 I_Closure 0x00000005 (00000005) (free variables: 0)
+  0049 I_Set_Global 0x00000003 (00000003)
+  0054 I_Null
+  0055 I_Pop
+  0056 I_Get_Global 0x00000002 (00000002)
+  0061 I_Call 0
+  0066 I_Get_Global 0x00000003 (00000003)
+  0071 I_Call 0
+  0076 I_Add
+  0077 I_Pop
 
   $ NO_COLOR="1" print_instructions . FunctionArguments
   [CONSTANTS]
@@ -151,19 +151,90 @@
   0x00000004 (00000004) : 9
   
   [INSTRUCTIONS]
+  0000 I_Closure 0x00000000 (00000000) (free variables: 0)
+  0009 I_Set_Global 0x00000000 (00000000)
+  0014 I_Null
+  0015 I_Pop
+  0016 I_Closure 0x00000002 (00000002) (free variables: 0)
+  0025 I_Set_Global 0x00000001 (00000001)
+  0030 I_Null
+  0031 I_Pop
+  0032 I_Get_Global 0x00000001 (00000001)
+  0037 I_Constant 0x00000003 (00000003)
+  0042 I_Call 1
+  0047 I_Get_Global 0x00000001 (00000001)
+  0052 I_Constant 0x00000004 (00000004)
+  0057 I_Call 1
+  0062 I_Add
+  0063 I_Pop
+
+  $ NO_COLOR="1" print_instructions . FunctionClosure
+  [CONSTANTS]
+  0x00000000 (00000000) : 221
+  0x00000001 (00000001) : <FUNCTION> [
+    0000 I_Get_Free 0x00000000 (00000000)
+    0005 I_Return
+  ]
+  0x00000002 (00000002) : <FUNCTION> [
+    0000 I_Get_Free 0x00000000 (00000000)
+    0005 I_Call 0
+    0010 I_Get_Free 0x00000001 (00000001)
+    0015 I_Add
+    0016 I_Get_Local 0x00000000 (00000000)
+    0021 I_Add
+    0022 I_Get_Global 0x00000000 (00000000)
+    0027 I_Get_Local 0x00000001 (00000001)
+    0032 I_Mul
+    0033 I_Add
+    0034 I_Return
+  ]
+  0x00000003 (00000003) : <FUNCTION> [
+    0000 I_Get_Free 0x00000000 (00000000)
+    0005 I_Get_Local 0x00000000 (00000000)
+    0010 I_Add
+    0011 I_Set_Local 0x00000001 (00000001)
+    0016 I_Null
+    0017 I_Pop
+    0018 I_Get_Free 0x00000001 (00000001)
+    0023 I_Get_Local 0x00000001 (00000001)
+    0028 I_Closure 0x00000002 (00000002) (free variables: 2)
+    0037 I_Set_Local 0x00000002 (00000002)
+    0042 I_Null
+    0043 I_Pop
+    0044 I_Get_Local 0x00000002 (00000002)
+    0049 I_Return
+  ]
+  0x00000004 (00000004) : <FUNCTION> [
+    0000 I_Get_Local 0x00000000 (00000000)
+    0005 I_Closure 0x00000001 (00000001) (free variables: 1)
+    0014 I_Set_Local 0x00000001 (00000001)
+    0019 I_Null
+    0020 I_Pop
+    0021 I_Get_Local 0x00000000 (00000000)
+    0026 I_Get_Local 0x00000001 (00000001)
+    0031 I_Closure 0x00000003 (00000003) (free variables: 2)
+    0040 I_Return
+  ]
+  0x00000005 (00000005) : 3
+  0x00000006 (00000006) : 7
+  0x00000007 (00000007) : 9
+  0x00000008 (00000008) : 2
+  
+  [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Set_Global 0x00000000 (00000000)
   0010 I_Null
   0011 I_Pop
-  0012 I_Constant 0x00000002 (00000002)
-  0017 I_Set_Global 0x00000001 (00000001)
-  0022 I_Null
-  0023 I_Pop
-  0024 I_Get_Global 0x00000001 (00000001)
-  0029 I_Constant 0x00000003 (00000003)
-  0034 I_Call 1
-  0039 I_Get_Global 0x00000001 (00000001)
-  0044 I_Constant 0x00000004 (00000004)
-  0049 I_Call 1
-  0054 I_Add
-  0055 I_Pop
+  0012 I_Closure 0x00000004 (00000004) (free variables: 0)
+  0021 I_Set_Global 0x00000001 (00000001)
+  0026 I_Null
+  0027 I_Pop
+  0028 I_Get_Global 0x00000001 (00000001)
+  0033 I_Constant 0x00000005 (00000005)
+  0038 I_Call 1
+  0043 I_Constant 0x00000006 (00000006)
+  0048 I_Call 1
+  0053 I_Constant 0x00000007 (00000007)
+  0058 I_Constant 0x00000008 (00000008)
+  0063 I_Call 2
+  0068 I_Pop

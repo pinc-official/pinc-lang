@@ -15,7 +15,12 @@ type t = {
 let stack_size = 2048
 
 let make (bytecode : Bytecode.t) =
-  let main_frame = Frame.make 0 bytecode.instructions in
+  let main_frame =
+    Frame.make
+      ~base_pointer:0
+      ~instructions:bytecode.instructions
+      ~free_variables:Int32.Map.empty
+  in
   {
     constants = bytecode.constants;
     stack = Stack.make ~size:stack_size ~default_value:Value.Null;
@@ -311,11 +316,12 @@ and execute_unary_not r =
     Value.constant_true
 ;;
 
-let execute_function_call t num_arguments =
+let rec execute_function_call t num_arguments =
   let num_arguments = Int32.to_int num_arguments in
   let fn = Stack.nth t.stack num_arguments in
   match fn with
-  | (Value.Function { num_parameters; _ } | Value.BuiltinFunction { num_parameters; _ })
+  | Value.Closure { fn = { num_parameters; _ }; _ }
+  | Value.BuiltinFunction { num_parameters; _ }
     when not @@ Int.equal num_parameters num_arguments ->
       raise_notrace
       @@ Invalid_argument
@@ -323,17 +329,27 @@ let execute_function_call t num_arguments =
            ^ string_of_int num_parameters
            ^ ", got "
            ^ string_of_int num_arguments)
-  | Value.Function fn ->
-      let frame = Frame.make (t.stack.stack_pointer - num_arguments) fn.instructions in
-      push_frame t frame;
-      Stack.set_pointer t.stack (frame.base_pointer + fn.num_locals)
-  | Value.BuiltinFunction { fn; _ } ->
-      let arguments = Stack.pop_n t.stack num_arguments in
-      let value = fn ~arguments in
-      (* Pop the builtin function from the stack *)
-      let () = ignore @@ Stack.pop t.stack in
-      Stack.push t.stack value
+  | Value.Closure { fn; free_variables } ->
+      call_closure t ~fn ~num_arguments ~free_variables
+  | Value.BuiltinFunction { fn; _ } -> call_builtin t ~fn ~num_arguments
   | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value"
+
+and call_builtin t ~fn ~num_arguments =
+  let arguments = Stack.pop_n t.stack num_arguments in
+  let value = fn ~arguments in
+  (* Pop the builtin function from the stack *)
+  let () = ignore @@ Stack.pop t.stack in
+  Stack.push t.stack value
+
+and call_closure t ~fn ~num_arguments ~free_variables =
+  let frame =
+    Frame.make
+      ~base_pointer:(t.stack.stack_pointer - num_arguments)
+      ~instructions:fn.instructions
+      ~free_variables
+  in
+  push_frame t frame;
+  Stack.set_pointer t.stack (frame.base_pointer + fn.num_locals)
 ;;
 
 let run t =
@@ -399,6 +415,9 @@ let run t =
           let num_parameters, fn = Pinc_Bytecode.Externals.all.(Int32.to_int addr) in
           let value = Value.BuiltinFunction { num_parameters; fn } in
           Stack.push t.stack value
+      | Instruction.I_Get_Free addr ->
+          let value = Int32.Map.find addr frame.free_variables in
+          Stack.push t.stack value
       | Instruction.I_Dynamic_Array ->
           let value = Stack.pop t.stack in
           let length =
@@ -425,6 +444,21 @@ let run t =
           let record = StringMap.of_list @@ List.combine keys values in
           let value = Value.Record record in
           Stack.push t.stack value
+      | Instruction.I_Closure (fn_addr, num_free_variables) ->
+          let num_free_variables = Int32.to_int num_free_variables in
+          let fn =
+            match Int32.Map.find fn_addr t.constants with
+            | Value.Function fn -> fn
+            | _ -> assert false
+          in
+          let free_variables =
+            num_free_variables
+            |> Stack.pop_n t.stack
+            |> List.mapi (fun index value -> (Int32.of_int index, value))
+            |> Int32.Map.of_list
+          in
+          let closure = Value.Closure { fn; free_variables } in
+          Stack.push t.stack closure
       | Instruction.I_Call num_arguments -> execute_function_call t num_arguments
       | Instruction.I_Return ->
           let value = Stack.pop t.stack in

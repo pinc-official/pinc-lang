@@ -17,7 +17,7 @@ let pp_instructions fmt instructions =
   done
 ;;
 
-let pp_value fmt = function
+let rec pp_value fmt = function
   | Value.Null -> Format.fprintf fmt "<NULL>"
   | Value.Int i -> Format.fprintf fmt "%i" i
   | Value.Float f -> Format.fprintf fmt "%f" f
@@ -30,8 +30,15 @@ let pp_value fmt = function
   | Value.Array _ -> Format.fprintf fmt "<ARRAY>"
   | Value.Record _ -> Format.fprintf fmt "<RECORD>"
   | Value.Function fn ->
-      Format.fprintf fmt "<FUNCTION> [@;@[<v2>  %a@]@;]" pp_instructions fn.instructions
+      Format.fprintf fmt "<FUNCTION>";
+      pp_function fmt fn
+  | Value.Closure { free_variables = _; fn } ->
+      Format.fprintf fmt "<CLOSURE>";
+      pp_function fmt fn
   | Value.BuiltinFunction _ -> Format.fprintf fmt "<BUILTIN_FUNCTION>"
+
+and pp_function fmt fn =
+  Format.fprintf fmt " [@;@[<v2>  %a@]@;]" pp_instructions fn.instructions
 ;;
 
 let pp_constants fmt constants =

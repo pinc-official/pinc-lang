@@ -38,6 +38,8 @@ type t =
   | I_Get_Local of Int32.t
   | I_Length
   | I_Get_Builtin of Int32.t
+  | I_Closure of (Int32.t * Int32.t)
+  | I_Get_Free of Int32.t
   | I_Debug_Print_Stack
 
 let byte = function
@@ -80,6 +82,8 @@ let byte = function
   | I_Length -> 0x24
   | I_Dynamic_Array -> 0x25
   | I_Get_Builtin _ -> 0x26
+  | I_Closure _ -> 0x27
+  | I_Get_Free _ -> 0x28
   | I_Debug_Print_Stack -> 0xFF
 ;;
 
@@ -94,7 +98,9 @@ let operands_length = function
   | I_Set_Local op
   | I_Get_Local op
   | I_Get_Builtin op
+  | I_Get_Free op
   | I_Call op -> Int32.byte_width op
+  | I_Closure (op1, op2) -> Int32.byte_width op1 + Int32.byte_width op2
   | I_Pop
   | I_Add
   | I_Sub
@@ -191,6 +197,13 @@ let decode bytes offset =
   | 0x26 ->
       let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Get_Builtin addr)
+  | 0x27 ->
+      let offset, fn_addr = Int32.read_bytes bytes offset in
+      let offset, free_variables = Int32.read_bytes bytes offset in
+      (offset, I_Closure (fn_addr, free_variables))
+  | 0x28 ->
+      let offset, addr = Int32.read_bytes bytes offset in
+      (offset, I_Get_Free addr)
   | 0xFF -> (offset, I_Debug_Print_Stack)
   | _ ->
       raise_notrace
@@ -237,6 +250,14 @@ let pp fmt = function
   | I_Length -> Format.fprintf fmt "I_Length"
   | I_Dynamic_Array -> Format.fprintf fmt "I_Dynamic_Array"
   | I_Get_Builtin addr -> Format.fprintf fmt "I_Get_Builtin %a" Int32.pp addr
+  | I_Get_Free addr -> Format.fprintf fmt "I_Get_Free %a" Int32.pp addr
+  | I_Closure (fn_addr, free_variables) ->
+      Format.fprintf
+        fmt
+        "I_Closure %a (free variables: %i)"
+        Int32.pp
+        fn_addr
+        (Int32.to_int free_variables)
   | I_Debug_Print_Stack -> Format.fprintf fmt "I_Debug_Print_Stack"
 ;;
 
@@ -262,7 +283,11 @@ let to_bytes t =
     | I_Set_Local op
     | I_Get_Local op
     | I_Get_Builtin op
+    | I_Get_Free op
     | I_Call op -> offset := Int32.write_bytes bytes !offset op
+    | I_Closure (op1, op2) ->
+        offset := Int32.write_bytes bytes !offset op1;
+        offset := Int32.write_bytes bytes !offset op2
     | I_Pop
     | I_Add
     | I_Sub

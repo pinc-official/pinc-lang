@@ -139,8 +139,8 @@ let add_symbol t name =
 let get_symbol ~loc t name =
   let symbol = SymbolTable.resolve_symbol t.symbol_table ~name in
   match symbol with
-  | None -> Pinc_Diagnostics.raise_error loc ("Unbound identifier `" ^ name ^ "`")
-  | Some symbol -> symbol
+  | _, None -> Pinc_Diagnostics.raise_error loc ("Unbound identifier `" ^ name ^ "`")
+  | symbol_table, Some symbol -> ({ t with symbol_table }, symbol)
 ;;
 
 let emit_get_symbol t symbol =
@@ -148,6 +148,7 @@ let emit_get_symbol t symbol =
     match SymbolTable.Symbol.scope symbol with
     | SymbolTable.Scope.Global -> Pinc_Bytecode.Instruction.I_Get_Global symbol.address
     | SymbolTable.Scope.Local -> Pinc_Bytecode.Instruction.I_Get_Local symbol.address
+    | SymbolTable.Scope.Free -> Pinc_Bytecode.Instruction.I_Get_Free symbol.address
   in
   emit t instruction
 ;;
@@ -159,6 +160,7 @@ let emit_set_symbol t symbol =
         Pinc_Bytecode.Instruction.I_Set_Global (SymbolTable.Symbol.address symbol)
     | SymbolTable.Scope.Local ->
         Pinc_Bytecode.Instruction.I_Set_Local (SymbolTable.Symbol.address symbol)
+    | SymbolTable.Scope.Free -> assert false
   in
   let t = emit t instruction in
   t
@@ -174,7 +176,7 @@ let compile_string_template t s =
              let t =
                match template.Pinc_Types.Ast.string_template_desc with
                | StringInterpolation (Lowercase_Id (name, loc)) ->
-                   let symbol = get_symbol t ~loc name in
+                   let t, symbol = get_symbol t ~loc name in
                    emit_get_symbol t symbol
                | StringText s -> emit_constant t (Pinc_Bytecode.Value.String s)
              in
@@ -199,7 +201,7 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | Bool true -> emit t Pinc_Bytecode.Instruction.I_True
   | Bool false -> emit t Pinc_Bytecode.Instruction.I_False
   | LowercaseIdentifierExpression name ->
-      let symbol = get_symbol t ~loc:expr.expression_loc name in
+      let t, symbol = get_symbol t ~loc:expr.expression_loc name in
       emit_get_symbol t symbol
   | ExternalFunction { identifier = _; parameters; name } ->
       let index =
@@ -269,13 +271,21 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
         else
           t
       in
+      let free_variables = SymbolTable.free_variables t.symbol_table in
       let num_locals = SymbolTable.length t.symbol_table in
-      let num_parameters = List.length parameters in
       let t, scope = pop_scope t in
+      let t = List.fold_left emit_get_symbol t free_variables in
+
+      let num_free_variables = List.length free_variables in
+      let num_parameters = List.length parameters in
       let instructions = Buffer.to_bytes scope.instructions in
-      let t =
-        emit_constant t
+      let fn_addr, t =
+        add_constant t
         @@ Pinc_Bytecode.Value.Function { num_locals; num_parameters; instructions }
+      in
+      let t =
+        emit t
+        @@ Pinc_Bytecode.Instruction.I_Closure (fn_addr, Int32.of_int num_free_variables)
       in
       t
   | FunctionCall { function_definition; arguments } ->

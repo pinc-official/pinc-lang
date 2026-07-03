@@ -1,3 +1,9 @@
+type compiled_function = {
+  num_locals : int;
+  num_parameters : int;
+  instructions : Bytes.t;
+}
+
 type t =
   | Null
   | Int of int
@@ -7,10 +13,10 @@ type t =
   | String of string
   | Array of t array
   | Record of t StringMap.t
-  | Function of {
-      num_locals : int;
-      num_parameters : int;
-      instructions : Bytes.t;
+  | Function of compiled_function
+  | Closure of {
+      fn : compiled_function;
+      free_variables : t Int32.Map.t;
     }
   | BuiltinFunction of {
       num_parameters : int;
@@ -26,6 +32,7 @@ let pp fmt = function
   | String s -> Format.fprintf fmt "%S\n%!" s
   | Array _ -> Format.fprintf fmt "<ARRAY>\n%!"
   | Record _ -> Format.fprintf fmt "<RECORD>\n%!"
+  | Closure _ -> Format.fprintf fmt "<CLOSURE>\n%!"
   | Function _ -> Format.fprintf fmt "<FUNCTION>\n%!"
   | BuiltinFunction _ -> Format.fprintf fmt "<BUILTIN>\n%!"
 ;;
@@ -60,6 +67,7 @@ let rec to_string = function
           is_first := false)
         m;
       Buffer.contents b
+  | Closure _ -> ""
   | Function _ -> ""
   | BuiltinFunction _ -> ""
 ;;
@@ -74,6 +82,7 @@ let is_true = function
   | Array [||] -> false
   | Array _ -> true
   | Record m -> not (StringMap.is_empty m)
+  | Closure _ -> true
   | Function _ -> true
   | BuiltinFunction _ -> true
 ;;
@@ -90,13 +99,17 @@ let rec equal a b =
   | Null, Null -> true
   | Array a, Array b -> Array.equal equal a b
   | Record a, Record b -> StringMap.equal equal a b
-  | Function a, Function b ->
-      Int.equal a.num_locals b.num_locals
-      && Int.equal a.num_parameters b.num_parameters
-      && Bytes.equal a.instructions b.instructions
+  | Function a, Function b -> equal_function a b
+  | Closure a, Closure b ->
+      Int32.Map.equal equal a.free_variables b.free_variables && equal_function a.fn b.fn
   | BuiltinFunction a, BuiltinFunction b ->
       Int.equal a.num_parameters b.num_parameters && a.fn == b.fn
   | _ -> false
+
+and equal_function a b =
+  Int.equal a.num_locals b.num_locals
+  && Int.equal a.num_parameters b.num_parameters
+  && Bytes.equal a.instructions b.instructions
 ;;
 
 let compare a b =
@@ -113,6 +126,7 @@ let compare a b =
   | Null, Null -> 0
   | Array a, Array b -> Int.compare (Array.length a) (Array.length b)
   | Record a, Record b -> StringMap.compare compare a b
+  | Closure _, Closure _ -> 0
   | Function _, Function _ -> 0
   | BuiltinFunction _, BuiltinFunction _ -> 0
   | _ -> 0

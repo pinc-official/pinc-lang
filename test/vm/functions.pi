@@ -62,3 +62,17 @@ component FunctionTooFewArguments {
 
   add(4)
 }
+
+component FunctionClosure {
+  let seed = 221;
+  let adder = fn (a) -> {
+    let id_a = fn () -> a;
+
+    fn (b) -> {
+      let partial = a + b;
+      let final = fn (c, d) -> id_a() + partial + c + seed * d;
+      final
+    }
+  };
+  adder(3)(7)(9, 2)
+}

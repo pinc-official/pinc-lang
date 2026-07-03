@@ -2,6 +2,7 @@ module Scope = struct
   type t =
     | Global
     | Local
+    | Free
 end
 
 module Symbol = struct
@@ -19,11 +20,19 @@ end
 
 type t = {
   store : Symbol.t StringMap.t;
+  free_variables : Symbol.t list;
   num_bindings : Int32.t;
   outer : t option;
 }
 
-let make () = { store = StringMap.empty; num_bindings = Int32.zero; outer = None }
+let make () =
+  {
+    store = StringMap.empty;
+    free_variables = [];
+    num_bindings = Int32.zero;
+    outer = None;
+  }
+;;
 
 let add_scope t =
   let t' = make () in
@@ -53,11 +62,38 @@ let define_symbol t ~name =
   (t', symbol)
 ;;
 
+let define_free_symbol t symbol =
+  let name = Symbol.name symbol in
+  let free_symbol =
+    Symbol.make ~name ~scope:Free ~address:(Int32.of_int @@ List.length t.free_variables)
+  in
+  let t' =
+    {
+      t with
+      store = StringMap.add name free_symbol t.store;
+      free_variables = t.free_variables @ [ symbol ];
+    }
+  in
+  (t', free_symbol)
+;;
+
 let rec resolve_symbol t ~name =
   let symbol = StringMap.find_opt name t.store in
   match (symbol, t.outer) with
-  | None, Some outer -> resolve_symbol outer ~name
-  | _ -> symbol
+  | Some symbol, _ -> (t, Some symbol)
+  | None, None -> (t, None)
+  | None, Some outer ->
+      begin match resolve_symbol outer ~name with
+      | outer, None -> ({ t with outer = Some outer }, None)
+      | outer, Some outer_symbol ->
+          begin match Symbol.scope outer_symbol with
+          | Global -> ({ t with outer = Some outer }, Some outer_symbol)
+          | Local | Free ->
+              let t', free_symbol = define_free_symbol t outer_symbol in
+              ({ t' with outer = Some outer }, Some free_symbol)
+          end
+      end
 ;;
 
+let free_variables t = t.free_variables
 let length t = Int32.to_int t.num_bindings
