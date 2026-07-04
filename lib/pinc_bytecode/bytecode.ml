@@ -57,3 +57,40 @@ let pp fmt t =
     Format.fprintf Format.std_formatter "[INSTRUCTIONS]@.";
     Format.fprintf fmt "@[<v0>%a@]" pp_instructions t.instructions)
 ;;
+
+let serialize t =
+  let buf = Buffer.create 65565 in
+  let constants = t.constants in
+  let num_constants = Int32.Map.cardinal constants in
+  Buffer.add_int32_be buf @@ Int32.of_int num_constants;
+  let () =
+    constants
+    |> Int32.Map.iter (fun key value ->
+        Buffer.add_int32_be buf key;
+        Value.serialize buf value)
+  in
+  let () = Buffer.add_int32_be buf @@ Int32.of_int (Bytes.length t.instructions) in
+  let () = Buffer.add_bytes buf t.instructions in
+  Buffer.contents buf
+;;
+
+let deserialize str =
+  let bytes = Bytes.of_string str in
+  let offset = ref 0 in
+  let num_constants = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+  offset := !offset + 4;
+  let constants =
+    Int32.Map.of_seq
+    @@ Seq.init num_constants (fun _ ->
+        let key = Bytes.get_int32_be bytes !offset in
+        offset := !offset + 4;
+        let value = Value.deserialize bytes offset in
+        (key, value))
+  in
+  let instructions_length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+  offset := !offset + 4;
+  let instructions = Bytes.sub bytes !offset instructions_length in
+  offset := !offset + instructions_length;
+  assert (!offset = Bytes.length bytes);
+  make ~instructions ~constants
+;;

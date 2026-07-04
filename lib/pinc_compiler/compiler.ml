@@ -549,7 +549,9 @@ let compile (ast : Pinc_Types.Ast.t) =
     }
   in
   let t = StringMap.fold (fun _ -> compile_declaration) ast t in
-  Pinc_Bytecode.Bytecode.make
-    ~instructions:(Buffer.to_bytes @@ current_instructions t)
-    ~constants:t.constants
+
+  Pinc_Bytecode.Bytecode.serialize
+  @@ Pinc_Bytecode.Bytecode.make
+       ~instructions:(Buffer.to_bytes @@ current_instructions t)
+       ~constants:t.constants
 ;;

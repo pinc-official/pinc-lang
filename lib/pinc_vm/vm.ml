@@ -332,11 +332,12 @@ let rec execute_function_call t num_arguments =
            ^ ", got "
            ^ string_of_int num_arguments)
   | Value.Closure closure -> call_closure t ~closure ~num_arguments
-  | Value.BuiltinFunction { fn; _ } -> call_builtin t ~fn ~num_arguments
+  | Value.BuiltinFunction { fn_index; _ } -> call_builtin t ~fn_index ~num_arguments
   | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value"
 
-and call_builtin t ~fn ~num_arguments =
+and call_builtin t ~fn_index ~num_arguments =
   let arguments = Stack.pop_n t.stack num_arguments in
+  let fn = Pinc_Bytecode.Externals.get_function fn_index in
   let value = fn ~arguments in
   (* Pop the builtin function from the stack *)
   let () = ignore @@ Stack.pop t.stack in
@@ -403,8 +404,9 @@ let execute_get_global t addr =
 ;;
 
 let execute_get_builtin t addr =
-  let num_parameters, fn = Pinc_Bytecode.Externals.all.(Int32.to_int addr) in
-  let value = Value.BuiltinFunction { num_parameters; fn } in
+  let fn_index = Int32.to_int addr in
+  let num_parameters = Pinc_Bytecode.Externals.expected_parameters fn_index in
+  let value = Value.BuiltinFunction { num_parameters; fn_index } in
   Stack.push t.stack value
 ;;
 
@@ -555,6 +557,6 @@ let run t =
 ;;
 
 let eval bytecode =
-  let vm = bytecode |> make |> run in
+  let vm = bytecode |> Pinc_Bytecode.Bytecode.deserialize |> make |> run in
   vm.stack |> Stack.last_popped_element |> Value.to_string
 ;;

@@ -32,6 +32,7 @@ let main =
       |> StringMap.find root
       |> StringMap.singleton root
       |> Compiler.compile
+      |> Bytecode.deserialize
     in
     Bytecode.pp Format.std_formatter bytecode
   with Diagnostics.Pinc_error _ -> exit 1

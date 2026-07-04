@@ -86,3 +86,4 @@ let all =
 let find_index name = Array.find_index (fun (name', _) -> String.equal name name') all
 let all = Array.map snd all
 let expected_parameters index = fst @@ all.(index)
+let get_function index = snd @@ all.(index)
