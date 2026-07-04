@@ -348,8 +348,152 @@ and call_closure t ~closure ~num_arguments =
   Stack.set_pointer t.stack (frame.base_pointer + closure.fn.num_locals)
 ;;
 
+let execute_length t =
+  let value = Stack.pop t.stack in
+  let len =
+    match value with
+    | Value.Array a -> Array.length a
+    | Value.String s -> String.length s
+    | Record r -> StringMap.cardinal r
+    | _ ->
+        raise_notrace
+        @@ Invalid_argument "Trying to call length a non array, string or record value"
+  in
+  Stack.push t.stack (Value.Int len)
+;;
+
+let execute_debug_print_stack t =
+  Format.printf "--------- (STACK) -------\n%!";
+  Stack.iter (fun value -> Format.printf "%a%!" Value.pp value) t.stack;
+  Format.printf "--------- (/STACK) -------\n%!"
+;;
+
+let execute_pop t = ignore @@ Stack.pop t.stack
+
+let execute_constant t addr =
+  let constant = Int32.Map.find addr t.constants in
+  Stack.push t.stack constant
+;;
+
+let execute_true t = Stack.push t.stack Value.constant_true
+let execute_false t = Stack.push t.stack Value.constant_false
+let execute_null t = Stack.push t.stack Value.Null
+
+let execute_jump t addr =
+  Frame.set_instruction_pointer (current_frame t) @@ Int32.to_int addr
+;;
+
+let execute_jump_if_false t addr =
+  let condition = Stack.pop t.stack in
+  let () =
+    if not @@ Value.is_true condition then
+      Frame.set_instruction_pointer (current_frame t) @@ Int32.to_int addr
+  in
+  ()
+;;
+
+let execute_set_global t addr =
+  let value = Stack.pop t.stack in
+  t.globals <- Int32.Map.add addr value t.globals
+;;
+
+let execute_get_global t addr =
+  let value = Int32.Map.find addr t.globals in
+  Stack.push t.stack value
+;;
+
+let execute_get_builtin t addr =
+  let num_parameters, fn = Pinc_Bytecode.Externals.all.(Int32.to_int addr) in
+  let value = Value.BuiltinFunction { num_parameters; fn } in
+  Stack.push t.stack value
+;;
+
+let execute_get_free t addr =
+  let value = Int32.Map.find addr (Frame.free_variables (current_frame t)) in
+  Stack.push t.stack value
+;;
+
+let execute_set_local t addr =
+  let frame = current_frame t in
+  let value = Stack.pop t.stack in
+  let address = frame.base_pointer + Int32.to_int addr in
+  Stack.set t.stack address value
+;;
+
+let execute_get_local t addr =
+  let frame = current_frame t in
+  let address = frame.base_pointer + Int32.to_int addr in
+  let value = Stack.get t.stack address in
+  Stack.push t.stack value
+;;
+
+let execute_dynamic_array t =
+  let value = Stack.pop t.stack in
+  let length =
+    match value with
+    | Value.Int i -> i
+    | _ -> assert false
+  in
+  let elements = Array.of_list @@ Stack.pop_n t.stack length in
+  let value = Value.Array elements in
+  Stack.push t.stack value
+;;
+
+let execute_array t length =
+  let elements = Array.of_list @@ Stack.pop_n t.stack (Int32.to_int length) in
+  let value = Value.Array elements in
+  Stack.push t.stack value
+;;
+
+let execute_record t length =
+  let int_length = Int32.to_int length in
+  let values = Stack.pop_n t.stack int_length in
+  let keys =
+    Stack.pop_n t.stack int_length
+    |> List.map (function
+      | Value.String s -> s
+      | _ -> assert false)
+  in
+  let record = StringMap.of_list @@ List.combine keys values in
+  let value = Value.Record record in
+  Stack.push t.stack value
+;;
+
+let execute_current_closure t =
+  let frame = current_frame t in
+  let closure = Value.Closure frame.closure in
+  Stack.push t.stack closure
+;;
+
+let execute_closure t fn_addr num_free_variables =
+  let num_free_variables = Int32.to_int num_free_variables in
+  let fn =
+    match Int32.Map.find fn_addr t.constants with
+    | Value.Function fn -> fn
+    | _ -> assert false
+  in
+  let free_variables =
+    num_free_variables
+    |> Stack.pop_n t.stack
+    |> List.mapi (fun index value -> (Int32.of_int index, value))
+    |> Int32.Map.of_list
+  in
+  let closure = Value.Closure { fn; free_variables } in
+  Stack.push t.stack closure
+;;
+
+let execute_return t =
+  let value = Stack.pop t.stack in
+  let frame = pop_frame t in
+  Stack.set_pointer t.stack frame.base_pointer;
+  let () =
+    (* This is the function from the I_Call instruction *)
+    ignore @@ Stack.pop t.stack
+  in
+  Stack.push t.stack value
+;;
+
 let run t =
-  Printexc.record_backtrace true;
   while
     (current_frame t).instruction_pointer
     < Bytes.length @@ Frame.instructions (current_frame t)
@@ -359,141 +503,53 @@ let run t =
       Instruction.decode (Frame.instructions frame) frame.instruction_pointer
     in
     Frame.set_instruction_pointer frame new_ip;
-    let () =
-      match op with
-      | Instruction.I_Debug_Print_Stack ->
-          Format.printf "--------- (STACK) -------\n%!";
-          Stack.iter (fun value -> Format.printf "%a%!" Value.pp value) t.stack;
-          Format.printf "--------- (/STACK) -------\n%!"
-      | Instruction.I_Pop -> ignore @@ Stack.pop t.stack
-      | Instruction.I_Constant addr ->
-          let constant = Int32.Map.find addr t.constants in
-          Stack.push t.stack constant
-      | Instruction.I_Add -> execute_binary_operation t Operators.Binary.PLUS
-      | Instruction.I_Sub -> execute_binary_operation t Operators.Binary.MINUS
-      | Instruction.I_Div -> execute_binary_operation t Operators.Binary.DIV
-      | Instruction.I_Mul -> execute_binary_operation t Operators.Binary.TIMES
-      | Instruction.I_Mod -> execute_binary_operation t Operators.Binary.MODULO
-      | Instruction.I_Pow -> execute_binary_operation t Operators.Binary.POW
-      | Instruction.I_True -> Stack.push t.stack Value.constant_true
-      | Instruction.I_False -> Stack.push t.stack Value.constant_false
-      | Instruction.I_Equal -> execute_binary_operation t Operators.Binary.EQUAL
-      | Instruction.I_Not_Equal -> execute_binary_operation t Operators.Binary.NOT_EQUAL
-      | Instruction.I_Greater -> execute_binary_operation t Operators.Binary.GREATER
-      | Instruction.I_Greater_Equal ->
-          execute_binary_operation t Operators.Binary.GREATER_EQUAL
-      | Instruction.I_Less -> execute_binary_operation t Operators.Binary.LESS
-      | Instruction.I_Less_Equal -> execute_binary_operation t Operators.Binary.LESS_EQUAL
-      | Instruction.I_And -> execute_binary_operation t Operators.Binary.AND
-      | Instruction.I_Or -> execute_binary_operation t Operators.Binary.OR
-      | Instruction.I_Concat -> execute_binary_operation t Operators.Binary.CONCAT
-      | Instruction.I_Index -> execute_binary_operation t Operators.Binary.BRACKET_ACCESS
-      | Instruction.I_Dot_Index -> execute_binary_operation t Operators.Binary.DOT_ACCESS
-      | Instruction.I_Range -> execute_binary_operation t Operators.Binary.RANGE
-      | Instruction.I_Range_Inclusive ->
-          execute_binary_operation t Operators.Binary.INCLUSIVE_RANGE
-      | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
-      | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
-      | Instruction.I_Jump addr ->
-          Frame.set_instruction_pointer frame @@ Int32.to_int addr
-      | Instruction.I_Jump_If_False addr ->
-          let condition = Stack.pop t.stack in
-          let () =
-            if not @@ Value.is_true condition then
-              Frame.set_instruction_pointer frame @@ Int32.to_int addr
-          in
-          ()
-      | Instruction.I_Null -> Stack.push t.stack Value.Null
-      | Instruction.I_Set_Global addr ->
-          let value = Stack.pop t.stack in
-          t.globals <- Int32.Map.add addr value t.globals
-      | Instruction.I_Get_Global addr ->
-          let value = Int32.Map.find addr t.globals in
-          Stack.push t.stack value
-      | Instruction.I_Get_Builtin addr ->
-          let num_parameters, fn = Pinc_Bytecode.Externals.all.(Int32.to_int addr) in
-          let value = Value.BuiltinFunction { num_parameters; fn } in
-          Stack.push t.stack value
-      | Instruction.I_Get_Free addr ->
-          let value = Int32.Map.find addr (Frame.free_variables frame) in
-          Stack.push t.stack value
-      | Instruction.I_Dynamic_Array ->
-          let value = Stack.pop t.stack in
-          let length =
-            match value with
-            | Value.Int i -> i
-            | _ -> assert false
-          in
-          let elements = Array.of_list @@ Stack.pop_n t.stack length in
-          let value = Value.Array elements in
-          Stack.push t.stack value
-      | Instruction.I_Array length ->
-          let elements = Array.of_list @@ Stack.pop_n t.stack (Int32.to_int length) in
-          let value = Value.Array elements in
-          Stack.push t.stack value
-      | Instruction.I_Record length ->
-          let int_length = Int32.to_int length in
-          let values = Stack.pop_n t.stack int_length in
-          let keys =
-            Stack.pop_n t.stack int_length
-            |> List.map (function
-              | Value.String s -> s
-              | _ -> assert false)
-          in
-          let record = StringMap.of_list @@ List.combine keys values in
-          let value = Value.Record record in
-          Stack.push t.stack value
-      | Instruction.I_Closure (fn_addr, num_free_variables) ->
-          let num_free_variables = Int32.to_int num_free_variables in
-          let fn =
-            match Int32.Map.find fn_addr t.constants with
-            | Value.Function fn -> fn
-            | _ -> assert false
-          in
-          let free_variables =
-            num_free_variables
-            |> Stack.pop_n t.stack
-            |> List.mapi (fun index value -> (Int32.of_int index, value))
-            |> Int32.Map.of_list
-          in
-          let closure = Value.Closure { fn; free_variables } in
-          Stack.push t.stack closure
-      | Instruction.I_Call num_arguments -> execute_function_call t num_arguments
-      | Instruction.I_Return ->
-          let value = Stack.pop t.stack in
-          let frame = pop_frame t in
-          Stack.set_pointer t.stack frame.base_pointer;
-          let () =
-            (* This is the function from the I_Call instruction *)
-            ignore @@ Stack.pop t.stack
-          in
-          Stack.push t.stack value
-      | Instruction.I_Set_Local addr ->
-          let value = Stack.pop t.stack in
-          let address = frame.base_pointer + Int32.to_int addr in
-          Stack.set t.stack address value
-      | Instruction.I_Get_Local addr ->
-          let address = frame.base_pointer + Int32.to_int addr in
-          let value = Stack.get t.stack address in
-          Stack.push t.stack value
-      | Instruction.I_Length ->
-          let value = Stack.pop t.stack in
-          let len =
-            match value with
-            | Value.Array a -> Array.length a
-            | Value.String s -> String.length s
-            | Record r -> StringMap.cardinal r
-            | _ ->
-                raise_notrace
-                @@ Invalid_argument
-                     "Trying to call length a non array, string or record value"
-          in
-          Stack.push t.stack (Value.Int len)
-      | Instruction.I_Current_Closure ->
-          let closure = Value.Closure frame.closure in
-          Stack.push t.stack closure
-    in
-    ()
+    match op with
+    | Instruction.I_Debug_Print_Stack -> execute_debug_print_stack t
+    | Instruction.I_Pop -> execute_pop t
+    | Instruction.I_Constant addr -> execute_constant t addr
+    | Instruction.I_Add -> execute_binary_operation t Operators.Binary.PLUS
+    | Instruction.I_Sub -> execute_binary_operation t Operators.Binary.MINUS
+    | Instruction.I_Div -> execute_binary_operation t Operators.Binary.DIV
+    | Instruction.I_Mul -> execute_binary_operation t Operators.Binary.TIMES
+    | Instruction.I_Mod -> execute_binary_operation t Operators.Binary.MODULO
+    | Instruction.I_Pow -> execute_binary_operation t Operators.Binary.POW
+    | Instruction.I_True -> execute_true t
+    | Instruction.I_False -> execute_false t
+    | Instruction.I_Equal -> execute_binary_operation t Operators.Binary.EQUAL
+    | Instruction.I_Not_Equal -> execute_binary_operation t Operators.Binary.NOT_EQUAL
+    | Instruction.I_Greater -> execute_binary_operation t Operators.Binary.GREATER
+    | Instruction.I_Greater_Equal ->
+        execute_binary_operation t Operators.Binary.GREATER_EQUAL
+    | Instruction.I_Less -> execute_binary_operation t Operators.Binary.LESS
+    | Instruction.I_Less_Equal -> execute_binary_operation t Operators.Binary.LESS_EQUAL
+    | Instruction.I_And -> execute_binary_operation t Operators.Binary.AND
+    | Instruction.I_Or -> execute_binary_operation t Operators.Binary.OR
+    | Instruction.I_Concat -> execute_binary_operation t Operators.Binary.CONCAT
+    | Instruction.I_Index -> execute_binary_operation t Operators.Binary.BRACKET_ACCESS
+    | Instruction.I_Dot_Index -> execute_binary_operation t Operators.Binary.DOT_ACCESS
+    | Instruction.I_Range -> execute_binary_operation t Operators.Binary.RANGE
+    | Instruction.I_Range_Inclusive ->
+        execute_binary_operation t Operators.Binary.INCLUSIVE_RANGE
+    | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
+    | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
+    | Instruction.I_Jump addr -> execute_jump t addr
+    | Instruction.I_Jump_If_False addr -> execute_jump_if_false t addr
+    | Instruction.I_Null -> execute_null t
+    | Instruction.I_Set_Global addr -> execute_set_global t addr
+    | Instruction.I_Get_Global addr -> execute_get_global t addr
+    | Instruction.I_Get_Builtin addr -> execute_get_builtin t addr
+    | Instruction.I_Get_Free addr -> execute_get_free t addr
+    | Instruction.I_Dynamic_Array -> execute_dynamic_array t
+    | Instruction.I_Array length -> execute_array t length
+    | Instruction.I_Record length -> execute_record t length
+    | Instruction.I_Closure (fn_addr, num_free_variables) ->
+        execute_closure t fn_addr num_free_variables
+    | Instruction.I_Call num_arguments -> execute_function_call t num_arguments
+    | Instruction.I_Return -> execute_return t
+    | Instruction.I_Set_Local addr -> execute_set_local t addr
+    | Instruction.I_Get_Local addr -> execute_get_local t addr
+    | Instruction.I_Length -> execute_length t
+    | Instruction.I_Current_Closure -> execute_current_closure t
   done;
   t
 ;;
