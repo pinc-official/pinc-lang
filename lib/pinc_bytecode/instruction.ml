@@ -90,19 +90,19 @@ let byte = function
 ;;
 
 let operands_length = function
-  | I_Constant op
-  | I_Jump op
-  | I_Jump_If_False op
-  | I_Set_Global op
-  | I_Get_Global op
-  | I_Array op
-  | I_Record op
-  | I_Set_Local op
-  | I_Get_Local op
-  | I_Get_Builtin op
-  | I_Get_Free op
-  | I_Call op -> Int32.byte_width op
-  | I_Closure (op1, op2) -> Int32.byte_width op1 + Int32.byte_width op2
+  | I_Constant _
+  | I_Jump _
+  | I_Jump_If_False _
+  | I_Set_Global _
+  | I_Get_Global _
+  | I_Array _
+  | I_Record _
+  | I_Set_Local _
+  | I_Get_Local _
+  | I_Get_Builtin _
+  | I_Get_Free _
+  | I_Call _ -> Int32.byte_width
+  | I_Closure (_, _) -> Int32.byte_width * 2
   | I_Pop
   | I_Add
   | I_Sub
