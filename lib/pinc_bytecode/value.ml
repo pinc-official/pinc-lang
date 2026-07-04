@@ -19,7 +19,7 @@ and builtin_function = {
 and compiled_function = {
   num_locals : int;
   num_parameters : int;
-  instructions : Bytes.t;
+  instructions : Instruction.t Array.t;
 }
 
 and closure = {
@@ -110,11 +110,7 @@ let rec equal a b =
       Int.equal a.num_parameters b.num_parameters && Int.equal a.fn_index b.fn_index
   | _ -> false
 
-and equal_function a b =
-  Int.equal a.num_locals b.num_locals
-  && Int.equal a.num_parameters b.num_parameters
-  && Bytes.equal a.instructions b.instructions
-;;
+and equal_function a b = a == b
 
 let compare a b =
   match (a, b) with
@@ -185,8 +181,12 @@ and serialize_function buf f =
   Buffer.add_int8 buf 0x09;
   Buffer.add_int32_be buf @@ Int32.of_int num_locals;
   Buffer.add_int32_be buf @@ Int32.of_int num_parameters;
-  Buffer.add_int32_be buf @@ Int32.of_int (Bytes.length instructions);
-  Buffer.add_bytes buf instructions
+  Buffer.add_int32_be buf @@ Int32.of_int (Array.length instructions);
+  Array.iter
+    (fun instruction ->
+      let serialized = Instruction.to_bytes instruction in
+      Buffer.add_bytes buf serialized)
+    instructions
 
 and serialize_builtin_function buf f =
   let num_parameters = f.num_parameters in
@@ -265,8 +265,12 @@ and deserialize_function bytes offset =
   offset := !offset + 4;
   let instructions_length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
   offset := !offset + 4;
-  let instructions = Bytes.sub bytes !offset instructions_length in
-  offset := !offset + instructions_length;
+  let instructions =
+    Array.init instructions_length (fun _ ->
+        let new_offset, res = Instruction.decode bytes !offset in
+        offset := new_offset;
+        res)
+  in
   { num_locals; num_parameters; instructions }
 
 and deserialize_builtin_function bytes offset =

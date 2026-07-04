@@ -135,6 +135,8 @@ let operands_length = function
   | I_Debug_Print_Stack -> 0
 ;;
 
+let length t = 1 + operands_length t
+
 let decode bytes offset =
   let instruction = Bytes.get_uint8 bytes offset in
   let offset = offset + 1 in

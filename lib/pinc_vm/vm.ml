@@ -498,13 +498,11 @@ let execute_return t =
 let run t =
   while
     (current_frame t).instruction_pointer
-    < Bytes.length @@ Frame.instructions (current_frame t)
+    < Array.length @@ Frame.instructions (current_frame t)
   do
     let frame = current_frame t in
-    let new_ip, op =
-      Instruction.decode (Frame.instructions frame) frame.instruction_pointer
-    in
-    Frame.set_instruction_pointer frame new_ip;
+    let op = Array.get (Frame.instructions frame) frame.instruction_pointer in
+    Frame.set_instruction_pointer frame @@ succ frame.instruction_pointer;
     match op with
     | Instruction.I_Debug_Print_Stack -> execute_debug_print_stack t
     | Instruction.I_Pop -> execute_pop t

@@ -1,20 +1,18 @@
 type t = {
-  instructions : Bytes.t;
+  instructions : Instruction.t Array.t;
   constants : Value.t Int32.Map.t;
 }
 
 let make ~instructions ~constants = { instructions; constants }
 
-let pp_instructions fmt instructions =
+let pp_instructions fmt =
   let offset = ref 0 in
-  while !offset < Bytes.length instructions do
-    let new_offset, t = Instruction.decode instructions !offset in
-    if !offset = 0 then
-      Format.fprintf fmt "%0.4i %a" !offset Instruction.pp t
-    else
-      Format.fprintf fmt "@;%0.4i %a" !offset Instruction.pp t;
-    offset := new_offset
-  done
+  Array.iter @@ fun instruction ->
+  if !offset = 0 then
+    Format.fprintf fmt "%0.4i %a" !offset Instruction.pp instruction
+  else
+    Format.fprintf fmt "@;%0.4i %a" !offset Instruction.pp instruction;
+  offset := !offset + Instruction.length instruction
 ;;
 
 let rec pp_value fmt = function
@@ -53,7 +51,7 @@ let pp fmt t =
     pp_constants fmt t.constants;
     Format.fprintf Format.std_formatter "@.");
 
-  if Bytes.length t.instructions > 0 then (
+  if Array.length t.instructions > 0 then (
     Format.fprintf Format.std_formatter "[INSTRUCTIONS]@.";
     Format.fprintf fmt "@[<v0>%a@]" pp_instructions t.instructions)
 ;;
@@ -69,8 +67,14 @@ let serialize t =
         Buffer.add_int32_be buf key;
         Value.serialize buf value)
   in
-  let () = Buffer.add_int32_be buf @@ Int32.of_int (Bytes.length t.instructions) in
-  let () = Buffer.add_bytes buf t.instructions in
+  let () = Buffer.add_int32_be buf @@ Int32.of_int (Array.length t.instructions) in
+  let () =
+    Array.iter
+      (fun instruction ->
+        let serialized = Instruction.to_bytes instruction in
+        Buffer.add_bytes buf serialized)
+      t.instructions
+  in
   Buffer.contents buf
 ;;
 
@@ -89,8 +93,12 @@ let deserialize str =
   in
   let instructions_length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
   offset := !offset + 4;
-  let instructions = Bytes.sub bytes !offset instructions_length in
-  offset := !offset + instructions_length;
+  let instructions =
+    Array.init instructions_length (fun _ ->
+        let new_offset, res = Instruction.decode bytes !offset in
+        offset := new_offset;
+        res)
+  in
   assert (!offset = Bytes.length bytes);
   make ~instructions ~constants
 ;;

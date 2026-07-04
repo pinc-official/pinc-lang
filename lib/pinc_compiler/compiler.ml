@@ -6,7 +6,7 @@ type emitted_instruction = {
 }
 
 type scope = {
-  instructions : Buffer.t;
+  instructions : Pinc_Bytecode.Instruction.t Dynarray.t;
   last_instruction : emitted_instruction;
   previous_instruction : emitted_instruction;
 }
@@ -58,13 +58,7 @@ let replace_instruction t offset instruction =
   match t.scopes with
   | [] -> assert false
   | scope :: _ ->
-      let current_instructions = Buffer.to_bytes scope.instructions in
-      let src = Pinc_Bytecode.Instruction.to_bytes instruction in
-      let srcoff = 0 in
-      let len = Bytes.length src in
-      Bytes.blit src srcoff current_instructions offset len;
-      Buffer.truncate scope.instructions 0;
-      Buffer.add_bytes scope.instructions current_instructions;
+      Dynarray.set scope.instructions offset instruction;
       t
 ;;
 
@@ -72,7 +66,7 @@ let remove_last_instruction t =
   match t.scopes with
   | [] -> assert false
   | scope :: scopes ->
-      Buffer.truncate scope.instructions scope.last_instruction.offset;
+      Dynarray.remove_last scope.instructions;
       let scope' = { scope with last_instruction = scope.previous_instruction } in
       { t with scopes = scope' :: scopes }
 ;;
@@ -85,7 +79,7 @@ let match_last_instruction t check =
 let add_scope t =
   let scope =
     {
-      instructions = Buffer.create 8;
+      instructions = Dynarray.create ();
       previous_instruction = empty_instruction;
       last_instruction = empty_instruction;
     }
@@ -119,8 +113,8 @@ let add_constant =
 
 let emit t opcode =
   let scope = current_scope t in
-  let offset = Buffer.length scope.instructions in
-  Buffer.add_bytes scope.instructions @@ Pinc_Bytecode.Instruction.to_bytes @@ opcode;
+  let offset = Dynarray.length scope.instructions in
+  Dynarray.add_last scope.instructions opcode;
   let t = set_last_instruction t offset opcode in
   t
 ;;
@@ -289,7 +283,7 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
 
       let num_free_variables = List.length free_variables in
       let num_parameters = List.length parameters in
-      let instructions = Buffer.to_bytes scope.instructions in
+      let instructions = Dynarray.to_array @@ scope.instructions in
       let fn_addr, t =
         add_constant t
         @@ Pinc_Bytecode.Value.Function { num_locals; num_parameters; instructions }
@@ -429,7 +423,7 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
   (* Alternate *)
   let t = emit t (Pinc_Bytecode.Instruction.I_Jump 0xFFFFFFFl) in
   let jump_alternate_offset = last_instruction_offset t in
-  let jump_address = Int32.of_int (Buffer.length @@ current_instructions t) in
+  let jump_address = Int32.of_int (Dynarray.length @@ current_instructions t) in
   let t =
     replace_instruction t jump_consequent_offset
     @@ Pinc_Bytecode.Instruction.I_Jump_If_False jump_address
@@ -447,7 +441,7 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
         in
         t
   in
-  let jump_address = Int32.of_int (Buffer.length @@ current_instructions t) in
+  let jump_address = Int32.of_int (Dynarray.length @@ current_instructions t) in
   let t =
     replace_instruction t jump_alternate_offset
     @@ Pinc_Bytecode.Instruction.I_Jump jump_address
@@ -476,7 +470,7 @@ and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Length in
   let t = emit_set_symbol t length_symbol in
   (* Set Iterator *)
-  let jump_address = Int32.of_int (Buffer.length @@ current_instructions t) in
+  let jump_address = Int32.of_int (Dynarray.length @@ current_instructions t) in
   let t = emit_get_symbol t iterable_symbol in
   let t = emit_get_symbol t index_symbol in
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Index in
@@ -536,7 +530,7 @@ let compile_declaration (decl : Pinc_Types.Ast.declaration) t =
 let compile (ast : Pinc_Types.Ast.t) =
   let scope =
     {
-      instructions = Buffer.create 8;
+      instructions = Dynarray.create ();
       previous_instruction = empty_instruction;
       last_instruction = empty_instruction;
     }
@@ -552,6 +546,6 @@ let compile (ast : Pinc_Types.Ast.t) =
 
   Pinc_Bytecode.Bytecode.serialize
   @@ Pinc_Bytecode.Bytecode.make
-       ~instructions:(Buffer.to_bytes @@ current_instructions t)
+       ~instructions:(Dynarray.to_array @@ current_instructions t)
        ~constants:t.constants
 ;;

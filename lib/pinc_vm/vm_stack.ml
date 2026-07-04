@@ -25,32 +25,24 @@ let push t value =
   if t.stack_pointer > t.stack_size then
     raise_notrace Pinc_stack_overflow
   else (
-    t.stack.(t.stack_pointer) <- value;
+    Array.unsafe_set t.stack t.stack_pointer value;
     t.stack_pointer <- succ t.stack_pointer)
 ;;
 
 let pop t =
-  if t.stack_pointer == 0 then
-    assert false
-  else (
-    let value = t.stack.(t.stack_pointer - 1) in
-    t.stack_pointer <- pred t.stack_pointer;
-    value)
+  t.stack_pointer <- t.stack_pointer - 1;
+  Array.unsafe_get t.stack t.stack_pointer
 ;;
 
 let pop_n t n =
-  if t.stack_pointer < n then
-    assert false
-  else (
-    let elements = List.init n (fun index -> t.stack.(t.stack_pointer - n + index)) in
-    t.stack_pointer <- t.stack_pointer - n;
-    elements)
+  t.stack_pointer <- t.stack_pointer - n;
+  List.init n (fun index -> Array.unsafe_get t.stack (t.stack_pointer + index))
 ;;
 
 let nth t n =
   match t.stack_pointer - n with
   | 0 -> Pinc_Bytecode.Value.Null
-  | n -> t.stack.(n - 1)
+  | n -> Array.unsafe_get t.stack (n - 1)
 ;;
 
 let top t = nth t 0

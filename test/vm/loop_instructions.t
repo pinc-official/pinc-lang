@@ -39,7 +39,7 @@
   0111 I_Get_Global 0x00000003 (00000003)
   0116 I_Get_Global 0x00000002 (00000002)
   0121 I_Greater_Equal
-  0122 I_Jump_If_False 0x00000044 (00000068)
+  0122 I_Jump_If_False 0x00000010 (00000016)
   0127 I_Get_Global 0x00000002 (00000002)
   0132 I_Dynamic_Array
   0133 I_Pop
