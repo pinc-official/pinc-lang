@@ -8,7 +8,8 @@ exception TODO
 type t = {
   stack : Value.t Stack.t;
   mutable globals : Value.t Int32.Map.t;
-  mutable frames : Frame.t list;
+  mutable past_frames : Frame.t list;
+  mutable current_frame : Frame.t;
   constants : Value.t Int32.Map.t;
 }
 
@@ -27,24 +28,26 @@ let make (bytecode : Bytecode.t) =
     constants = bytecode.constants;
     stack = Stack.make ~size:stack_size;
     globals = Int32.Map.empty;
-    frames = [ main_frame ];
+    past_frames = [];
+    current_frame = main_frame;
   }
 ;;
 
-let current_frame t =
-  match t.frames with
-  | [] -> assert false
-  | hd :: _ -> hd
+let current_frame t = t.current_frame
+
+let push_frame t frame =
+  t.past_frames <- t.current_frame :: t.past_frames;
+  t.current_frame <- frame
 ;;
 
-let push_frame t frame = t.frames <- frame :: t.frames
-
 let pop_frame t =
-  match t.frames with
+  match t.past_frames with
   | [] -> assert false
   | frame :: frames ->
-      t.frames <- frames;
-      frame
+      let current_frame = t.current_frame in
+      t.past_frames <- frames;
+      t.current_frame <- frame;
+      current_frame
 ;;
 
 let rec execute_binary_operation t op =
