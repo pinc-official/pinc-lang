@@ -2,7 +2,4 @@
  (name Pinc_Bytecode)
  (public_name pinc-lang.bytecode)
  (flags :standard -open Pinc_Core)
- (libraries Pinc_Core Pinc_Types Pinc_Source Pinc_Parser)
- (inline_tests)
- (preprocess
-  (pps ppx_expect ppx_inline_test)))
+ (libraries Pinc_Core Pinc_Types Pinc_Source Pinc_Parser))
