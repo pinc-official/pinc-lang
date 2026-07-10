@@ -98,17 +98,16 @@ let pop_scope t =
       ({ t with scopes; symbol_table = SymbolTable.pop_scope t.symbol_table }, scope)
 ;;
 
-let add_constant =
-  let id =
-    let id' = ref Int32.minus_one in
-    fun () ->
-      id' := Int32.succ !id';
-      !id'
-  in
-  fun t constant ->
-    let new_id = id () in
-    let constants = Int32.Map.add new_id constant t.constants in
-    (new_id, { t with constants })
+let make_constant_id =
+  let id' = ref Int32.minus_one in
+  fun () ->
+    id' := Int32.succ !id';
+    !id'
+;;
+
+let add_constant ?(id = make_constant_id ()) t constant =
+  let constants = Int32.Map.add id constant t.constants in
+  (id, { t with constants })
 ;;
 
 let emit t opcode =
@@ -286,7 +285,8 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       let instructions = Dynarray.to_array @@ scope.instructions in
       let fn_addr, t =
         add_constant t
-        @@ Pinc_Bytecode.Value.Function { num_locals; num_parameters; instructions }
+        @@ Pinc_Bytecode.Value.Function
+             { fn_addr = -1; num_locals; num_parameters; instructions }
       in
       let t =
         emit t

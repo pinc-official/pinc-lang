@@ -1,43 +1,31 @@
-open Pinc_Types
 open Pinc_Bytecode
 module Stack = Vm_stack
-module Frame = Vm_frame
 
 exception TODO
 
+let stack_size = 2048
+
 type t = {
-  stack : Value.t Stack.t;
-  mutable globals : Value.t Int32.Map.t;
-  mutable past_frames : Frame.t list;
-  mutable current_frame : Frame.t;
+  stack : Vm_stack.t;
+  resolved_functions : (t -> t) Array.t Array.t;
+  globals : Value.t Int32.Map.t;
+  past_frames : frame list;
+  current_frame : frame;
   constants : Value.t Int32.Map.t;
 }
 
-let stack_size = 2048
+and frame = {
+  mutable instruction_pointer : int;
+  base_pointer : int;
+  closure : Value.closure;
+}
 
-let make (bytecode : Bytecode.t) =
-  let closure =
-    Value.
-      {
-        fn = { num_locals = 0; num_parameters = 0; instructions = bytecode.instructions };
-        free_variables = Int32.Map.empty;
-      }
-  in
-  let main_frame = Frame.make ~base_pointer:0 ~closure in
-  {
-    constants = bytecode.constants;
-    stack = Stack.make ~size:stack_size;
-    globals = Int32.Map.empty;
-    past_frames = [];
-    current_frame = main_frame;
-  }
-;;
-
-let current_frame t = t.current_frame
+let make_frame ~base_pointer ~closure = { base_pointer; closure; instruction_pointer = 0 }
+let[@inline] frame_free_variables frame = frame.closure.free_variables
+let[@inline] current_frame t = t.current_frame
 
 let push_frame t frame =
-  t.past_frames <- t.current_frame :: t.past_frames;
-  t.current_frame <- frame
+  { t with past_frames = t.current_frame :: t.past_frames; current_frame = frame }
 ;;
 
 let pop_frame t =
@@ -45,315 +33,710 @@ let pop_frame t =
   | [] -> assert false
   | frame :: frames ->
       let current_frame = t.current_frame in
-      t.past_frames <- frames;
-      t.current_frame <- frame;
-      current_frame
+      let t' = { t with past_frames = frames; current_frame = frame } in
+      (t', current_frame)
 ;;
 
-let rec execute_binary_operation t op =
-  let r = Stack.pop t.stack in
-  let l = Stack.pop t.stack in
-  let result =
-    match op with
-    | Operators.Binary.PLUS -> execute_binary_add l r
-    | Operators.Binary.MINUS -> execute_binary_sub l r
-    | Operators.Binary.TIMES -> execute_binary_times l r
-    | Operators.Binary.DIV -> execute_binary_div l r
-    | Operators.Binary.POW -> execute_binary_pow l r
-    | Operators.Binary.MODULO -> execute_binary_mod l r
-    | Pinc_Types.Operators.Binary.EQUAL -> execute_binary_equal l r
-    | Pinc_Types.Operators.Binary.NOT_EQUAL -> execute_binary_not_equal l r
-    | Pinc_Types.Operators.Binary.GREATER -> execute_binary_greater l r
-    | Pinc_Types.Operators.Binary.GREATER_EQUAL -> execute_binary_greater_equal l r
-    | Pinc_Types.Operators.Binary.LESS -> execute_binary_less l r
-    | Pinc_Types.Operators.Binary.LESS_EQUAL -> execute_binary_less_equal l r
-    | Pinc_Types.Operators.Binary.AND -> execute_binary_and l r
-    | Pinc_Types.Operators.Binary.OR -> execute_binary_or l r
-    | Pinc_Types.Operators.Binary.CONCAT -> execute_binary_concat l r
-    | Pinc_Types.Operators.Binary.DOT_ACCESS -> execute_binary_dot_access l r
-    | Pinc_Types.Operators.Binary.BRACKET_ACCESS -> execute_binary_bracket_access l r
-    | Pinc_Types.Operators.Binary.PIPE -> assert false
-    | Pinc_Types.Operators.Binary.ARRAY_ADD -> raise_notrace TODO
-    | Pinc_Types.Operators.Binary.MERGE -> raise_notrace TODO
-    | Pinc_Types.Operators.Binary.RANGE -> execute_binary_range ~inclusive:false l r
-    | Pinc_Types.Operators.Binary.INCLUSIVE_RANGE ->
-        execute_binary_range ~inclusive:true l r
+let[@inline] set_instruction_pointer t i =
+  t.current_frame.instruction_pointer <- i;
+  t
+;;
+
+let[@inline] incr_instruction_pointer t =
+  set_instruction_pointer t @@ succ t.current_frame.instruction_pointer
+;;
+
+let[@inline] call_current_instruction t =
+  let frame = current_frame t in
+  let fn_id = frame.closure.fn.fn_addr in
+  let instructions = Array.unsafe_get t.resolved_functions fn_id in
+  let fn = Array.unsafe_get instructions frame.instruction_pointer in
+  fn t
+;;
+
+let[@inline] call_next_instruction t =
+  let t = incr_instruction_pointer t in
+  call_current_instruction t
+;;
+
+let make ~constants ~resolved_functions ~instructions =
+  let resolved_functions = Array.append resolved_functions [| instructions |] in
+  let main_fn_addr = Array.length resolved_functions - 1 in
+  let closure =
+    Value.
+      {
+        fn =
+          {
+            fn_addr = main_fn_addr;
+            num_locals = 0;
+            num_parameters = 0;
+            instructions = [||];
+          };
+        free_variables = Int32.Map.empty;
+      }
   in
-  Stack.push t.stack result
+  let main_frame = make_frame ~base_pointer:0 ~closure in
+  {
+    constants;
+    resolved_functions;
+    stack = Stack.make ~size:stack_size;
+    globals = Int32.Map.empty;
+    past_frames = [];
+    current_frame = main_frame;
+  }
+;;
 
-and execute_binary_add l r =
-  match (l, r) with
-  | Value.Int x, Value.Int y -> Value.Int (x + y)
-  | Value.Float x, Value.Int y -> Value.Float (x +. float_of_int y)
-  | Value.Int x, Value.Float y -> Value.Float (float_of_int x +. y)
-  | Value.Float x, Value.Float y -> Value.Float (x +. y)
-  | Char a, Char b -> Value.Char Uchar.(of_int (to_int a + to_int b))
-  | Char a, Int b -> Value.Char Uchar.(of_int (to_int a + b))
-  | Int a, Char b -> Value.Char Uchar.(of_int (a + to_int b))
-  | _ -> raise_notrace (Invalid_argument "Trying to add non numeric values.")
-
-and execute_binary_sub l r =
-  match (l, r) with
-  | Value.Int x, Value.Int y -> Value.Int (x - y)
-  | Value.Float x, Value.Int y -> Value.Float (x -. float_of_int y)
-  | Value.Int x, Value.Float y -> Value.Float (float_of_int x -. y)
-  | Value.Float x, Value.Float y -> Value.Float (x -. y)
-  | Char a, Char b -> Value.Char Uchar.(of_int (to_int a - to_int b))
-  | Char a, Int b -> Value.Char Uchar.(of_int (to_int a - b))
-  | Int a, Char b -> Value.Char Uchar.(of_int (a - to_int b))
-  | _ -> raise_notrace (Invalid_argument "Trying to subtract non numeric values.")
-
-and execute_binary_times l r =
-  match (l, r) with
-  | Value.Int x, Value.Int y -> Value.Int (x * y)
-  | Value.Float x, Value.Int y -> Value.Float (x *. float_of_int y)
-  | Value.Int x, Value.Float y -> Value.Float (float_of_int x *. y)
-  | Value.Float x, Value.Float y -> Value.Float (x *. y)
-  | Char a, Char b -> Value.Char Uchar.(of_int (to_int a * to_int b))
-  | Char a, Int b -> Value.Char Uchar.(of_int (to_int a * b))
-  | Int a, Char b -> Value.Char Uchar.(of_int (a * to_int b))
-  | _ -> raise_notrace (Invalid_argument "Trying to multiply non numeric values.")
-
-and execute_binary_div l r =
-  match (l, r) with
-  | Value.Int _, Value.Int 0
-  | Value.Int _, Value.Float 0.
-  | Value.Float _, Value.Float 0.
-  | Value.Float _, Value.Int 0 -> raise_notrace (Invalid_argument "Division by 0.")
-  | Value.Int x, Value.Int y -> Value.Float (float_of_int x /. float_of_int y)
-  | Value.Float x, Value.Int y -> Value.Float (x /. float_of_int y)
-  | Value.Int x, Value.Float y -> Value.Float (float_of_int x /. y)
-  | Value.Float x, Value.Float y -> Value.Float (x /. y)
-  | (Value.Int _ | Value.Float _), _ | _, (Value.Int _ | Value.Float _) | _ ->
-      raise_notrace (Invalid_argument "Trying to multiply non numeric values.")
-
-and execute_binary_mod l r =
-  match (l, r) with
-  | Value.Int _, Value.Int 0
-  | Value.Int _, Value.Float 0.
-  | Value.Float _, Value.Float 0.
-  | Value.Float _, Value.Int 0 -> Value.Int 0
-  | Value.Int a, Value.Int b -> Value.Int (a mod b)
-  | Value.Float a, Value.Float b -> Value.Float (a -. (a /. b *. b))
-  | Value.Float a, Value.Int 1 -> Value.Float (fst (Float.modf a))
-  | Value.Float a, Value.Int b ->
-      let b = float_of_int b in
-      Value.Float (a -. (a /. b *. b))
-  | Int a, Float b ->
-      let a = float_of_int a in
-      Value.Float (a -. (a /. b *. b))
-  | (Value.Int _ | Value.Float _), _ | _, (Value.Int _ | Value.Float _) | _ ->
-      raise_notrace (Invalid_argument "Trying to modulo non numeric values.")
-
-and execute_binary_pow l r =
-  match (l, r) with
-  | Value.Int l, Value.Int r -> Value.Float (float_of_int l ** float_of_int r)
-  | Value.Float l, Value.Float r -> Value.Float (l ** r)
-  | Value.Float l, Value.Int r -> Value.Float (l ** float_of_int r)
-  | Value.Int l, Value.Float r -> Value.Float (float_of_int l ** r)
-  | (Value.Int _ | Value.Float _), _ | _, (Value.Int _ | Value.Float _) | _ ->
-      raise_notrace (Invalid_argument "Trying to raise non numeric values.")
-
-and execute_binary_concat l r =
-  let buf = Buffer.create 32 in
+let execute_binary_add t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
   let () =
-    match (l, r) with
-    | Value.String a, Value.String b ->
-        Buffer.add_string buf a;
-        Buffer.add_string buf b
-    | Value.String a, Value.Char b ->
-        Buffer.add_string buf a;
-        Buffer.add_utf_8_uchar buf b
-    | Value.Char a, Value.String b ->
-        Buffer.add_utf_8_uchar buf a;
-        Buffer.add_string buf b
-    | Value.Char a, Value.Char b ->
-        Buffer.add_utf_8_uchar buf a;
-        Buffer.add_utf_8_uchar buf b
-    | _ -> raise_notrace (Invalid_argument "Trying to concat non string literals.")
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_int t.stack (l + r)
+    | Tag_Float, Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_float t.stack (l +. r)
+    | Tag_Float, Tag_Int ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_float t.stack (float_of_int l +. r)
+    | Tag_Int, Tag_Float ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_float t.stack (l +. float_of_int r)
+    | Tag_Char, Tag_Char ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_char t.stack (l + r)
+    | Tag_Char, Tag_Int ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_char t.stack (l + r)
+    | Tag_Int, Tag_Char ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_char t.stack (l + r)
+    | _ -> raise_notrace (Invalid_argument "Trying to add non numeric values.")
   in
-  Value.String (Buffer.contents buf)
+  call_next_instruction t
+;;
 
-and execute_binary_dot_access l r =
-  match (l, r) with
-  | Record a, String b -> a |> StringMap.find_opt b |> Option.value ~default:Value.Null
-  | Null, _ -> Value.Null
-  | _ ->
-      raise_notrace
-      @@ Invalid_argument
-           ("Trying to access a property on a non record value: " ^ Value.to_string l)
+let execute_binary_sub t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_int t.stack (l - r)
+    | Tag_Float, Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_float t.stack (l -. r)
+    | Tag_Float, Tag_Int ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_float t.stack (float_of_int l -. r)
+    | Tag_Int, Tag_Float ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_float t.stack (l -. float_of_int r)
+    | Tag_Char, Tag_Char ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_char t.stack (l - r)
+    | Tag_Char, Tag_Int ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_char t.stack (l - r)
+    | Tag_Int, Tag_Char ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_char t.stack (l - r)
+    | _ -> raise_notrace (Invalid_argument "Trying to subtract non numeric values.")
+  in
+  call_next_instruction t
+;;
 
-and execute_binary_bracket_access l r =
-  match (l, r) with
-  | Value.Array a, Value.Int b -> (
-      try Array.get a b with Invalid_argument _ -> Value.Null)
-  | Value.String a, Value.Int b -> (
-      try
-        let chr =
-          a
-          |> Pinc_Core.Utf8String.of_string_exn
-          |> Pinc_Core.Utf8String.to_list
-          |> Fun.flip List.nth b
+let execute_binary_times t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_int t.stack (l * r)
+    | Tag_Float, Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_float t.stack (l *. r)
+    | Tag_Float, Tag_Int ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_float t.stack (float_of_int l *. r)
+    | Tag_Int, Tag_Float ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_float t.stack (l *. float_of_int r)
+    | Tag_Char, Tag_Char ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_char t.stack (l * r)
+    | Tag_Char, Tag_Int ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_char t.stack (l * r)
+    | Tag_Int, Tag_Char ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_char t.stack (l * r)
+    | _ -> raise_notrace (Invalid_argument "Trying to multiply non numeric values.")
+  in
+  call_next_instruction t
+;;
+
+let execute_binary_div t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        let result =
+          try float_of_int l /. float_of_int r
+          with Division_by_zero -> raise_notrace (Invalid_argument "Division by 0.")
         in
-        Value.Char chr
-      with Failure _ | Invalid_argument _ -> Value.Null)
-  | Record a, String b -> a |> StringMap.find_opt b |> Option.value ~default:Value.Null
-  | Null, _ -> Value.Null
-  | Array _, _ ->
-      raise_notrace @@ Invalid_argument "Cannot access array with a non integer value."
-  | Record _, _ ->
-      raise_notrace @@ Invalid_argument "Cannot access record with a non string value."
-  | _ ->
-      raise_notrace
-      @@ Invalid_argument
-           ("Trying to access a property on a non record or array value: "
-           ^ Value.to_string l)
+        Stack.push_float t.stack result
+    | Tag_Int, Tag_Float ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        let result =
+          try l /. float_of_int r
+          with Division_by_zero -> raise_notrace (Invalid_argument "Division by 0.")
+        in
+        Stack.push_float t.stack result
+    | Tag_Float, Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_float t.stack in
+        let result =
+          try l /. r
+          with Division_by_zero -> raise_notrace (Invalid_argument "Division by 0.")
+        in
+        Stack.push_float t.stack result
+    | Tag_Float, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        let result =
+          try l /. float_of_int r
+          with Division_by_zero -> raise_notrace (Invalid_argument "Division by 0.")
+        in
+        Stack.push_float t.stack result
+    | _ -> raise_notrace (Invalid_argument "Trying to multiply non numeric values.")
+  in
+  call_next_instruction t
+;;
 
-and execute_binary_range ~inclusive l r =
-  let get_range from upto =
-    match (from, upto) with
-    | Value.Int from, Value.Int upto -> (from, upto)
-    | Value.Int from, Value.Float upto when Float.is_integer upto ->
-        (from, int_of_float upto)
-    | Value.Float from, Value.Int upto when Float.is_integer from ->
-        (int_of_float from, upto)
-    | Value.Float from, Value.Float upto
-      when Float.is_integer from && Float.is_integer upto ->
-        (int_of_float from, int_of_float upto)
-    | Int _, _ ->
+let execute_binary_mod t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        let result = try l mod r with Division_by_zero -> 0 in
+        Stack.push_int t.stack result
+    | Tag_Float, Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_float t.stack in
+        let result = try l -. (l /. r *. r) with Division_by_zero -> 0. in
+        Stack.push_float t.stack result
+    | Tag_Float, Tag_Int ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_int t.stack in
+        let result =
+          try
+            let l = float_of_int l in
+            l -. (l /. r *. r)
+          with Division_by_zero -> 0.
+        in
+        Stack.push_float t.stack result
+    | Tag_Int, Tag_Float ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        let result =
+          try
+            if r = 1 then
+              fst (Float.modf l)
+            else (
+              let r = float_of_int r in
+              l -. (l /. r *. r))
+          with Division_by_zero -> 0.
+        in
+        Stack.push_float t.stack result
+    | _ -> raise_notrace (Invalid_argument "Trying to modulo non numeric values.")
+  in
+  call_next_instruction t
+;;
+
+let execute_binary_pow t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_float t.stack (float_of_int l ** float_of_int r)
+    | Tag_Float, Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_float t.stack (l ** r)
+    | Tag_Float, Tag_Int ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_float t.stack (float_of_int l ** r)
+    | Tag_Int, Tag_Float ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_float t.stack (l ** float_of_int r)
+    | _ -> raise_notrace (Invalid_argument "Trying to raise non numeric values.")
+  in
+  call_next_instruction t
+;;
+
+let execute_binary_concat t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let result =
+    let buf = Buffer.create 32 in
+    let () =
+      match (r_tag, l_tag) with
+      | Tag_Char, Tag_Char ->
+          let r = Uchar.unsafe_of_int @@ Stack.pop_char t.stack in
+          let l = Uchar.unsafe_of_int @@ Stack.pop_char t.stack in
+          Buffer.add_utf_8_uchar buf l;
+          Buffer.add_utf_8_uchar buf r
+      | Tag_Char, Tag_Obj ->
+          let r = Uchar.unsafe_of_int @@ Stack.pop_char t.stack in
+          let l =
+            match Stack.pop_value t.stack with
+            | Value.String s -> s
+            | _ ->
+                raise_notrace (Invalid_argument "Trying to concat non string literals.")
+          in
+          Buffer.add_string buf l;
+          Buffer.add_utf_8_uchar buf r
+      | Tag_Obj, Tag_Char ->
+          let r =
+            match Stack.pop_value t.stack with
+            | Value.String s -> s
+            | _ ->
+                raise_notrace (Invalid_argument "Trying to concat non string literals.")
+          in
+          let l = Uchar.unsafe_of_int @@ Stack.pop_char t.stack in
+          Buffer.add_utf_8_uchar buf l;
+          Buffer.add_string buf r
+      | Tag_Obj, Tag_Obj ->
+          let r =
+            match Stack.pop_value t.stack with
+            | Value.String s -> s
+            | _ ->
+                raise_notrace (Invalid_argument "Trying to concat non string literals.")
+          in
+          let l =
+            match Stack.pop_value t.stack with
+            | Value.String s -> s
+            | _ ->
+                raise_notrace (Invalid_argument "Trying to concat non string literals.")
+          in
+          Buffer.add_string buf l;
+          Buffer.add_string buf r
+      | _ -> raise_notrace (Invalid_argument "Trying to concat non string literals.")
+    in
+    Value.String (Buffer.contents buf)
+  in
+  Stack.push_value t.stack result;
+  call_next_instruction t
+;;
+
+let execute_binary_dot_access t =
+  let r = Stack.pop_value t.stack in
+  let l = Stack.pop_value t.stack in
+  let result =
+    match (l, r) with
+    | Record a, String b -> a |> StringMap.find_opt b |> Option.value ~default:Value.Null
+    | Null, _ -> Value.Null
+    | _ ->
+        raise_notrace
+        @@ Invalid_argument
+             ("Trying to access a property on a non record value: " ^ Value.to_string l)
+  in
+  Stack.push_value t.stack result;
+  call_next_instruction t
+;;
+
+let execute_binary_bracket_access t =
+  let r = Stack.pop_value t.stack in
+  let l = Stack.pop_value t.stack in
+  let result =
+    match (l, r) with
+    | Value.Array a, Value.Int b -> (
+        try Array.get a b with Invalid_argument _ -> Value.Null)
+    | Value.String a, Value.Int b -> (
+        try
+          let chr =
+            a
+            |> Pinc_Core.Utf8String.of_string_exn
+            |> Pinc_Core.Utf8String.to_list
+            |> Fun.flip List.nth b
+          in
+          Value.Char chr
+        with Failure _ | Invalid_argument _ -> Value.Null)
+    | Record a, String b -> a |> StringMap.find_opt b |> Option.value ~default:Value.Null
+    | Null, _ -> Value.Null
+    | Array _, _ ->
+        raise_notrace @@ Invalid_argument "Cannot access array with a non integer value."
+    | Record _, _ ->
+        raise_notrace @@ Invalid_argument "Cannot access record with a non string value."
+    | _ ->
+        raise_notrace
+        @@ Invalid_argument
+             ("Trying to access a property on a non record or array value: "
+             ^ Value.to_string l)
+  in
+  Stack.push_value t.stack result;
+  call_next_instruction t
+;;
+
+let execute_binary_range ~inclusive =
+ fun t ->
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        if l > r then
+          Stack.push_value t.stack @@ Value.Array [||]
+        else (
+          let start = l in
+          let stop =
+            if inclusive then
+              r + 1
+            else
+              r
+          in
+          Stack.push_value t.stack
+          @@ Value.Array (Array.init (stop - start) (fun i -> Value.Int (i + start))))
+    | Tag_Int, _ ->
         raise_notrace
         @@ Invalid_argument
              "Can't construct range. The end of your range is not of type int."
-    | _, Int _ ->
+    | _, Tag_Int ->
         raise_notrace
         @@ Invalid_argument
              "Can't construct range. The start of your range is not of type int."
-    | _, _ ->
+    | _ ->
         raise_notrace
         @@ Invalid_argument
              "Can't construct range. The start and end of your range are not of type int."
   in
-  let from_int, upto_int = get_range l r in
-  if from_int > upto_int then
-    Value.Array [||]
-  else (
-    let start = from_int in
-    let stop =
-      if inclusive then
-        upto_int + 1
-      else
-        upto_int
-    in
-    Value.Array (Array.init (stop - start) (fun i -> Value.Int (i + start))))
 
-and execute_binary_equal l r =
-  if Value.equal l r then
-    Value.constant_true
-  else
-    Value.constant_false
-
-and execute_binary_not_equal l r =
-  if not @@ Value.equal l r then
-    Value.constant_true
-  else
-    Value.constant_false
-
-and execute_binary_greater l r =
-  if Value.compare l r > 0 then
-    Value.constant_true
-  else
-    Value.constant_false
-
-and execute_binary_greater_equal l r =
-  if Value.compare l r >= 0 then
-    Value.constant_true
-  else
-    Value.constant_false
-
-and execute_binary_less l r =
-  if Value.compare l r < 0 then
-    Value.constant_true
-  else
-    Value.constant_false
-
-and execute_binary_less_equal l r =
-  if Value.compare l r <= 0 then
-    Value.constant_true
-  else
-    Value.constant_false
-
-and execute_binary_and l r =
-  if Value.is_true l && Value.is_true r then
-    Value.constant_true
-  else
-    Value.constant_false
-
-and execute_binary_or l r =
-  if Value.is_true l || Value.is_true r then
-    Value.constant_true
-  else
-    Value.constant_false
+  call_next_instruction t
 ;;
 
-let rec execute_unary_operation t op =
-  let r = Stack.pop t.stack in
-  let result =
-    match op with
-    | Operators.Unary.MINUS -> execute_unary_minus r
-    | Operators.Unary.NOT -> execute_unary_not r
+let execute_binary_equal t =
+  let r = Stack.pop_value t.stack in
+  let l = Stack.pop_value t.stack in
+  let () = Stack.push_bool t.stack @@ Value.equal l r in
+  call_next_instruction t
+;;
+
+let execute_binary_not_equal t =
+  let r = Stack.pop_value t.stack in
+  let l = Stack.pop_value t.stack in
+  let () = Stack.push_bool t.stack @@ not @@ Value.equal l r in
+  call_next_instruction t
+;;
+
+let execute_binary_greater t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (l > r)
+    | Tag_Float, Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_bool t.stack (l > r)
+    | Tag_Float, Tag_Int ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (float_of_int l > r)
+    | Tag_Int, Tag_Float ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_bool t.stack (l > float_of_int r)
+    | Tag_Char, Tag_Char ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_bool t.stack (l > r)
+    | Tag_Char, Tag_Int ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (l > r)
+    | Tag_Int, Tag_Char ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_bool t.stack (l > r)
+    | _ ->
+        let r = Stack.pop_value t.stack in
+        let l = Stack.pop_value t.stack in
+        Stack.push_bool t.stack (Value.compare l r > 0)
   in
-  Stack.push t.stack result
-
-and execute_unary_minus r =
-  match r with
-  | Value.Int i -> Value.Int (Int.neg i)
-  | Float f -> Value.Float (Float.neg f)
-  | _ ->
-      raise_notrace
-        (Invalid_argument
-           "Invalid usage of unary `-` operator. You are only able to negate integers or \
-            floats.")
-
-and execute_unary_not r =
-  if Value.is_true r then
-    Value.constant_false
-  else
-    Value.constant_true
+  call_next_instruction t
 ;;
 
-let rec execute_function_call t num_arguments =
-  let num_arguments = Int32.to_int num_arguments in
-  let fn = Stack.nth t.stack num_arguments in
-  match fn with
-  | Value.Closure { fn = { num_parameters; _ }; _ }
-  | Value.BuiltinFunction { num_parameters; _ }
-    when not @@ Int.equal num_parameters num_arguments ->
-      raise_notrace
-      @@ Invalid_argument
-           ("Trying to call a function with the wrong number of arguments. Wanted "
-           ^ string_of_int num_parameters
-           ^ ", got "
-           ^ string_of_int num_arguments)
-  | Value.Closure closure -> call_closure t ~closure ~num_arguments
-  | Value.BuiltinFunction { fn_index; _ } -> call_builtin t ~fn_index ~num_arguments
-  | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value"
+let execute_binary_greater_equal t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (l >= r)
+    | Tag_Float, Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_bool t.stack (l >= r)
+    | Tag_Float, Tag_Int ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (float_of_int l >= r)
+    | Tag_Int, Tag_Float ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_bool t.stack (l >= float_of_int r)
+    | Tag_Char, Tag_Char ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_bool t.stack (l >= r)
+    | Tag_Char, Tag_Int ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (l >= r)
+    | Tag_Int, Tag_Char ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_bool t.stack (l >= r)
+    | _ ->
+        let r = Stack.pop_value t.stack in
+        let l = Stack.pop_value t.stack in
+        Stack.push_bool t.stack (Value.compare l r >= 0)
+  in
+  call_next_instruction t
+;;
 
-and call_builtin t ~fn_index ~num_arguments =
+let execute_binary_less t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (l < r)
+    | Tag_Float, Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_bool t.stack (l < r)
+    | Tag_Float, Tag_Int ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (float_of_int l < r)
+    | Tag_Int, Tag_Float ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_bool t.stack (l < float_of_int r)
+    | Tag_Char, Tag_Char ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_bool t.stack (l < r)
+    | Tag_Char, Tag_Int ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (l < r)
+    | Tag_Int, Tag_Char ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_bool t.stack (l < r)
+    | _ ->
+        let r = Stack.pop_value t.stack in
+        let l = Stack.pop_value t.stack in
+        Stack.push_bool t.stack (Value.compare l r < 0)
+  in
+  call_next_instruction t
+;;
+
+let execute_binary_less_equal t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Int, Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (l <= r)
+    | Tag_Float, Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_bool t.stack (l <= r)
+    | Tag_Float, Tag_Int ->
+        let r = Stack.pop_float t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (float_of_int l <= r)
+    | Tag_Int, Tag_Float ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_float t.stack in
+        Stack.push_bool t.stack (l <= float_of_int r)
+    | Tag_Char, Tag_Char ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_bool t.stack (l <= r)
+    | Tag_Char, Tag_Int ->
+        let r = Stack.pop_char t.stack in
+        let l = Stack.pop_int t.stack in
+        Stack.push_bool t.stack (l <= r)
+    | Tag_Int, Tag_Char ->
+        let r = Stack.pop_int t.stack in
+        let l = Stack.pop_char t.stack in
+        Stack.push_bool t.stack (l <= r)
+    | _ ->
+        let r = Stack.pop_value t.stack in
+        let l = Stack.pop_value t.stack in
+        Stack.push_bool t.stack (Value.compare l r <= 0)
+  in
+  call_next_instruction t
+;;
+
+let execute_binary_and t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Bool, Tag_Bool ->
+        let r = Stack.pop_bool t.stack in
+        let l = Stack.pop_bool t.stack in
+        Stack.push_bool t.stack (l && r)
+    | _ ->
+        let r = Stack.pop_value t.stack in
+        let l = Stack.pop_value t.stack in
+        Stack.push_bool t.stack (Value.is_true l && Value.is_true r)
+  in
+  call_next_instruction t
+;;
+
+let execute_binary_or t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let l_tag = Stack.peek_tag t.stack 1 in
+  let () =
+    match (r_tag, l_tag) with
+    | Tag_Bool, Tag_Bool ->
+        let r = Stack.pop_bool t.stack in
+        let l = Stack.pop_bool t.stack in
+        Stack.push_bool t.stack (l || r)
+    | _ ->
+        let r = Stack.pop_value t.stack in
+        let l = Stack.pop_value t.stack in
+        Stack.push_bool t.stack (Value.is_true l || Value.is_true r)
+  in
+  call_next_instruction t
+;;
+
+let execute_unary_minus t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let () =
+    match r_tag with
+    | Tag_Int ->
+        let r = Stack.pop_int t.stack in
+        Stack.push_int t.stack (0 - r)
+    | Tag_Float ->
+        let r = Stack.pop_float t.stack in
+        Stack.push_float t.stack (0. -. r)
+    | _ ->
+        raise_notrace
+          (Invalid_argument
+             "Invalid usage of unary `-` operator. You are only able to negate integers \
+              or floats.")
+  in
+  call_next_instruction t
+;;
+
+let execute_unary_not t =
+  let r_tag = Stack.peek_tag t.stack 0 in
+  let () =
+    match r_tag with
+    | Tag_Null ->
+        let () = Stack.drop t.stack in
+        Stack.push_bool t.stack true
+    | Tag_Bool ->
+        let r = Stack.pop_bool t.stack in
+        Stack.push_bool t.stack (not r)
+    | _ ->
+        let r = Stack.pop_value t.stack in
+        Stack.push_bool t.stack @@ not @@ Value.is_true r
+  in
+  call_next_instruction t
+;;
+
+let rec execute_function_call num_arguments =
+  let num_arguments = Int32.to_int num_arguments in
+  fun t ->
+    let fn = Stack.nth t.stack num_arguments in
+    match fn with
+    | Value.Closure { fn = { num_parameters; _ }; _ }
+    | Value.BuiltinFunction { num_parameters; _ }
+      when not @@ Int.equal num_parameters num_arguments ->
+        raise_notrace
+        @@ Invalid_argument
+             ("Trying to call a function with the wrong number of arguments. Wanted "
+             ^ string_of_int num_parameters
+             ^ ", got "
+             ^ string_of_int num_arguments)
+    | Value.Closure closure -> call_closure t ~closure ~num_arguments
+    | Value.BuiltinFunction { fn_index; _ } -> call_builtin t ~fn_index ~num_arguments
+    | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value"
+
+and call_builtin ~fn_index ~num_arguments t =
   let arguments = Stack.pop_n t.stack num_arguments in
   let fn = Pinc_Bytecode.Externals.get_function fn_index in
   let value = fn ~arguments in
   (* Pop the builtin function from the stack *)
-  let () = ignore @@ Stack.pop t.stack in
-  Stack.push t.stack value
+  let () = Stack.drop t.stack in
+  Stack.push_value t.stack value;
+  call_next_instruction t
 
-and call_closure t ~closure ~num_arguments =
-  let frame = Frame.make ~base_pointer:(t.stack.stack_pointer - num_arguments) ~closure in
-  push_frame t frame;
-  Stack.set_pointer t.stack (frame.base_pointer + closure.fn.num_locals)
+and call_closure ~closure ~num_arguments t =
+  let frame = make_frame ~base_pointer:(t.stack.stack_pointer - num_arguments) ~closure in
+  let t = push_frame t frame in
+  Stack.set_pointer t.stack (frame.base_pointer + closure.fn.num_locals);
+  call_current_instruction t
 ;;
 
 let execute_length t =
-  let value = Stack.pop t.stack in
+  let value = Stack.pop_value t.stack in
   let len =
     match value with
     | Value.Array a -> Array.length a
@@ -363,201 +746,285 @@ let execute_length t =
         raise_notrace
         @@ Invalid_argument "Trying to call length a non array, string or record value"
   in
-  Stack.push t.stack (Value.Int len)
+  Stack.push_int t.stack len;
+  call_next_instruction t
 ;;
 
 let execute_debug_print_stack t =
   Format.printf "--------- (STACK) -------\n%!";
   Stack.iter (fun value -> Format.printf "%a%!" Value.pp value) t.stack;
-  Format.printf "--------- (/STACK) -------\n%!"
+  Format.printf "--------- (/STACK) -------\n%!";
+  call_next_instruction t
 ;;
 
-let execute_pop t = ignore @@ Stack.pop t.stack
+let execute_pop t =
+  Stack.drop t.stack;
+  call_next_instruction t
+;;
 
-let execute_constant t addr =
+let execute_constant addr =
+ fun t ->
   let constant = Int32.Map.find addr t.constants in
-  Stack.push t.stack constant
+  Stack.push_value t.stack constant;
+  call_next_instruction t
 ;;
 
-let execute_true t = Stack.push t.stack Value.constant_true
-let execute_false t = Stack.push t.stack Value.constant_false
-let execute_null t = Stack.push t.stack Value.Null
-
-let execute_jump t addr =
-  Frame.set_instruction_pointer (current_frame t) @@ Int32.to_int addr
+let execute_true t =
+  Stack.push_bool t.stack true;
+  call_next_instruction t
 ;;
 
-let execute_jump_if_false t addr =
-  let condition = Stack.pop t.stack in
-  let () =
-    if not @@ Value.is_true condition then
-      Frame.set_instruction_pointer (current_frame t) @@ Int32.to_int addr
-  in
-  ()
+let execute_false t =
+  Stack.push_bool t.stack false;
+  call_next_instruction t
 ;;
 
-let execute_set_global t addr =
-  let value = Stack.pop t.stack in
-  t.globals <- Int32.Map.add addr value t.globals
+let execute_null t =
+  Stack.push_null t.stack;
+  call_next_instruction t
 ;;
 
-let execute_get_global t addr =
+let execute_jump addr =
+  let addr = Int32.to_int addr in
+  fun t ->
+    let t = set_instruction_pointer t addr in
+    call_current_instruction t
+;;
+
+let execute_jump_if_false addr =
+  let addr = Int32.to_int addr in
+  fun t ->
+    let condition_tag = Stack.peek_tag t.stack 0 in
+    let is_false =
+      match condition_tag with
+      | Tag_Bool -> not @@ Stack.pop_bool t.stack
+      | Tag_Null ->
+          Stack.drop t.stack;
+          true
+      | _ ->
+          let condition = Stack.pop_value t.stack in
+          not @@ Value.is_true condition
+    in
+    if is_false then (
+      let t = set_instruction_pointer t addr in
+      call_current_instruction t)
+    else
+      call_next_instruction t
+;;
+
+let execute_set_global addr =
+ fun t ->
+  let value = Stack.pop_value t.stack in
+  let t = { t with globals = Int32.Map.add addr value t.globals } in
+  call_next_instruction t
+;;
+
+let execute_get_global addr =
+ fun t ->
   let value = Int32.Map.find addr t.globals in
-  Stack.push t.stack value
+  Stack.push_value t.stack value;
+  call_next_instruction t
 ;;
 
-let execute_get_builtin t addr =
+let execute_get_builtin addr =
   let fn_index = Int32.to_int addr in
   let num_parameters = Pinc_Bytecode.Externals.expected_parameters fn_index in
   let value = Value.BuiltinFunction { num_parameters; fn_index } in
-  Stack.push t.stack value
+  fun t ->
+    Stack.push_value t.stack value;
+    call_next_instruction t
 ;;
 
-let execute_get_free t addr =
-  let value = Int32.Map.find addr (Frame.free_variables (current_frame t)) in
-  Stack.push t.stack value
+let execute_get_free addr =
+ fun t ->
+  let value = Int32.Map.find addr (frame_free_variables (current_frame t)) in
+  Stack.push_value t.stack value;
+  call_next_instruction t
 ;;
 
-let execute_set_local t addr =
-  let frame = current_frame t in
-  let value = Stack.pop t.stack in
-  let address = frame.base_pointer + Int32.to_int addr in
-  Stack.set t.stack address value
+let execute_set_local addr =
+  let addr = Int32.to_int addr in
+  fun t ->
+    let frame = current_frame t in
+    let addr = frame.base_pointer + addr in
+    let () = Stack.move_from_top t.stack addr in
+    call_next_instruction t
 ;;
 
-let execute_get_local t addr =
-  let frame = current_frame t in
-  let address = frame.base_pointer + Int32.to_int addr in
-  let value = Stack.get t.stack address in
-  Stack.push t.stack value
+let execute_get_local addr =
+  let addr = Int32.to_int addr in
+  fun t ->
+    let frame = current_frame t in
+    let address = frame.base_pointer + addr in
+    let () = Stack.copy_to_top t.stack address in
+    call_next_instruction t
 ;;
 
 let execute_dynamic_array t =
-  let value = Stack.pop t.stack in
   let length =
-    match value with
-    | Value.Int i -> i
+    match Stack.peek_tag t.stack 0 with
+    | Tag_Int -> Stack.pop_int t.stack
     | _ -> assert false
   in
   let elements = Array.of_list @@ Stack.pop_n t.stack length in
   let value = Value.Array elements in
-  Stack.push t.stack value
+  Stack.push_value t.stack value;
+  call_next_instruction t
 ;;
 
-let execute_array t length =
-  let elements = Array.of_list @@ Stack.pop_n t.stack (Int32.to_int length) in
-  let value = Value.Array elements in
-  Stack.push t.stack value
+let execute_array length =
+  let length = Int32.to_int length in
+  fun t ->
+    let elements = Array.of_list @@ Stack.pop_n t.stack length in
+    let value = Value.Array elements in
+    Stack.push_value t.stack value;
+    call_next_instruction t
 ;;
 
-let execute_record t length =
+let execute_record length =
   let int_length = Int32.to_int length in
-  let values = Stack.pop_n t.stack int_length in
-  let keys =
-    Stack.pop_n t.stack int_length
-    |> List.map (function
-      | Value.String s -> s
-      | _ -> assert false)
-  in
-  let record = StringMap.of_list @@ List.combine keys values in
-  let value = Value.Record record in
-  Stack.push t.stack value
+  fun t ->
+    let values = Stack.pop_n t.stack int_length in
+    let keys =
+      Stack.pop_n t.stack int_length
+      |> List.map (function
+        | Value.String s -> s
+        | _ -> assert false)
+    in
+    let record = StringMap.of_list @@ List.combine keys values in
+    let value = Value.Record record in
+    Stack.push_value t.stack value;
+    call_next_instruction t
 ;;
 
 let execute_current_closure t =
   let frame = current_frame t in
   let closure = Value.Closure frame.closure in
-  Stack.push t.stack closure
+  Stack.push_value t.stack closure;
+  call_next_instruction t
 ;;
 
-let execute_closure t fn_addr num_free_variables =
+let execute_closure fn_addr num_free_variables =
   let num_free_variables = Int32.to_int num_free_variables in
-  let fn =
-    match Int32.Map.find fn_addr t.constants with
-    | Value.Function fn -> fn
-    | _ -> assert false
-  in
-  let free_variables =
-    num_free_variables
-    |> Stack.pop_n t.stack
-    |> List.mapi (fun index value -> (Int32.of_int index, value))
-    |> Int32.Map.of_list
-  in
-  let closure = Value.Closure { fn; free_variables } in
-  Stack.push t.stack closure
+  fun t ->
+    let fn =
+      match Int32.Map.find fn_addr t.constants with
+      | Value.Function fn -> fn
+      | _ -> assert false
+    in
+    let free_variables =
+      num_free_variables
+      |> Stack.pop_n t.stack
+      |> List.mapi (fun index value -> (Int32.of_int index, value))
+      |> Int32.Map.of_list
+    in
+    let closure = Value.Closure { fn; free_variables } in
+    Stack.push_value t.stack closure;
+    call_next_instruction t
 ;;
 
 let execute_return t =
-  let value = Stack.pop t.stack in
-  let frame = pop_frame t in
+  let from = t.stack.stack_pointer - 1 in
+  let t, frame = pop_frame t in
   Stack.set_pointer t.stack frame.base_pointer;
   let () =
     (* This is the function from the I_Call instruction *)
-    ignore @@ Stack.pop t.stack
+    Stack.drop t.stack
   in
-  Stack.push t.stack value
+  Stack.copy_to_top t.stack from;
+  call_next_instruction t
 ;;
 
-let run t =
-  while
-    (current_frame t).instruction_pointer
-    < Array.length @@ Frame.instructions (current_frame t)
-  do
-    let frame = current_frame t in
-    let op = Array.get (Frame.instructions frame) frame.instruction_pointer in
-    Frame.set_instruction_pointer frame @@ succ frame.instruction_pointer;
-    match op with
-    | Instruction.I_Debug_Print_Stack -> execute_debug_print_stack t
-    | Instruction.I_Pop -> execute_pop t
-    | Instruction.I_Constant addr -> execute_constant t addr
-    | Instruction.I_Add -> execute_binary_operation t Operators.Binary.PLUS
-    | Instruction.I_Sub -> execute_binary_operation t Operators.Binary.MINUS
-    | Instruction.I_Div -> execute_binary_operation t Operators.Binary.DIV
-    | Instruction.I_Mul -> execute_binary_operation t Operators.Binary.TIMES
-    | Instruction.I_Mod -> execute_binary_operation t Operators.Binary.MODULO
-    | Instruction.I_Pow -> execute_binary_operation t Operators.Binary.POW
-    | Instruction.I_True -> execute_true t
-    | Instruction.I_False -> execute_false t
-    | Instruction.I_Equal -> execute_binary_operation t Operators.Binary.EQUAL
-    | Instruction.I_Not_Equal -> execute_binary_operation t Operators.Binary.NOT_EQUAL
-    | Instruction.I_Greater -> execute_binary_operation t Operators.Binary.GREATER
-    | Instruction.I_Greater_Equal ->
-        execute_binary_operation t Operators.Binary.GREATER_EQUAL
-    | Instruction.I_Less -> execute_binary_operation t Operators.Binary.LESS
-    | Instruction.I_Less_Equal -> execute_binary_operation t Operators.Binary.LESS_EQUAL
-    | Instruction.I_And -> execute_binary_operation t Operators.Binary.AND
-    | Instruction.I_Or -> execute_binary_operation t Operators.Binary.OR
-    | Instruction.I_Concat -> execute_binary_operation t Operators.Binary.CONCAT
-    | Instruction.I_Index -> execute_binary_operation t Operators.Binary.BRACKET_ACCESS
-    | Instruction.I_Dot_Index -> execute_binary_operation t Operators.Binary.DOT_ACCESS
-    | Instruction.I_Range -> execute_binary_operation t Operators.Binary.RANGE
-    | Instruction.I_Range_Inclusive ->
-        execute_binary_operation t Operators.Binary.INCLUSIVE_RANGE
-    | Instruction.I_Minus -> execute_unary_operation t Operators.Unary.MINUS
-    | Instruction.I_Not -> execute_unary_operation t Operators.Unary.NOT
-    | Instruction.I_Jump addr -> execute_jump t addr
-    | Instruction.I_Jump_If_False addr -> execute_jump_if_false t addr
-    | Instruction.I_Null -> execute_null t
-    | Instruction.I_Set_Global addr -> execute_set_global t addr
-    | Instruction.I_Get_Global addr -> execute_get_global t addr
-    | Instruction.I_Get_Builtin addr -> execute_get_builtin t addr
-    | Instruction.I_Get_Free addr -> execute_get_free t addr
-    | Instruction.I_Dynamic_Array -> execute_dynamic_array t
-    | Instruction.I_Array length -> execute_array t length
-    | Instruction.I_Record length -> execute_record t length
-    | Instruction.I_Closure (fn_addr, num_free_variables) ->
-        execute_closure t fn_addr num_free_variables
-    | Instruction.I_Call num_arguments -> execute_function_call t num_arguments
-    | Instruction.I_Return -> execute_return t
-    | Instruction.I_Set_Local addr -> execute_set_local t addr
-    | Instruction.I_Get_Local addr -> execute_get_local t addr
-    | Instruction.I_Length -> execute_length t
-    | Instruction.I_Current_Closure -> execute_current_closure t
-  done;
-  t
+let execute_halt t = t
+
+let resolve_instructions instructions =
+  Array.map
+    (fun instruction ->
+      match instruction with
+      | Instruction.I_Jump addr -> execute_jump addr
+      | Instruction.I_Jump_If_False addr -> execute_jump_if_false addr
+      | Instruction.I_Constant addr -> execute_constant addr
+      | Instruction.I_Debug_Print_Stack -> execute_debug_print_stack
+      | Instruction.I_Set_Global addr -> execute_set_global addr
+      | Instruction.I_Get_Global addr -> execute_get_global addr
+      | Instruction.I_Get_Builtin addr -> execute_get_builtin addr
+      | Instruction.I_Get_Free addr -> execute_get_free addr
+      | Instruction.I_Range -> execute_binary_range ~inclusive:false
+      | Instruction.I_Range_Inclusive -> execute_binary_range ~inclusive:true
+      | Instruction.I_Array length -> execute_array length
+      | Instruction.I_Record length -> execute_record length
+      | Instruction.I_Closure (fn_addr, num_free_variables) ->
+          execute_closure fn_addr num_free_variables
+      | Instruction.I_Call num_arguments -> execute_function_call num_arguments
+      | Instruction.I_Set_Local addr -> execute_set_local addr
+      | Instruction.I_Get_Local addr -> execute_get_local addr
+      | Instruction.I_Pop -> execute_pop
+      | Instruction.I_Add -> execute_binary_add
+      | Instruction.I_Sub -> execute_binary_sub
+      | Instruction.I_Div -> execute_binary_div
+      | Instruction.I_Mul -> execute_binary_times
+      | Instruction.I_Mod -> execute_binary_mod
+      | Instruction.I_Pow -> execute_binary_pow
+      | Instruction.I_True -> execute_true
+      | Instruction.I_False -> execute_false
+      | Instruction.I_Equal -> execute_binary_equal
+      | Instruction.I_Not_Equal -> execute_binary_not_equal
+      | Instruction.I_Greater -> execute_binary_greater
+      | Instruction.I_Greater_Equal -> execute_binary_greater_equal
+      | Instruction.I_Less -> execute_binary_less
+      | Instruction.I_Less_Equal -> execute_binary_less_equal
+      | Instruction.I_And -> execute_binary_and
+      | Instruction.I_Or -> execute_binary_or
+      | Instruction.I_Concat -> execute_binary_concat
+      | Instruction.I_Index -> execute_binary_bracket_access
+      | Instruction.I_Dot_Index -> execute_binary_dot_access
+      | Instruction.I_Minus -> execute_unary_minus
+      | Instruction.I_Not -> execute_unary_not
+      | Instruction.I_Null -> execute_null
+      | Instruction.I_Dynamic_Array -> execute_dynamic_array
+      | Instruction.I_Return -> execute_return
+      | Instruction.I_Length -> execute_length
+      | Instruction.I_Current_Closure -> execute_current_closure
+      | Instruction.I_Halt -> execute_halt)
+    instructions
+;;
+
+let resolve_constant_functions ~function_count constants =
+  (* We add one to the function count to reserve the first space for the main function *)
+  let resolved_functions = Array.make function_count [||] in
+  let rec resolve_from_value value =
+    match value with
+    | Value.Null -> ()
+    | Value.Int _ -> ()
+    | Value.Float _ -> ()
+    | Value.Bool _ -> ()
+    | Value.Char _ -> ()
+    | Value.String _ -> ()
+    | Value.Array a -> Array.iter resolve_from_value a
+    | Value.Record r -> StringMap.iter (fun _ -> resolve_from_value) r
+    | Value.Function fn ->
+        let instructions = resolve_instructions fn.instructions in
+        Array.set resolved_functions fn.fn_addr instructions
+    | Value.Closure closure ->
+        let instructions = resolve_instructions closure.fn.instructions in
+        Array.set resolved_functions closure.fn.fn_addr instructions
+    | Value.BuiltinFunction _ -> ()
+  in
+  Int32.Map.iter (fun _ -> resolve_from_value) constants;
+  resolved_functions
 ;;
 
 let eval bytecode =
-  let vm = bytecode |> Pinc_Bytecode.Bytecode.deserialize |> make |> run in
-  vm.stack |> Stack.last_popped_element |> Value.to_string
+  let function_count = ref 0 in
+  let code = bytecode |> Pinc_Bytecode.Bytecode.deserialize ~function_count in
+  let instructions =
+    Array.append (resolve_instructions code.instructions) [| execute_halt |]
+  in
+  let constants = code.constants in
+  let resolved_functions =
+    resolve_constant_functions ~function_count:!function_count constants
+  in
+  let t = make ~resolved_functions ~instructions ~constants in
+  let result = call_current_instruction t in
+  result.stack |> Stack.last_popped_element |> Value.to_string
 ;;

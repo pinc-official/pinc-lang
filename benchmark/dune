@@ -1,6 +1,8 @@
 (executable
  (name benchmark)
  (public_name benchmark)
+ (ocamlopt_flags -g -unsafe -O3)
+ (link_flags -g)
  (foreign_stubs
   (language c)
   (names time))

@@ -1,4 +1,7 @@
 [@@@warning "-unused-value-declaration"]
+[@@@warning "-unused-constructor"]
+
+let iterations = 1000
 
 module Time : sig
   type t
@@ -65,20 +68,62 @@ end = struct
     mutable netBytes : float;
   }
 
+  let format_bytes bytes =
+    let b = float_of_int bytes in
+    let gb = 1024. *. 1024. *. 1024. in
+    let mb = 1024. *. 1024. in
+    let kb = 1024. in
+    if b >= gb then
+      Format.sprintf "%.4f GB" (b /. gb)
+    else if b >= mb then
+      Format.sprintf "%.4f MB" (b /. mb)
+    else if b >= kb then
+      Format.sprintf "%.4f KB" (b /. kb)
+    else
+      Format.sprintf "%d Bytes" bytes
+  ;;
+
+  let format_allocations n =
+    let s = string_of_int n in
+    let len = String.length s in
+    let rec loop i acc count =
+      if i < 0 then
+        acc
+      else if count > 0 && count mod 3 = 0 then
+        loop (i - 1) (String.make 1 s.[i] ^ "," ^ acc) (count + 1)
+      else
+        loop (i - 1) (String.make 1 s.[i] ^ acc) (count + 1)
+    in
+    let formatted_base = loop (len - 1) "" 0 in
+
+    (* Append shorthand notation based on the size of the number *)
+    if n >= 1_000_000_000 then (
+      let mio = float_of_int n /. 1_000_000_000. in
+      Format.sprintf "%s (%.1f Bn)" formatted_base mio)
+    else if n >= 1_000_000 then (
+      let mio = float_of_int n /. 1_000_000. in
+      Format.sprintf "%s (%.1f Mio)" formatted_base mio)
+    else if n >= 1_000 then (
+      let k = float_of_int n /. 1_000. in
+      Format.sprintf "%s (%.1f K)" formatted_base k)
+    else
+      formatted_base
+  ;;
+
   let report b =
     print_endline (Format.sprintf "Benchmark: %s" b.name);
     print_endline
       (Format.sprintf
          "Avg time/iteration: %fms"
          (Time.print b.duration /. float_of_int b.n));
+
+    let allocs_per_iteration = int_of_float (b.netAllocs /. float_of_int b.n) in
     print_endline
-      (Format.sprintf
-         "Allocs/iteration: %d"
-         (int_of_float (b.netAllocs /. float_of_int b.n)));
+      (Format.sprintf "Allocs/iteration: %s" (format_allocations allocs_per_iteration));
+
+    let bytes_per_iteration = int_of_float (b.netBytes /. float_of_int b.n) in
     print_endline
-      (Format.sprintf
-         "Bytes/iteration: %d"
-         (int_of_float (b.netBytes /. float_of_int b.n)));
+      (Format.sprintf "Bytes/iteration: %s" (format_bytes bytes_per_iteration));
     print_endline (Format.sprintf "Number of iterations: %d" b.n);
     print_endline
       (Format.sprintf "Time to complete all iterations: %fms" (Time.print b.duration));
@@ -103,6 +148,8 @@ end = struct
 
   (* total amount of memory allocated by the program since it started in words *)
   let mallocs () =
+    (* Force a minor GC to flush current nursery allocations to the counters *)
+    Gc.minor ();
     let stats = Gc.quick_stat () in
     stats.minor_words +. stats.major_words -. stats.promoted_words
   ;;
@@ -118,8 +165,8 @@ end = struct
 
   let stopTimer b =
     if b.timerOn then (
-      let allocatedWords = mallocs () in
       let diff = Time.diff b.start (Time.now ()) in
+      let allocatedWords = mallocs () in
       b.duration <- Time.add b.duration diff;
       b.netAllocs <- b.netAllocs +. (allocatedWords -. b.startAllocs);
       b.netBytes <- b.netBytes +. ((allocatedWords *. 8.) -. b.startBytes);
@@ -146,7 +193,7 @@ end = struct
   ;;
 
   let launch b =
-    for n = 1 to 200 do
+    for n = 1 to iterations do
       runIteration b n
     done
   ;;
@@ -157,32 +204,38 @@ module Benchmarks : sig
 end = struct
   type action =
     | Parse
+    (* | Compile
+    | Deserialize
+    | Vm of string *)
     | Interp of string
 
   let string_of_action = function
-    | Parse -> "parser"
-    | Interp s -> "interpret: " ^ s
+    | Parse -> "[PARSER]"
+    (* | Compile -> "[COMPILER]"
+      | Deserialize -> "[DESERIALIZATION]"
+      | Vm s -> "[VM] " ^ s *)
+    | Interp s -> "[INTERPRETER] " ^ s
   ;;
 
   let benchmark filename action =
     let src = Pinc_lang.Source.of_file filename in
     let ast = Pinc_lang.Parser.get_ast [ src ] in
+    (* let bytecode = Pinc_lang.Compiler.compile ast in *)
     let benchmarkFn =
       match action with
-      | Parse ->
-          fun _ ->
-            let _ = Sys.opaque_identity (Pinc_lang.Parser.parse [ src ]) in
-            ()
+      | Parse -> fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Parser.get_ast [ src ])
       | Interp root ->
           fun _ ->
-            let _ =
-              Sys.opaque_identity
-                (Pinc_lang.Interpreter.eval_declarations
-                   ~tag_data_provider:Pinc_lang.Helpers.noop_data_provider
-                   ~root
-                   ast)
-            in
-            ()
+            ignore
+            @@ Sys.opaque_identity
+                 (Pinc_lang.Interpreter.eval_declarations
+                    ~tag_data_provider:Pinc_lang.Helpers.noop_data_provider
+                    ~root
+                    ast)
+      (* | Compile -> fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Compiler.compile ast)
+      | Deserialize ->
+          fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Bytecode.deserialize bytecode)
+      | Vm _root -> fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Vm.eval bytecode) *)
     in
     let name = filename ^ " " ^ string_of_action action in
     let b = Benchmark.make ~name ~f:benchmarkFn () in
@@ -192,6 +245,9 @@ end = struct
 
   let run () =
     benchmark "./benchmark/data/Benchmark.pi" Parse;
+    (* benchmark "./benchmark/data/Benchmark.pi" Compile; *)
+    (* benchmark "./benchmark/data/Benchmark.pi" Deserialize; *)
+    (* benchmark "./benchmark/data/Benchmark.pi" (Vm "Benchmark"); *)
     benchmark "./benchmark/data/Benchmark.pi" (Interp "Benchmark")
   ;;
 end

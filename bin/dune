@@ -11,7 +11,8 @@
  (public_name print_vm)
  (modules print_vm)
  (modes native)
- (ocamlopt_flags -O3)
+ (ocamlopt_flags -g -unsafe -O3)
+ (link_flags -g)
  (libraries pinc_lang))
 
 (executable

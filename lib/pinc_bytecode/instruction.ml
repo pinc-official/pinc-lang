@@ -41,6 +41,7 @@ type t =
   | I_Closure of (Int32.t * Int32.t)
   | I_Get_Free of Int32.t
   | I_Current_Closure
+  | I_Halt
   | I_Debug_Print_Stack
 
 let byte = function
@@ -86,6 +87,7 @@ let byte = function
   | I_Closure _ -> 0x27
   | I_Get_Free _ -> 0x28
   | I_Current_Closure -> 0x29
+  | I_Halt -> 0x2A
   | I_Debug_Print_Stack -> 0xFF
 ;;
 
@@ -132,6 +134,7 @@ let operands_length = function
   | I_Length
   | I_Dynamic_Array
   | I_Current_Closure
+  | I_Halt
   | I_Debug_Print_Stack -> 0
 ;;
 
@@ -210,6 +213,7 @@ let decode bytes offset =
       let offset, addr = Int32.read_bytes bytes offset in
       (offset, I_Get_Free addr)
   | 0x29 -> (offset, I_Current_Closure)
+  | 0x2A -> (offset, I_Halt)
   | 0xFF -> (offset, I_Debug_Print_Stack)
   | _ ->
       raise_notrace
@@ -265,6 +269,7 @@ let pp fmt = function
         fn_addr
         (Int32.to_int free_variables)
   | I_Current_Closure -> Format.fprintf fmt "I_Current_Closure"
+  | I_Halt -> Format.fprintf fmt "I_Halt"
   | I_Debug_Print_Stack -> Format.fprintf fmt "I_Debug_Print_Stack"
 ;;
 
@@ -324,6 +329,7 @@ let to_bytes t =
     | I_Length
     | I_Dynamic_Array
     | I_Current_Closure
+    | I_Halt
     | I_Debug_Print_Stack -> ()
   in
 

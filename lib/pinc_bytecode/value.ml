@@ -17,6 +17,7 @@ and builtin_function = {
 }
 
 and compiled_function = {
+  fn_addr : int;
   num_locals : int;
   num_parameters : int;
   instructions : Instruction.t Array.t;
@@ -209,88 +210,90 @@ and serialize_closure buf c =
   serialize_function buf fn
 ;;
 
-let rec deserialize bytes offset =
-  let tag = Bytes.get_int8 bytes !offset in
-  offset := !offset + 1;
-  match tag with
-  | 0x00 -> Null
-  | 0x01 ->
-      let i = Int64.to_int @@ Bytes.get_int64_be bytes !offset in
-      offset := !offset + 8;
-      Int i
-  | 0x02 ->
-      let f = Int64.float_of_bits @@ Bytes.get_int64_be bytes !offset in
-      offset := !offset + 8;
-      Float f
-  | 0x03 -> Bool true
-  | 0x04 -> Bool false
-  | 0x05 ->
-      let c = Uchar.utf_decode_uchar @@ Bytes.get_utf_8_uchar bytes !offset in
-      offset := !offset + Uchar.utf_8_byte_length c;
-      Char c
-  | 0x06 ->
-      let length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
-      offset := !offset + 4;
-      let s = Bytes.sub_string bytes !offset length in
-      offset := !offset + length;
-      String s
-  | 0x07 ->
-      let length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
-      offset := !offset + 4;
-      let a = Array.init length (fun _ -> deserialize bytes offset) in
-      Array a
-  | 0x08 ->
-      let length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
-      offset := !offset + 4;
-      let r =
-        StringMap.of_list
-        @@ List.init length (fun _ ->
-            let length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
-            offset := !offset + 4;
-            let key = Bytes.sub_string bytes !offset length in
-            offset := !offset + length;
-            let value = deserialize bytes offset in
-            (key, value))
-      in
-      Record r
-  | 0x09 -> Function (deserialize_function bytes offset)
-  | 0x0A -> BuiltinFunction (deserialize_builtin_function bytes offset)
-  | 0x0B -> Closure (deserialize_closure bytes offset)
-  | _ -> raise @@ Invalid_argument "cannot deserialize bytecode"
-
-and deserialize_function bytes offset =
-  let num_locals = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
-  offset := !offset + 4;
-  let num_parameters = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
-  offset := !offset + 4;
-  let instructions_length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
-  offset := !offset + 4;
-  let instructions =
-    Array.init instructions_length (fun _ ->
-        let new_offset, res = Instruction.decode bytes !offset in
-        offset := new_offset;
-        res)
-  in
-  { num_locals; num_parameters; instructions }
-
-and deserialize_builtin_function bytes offset =
-  let num_parameters = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
-  offset := !offset + 4;
-  let fn_index = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
-  offset := !offset + 4;
-  { num_parameters; fn_index }
-
-and deserialize_closure bytes offset =
-  let num_free_variables = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
-  offset := !offset + 4;
-  let free_variables =
-    Int32.Map.of_list
-    @@ List.init num_free_variables (fun _ ->
-        let key = Bytes.get_int32_be bytes !offset in
+let deserialize ~function_count bytes offset =
+  let rec deserialize_value bytes offset =
+    let tag = Bytes.get_int8 bytes !offset in
+    offset := !offset + 1;
+    match tag with
+    | 0x00 -> Null
+    | 0x01 ->
+        let i = Int64.to_int @@ Bytes.get_int64_be bytes !offset in
+        offset := !offset + 8;
+        Int i
+    | 0x02 ->
+        let f = Int64.float_of_bits @@ Bytes.get_int64_be bytes !offset in
+        offset := !offset + 8;
+        Float f
+    | 0x03 -> Bool true
+    | 0x04 -> Bool false
+    | 0x05 ->
+        let c = Uchar.utf_decode_uchar @@ Bytes.get_utf_8_uchar bytes !offset in
+        offset := !offset + Uchar.utf_8_byte_length c;
+        Char c
+    | 0x06 ->
+        let length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
         offset := !offset + 4;
-        let value = deserialize bytes offset in
-        (key, value))
+        let s = Bytes.sub_string bytes !offset length in
+        offset := !offset + length;
+        String s
+    | 0x07 ->
+        let length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+        offset := !offset + 4;
+        let a = Array.init length (fun _ -> deserialize_value bytes offset) in
+        Array a
+    | 0x08 ->
+        let length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+        offset := !offset + 4;
+        let r =
+          StringMap.of_list
+          @@ List.init length (fun _ ->
+              let length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+              offset := !offset + 4;
+              let key = Bytes.sub_string bytes !offset length in
+              offset := !offset + length;
+              let value = deserialize_value bytes offset in
+              (key, value))
+        in
+        Record r
+    | 0x09 -> Function (deserialize_function bytes offset)
+    | 0x0A -> BuiltinFunction (deserialize_builtin_function bytes offset)
+    | 0x0B -> Closure (deserialize_closure bytes offset)
+    | _ -> raise @@ Invalid_argument "cannot deserialize bytecode"
+  and deserialize_function bytes offset =
+    let num_locals = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+    offset := !offset + 4;
+    let num_parameters = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+    offset := !offset + 4;
+    let instructions_length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+    offset := !offset + 4;
+    let instructions =
+      Array.init instructions_length (fun _ ->
+          let new_offset, res = Instruction.decode bytes !offset in
+          offset := new_offset;
+          res)
+    in
+    let fn_addr = !function_count in
+    let () = incr function_count in
+    { num_locals; num_parameters; instructions; fn_addr }
+  and deserialize_builtin_function bytes offset =
+    let num_parameters = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+    offset := !offset + 4;
+    let fn_index = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+    offset := !offset + 4;
+    { num_parameters; fn_index }
+  and deserialize_closure bytes offset =
+    let num_free_variables = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
+    offset := !offset + 4;
+    let free_variables =
+      Int32.Map.of_list
+      @@ List.init num_free_variables (fun _ ->
+          let key = Bytes.get_int32_be bytes !offset in
+          offset := !offset + 4;
+          let value = deserialize_value bytes offset in
+          (key, value))
+    in
+    let fn = deserialize_function bytes offset in
+    { free_variables; fn }
   in
-  let fn = deserialize_function bytes offset in
-  { free_variables; fn }
+  deserialize_value bytes offset
 ;;

@@ -78,7 +78,7 @@ let serialize t =
   Buffer.contents buf
 ;;
 
-let deserialize str =
+let deserialize ?(function_count = ref 0) str =
   let bytes = Bytes.of_string str in
   let offset = ref 0 in
   let num_constants = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
@@ -88,7 +88,7 @@ let deserialize str =
     @@ Seq.init num_constants (fun _ ->
         let key = Bytes.get_int32_be bytes !offset in
         offset := !offset + 4;
-        let value = Value.deserialize bytes offset in
+        let value = Value.deserialize ~function_count bytes offset in
         (key, value))
   in
   let instructions_length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
