@@ -1,7 +1,7 @@
 [@@@warning "-unused-value-declaration"]
 [@@@warning "-unused-constructor"]
 
-let iterations = 1000
+let iterations = 1
 
 module Time : sig
   type t
@@ -204,23 +204,23 @@ module Benchmarks : sig
 end = struct
   type action =
     | Parse
-    (* | Compile
+    | Compile
     | Deserialize
-    | Vm of string *)
+    | Vm of string
     | Interp of string
 
   let string_of_action = function
     | Parse -> "[PARSER]"
-    (* | Compile -> "[COMPILER]"
-      | Deserialize -> "[DESERIALIZATION]"
-      | Vm s -> "[VM] " ^ s *)
+    | Compile -> "[COMPILER]"
+    | Deserialize -> "[DESERIALIZATION]"
+    | Vm s -> "[VM] " ^ s
     | Interp s -> "[INTERPRETER] " ^ s
   ;;
 
   let benchmark filename action =
     let src = Pinc_lang.Source.of_file filename in
-    let ast = Pinc_lang.Parser.get_ast [ src ] in
-    (* let bytecode = Pinc_lang.Compiler.compile ast in *)
+    let ast = Pinc_lang.Parser.get_ast ~include_stdlib:false [ src ] in
+    let bytecode = Pinc_lang.Compiler.compile ast in
     let benchmarkFn =
       match action with
       | Parse -> fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Parser.get_ast [ src ])
@@ -232,10 +232,10 @@ end = struct
                     ~tag_data_provider:Pinc_lang.Helpers.noop_data_provider
                     ~root
                     ast)
-      (* | Compile -> fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Compiler.compile ast)
+      | Compile -> fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Compiler.compile ast)
       | Deserialize ->
           fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Bytecode.deserialize bytecode)
-      | Vm _root -> fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Vm.eval bytecode) *)
+      | Vm _root -> fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Vm.eval bytecode)
     in
     let name = filename ^ " " ^ string_of_action action in
     let b = Benchmark.make ~name ~f:benchmarkFn () in
@@ -245,9 +245,9 @@ end = struct
 
   let run () =
     benchmark "./benchmark/data/Benchmark.pi" Parse;
-    (* benchmark "./benchmark/data/Benchmark.pi" Compile; *)
-    (* benchmark "./benchmark/data/Benchmark.pi" Deserialize; *)
-    (* benchmark "./benchmark/data/Benchmark.pi" (Vm "Benchmark"); *)
+    benchmark "./benchmark/data/Benchmark.pi" Compile;
+    benchmark "./benchmark/data/Benchmark.pi" Deserialize;
+    benchmark "./benchmark/data/Benchmark.pi" (Vm "Benchmark");
     benchmark "./benchmark/data/Benchmark.pi" (Interp "Benchmark")
   ;;
 end

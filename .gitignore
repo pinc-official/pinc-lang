@@ -14,3 +14,7 @@ js/**/*.bc.js
 node_modules
 
 .DS_Store
+
+perf.data
+perf.data.old
+perf.sh
