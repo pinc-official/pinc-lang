@@ -111,22 +111,30 @@ end = struct
   ;;
 
   let report b =
-    print_endline (Format.sprintf "Benchmark: %s" b.name);
-    print_endline
-      (Format.sprintf
-         "Avg time/iteration: %fms"
-         (Time.print b.duration /. float_of_int b.n));
-
+    print_endline b.name;
+    print_endline (Format.sprintf "Number of iterations: .............. %d" b.n);
+    let () =
+      if b.n > 1 then
+        print_endline
+          (Format.sprintf
+             "Avg time per iteration: ............ %f ms"
+             (Time.print b.duration /. float_of_int b.n))
+    in
     let allocs_per_iteration = int_of_float (b.netAllocs /. float_of_int b.n) in
     print_endline
-      (Format.sprintf "Allocs/iteration: %s" (format_allocations allocs_per_iteration));
+      (Format.sprintf
+         "Allocs per iteration: .............. %s"
+         (format_allocations allocs_per_iteration));
 
     let bytes_per_iteration = int_of_float (b.netBytes /. float_of_int b.n) in
     print_endline
-      (Format.sprintf "Bytes/iteration: %s" (format_bytes bytes_per_iteration));
-    print_endline (Format.sprintf "Number of iterations: %d" b.n);
+      (Format.sprintf
+         "Bytes per iteration: ............... %s"
+         (format_bytes bytes_per_iteration));
     print_endline
-      (Format.sprintf "Time to complete all iterations: %fms" (Time.print b.duration));
+      (Format.sprintf
+         "Time to complete all iterations: ... %f ms"
+         (Time.print b.duration));
     print_newline ();
     ()
   ;;
@@ -213,8 +221,8 @@ end = struct
     | Parse -> "[PARSER]"
     | Compile -> "[COMPILER]"
     | Deserialize -> "[DESERIALIZATION]"
-    | Vm s -> "[VM] " ^ s
-    | Interp s -> "[INTERPRETER] " ^ s
+    | Vm _ -> "[VM]"
+    | Interp _ -> "[INTERPRETER]"
   ;;
 
   let benchmark filename action =
@@ -237,7 +245,7 @@ end = struct
           fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Bytecode.deserialize bytecode)
       | Vm _root -> fun _ -> ignore @@ Sys.opaque_identity (Pinc_lang.Vm.eval bytecode)
     in
-    let name = filename ^ " " ^ string_of_action action in
+    let name = string_of_action action in
     let b = Benchmark.make ~name ~f:benchmarkFn () in
     Benchmark.launch b;
     Benchmark.report b
