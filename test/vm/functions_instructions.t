@@ -314,3 +314,16 @@
   0026 I_Constant 0x0000000A (00000010)
   0031 I_Call 2
   0036 I_Pop
+
+# TODO:
+  $ NO_COLOR="1" print_instructions . MutuallyRecursiveFunction
+  
+  ERROR in file ./functions.pi:109:7-13
+  
+   108 │     } else {
+   109 │       is_odd(i - 1)
+       │       ^^^^^^       
+   110 │     }
+  
+  Unbound identifier `is_odd`
+  [1]
