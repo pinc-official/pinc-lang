@@ -118,8 +118,10 @@ let emit_constant t constant =
   emit t constant
 ;;
 
-let add_symbol t name =
-  let symbol_table, address = SymbolTable.define_symbol t.symbol_table ~name in
+let add_symbol t name ~is_mutable =
+  let symbol_table, address =
+    SymbolTable.define_symbol t.symbol_table ~name ~is_mutable
+  in
   ({ t with symbol_table }, address)
 ;;
 
@@ -245,7 +247,8 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       in
       let t =
         List.fold_left
-          (fun t (Pinc_Types.Ast.Lowercase_Id (name, _)) -> fst @@ add_symbol t name)
+          (fun t (Pinc_Types.Ast.Lowercase_Id (name, _)) ->
+            fst @@ add_symbol t name ~is_mutable:false)
           t
           parameters
       in
@@ -445,8 +448,8 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
 and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let (Lowercase_Id (iterator, _)) = iterator in
   (* TODO: Add scope *)
-  let t, iterator_symbol = add_symbol t iterator in
-  let t, length_symbol = add_symbol t ".length" in
+  let t, iterator_symbol = add_symbol t iterator ~is_mutable:false in
+  let t, length_symbol = add_symbol t ".length" ~is_mutable:false in
   (* Index *)
   let index_identifier =
     match index with
@@ -454,11 +457,11 @@ and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
     | None -> ".index"
   in
   let t = emit_constant t @@ Pinc_Bytecode.Value.Int 0 in
-  let t, index_symbol = add_symbol t index_identifier in
+  let t, index_symbol = add_symbol t index_identifier ~is_mutable:false in
   let t = emit_set_symbol t index_symbol in
   (* Iterable *)
   let t = compile_expr t iterable in
-  let t, iterable_symbol = add_symbol t ".iterable" in
+  let t, iterable_symbol = add_symbol t ".iterable" ~is_mutable:false in
   let t = emit_set_symbol t iterable_symbol in
   let t = emit_get_symbol t iterable_symbol in
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Length in
@@ -496,14 +499,28 @@ and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
   match stmt.statement_desc with
   | BreakStatement _ -> raise_notrace TODO
   | ContinueStatement _ -> raise_notrace TODO
-  | LetStatement (~is_optional:_, ~is_mutable:_, Lowercase_Id (name, _), expr) ->
+  | LetStatement (~is_optional:_, ~is_mutable, Lowercase_Id (name, _), expr) ->
       let t = compile_expr t expr in
-      let t, symbol = add_symbol t name in
+      let t, symbol = add_symbol t name ~is_mutable in
       let t = emit_set_symbol t symbol in
       let t = emit t @@ Pinc_Bytecode.Instruction.I_Null in
       let t = emit t Pinc_Bytecode.Instruction.I_Pop in
       t
-  | MutationStatement (_, _) -> raise_notrace TODO
+  | MutationStatement (Lowercase_Id (name, loc), expr) ->
+      let t, symbol = get_symbol ~loc t name in
+      let t =
+        match SymbolTable.Symbol.is_mutable symbol with
+        | true ->
+            let t = compile_expr t expr in
+            emit_set_symbol t symbol
+        | false ->
+            Pinc_Diagnostics.raise_error
+              loc
+              ("Trying to update a non mutable variable `" ^ name ^ "`.")
+      in
+      let t = emit t @@ Pinc_Bytecode.Instruction.I_Null in
+      let t = emit t Pinc_Bytecode.Instruction.I_Pop in
+      t
   | ExpressionStatement e ->
       let t = compile_expr t e in
       emit t Pinc_Bytecode.Instruction.I_Pop

@@ -11,12 +11,14 @@ module Symbol = struct
     name : string;
     scope : Scope.t;
     address : int;
+    is_mutable : bool;
   }
 
-  let make ~name ~scope ~address = { name; scope; address }
+  let make ~name ~scope ~address ~is_mutable = { name; scope; address; is_mutable }
   let name t = t.name
   let scope t = t.scope
   let address t = t.address
+  let is_mutable t = t.is_mutable
 end
 
 type t = {
@@ -41,13 +43,13 @@ let pop_scope t =
   | Some t -> t
 ;;
 
-let define_symbol t ~name =
+let define_symbol t ~name ~is_mutable =
   let scope =
     match t.outer with
     | None -> Scope.Global
     | Some _ -> Scope.Local
   in
-  let symbol = Symbol.make ~name ~scope ~address:t.num_bindings in
+  let symbol = Symbol.make ~name ~scope ~address:t.num_bindings ~is_mutable in
   let t' =
     {
       t with
@@ -60,8 +62,9 @@ let define_symbol t ~name =
 
 let define_free_symbol t symbol =
   let name = Symbol.name symbol in
+  let is_mutable = Symbol.is_mutable symbol in
   let free_symbol =
-    Symbol.make ~name ~scope:Free ~address:(List.length t.free_variables)
+    Symbol.make ~name ~scope:Free ~address:(List.length t.free_variables) ~is_mutable
   in
   let t' =
     {
@@ -74,7 +77,7 @@ let define_free_symbol t symbol =
 ;;
 
 let define_function_symbol t ~name =
-  let symbol = Symbol.make ~name ~scope:Function ~address:0 in
+  let symbol = Symbol.make ~name ~scope:Function ~address:0 ~is_mutable:false in
   let t' = { t with store = StringMap.add name symbol t.store } in
   (t', symbol)
 ;;

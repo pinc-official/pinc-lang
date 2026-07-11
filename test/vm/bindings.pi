@@ -23,3 +23,29 @@ component LocalBindings {
 
   f()
 }
+
+component MutableBindings {
+  let mutable a = "wrong";
+  if (true) {
+    a := "correct";
+  };
+
+  let mutable b = "wrong";
+  let get_b = fn () -> b;
+  b := "correct";
+
+  let mutable c = "correct";
+  let get_c = fn () -> c;
+  let mutable c = "wrong";
+  c := "wrong";
+
+  [a, get_b(), get_c()]
+}
+
+component WrongMutation {
+  let a = "";
+  if (true) {
+    a := "error!";
+  };
+  a
+}

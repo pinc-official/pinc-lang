@@ -7,3 +7,5 @@
   $ NO_COLOR="1" print_vm . LocalBindings
   21
 
+  $ NO_COLOR="1" print_vm . MutableBindings
+  correct correct correct
