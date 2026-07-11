@@ -8,10 +8,10 @@ let stack_size = 2048
 type t = {
   stack : Vm_stack.t;
   resolved_functions : (t -> t) Array.t Array.t;
-  globals : Value.t Int32.Map.t;
+  globals : Value.t Array.t;
   past_frames : frame list;
   current_frame : frame;
-  constants : Value.t Int32.Map.t;
+  constants : Value.t Array.t;
 }
 
 and frame = {
@@ -72,7 +72,7 @@ let make ~constants ~resolved_functions ~instructions =
             num_parameters = 0;
             instructions = [||];
           };
-        free_variables = Int32.Map.empty;
+        free_variables = [||];
       }
   in
   let main_frame = make_frame ~base_pointer:0 ~closure in
@@ -80,7 +80,7 @@ let make ~constants ~resolved_functions ~instructions =
     constants;
     resolved_functions;
     stack = Stack.make ~size:stack_size;
-    globals = Int32.Map.empty;
+    globals = Array.make 131_072 Value.Null;
     past_frames = [];
     current_frame = main_frame;
   }
@@ -702,22 +702,21 @@ let execute_unary_not t =
 ;;
 
 let rec execute_function_call num_arguments =
-  let num_arguments = Int32.to_int num_arguments in
-  fun t ->
-    let fn = Stack.nth t.stack num_arguments in
-    match fn with
-    | Value.Closure { fn = { num_parameters; _ }; _ }
-    | Value.BuiltinFunction { num_parameters; _ }
-      when not @@ Int.equal num_parameters num_arguments ->
-        raise_notrace
-        @@ Invalid_argument
-             ("Trying to call a function with the wrong number of arguments. Wanted "
-             ^ string_of_int num_parameters
-             ^ ", got "
-             ^ string_of_int num_arguments)
-    | Value.Closure closure -> call_closure t ~closure ~num_arguments
-    | Value.BuiltinFunction { fn_index; _ } -> call_builtin t ~fn_index ~num_arguments
-    | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value"
+ fun t ->
+  let fn = Stack.nth t.stack num_arguments in
+  match fn with
+  | Value.Closure { fn = { num_parameters; _ }; _ }
+  | Value.BuiltinFunction { num_parameters; _ }
+    when not @@ Int.equal num_parameters num_arguments ->
+      raise_notrace
+      @@ Invalid_argument
+           ("Trying to call a function with the wrong number of arguments. Wanted "
+           ^ string_of_int num_parameters
+           ^ ", got "
+           ^ string_of_int num_arguments)
+  | Value.Closure closure -> call_closure t ~closure ~num_arguments
+  | Value.BuiltinFunction { fn_index; _ } -> call_builtin t ~fn_index ~num_arguments
+  | _ -> raise_notrace @@ Invalid_argument "Trying to call a non function value"
 
 and call_builtin ~fn_index ~num_arguments t =
   let arguments = Stack.pop_n t.stack num_arguments in
@@ -764,7 +763,7 @@ let execute_pop t =
 
 let execute_constant addr =
  fun t ->
-  let constant = Int32.Map.find addr t.constants in
+  let constant = Array.get t.constants addr in
   Stack.push_value t.stack constant;
   call_next_instruction t
 ;;
@@ -785,49 +784,46 @@ let execute_null t =
 ;;
 
 let execute_jump addr =
-  let addr = Int32.to_int addr in
-  fun t ->
-    let t = set_instruction_pointer t addr in
-    call_current_instruction t
+ fun t ->
+  let t = set_instruction_pointer t addr in
+  call_current_instruction t
 ;;
 
 let execute_jump_if_false addr =
-  let addr = Int32.to_int addr in
-  fun t ->
-    let condition_tag = Stack.peek_tag t.stack 0 in
-    let is_false =
-      match condition_tag with
-      | Tag_Bool -> not @@ Stack.pop_bool t.stack
-      | Tag_Null ->
-          Stack.drop t.stack;
-          true
-      | _ ->
-          let condition = Stack.pop_value t.stack in
-          not @@ Value.is_true condition
-    in
-    if is_false then (
-      let t = set_instruction_pointer t addr in
-      call_current_instruction t)
-    else
-      call_next_instruction t
+ fun t ->
+  let condition_tag = Stack.peek_tag t.stack 0 in
+  let is_false =
+    match condition_tag with
+    | Tag_Bool -> not @@ Stack.pop_bool t.stack
+    | Tag_Null ->
+        Stack.drop t.stack;
+        true
+    | _ ->
+        let condition = Stack.pop_value t.stack in
+        not @@ Value.is_true condition
+  in
+  if is_false then (
+    let t = set_instruction_pointer t addr in
+    call_current_instruction t)
+  else
+    call_next_instruction t
 ;;
 
 let execute_set_global addr =
  fun t ->
   let value = Stack.pop_value t.stack in
-  let t = { t with globals = Int32.Map.add addr value t.globals } in
+  Array.set t.globals addr value;
   call_next_instruction t
 ;;
 
 let execute_get_global addr =
  fun t ->
-  let value = Int32.Map.find addr t.globals in
+  let value = Array.get t.globals addr in
   Stack.push_value t.stack value;
   call_next_instruction t
 ;;
 
-let execute_get_builtin addr =
-  let fn_index = Int32.to_int addr in
+let execute_get_builtin fn_index =
   let num_parameters = Pinc_Bytecode.Externals.expected_parameters fn_index in
   let value = Value.BuiltinFunction { num_parameters; fn_index } in
   fun t ->
@@ -837,27 +833,25 @@ let execute_get_builtin addr =
 
 let execute_get_free addr =
  fun t ->
-  let value = Int32.Map.find addr (frame_free_variables (current_frame t)) in
+  let value = Array.get (frame_free_variables (current_frame t)) addr in
   Stack.push_value t.stack value;
   call_next_instruction t
 ;;
 
 let execute_set_local addr =
-  let addr = Int32.to_int addr in
-  fun t ->
-    let frame = current_frame t in
-    let addr = frame.base_pointer + addr in
-    let () = Stack.move_from_top t.stack addr in
-    call_next_instruction t
+ fun t ->
+  let frame = current_frame t in
+  let addr = frame.base_pointer + addr in
+  let () = Stack.move_from_top t.stack addr in
+  call_next_instruction t
 ;;
 
 let execute_get_local addr =
-  let addr = Int32.to_int addr in
-  fun t ->
-    let frame = current_frame t in
-    let address = frame.base_pointer + addr in
-    let () = Stack.copy_to_top t.stack address in
-    call_next_instruction t
+ fun t ->
+  let frame = current_frame t in
+  let address = frame.base_pointer + addr in
+  let () = Stack.copy_to_top t.stack address in
+  call_next_instruction t
 ;;
 
 let execute_dynamic_array t =
@@ -866,35 +860,34 @@ let execute_dynamic_array t =
     | Tag_Int -> Stack.pop_int t.stack
     | _ -> assert false
   in
-  let elements = Array.of_list @@ Stack.pop_n t.stack length in
+  let elements = Stack.pop_n t.stack length in
   let value = Value.Array elements in
   Stack.push_value t.stack value;
   call_next_instruction t
 ;;
 
 let execute_array length =
-  let length = Int32.to_int length in
-  fun t ->
-    let elements = Array.of_list @@ Stack.pop_n t.stack length in
-    let value = Value.Array elements in
-    Stack.push_value t.stack value;
-    call_next_instruction t
+ fun t ->
+  let elements = Stack.pop_n t.stack length in
+  let value = Value.Array elements in
+  Stack.push_value t.stack value;
+  call_next_instruction t
 ;;
 
 let execute_record length =
-  let int_length = Int32.to_int length in
-  fun t ->
-    let values = Stack.pop_n t.stack int_length in
-    let keys =
-      Stack.pop_n t.stack int_length
-      |> List.map (function
-        | Value.String s -> s
-        | _ -> assert false)
-    in
-    let record = StringMap.of_list @@ List.combine keys values in
-    let value = Value.Record record in
-    Stack.push_value t.stack value;
-    call_next_instruction t
+ fun t ->
+  let values = Array.to_list @@ Stack.pop_n t.stack length in
+  let keys =
+    Stack.pop_n t.stack length
+    |> Array.to_list
+    |> List.map (function
+      | Value.String s -> s
+      | _ -> assert false)
+  in
+  let record = StringMap.of_list @@ List.combine keys values in
+  let value = Value.Record record in
+  Stack.push_value t.stack value;
+  call_next_instruction t
 ;;
 
 let execute_current_closure t =
@@ -905,22 +898,16 @@ let execute_current_closure t =
 ;;
 
 let execute_closure fn_addr num_free_variables =
-  let num_free_variables = Int32.to_int num_free_variables in
-  fun t ->
-    let fn =
-      match Int32.Map.find fn_addr t.constants with
-      | Value.Function fn -> fn
-      | _ -> assert false
-    in
-    let free_variables =
-      num_free_variables
-      |> Stack.pop_n t.stack
-      |> List.mapi (fun index value -> (Int32.of_int index, value))
-      |> Int32.Map.of_list
-    in
-    let closure = Value.Closure { fn; free_variables } in
-    Stack.push_value t.stack closure;
-    call_next_instruction t
+ fun t ->
+  let fn =
+    match Array.get t.constants fn_addr with
+    | Value.Function fn -> fn
+    | _ -> assert false
+  in
+  let free_variables = Stack.pop_n t.stack num_free_variables in
+  let closure = Value.Closure { fn; free_variables } in
+  Stack.push_value t.stack closure;
+  call_next_instruction t
 ;;
 
 let execute_return t =
@@ -1010,7 +997,7 @@ let resolve_constant_functions ~function_count constants =
         Array.set resolved_functions closure.fn.fn_addr instructions
     | Value.BuiltinFunction _ -> ()
   in
-  Int32.Map.iter (fun _ -> resolve_from_value) constants;
+  Array.iter resolve_from_value constants;
   resolved_functions
 ;;
 
@@ -1020,7 +1007,7 @@ let eval bytecode =
   let instructions =
     Array.append (resolve_instructions code.instructions) [| execute_halt |]
   in
-  let constants = code.constants in
+  let constants = Dynarray.to_array @@ code.constants in
   let resolved_functions =
     resolve_constant_functions ~function_count:!function_count constants
   in

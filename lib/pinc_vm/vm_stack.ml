@@ -239,7 +239,7 @@ let[@inline] drop t = t.stack_pointer <- t.stack_pointer - 1
 
 let[@inline] pop_n t n =
   t.stack_pointer <- t.stack_pointer - n;
-  List.init n (fun index -> get t (t.stack_pointer + index))
+  Array.init n (fun index -> get t (t.stack_pointer + index))
 ;;
 
 let[@inline] last_popped_element t = get t t.stack_pointer

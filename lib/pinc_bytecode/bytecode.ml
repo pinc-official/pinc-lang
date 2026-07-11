@@ -1,6 +1,6 @@
 type t = {
   instructions : Instruction.t Array.t;
-  constants : Value.t Int32.Map.t;
+  constants : Value.t Dynarray.t;
 }
 
 let make ~instructions ~constants = { instructions; constants }
@@ -40,33 +40,37 @@ and pp_function fmt fn =
 ;;
 
 let pp_constants fmt constants =
-  Int32.Map.iter
-    (fun key value -> Format.fprintf fmt "@[<v0>%a : %a@;@]" Int32.pp key pp_value value)
+  Dynarray.iteri
+    (fun key value ->
+      Format.fprintf fmt "@[<v0>0x%08X (%08i) : %a@;@]" key key pp_value value)
     constants
 ;;
 
 let pp fmt t =
-  if not @@ Int32.Map.is_empty t.constants then (
-    Format.fprintf Format.std_formatter "[CONSTANTS]@.";
-    pp_constants fmt t.constants;
-    Format.fprintf Format.std_formatter "@.");
-
-  if Array.length t.instructions > 0 then (
-    Format.fprintf Format.std_formatter "[INSTRUCTIONS]@.";
-    Format.fprintf fmt "@[<v0>%a@]" pp_instructions t.instructions)
+  let () =
+    match Dynarray.is_empty t.constants with
+    | true -> ()
+    | false ->
+        Format.fprintf Format.std_formatter "[CONSTANTS]@.";
+        pp_constants fmt t.constants;
+        Format.fprintf Format.std_formatter "@."
+  in
+  let () =
+    match t.instructions with
+    | [||] -> ()
+    | instructions ->
+        Format.fprintf Format.std_formatter "[INSTRUCTIONS]@.";
+        Format.fprintf fmt "@[<v0>%a@]" pp_instructions instructions
+  in
+  ()
 ;;
 
 let serialize t =
   let buf = Buffer.create 65565 in
   let constants = t.constants in
-  let num_constants = Int32.Map.cardinal constants in
+  let num_constants = Dynarray.length constants in
   Buffer.add_int32_be buf @@ Int32.of_int num_constants;
-  let () =
-    constants
-    |> Int32.Map.iter (fun key value ->
-        Buffer.add_int32_be buf key;
-        Value.serialize buf value)
-  in
+  let () = constants |> Dynarray.iter (Value.serialize buf) in
   let () = Buffer.add_int32_be buf @@ Int32.of_int (Array.length t.instructions) in
   let () =
     Array.iter
@@ -84,12 +88,7 @@ let deserialize ?(function_count = ref 0) str =
   let num_constants = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
   offset := !offset + 4;
   let constants =
-    Int32.Map.of_seq
-    @@ Seq.init num_constants (fun _ ->
-        let key = Bytes.get_int32_be bytes !offset in
-        offset := !offset + 4;
-        let value = Value.deserialize ~function_count bytes offset in
-        (key, value))
+    Dynarray.init num_constants @@ fun _ -> Value.deserialize ~function_count bytes offset
   in
   let instructions_length = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
   offset := !offset + 4;

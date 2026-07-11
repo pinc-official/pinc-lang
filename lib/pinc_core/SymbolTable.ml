@@ -10,7 +10,7 @@ module Symbol = struct
   type t = {
     name : string;
     scope : Scope.t;
-    address : Int32.t;
+    address : int;
   }
 
   let make ~name ~scope ~address = { name; scope; address }
@@ -22,17 +22,12 @@ end
 type t = {
   store : Symbol.t StringMap.t;
   free_variables : Symbol.t list;
-  num_bindings : Int32.t;
+  num_bindings : int;
   outer : t option;
 }
 
 let make () =
-  {
-    store = StringMap.empty;
-    free_variables = [];
-    num_bindings = Int32.zero;
-    outer = None;
-  }
+  { store = StringMap.empty; free_variables = []; num_bindings = 0; outer = None }
 ;;
 
 let add_scope t =
@@ -57,7 +52,7 @@ let define_symbol t ~name =
     {
       t with
       store = StringMap.add name symbol t.store;
-      num_bindings = Int32.succ t.num_bindings;
+      num_bindings = Int.succ t.num_bindings;
     }
   in
   (t', symbol)
@@ -66,7 +61,7 @@ let define_symbol t ~name =
 let define_free_symbol t symbol =
   let name = Symbol.name symbol in
   let free_symbol =
-    Symbol.make ~name ~scope:Free ~address:(Int32.of_int @@ List.length t.free_variables)
+    Symbol.make ~name ~scope:Free ~address:(List.length t.free_variables)
   in
   let t' =
     {
@@ -79,7 +74,7 @@ let define_free_symbol t symbol =
 ;;
 
 let define_function_symbol t ~name =
-  let symbol = Symbol.make ~name ~scope:Function ~address:0l in
+  let symbol = Symbol.make ~name ~scope:Function ~address:0 in
   let t' = { t with store = StringMap.add name symbol t.store } in
   (t', symbol)
 ;;
@@ -103,4 +98,4 @@ let rec resolve_symbol t ~name =
 ;;
 
 let free_variables t = t.free_variables
-let length t = Int32.to_int t.num_bindings
+let length t = t.num_bindings

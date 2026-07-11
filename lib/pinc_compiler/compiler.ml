@@ -12,7 +12,7 @@ type scope = {
 }
 
 type t = {
-  constants : Pinc_Bytecode.Value.t Int32.Map.t;
+  constants : Pinc_Bytecode.Value.t Dynarray.t;
   symbol_table : SymbolTable.t;
   scopes : scope list;
 }
@@ -98,16 +98,10 @@ let pop_scope t =
       ({ t with scopes; symbol_table = SymbolTable.pop_scope t.symbol_table }, scope)
 ;;
 
-let make_constant_id =
-  let id' = ref Int32.minus_one in
-  fun () ->
-    id' := Int32.succ !id';
-    !id'
-;;
-
-let add_constant ?(id = make_constant_id ()) t constant =
-  let constants = Int32.Map.add id constant t.constants in
-  (id, { t with constants })
+let add_constant t constant =
+  let () = Dynarray.add_last t.constants constant in
+  let id = Dynarray.length t.constants - 1 in
+  (id, t)
 ;;
 
 let emit t opcode =
@@ -220,13 +214,13 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
             ^ " parameters, but got "
             ^ string_of_int parameters)
         else
-          emit t @@ Pinc_Bytecode.Instruction.I_Get_Builtin (Int32.of_int index)
+          emit t @@ Pinc_Bytecode.Instruction.I_Get_Builtin index
       in
       t
   | UppercaseIdentifierExpression _ -> raise_notrace TODO
   | Array a ->
       let t = Array.fold_left compile_expr t a in
-      emit t @@ Pinc_Bytecode.Instruction.I_Array (Int32.of_int @@ Array.length a)
+      emit t @@ Pinc_Bytecode.Instruction.I_Array (Array.length a)
   | Record map ->
       let bindings = StringMap.bindings map in
       let keys, values = List.split bindings in
@@ -234,7 +228,7 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       let t = List.fold_left emit_key t keys in
       let emit_value t (_, expr) = compile_expr t expr in
       let t = List.fold_left emit_value t values in
-      let length = Int32.of_int @@ List.length keys in
+      let length = List.length keys in
       let t = emit t @@ Pinc_Bytecode.Instruction.I_Record length in
       t
   | Function { identifier; parameters; body } ->
@@ -289,14 +283,13 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
              { fn_addr = -1; num_locals; num_parameters; instructions }
       in
       let t =
-        emit t
-        @@ Pinc_Bytecode.Instruction.I_Closure (fn_addr, Int32.of_int num_free_variables)
+        emit t @@ Pinc_Bytecode.Instruction.I_Closure (fn_addr, num_free_variables)
       in
       t
   | FunctionCall { function_definition; arguments } ->
       let t = compile_expr t function_definition in
       let t = List.fold_left compile_expr t arguments in
-      let num_arguments = Int32.of_int @@ List.length arguments in
+      let num_arguments = List.length arguments in
       let t = emit t @@ Pinc_Bytecode.Instruction.I_Call num_arguments in
       t
   | TagExpression _ -> raise_notrace TODO
@@ -410,7 +403,7 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
 
   (* Consequent *)
   (* We create a conditional jump with a temporary address first, because we do not know where we should jump to next. *)
-  let t = emit t (Pinc_Bytecode.Instruction.I_Jump_If_False 0xFFFFFFFl) in
+  let t = emit t (Pinc_Bytecode.Instruction.I_Jump_If_False 0xFFFFFFF) in
   let jump_consequent_offset = last_instruction_offset t in
   let t = compile_expr t consequent in
   let t =
@@ -421,9 +414,9 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
   in
 
   (* Alternate *)
-  let t = emit t (Pinc_Bytecode.Instruction.I_Jump 0xFFFFFFFl) in
+  let t = emit t (Pinc_Bytecode.Instruction.I_Jump 0xFFFFFFF) in
   let jump_alternate_offset = last_instruction_offset t in
-  let jump_address = Int32.of_int (Dynarray.length @@ current_instructions t) in
+  let jump_address = Dynarray.length @@ current_instructions t in
   let t =
     replace_instruction t jump_consequent_offset
     @@ Pinc_Bytecode.Instruction.I_Jump_If_False jump_address
@@ -441,7 +434,7 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
         in
         t
   in
-  let jump_address = Int32.of_int (Dynarray.length @@ current_instructions t) in
+  let jump_address = Dynarray.length @@ current_instructions t in
   let t =
     replace_instruction t jump_alternate_offset
     @@ Pinc_Bytecode.Instruction.I_Jump jump_address
@@ -470,7 +463,7 @@ and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Length in
   let t = emit_set_symbol t length_symbol in
   (* Set Iterator *)
-  let jump_address = Int32.of_int (Dynarray.length @@ current_instructions t) in
+  let jump_address = Dynarray.length @@ current_instructions t in
   let t = emit_get_symbol t iterable_symbol in
   let t = emit_get_symbol t index_symbol in
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Index in
@@ -528,20 +521,19 @@ let compile_declaration (decl : Pinc_Types.Ast.declaration) t =
 ;;
 
 let compile (ast : Pinc_Types.Ast.t) =
-  let scope =
-    {
-      instructions = Dynarray.create ();
-      previous_instruction = empty_instruction;
-      last_instruction = empty_instruction;
-    }
+  let scopes =
+    [
+      {
+        instructions = Dynarray.create ();
+        previous_instruction = empty_instruction;
+        last_instruction = empty_instruction;
+      };
+    ]
   in
-  let t =
-    {
-      constants = Int32.Map.empty;
-      symbol_table = SymbolTable.make ();
-      scopes = [ scope ];
-    }
-  in
+  let constants = Dynarray.create () in
+  let () = Dynarray.ensure_capacity constants 2048 in
+  let symbol_table = SymbolTable.make () in
+  let t = { constants; symbol_table; scopes } in
   let t = StringMap.fold (fun _ -> compile_declaration) ast t in
 
   Pinc_Bytecode.Bytecode.serialize

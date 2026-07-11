@@ -212,6 +212,4 @@ module Int32 = struct
   ;;
 
   let pp fmt t = Format.fprintf fmt "0x%08lX (%08li)" t t
-
-  module Map = Map.Make (Int32)
 end

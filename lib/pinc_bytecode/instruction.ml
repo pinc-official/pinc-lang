@@ -1,7 +1,7 @@
 type t =
   | I_Null
   | I_Pop
-  | I_Constant of Int32.t
+  | I_Constant of int
   | I_Add
   | I_Sub
   | I_Div
@@ -20,26 +20,26 @@ type t =
   | I_Or
   | I_Minus
   | I_Not
-  | I_Jump of Int32.t
-  | I_Jump_If_False of Int32.t
-  | I_Set_Global of Int32.t
-  | I_Get_Global of Int32.t
+  | I_Jump of int
+  | I_Jump_If_False of int
+  | I_Set_Global of int
+  | I_Get_Global of int
   | I_Concat
   | I_Dynamic_Array
-  | I_Array of Int32.t
-  | I_Record of Int32.t
+  | I_Array of int
+  | I_Record of int
   | I_Index
   | I_Dot_Index
   | I_Range
   | I_Range_Inclusive
-  | I_Call of Int32.t
+  | I_Call of int
   | I_Return
-  | I_Set_Local of Int32.t
-  | I_Get_Local of Int32.t
+  | I_Set_Local of int
+  | I_Get_Local of int
   | I_Length
-  | I_Get_Builtin of Int32.t
-  | I_Closure of (Int32.t * Int32.t)
-  | I_Get_Free of Int32.t
+  | I_Get_Builtin of int
+  | I_Closure of (int * int)
+  | I_Get_Free of int
   | I_Current_Closure
   | I_Halt
   | I_Debug_Print_Stack
@@ -147,7 +147,7 @@ let decode bytes offset =
   | 0x00 -> (offset, I_Pop)
   | 0x01 ->
       let offset, addr = Int32.read_bytes bytes offset in
-      (offset, I_Constant addr)
+      (offset, I_Constant (Int32.to_int addr))
   | 0x02 -> (offset, I_Add)
   | 0x03 -> (offset, I_Sub)
   | 0x04 -> (offset, I_Div)
@@ -168,50 +168,50 @@ let decode bytes offset =
   | 0x13 -> (offset, I_Not)
   | 0x14 ->
       let offset, addr = Int32.read_bytes bytes offset in
-      (offset, I_Jump addr)
+      (offset, I_Jump (Int32.to_int addr))
   | 0x15 ->
       let offset, addr = Int32.read_bytes bytes offset in
-      (offset, I_Jump_If_False addr)
+      (offset, I_Jump_If_False (Int32.to_int addr))
   | 0x16 -> (offset, I_Null)
   | 0x17 ->
       let offset, addr = Int32.read_bytes bytes offset in
-      (offset, I_Set_Global addr)
+      (offset, I_Set_Global (Int32.to_int addr))
   | 0x18 ->
       let offset, addr = Int32.read_bytes bytes offset in
-      (offset, I_Get_Global addr)
+      (offset, I_Get_Global (Int32.to_int addr))
   | 0x19 -> (offset, I_Concat)
   | 0x1A ->
       let offset, length = Int32.read_bytes bytes offset in
-      (offset, I_Array length)
+      (offset, I_Array (Int32.to_int length))
   | 0x1B ->
       let offset, length = Int32.read_bytes bytes offset in
-      (offset, I_Record length)
+      (offset, I_Record (Int32.to_int length))
   | 0x1C -> (offset, I_Index)
   | 0x1D -> (offset, I_Dot_Index)
   | 0x1E -> (offset, I_Range)
   | 0x1F -> (offset, I_Range_Inclusive)
   | 0x20 ->
       let offset, arguments = Int32.read_bytes bytes offset in
-      (offset, I_Call arguments)
+      (offset, I_Call (Int32.to_int arguments))
   | 0x21 -> (offset, I_Return)
   | 0x22 ->
       let offset, addr = Int32.read_bytes bytes offset in
-      (offset, I_Set_Local addr)
+      (offset, I_Set_Local (Int32.to_int addr))
   | 0x23 ->
       let offset, addr = Int32.read_bytes bytes offset in
-      (offset, I_Get_Local addr)
+      (offset, I_Get_Local (Int32.to_int addr))
   | 0x24 -> (offset, I_Length)
   | 0x25 -> (offset, I_Dynamic_Array)
   | 0x26 ->
       let offset, addr = Int32.read_bytes bytes offset in
-      (offset, I_Get_Builtin addr)
+      (offset, I_Get_Builtin (Int32.to_int addr))
   | 0x27 ->
       let offset, fn_addr = Int32.read_bytes bytes offset in
       let offset, free_variables = Int32.read_bytes bytes offset in
-      (offset, I_Closure (fn_addr, free_variables))
+      (offset, I_Closure (Int32.to_int fn_addr, Int32.to_int free_variables))
   | 0x28 ->
       let offset, addr = Int32.read_bytes bytes offset in
-      (offset, I_Get_Free addr)
+      (offset, I_Get_Free (Int32.to_int addr))
   | 0x29 -> (offset, I_Current_Closure)
   | 0x2A -> (offset, I_Halt)
   | 0xFF -> (offset, I_Debug_Print_Stack)
@@ -222,7 +222,7 @@ let decode bytes offset =
 
 let pp fmt = function
   | I_Pop -> Format.fprintf fmt "I_Pop"
-  | I_Constant addr -> Format.fprintf fmt "I_Constant %a" Int32.pp addr
+  | I_Constant addr -> Format.fprintf fmt "I_Constant 0x%08X (%08i)" addr addr
   | I_Add -> Format.fprintf fmt "I_Add"
   | I_Sub -> Format.fprintf fmt "I_Sub"
   | I_Div -> Format.fprintf fmt "I_Div"
@@ -241,33 +241,33 @@ let pp fmt = function
   | I_Or -> Format.fprintf fmt "I_Or"
   | I_Minus -> Format.fprintf fmt "I_Minus"
   | I_Not -> Format.fprintf fmt "I_Not"
-  | I_Jump addr -> Format.fprintf fmt "I_Jump %a" Int32.pp addr
-  | I_Jump_If_False addr -> Format.fprintf fmt "I_Jump_If_False %a" Int32.pp addr
+  | I_Jump addr -> Format.fprintf fmt "I_Jump 0x%08X (%08i)" addr addr
+  | I_Jump_If_False addr -> Format.fprintf fmt "I_Jump_If_False 0x%08X (%08i)" addr addr
   | I_Null -> Format.fprintf fmt "I_Null"
-  | I_Get_Global addr -> Format.fprintf fmt "I_Get_Global %a" Int32.pp addr
-  | I_Set_Global addr -> Format.fprintf fmt "I_Set_Global %a" Int32.pp addr
-  | I_Array length -> Format.fprintf fmt "I_Array %i" (Int32.to_int length)
+  | I_Get_Global addr -> Format.fprintf fmt "I_Get_Global 0x%08X (%08i)" addr addr
+  | I_Set_Global addr -> Format.fprintf fmt "I_Set_Global 0x%08X (%08i)" addr addr
+  | I_Array length -> Format.fprintf fmt "I_Array %i" length
   | I_Concat -> Format.fprintf fmt "I_Concat"
-  | I_Record length -> Format.fprintf fmt "I_Record %i" (Int32.to_int length)
+  | I_Record length -> Format.fprintf fmt "I_Record %i" length
   | I_Index -> Format.fprintf fmt "I_Index"
   | I_Dot_Index -> Format.fprintf fmt "I_Dot_Index"
   | I_Range -> Format.fprintf fmt "I_Range"
   | I_Range_Inclusive -> Format.fprintf fmt "I_Range_Inclusive"
-  | I_Call arguments -> Format.fprintf fmt "I_Call %li" arguments
+  | I_Call arguments -> Format.fprintf fmt "I_Call %i" arguments
   | I_Return -> Format.fprintf fmt "I_Return"
-  | I_Get_Local addr -> Format.fprintf fmt "I_Get_Local %a" Int32.pp addr
-  | I_Set_Local addr -> Format.fprintf fmt "I_Set_Local %a" Int32.pp addr
+  | I_Get_Local addr -> Format.fprintf fmt "I_Get_Local 0x%08X (%08i)" addr addr
+  | I_Set_Local addr -> Format.fprintf fmt "I_Set_Local 0x%08X (%08i)" addr addr
   | I_Length -> Format.fprintf fmt "I_Length"
   | I_Dynamic_Array -> Format.fprintf fmt "I_Dynamic_Array"
-  | I_Get_Builtin addr -> Format.fprintf fmt "I_Get_Builtin %a" Int32.pp addr
-  | I_Get_Free addr -> Format.fprintf fmt "I_Get_Free %a" Int32.pp addr
+  | I_Get_Builtin addr -> Format.fprintf fmt "I_Get_Builtin 0x%08X (%08i)" addr addr
+  | I_Get_Free addr -> Format.fprintf fmt "I_Get_Free 0x%08X (%08i)" addr addr
   | I_Closure (fn_addr, free_variables) ->
       Format.fprintf
         fmt
-        "I_Closure %a (free variables: %i)"
-        Int32.pp
+        "I_Closure 0x%08X (%08i) (free variables: %i)"
         fn_addr
-        (Int32.to_int free_variables)
+        fn_addr
+        free_variables
   | I_Current_Closure -> Format.fprintf fmt "I_Current_Closure"
   | I_Halt -> Format.fprintf fmt "I_Halt"
   | I_Debug_Print_Stack -> Format.fprintf fmt "I_Debug_Print_Stack"
@@ -296,10 +296,10 @@ let to_bytes t =
     | I_Get_Local op
     | I_Get_Builtin op
     | I_Get_Free op
-    | I_Call op -> offset := Int32.write_bytes bytes !offset op
+    | I_Call op -> offset := Int32.write_bytes bytes !offset @@ Int32.of_int op
     | I_Closure (op1, op2) ->
-        offset := Int32.write_bytes bytes !offset op1;
-        offset := Int32.write_bytes bytes !offset op2
+        offset := Int32.write_bytes bytes !offset @@ Int32.of_int op1;
+        offset := Int32.write_bytes bytes !offset @@ Int32.of_int op2
     | I_Pop
     | I_Add
     | I_Sub

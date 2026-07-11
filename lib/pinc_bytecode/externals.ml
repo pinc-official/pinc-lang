@@ -2,8 +2,8 @@ module PincArray = struct
   let length ~arguments =
     let array =
       match arguments with
-      | [ Value.Array a ] -> a
-      | [ _ ] ->
+      | [| Value.Array a |] -> a
+      | [| _ |] ->
           raise_notrace
             (Invalid_argument
                "The argument given to the Array.length function is not of type array")
@@ -22,8 +22,8 @@ module PincString = struct
   let length ~arguments =
     let string =
       match arguments with
-      | [ Value.String a ] -> a
-      | [ _ ] ->
+      | [| Value.String a |] -> a
+      | [| _ |] ->
           raise_notrace
             (Invalid_argument
                "The argument given to the String.length function is not of type string")
@@ -40,17 +40,17 @@ module PincString = struct
   let sub ~arguments =
     let string, offset, length =
       match arguments with
-      | [ Value.String string; Value.Int offset; Value.Int length ] ->
+      | [| Value.String string; Value.Int offset; Value.Int length |] ->
           (string, offset, length)
-      | [ _; Value.Int _; Value.Int _ ] ->
+      | [| _; Value.Int _; Value.Int _ |] ->
           raise_notrace
             (Invalid_argument
                "The first argument given to `String.sub` is not of type string")
-      | [ Value.String _; _; Value.Int _ ] ->
+      | [| Value.String _; _; Value.Int _ |] ->
           raise_notrace
             (Invalid_argument
                "The second argument (offset) given to `String.sub` is not of type int")
-      | [ Value.String _; Value.Int _; _ ] ->
+      | [| Value.String _; Value.Int _; _ |] ->
           raise_notrace
             (Invalid_argument
                "The third argument (length) given to `String.sub` is not of type int")

@@ -25,7 +25,7 @@ and compiled_function = {
 
 and closure = {
   fn : compiled_function;
-  free_variables : t Int32.Map.t;
+  free_variables : t Array.t;
 }
 
 let pp fmt = function
@@ -106,7 +106,7 @@ let rec equal a b =
   | Record a, Record b -> StringMap.equal equal a b
   | Function a, Function b -> equal_function a b
   | Closure a, Closure b ->
-      Int32.Map.equal equal a.free_variables b.free_variables && equal_function a.fn b.fn
+      Array.equal equal a.free_variables b.free_variables && equal_function a.fn b.fn
   | BuiltinFunction a, BuiltinFunction b ->
       Int.equal a.num_parameters b.num_parameters && Int.equal a.fn_index b.fn_index
   | _ -> false
@@ -199,14 +199,10 @@ and serialize_builtin_function buf f =
 and serialize_closure buf c =
   let fn = c.fn in
   let free_variables = c.free_variables in
-  let num_free_variables = Int32.Map.cardinal free_variables in
+  let num_free_variables = Array.length free_variables in
   Buffer.add_int8 buf 0x0B;
   Buffer.add_int32_be buf @@ Int32.of_int num_free_variables;
-  Int32.Map.iter
-    (fun key value ->
-      Buffer.add_int32_be buf key;
-      serialize buf value)
-    free_variables;
+  Array.iter (serialize buf) free_variables;
   serialize_function buf fn
 ;;
 
@@ -285,12 +281,7 @@ let deserialize ~function_count bytes offset =
     let num_free_variables = Int32.to_int @@ Bytes.get_int32_be bytes !offset in
     offset := !offset + 4;
     let free_variables =
-      Int32.Map.of_list
-      @@ List.init num_free_variables (fun _ ->
-          let key = Bytes.get_int32_be bytes !offset in
-          offset := !offset + 4;
-          let value = deserialize_value bytes offset in
-          (key, value))
+      Array.init num_free_variables @@ fun _ -> deserialize_value bytes offset
     in
     let fn = deserialize_function bytes offset in
     { free_variables; fn }
