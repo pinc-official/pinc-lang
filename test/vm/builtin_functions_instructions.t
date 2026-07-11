@@ -16,6 +16,7 @@
   0x00000001 (00000001) : 2
   0x00000002 (00000002) : 3
   0x00000003 (00000003) : 4
+  0x00000004 (00000004) : 4
   
   [INSTRUCTIONS]
   0000 I_Get_Builtin 0x00000000 (00000000)
@@ -27,9 +28,10 @@
   0022 I_Constant 0x00000001 (00000001)
   0027 I_Constant 0x00000002 (00000002)
   0032 I_Constant 0x00000003 (00000003)
-  0037 I_Array 4
-  0042 I_Call 1
-  0047 I_Pop
+  0037 I_Constant 0x00000004 (00000004)
+  0042 I_Array
+  0043 I_Call 1
+  0048 I_Pop
 
   $ NO_COLOR="1" print_instructions . BuiltinFunctionStringLength
   [CONSTANTS]

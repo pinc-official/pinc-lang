@@ -854,20 +854,12 @@ let execute_get_local addr =
   call_next_instruction t
 ;;
 
-let execute_dynamic_array t =
+let execute_array t =
   let length =
     match Stack.peek_tag t.stack 0 with
     | Tag_Int -> Stack.pop_int t.stack
     | _ -> assert false
   in
-  let elements = Stack.pop_n t.stack length in
-  let value = Value.Array elements in
-  Stack.push_value t.stack value;
-  call_next_instruction t
-;;
-
-let execute_array length =
- fun t ->
   let elements = Stack.pop_n t.stack length in
   let value = Value.Array elements in
   Stack.push_value t.stack value;
@@ -938,7 +930,6 @@ let resolve_instructions instructions =
       | Instruction.I_Get_Free addr -> execute_get_free addr
       | Instruction.I_Range -> execute_binary_range ~inclusive:false
       | Instruction.I_Range_Inclusive -> execute_binary_range ~inclusive:true
-      | Instruction.I_Array length -> execute_array length
       | Instruction.I_Record length -> execute_record length
       | Instruction.I_Closure (fn_addr, num_free_variables) ->
           execute_closure fn_addr num_free_variables
@@ -968,7 +959,7 @@ let resolve_instructions instructions =
       | Instruction.I_Minus -> execute_unary_minus
       | Instruction.I_Not -> execute_unary_not
       | Instruction.I_Null -> execute_null
-      | Instruction.I_Dynamic_Array -> execute_dynamic_array
+      | Instruction.I_Array -> execute_array
       | Instruction.I_Return -> execute_return
       | Instruction.I_Length -> execute_length
       | Instruction.I_Current_Closure -> execute_current_closure

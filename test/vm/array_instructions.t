@@ -1,7 +1,11 @@
   $ NO_COLOR="1" print_instructions . EmptyArray
+  [CONSTANTS]
+  0x00000000 (00000000) : 0
+  
   [INSTRUCTIONS]
-  0000 I_Array 0
-  0005 I_Pop
+  0000 I_Constant 0x00000000 (00000000)
+  0005 I_Array
+  0006 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Array
@@ -11,6 +15,7 @@
   0x00000002 (00000002) : 3
   0x00000003 (00000003) : 4
   0x00000004 (00000004) : 5
+  0x00000005 (00000005) : 5
   
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
@@ -18,8 +23,9 @@
   0010 I_Constant 0x00000002 (00000002)
   0015 I_Constant 0x00000003 (00000003)
   0020 I_Constant 0x00000004 (00000004)
-  0025 I_Array 5
-  0030 I_Pop
+  0025 I_Constant 0x00000005 (00000005)
+  0030 I_Array
+  0031 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . ExpressionArray
@@ -32,6 +38,7 @@
   0x00000005 (00000005) : 6
   0x00000006 (00000006) : 7
   0x00000007 (00000007) : 8
+  0x00000008 (00000008) : 4
   
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
@@ -46,8 +53,9 @@
   0033 I_Constant 0x00000006 (00000006)
   0038 I_Constant 0x00000007 (00000007)
   0043 I_Div
-  0044 I_Array 4
-  0049 I_Pop
+  0044 I_Constant 0x00000008 (00000008)
+  0049 I_Array
+  0050 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . ArrayAccess
@@ -60,8 +68,9 @@
   0x00000005 (00000005) : 6
   0x00000006 (00000006) : 7
   0x00000007 (00000007) : 8
-  0x00000008 (00000008) : 3
-  0x00000009 (00000009) : 2
+  0x00000008 (00000008) : 4
+  0x00000009 (00000009) : 3
+  0x0000000A (00000010) : 2
   
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
@@ -76,12 +85,13 @@
   0033 I_Constant 0x00000006 (00000006)
   0038 I_Constant 0x00000007 (00000007)
   0043 I_Div
-  0044 I_Array 4
-  0049 I_Constant 0x00000008 (00000008)
-  0054 I_Constant 0x00000009 (00000009)
-  0059 I_Sub
-  0060 I_Index
-  0061 I_Pop
+  0044 I_Constant 0x00000008 (00000008)
+  0049 I_Array
+  0050 I_Constant 0x00000009 (00000009)
+  0055 I_Constant 0x0000000A (00000010)
+  0060 I_Sub
+  0061 I_Index
+  0062 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . ArrayRange

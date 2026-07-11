@@ -220,7 +220,8 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | UppercaseIdentifierExpression _ -> raise_notrace TODO
   | Array a ->
       let t = Array.fold_left compile_expr t a in
-      emit t @@ Pinc_Bytecode.Instruction.I_Array (Array.length a)
+      let t = emit_constant t @@ Pinc_Bytecode.Value.Int (Array.length a) in
+      emit t @@ Pinc_Bytecode.Instruction.I_Array
   | Record map ->
       let bindings = StringMap.bindings map in
       let keys, values = List.split bindings in
@@ -488,7 +489,7 @@ and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Jump_If_False jump_address in
   (* Create array with values left on stack *)
   let t = emit_get_symbol t length_symbol in
-  let t = emit t @@ Pinc_Bytecode.Instruction.I_Dynamic_Array in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Array in
   t
 
 and compile_stmt t (stmt : Pinc_Types.Ast.statement) =

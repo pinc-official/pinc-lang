@@ -48,6 +48,7 @@
   0x00000010 (00000016) : 6
   0x00000011 (00000017) : 7
   0x00000012 (00000018) : 8
+  0x00000013 (00000019) : 8
   
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
@@ -69,11 +70,12 @@
   0080 I_Constant 0x00000010 (00000016)
   0085 I_Constant 0x00000011 (00000017)
   0090 I_Constant 0x00000012 (00000018)
-  0095 I_Array 8
-  0100 I_Record 3
-  0105 I_True
-  0106 I_Record 4
-  0111 I_Pop
+  0095 I_Constant 0x00000013 (00000019)
+  0100 I_Array
+  0101 I_Record 3
+  0106 I_True
+  0107 I_Record 4
+  0112 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . RecordNested
@@ -97,6 +99,7 @@
   0x00000010 (00000016) : 6
   0x00000011 (00000017) : 7
   0x00000012 (00000018) : 8
+  0x00000013 (00000019) : 8
   
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
@@ -118,11 +121,12 @@
   0080 I_Constant 0x00000010 (00000016)
   0085 I_Constant 0x00000011 (00000017)
   0090 I_Constant 0x00000012 (00000018)
-  0095 I_Array 8
-  0100 I_Record 3
-  0105 I_True
-  0106 I_Record 4
-  0111 I_Pop
+  0095 I_Constant 0x00000013 (00000019)
+  0100 I_Array
+  0101 I_Record 3
+  0106 I_True
+  0107 I_Record 4
+  0112 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . RecordAccessDot
