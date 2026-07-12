@@ -492,18 +492,29 @@ and transform_expression env (exression : Parsetree.expression) =
 and transform_break_stmt env s = (env, BreakStatement s)
 and transform_continue_stmt env s = (env, ContinueStatement s)
 
-and transform_let env ~is_optional ~is_mutable id expr =
+and transform_let_payload env payload =
+  let ~is_optional, ~is_mutable, id, expr = payload in
   let requirement =
     if is_optional then
       `Optional
     else
       `Required
   in
+  let env, id' = transform_lowercase_id env id in
   let env = { env with Env.current_identifier = Some (requirement, id) } in
-  let env, id = transform_lowercase_id env id in
   let env, expr = transform_expression env expr in
   let env = { env with Env.current_identifier = None } in
-  (env, LetStatement (~is_optional, ~is_mutable, id, expr))
+  (env, (~is_optional, ~is_mutable, id', expr))
+
+and transform_let env ~is_optional ~is_mutable id expr =
+  let env, payload = transform_let_payload env (~is_optional, ~is_mutable, id, expr) in
+  (env, LetStatement payload)
+
+and transform_let_group env let_definitions =
+  let env, let_definitions =
+    List.fold_map ~init:env ~f:transform_let_payload let_definitions
+  in
+  (env, LetGroupStatement let_definitions)
 
 and transform_mutation env id expr =
   let env, id = transform_lowercase_id env id in
@@ -521,6 +532,7 @@ and transform_statement env (statement : Parsetree.statement) =
     | P_ContinueStatement s -> transform_continue_stmt env s
     | P_LetStatement (~is_optional, ~is_mutable, id, expr) ->
         transform_let env ~is_optional ~is_mutable id expr
+    | P_LetGroupStatement let_definitions -> transform_let_group env let_definitions
     | P_MutationStatement (id, expr) -> transform_mutation env id expr
     | P_ExpressionStatement s -> transform_expression_stmt env s
   in

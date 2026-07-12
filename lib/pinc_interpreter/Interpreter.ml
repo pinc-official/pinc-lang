@@ -75,6 +75,7 @@ and eval_statement ~state statement =
   match statement.Ast.statement_desc with
   | Ast.LetStatement (~is_optional, ~is_mutable, Lowercase_Id ident, expression) ->
       eval_let ~state ~ident ~is_mutable ~is_optional expression
+  | Ast.LetGroupStatement let_definitions -> eval_let_group ~state let_definitions
   | Ast.MutationStatement (Lowercase_Id ident, expression) ->
       eval_mutation ~state ~ident expression
   | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
@@ -933,6 +934,13 @@ and eval_let ~state ~ident ~is_mutable ~is_optional expression =
       state
       |> State.add_value_to_scope ~ident ~value ~is_mutable ~is_optional
       |> State.add_output ~output:(Helpers.Value.null ~loc:expression.expression_loc ())
+
+and eval_let_group ~state let_definitions =
+  List.fold_left
+    (fun state (~is_optional, ~is_mutable, Ast.Lowercase_Id ident, expression) ->
+      eval_let ~state ~ident ~is_mutable ~is_optional expression)
+    state
+    let_definitions
 
 and eval_mutation ~state ~ident expression =
   let ident, ident_location = ident in

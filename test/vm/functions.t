@@ -27,15 +27,5 @@
   $ NO_COLOR="1" print_vm . RecursiveFunction
   154
 
-# TODO:
-  $ NO_COLOR="1" print_instructions . MutuallyRecursiveFunction
-  
-  ERROR in file ./functions.pi:109:7-13
-  
-   108 │     } else {
-   109 │       is_odd(i - 1)
-       │       ^^^^^^       
-   110 │     }
-  
-  Unbound identifier `is_odd`
-  [1]
+  $ NO_COLOR="1" print_vm . MutuallyRecursiveFunction
+  true

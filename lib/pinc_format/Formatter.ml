@@ -465,7 +465,7 @@ and format_continue_stmt i =
   in
   string "continue" ^^ num
 
-and format_let ~is_optional ~is_mutable id expr =
+and format_let_body ~is_optional ~is_mutable id expr =
   let maybe_mutable =
     if is_mutable then
       space ^^ string "mutable"
@@ -478,8 +478,7 @@ and format_let ~is_optional ~is_mutable id expr =
     else
       empty
   in
-  string "let"
-  ^^ maybe_mutable
+  maybe_mutable
   ^^ space
   ^^ format_lowercase_id id
   ^^ maybe_optional
@@ -487,6 +486,19 @@ and format_let ~is_optional ~is_mutable id expr =
   ^^ equals
   ^^ space
   ^^ format_expression expr
+
+and format_let ~is_optional ~is_mutable id expr =
+  string "let" ^^ format_let_body ~is_optional ~is_mutable id expr
+
+and format_let_group let_definitions =
+  let let_bodies =
+    separate (space ^^ string "and")
+    @@ List.map
+         (fun (~is_optional, ~is_mutable, id, expr) ->
+           format_let_body ~is_optional ~is_mutable id expr)
+         let_definitions
+  in
+  string "let" ^^ let_bodies
 
 and format_mutation id expr =
   format_lowercase_id id ^^ space ^^ colon ^^ equals ^^ space ^^ format_expression expr
@@ -501,6 +513,7 @@ and format_statement ~last (statement : Parsetree.statement) =
     | P_ContinueStatement s -> format_continue_stmt s ^^ semi
     | P_LetStatement (~is_optional, ~is_mutable, id, expr) ->
         format_let ~is_optional ~is_mutable id expr ^^ semi
+    | P_LetGroupStatement let_definitions -> format_let_group let_definitions ^^ semi
     | P_MutationStatement (id, expr) -> format_mutation id expr ^^ semi
     | P_ExpressionStatement s when last -> format_expression_stmt s
     | P_ExpressionStatement s -> format_expression_stmt s ^^ semi

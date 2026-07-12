@@ -124,6 +124,8 @@ and statement_desc =
   | P_ContinueStatement of int
   | P_LetStatement of
       (is_optional:bool * is_mutable:bool * lowercase_identifier * expression)
+  | P_LetGroupStatement of
+      (is_optional:bool * is_mutable:bool * lowercase_identifier * expression) list
   | P_MutationStatement of lowercase_identifier * expression
   | P_ExpressionStatement of expression
 

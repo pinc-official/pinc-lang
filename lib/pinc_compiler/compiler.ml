@@ -495,17 +495,39 @@ and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Array in
   t
 
+and compile_let_stmt ~predefined t definition =
+  let ~is_optional:_, ~is_mutable, Pinc_Types.Ast.Lowercase_Id (name, _), body =
+    definition
+  in
+  let t = compile_expr t body in
+  let t, symbol =
+    match List.assoc_opt name predefined with
+    | None -> define_symbol t name ~is_mutable
+    | Some symbol -> (t, symbol)
+  in
+  let t = emit_set_symbol t symbol in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Null in
+  let t = emit t Pinc_Bytecode.Instruction.I_Pop in
+  t
+
 and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
   match stmt.statement_desc with
   | BreakStatement _ -> raise_notrace TODO
   | ContinueStatement _ -> raise_notrace TODO
-  | LetStatement (~is_optional:_, ~is_mutable, Lowercase_Id (name, _), expr) ->
-      let t = compile_expr t expr in
-      let t, symbol = define_symbol t name ~is_mutable in
-      let t = emit_set_symbol t symbol in
-      let t = emit t @@ Pinc_Bytecode.Instruction.I_Null in
-      let t = emit t Pinc_Bytecode.Instruction.I_Pop in
-      t
+  | LetGroupStatement let_definitions ->
+      let t, predefined =
+        List.fold_left
+          (fun (t, symbols) definition ->
+            let ~is_optional:_, ~is_mutable, Pinc_Types.Ast.Lowercase_Id (name, _), _ =
+              definition
+            in
+            let t, symbol = define_symbol t name ~is_mutable in
+            (t, (name, symbol) :: symbols))
+          (t, [])
+          let_definitions
+      in
+      List.fold_left (compile_let_stmt ~predefined) t let_definitions
+  | LetStatement definition -> compile_let_stmt ~predefined:[] t definition
   | MutationStatement (Lowercase_Id (name, loc), expr) ->
       let t, symbol = get_symbol ~loc t name in
       let t =

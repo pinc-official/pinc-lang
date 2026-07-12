@@ -315,15 +315,52 @@
   0031 I_Call 2
   0036 I_Pop
 
-# TODO:
   $ NO_COLOR="1" print_instructions . MutuallyRecursiveFunction
+  [CONSTANTS]
+  0x00000000 (00000000) : 0
+  0x00000001 (00000001) : 1
+  0x00000002 (00000002) : <FUNCTION> [
+    0000 I_Get_Local 0x00000000 (00000000)
+    0005 I_Constant 0x00000000 (00000000)
+    0010 I_Equal
+    0011 I_Jump_If_False 0x00000006 (00000006)
+    0016 I_True
+    0017 I_Jump 0x0000000B (00000011)
+    0022 I_Get_Global 0x00000001 (00000001)
+    0027 I_Get_Local 0x00000000 (00000000)
+    0032 I_Constant 0x00000001 (00000001)
+    0037 I_Sub
+    0038 I_Call 1
+    0043 I_Return
+  ]
+  0x00000003 (00000003) : 0
+  0x00000004 (00000004) : 1
+  0x00000005 (00000005) : <FUNCTION> [
+    0000 I_Get_Local 0x00000000 (00000000)
+    0005 I_Constant 0x00000003 (00000003)
+    0010 I_Equal
+    0011 I_Jump_If_False 0x00000006 (00000006)
+    0016 I_False
+    0017 I_Jump 0x0000000B (00000011)
+    0022 I_Get_Global 0x00000000 (00000000)
+    0027 I_Get_Local 0x00000000 (00000000)
+    0032 I_Constant 0x00000004 (00000004)
+    0037 I_Sub
+    0038 I_Call 1
+    0043 I_Return
+  ]
+  0x00000006 (00000006) : 2
   
-  ERROR in file ./functions.pi:109:7-13
-  
-   108 │     } else {
-   109 │       is_odd(i - 1)
-       │       ^^^^^^       
-   110 │     }
-  
-  Unbound identifier `is_odd`
-  [1]
+  [INSTRUCTIONS]
+  0000 I_Closure 0x00000002 (00000002) (free variables: 0)
+  0009 I_Set_Global 0x00000000 (00000000)
+  0014 I_Null
+  0015 I_Pop
+  0016 I_Closure 0x00000005 (00000005) (free variables: 0)
+  0025 I_Set_Global 0x00000001 (00000001)
+  0030 I_Null
+  0031 I_Pop
+  0032 I_Get_Global 0x00000000 (00000000)
+  0037 I_Constant 0x00000006 (00000006)
+  0042 I_Call 1
+  0047 I_Pop

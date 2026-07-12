@@ -50,6 +50,7 @@ type token_type =
   | PLUSPLUS
   | KEYWORD_FN
   | KEYWORD_LET
+  | KEYWORD_AND
   | KEYWORD_MUTABLE
   | KEYWORD_TRUE
   | KEYWORD_FALSE
@@ -140,6 +141,7 @@ let to_string = function
   | PERCENT -> "%"
   | KEYWORD_FN -> "fn"
   | KEYWORD_LET -> "let"
+  | KEYWORD_AND -> "and"
   | KEYWORD_MUTABLE -> "mutable"
   | KEYWORD_IF -> "if"
   | KEYWORD_ELSE -> "else"
@@ -173,6 +175,7 @@ let to_string = function
 let is_keyword = function
   | KEYWORD_FN
   | KEYWORD_LET
+  | KEYWORD_AND
   | KEYWORD_MUTABLE
   | KEYWORD_TRUE
   | KEYWORD_FALSE
@@ -253,6 +256,7 @@ let is_keyword = function
 let keyword_of_string = function
   | "fn" -> Some KEYWORD_FN
   | "let" -> Some KEYWORD_LET
+  | "and" -> Some KEYWORD_AND
   | "mutable" -> Some KEYWORD_MUTABLE
   | "true" -> Some KEYWORD_TRUE
   | "false" -> Some KEYWORD_FALSE

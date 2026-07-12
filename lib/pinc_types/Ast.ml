@@ -119,6 +119,8 @@ and statement_desc =
   | ContinueStatement of int
   | LetStatement of
       (is_optional:bool * is_mutable:bool * lowercase_identifier * expression)
+  | LetGroupStatement of
+      (is_optional:bool * is_mutable:bool * lowercase_identifier * expression) list
   | MutationStatement of lowercase_identifier * expression
   | ExpressionStatement of expression
 

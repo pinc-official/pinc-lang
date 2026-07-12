@@ -74,3 +74,15 @@
   
   Tag keys may only contain ASCII characters (a-Z), numbers (0-9) and underscores (_).
   [1]
+
+  $ NO_COLOR="1" print ./let_and_without_function.pi Component
+  
+  ERROR in file ./let_and_without_function.pi:2:11-12
+  
+     1 │ component Component {
+     2 │   let a = 1 and b = 2;
+       │           ^           
+     3 │ }
+  
+  All expressions in `let ... and` declarations must be function definitions
+  [1]

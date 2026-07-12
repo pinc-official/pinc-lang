@@ -24,6 +24,18 @@ let next t =
   t.token <- token
 ;;
 
+let current_non_annotation_token t =
+  let rec loop token =
+    match token.Token.typ with
+    | Token.COMMENT _ | Token.BLANKLINE ->
+        let token = Lexer.scan t.lexer in
+        Queue.add token t.next;
+        loop token
+    | t -> t
+  in
+  loop t.token
+;;
+
 let peek t =
   let token =
     match Queue.peek_opt t.next with
@@ -454,24 +466,55 @@ module Rules = struct
           in
           Some (Parsetree.P_ContinueStatement num_loops)
       (* PARSING LET STATEMENT *)
-      | Token.KEYWORD_LET -> (
-          let start_token = t.token in
-          next t;
-          let is_mutable = t |> optional Token.KEYWORD_MUTABLE in
-          let identifier = Helpers.expect_identifier ~typ:`Lower t in
-          let is_optional = t |> optional Token.QUESTIONMARK in
-          t |> expect Token.EQUAL;
-          let end_token = t.token in
-          let expression = parse_expression t in
-          match expression with
-          | Some expression ->
-              Some
-                (Parsetree.P_LetStatement
-                   (~is_optional, ~is_mutable, P_Lowercase_Id identifier, expression))
-          | None ->
-              Diagnostics.raise_error
-                (Location.merge ~s:start_token.location ~e:end_token.location ())
-                "Expected expression as right hand side of let declaration")
+      | Token.KEYWORD_LET ->
+          let rec parse_let_definitions ~expect_function acc t =
+            let start_token = t.token in
+            next t;
+            let is_mutable = t |> optional Token.KEYWORD_MUTABLE in
+            let identifier = Helpers.expect_identifier ~typ:`Lower t in
+            let is_optional = t |> optional Token.QUESTIONMARK in
+            t |> expect Token.EQUAL;
+            let end_token = t.token in
+            let expression =
+              match parse_expression t with
+              | Some expression -> expression
+              | None ->
+                  Diagnostics.raise_error
+                    (Location.merge ~s:start_token.location ~e:end_token.location ())
+                    "Expected expression as right hand side of let declaration"
+            in
+            let let_definition =
+              (~is_optional, ~is_mutable, Parsetree.P_Lowercase_Id identifier, expression)
+            in
+            let is_function =
+              match expression.expression_desc with
+              | Parsetree.P_Function _ -> true
+              | _ when expect_function ->
+                  Diagnostics.raise_error
+                    expression.expression_loc
+                    "All expressions in `let ... and` declarations must be function \
+                     definitions"
+              | _ -> false
+            in
+            match current_non_annotation_token t with
+            | Token.KEYWORD_AND when is_function ->
+                let () = ignore @@ parse_annotations t in
+                parse_let_definitions ~expect_function:true (let_definition :: acc) t
+            | Token.KEYWORD_AND ->
+                Diagnostics.raise_error
+                  expression.expression_loc
+                  "All expressions in `let ... and` declarations must be function \
+                   definitions"
+            | _ -> List.rev (let_definition :: acc)
+          in
+          let let_definitions = parse_let_definitions ~expect_function:false [] t in
+          let stmt =
+            match let_definitions with
+            | [] -> assert false
+            | [ definition ] -> Parsetree.P_LetStatement definition
+            | definitions -> Parsetree.P_LetGroupStatement definitions
+          in
+          Some stmt
       (* PARSING MUTATION STATEMENT *)
       | Token.IDENT_LOWER identifier when peek t = Token.COLON_EQUAL ->
           let start_token = t.token in
