@@ -9,6 +9,9 @@ type frame = {
   instructions : Pinc_Bytecode.Instruction.t Dynarray.t;
   last_instruction : emitted_instruction;
   previous_instruction : emitted_instruction;
+  loop_level : int;
+  break_instructions : (offset:int * n:int) list;
+  continue_instructions : (offset:int * n:int) list;
 }
 
 type t = {
@@ -76,12 +79,85 @@ let match_last_instruction t check =
   frame.last_instruction.instruction == check
 ;;
 
+let enter_loop t =
+  match t.frames with
+  | [] -> assert false
+  | frame :: frames ->
+      let frame' = { frame with loop_level = succ frame.loop_level } in
+      { t with frames = frame' :: frames }
+;;
+
+let exit_loop t =
+  match t.frames with
+  | [] -> assert false
+  | frame :: frames ->
+      let frame' = { frame with loop_level = pred frame.loop_level } in
+      { t with frames = frame' :: frames }
+;;
+
+let loop_level t =
+  match t.frames with
+  | [] -> assert false
+  | frame :: _ -> frame.loop_level
+;;
+
+let add_break_instruction t ~offset ~n =
+  match t.frames with
+  | [] -> assert false
+  | frame :: frames ->
+      let frame' =
+        { frame with break_instructions = (~offset, ~n) :: frame.break_instructions }
+      in
+      { t with frames = frame' :: frames }
+;;
+
+let add_continue_instruction t ~offset ~n =
+  match t.frames with
+  | [] -> assert false
+  | frame :: frames ->
+      let frame' =
+        {
+          frame with
+          continue_instructions = (~offset, ~n) :: frame.continue_instructions;
+        }
+      in
+      { t with frames = frame' :: frames }
+;;
+
+let fixup_continue_break_address t ~continue_address ~break_address =
+  let loop_level = loop_level t in
+  let update_instruction frame address instruction =
+    let ~offset, ~n = instruction in
+    if loop_level = n then (
+      Dynarray.set frame.instructions offset (Pinc_Bytecode.Instruction.I_Jump address);
+      None)
+    else
+      Some (~offset, ~n)
+  in
+  match t.frames with
+  | [] -> assert false
+  | frame :: frames ->
+      let continue_instructions =
+        let fn = update_instruction frame continue_address in
+        List.filter_map fn frame.continue_instructions
+      in
+      let break_instructions =
+        let fn = update_instruction frame break_address in
+        List.filter_map fn frame.break_instructions
+      in
+      let frame' = { frame with continue_instructions; break_instructions } in
+      { t with frames = frame' :: frames }
+;;
+
 let add_frame t =
   let frame =
     {
       instructions = Dynarray.create ();
       previous_instruction = empty_instruction;
       last_instruction = empty_instruction;
+      loop_level = 0;
+      break_instructions = [];
+      continue_instructions = [];
     }
   in
   {
@@ -160,7 +236,36 @@ let emit_set_symbol t symbol =
   t
 ;;
 
-let compile_string_template t s =
+let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
+  let loc = expr.expression_loc in
+  match expr.expression_desc with
+  | Void -> t
+  | String s -> compile_string_template t s
+  | Char c -> compile_char t c
+  | Int i -> compile_int t i
+  | Float f -> compile_float t f
+  | Bool b -> compile_bool t b
+  | LowercaseIdentifierExpression name -> compile_lowercase_identifier t name ~loc
+  | ExternalFunction { identifier = _; parameters; name } ->
+      compile_external_function t ~loc ~name ~parameters
+  | UppercaseIdentifierExpression _ -> raise_notrace TODO
+  | Array a -> compile_array t a
+  | Record map -> compile_record t map
+  | Function { identifier; parameters; body } ->
+      compile_function t ~identifier ~parameters ~body
+  | FunctionCall { function_definition; arguments } ->
+      compile_function_call t ~fn:function_definition ~arguments
+  | TagExpression _ -> raise_notrace TODO
+  | ForInExpression { index; iterator; reverse; iterable; body } ->
+      compile_loop_expression t ~index ~iterator ~reverse ~iterable ~body
+  | TemplateExpression node -> compile_template_node t node
+  | BlockExpression stmts -> compile_block_expression t stmts
+  | ConditionalExpression { condition; consequent; alternate } ->
+      compile_conditional_expression t ~condition ~consequent ~alternate
+  | UnaryExpression (op, right) -> compile_unary_expression t ~op ~right
+  | BinaryExpression (left, op, right) -> compile_binary_expression t ~left ~op ~right
+
+and compile_string_template t s =
   match s with
   | [] -> emit_constant t (Pinc_Bytecode.Value.String "")
   | s ->
@@ -183,141 +288,133 @@ let compile_string_template t s =
              (t, succ index))
            (t, 0)
            s
-;;
 
-let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
-  match expr.expression_desc with
-  | Void -> t
-  | String s -> compile_string_template t s
-  | Char c -> emit_constant t (Pinc_Bytecode.Value.Char c)
-  | Int i -> emit_constant t (Pinc_Bytecode.Value.Int i)
-  | Float f -> emit_constant t (Pinc_Bytecode.Value.Float f)
-  | Bool true -> emit t Pinc_Bytecode.Instruction.I_True
-  | Bool false -> emit t Pinc_Bytecode.Instruction.I_False
-  | LowercaseIdentifierExpression name ->
-      let t, symbol = get_symbol t ~loc:expr.expression_loc name in
-      emit_get_symbol t symbol
-  | ExternalFunction { identifier = _; parameters; name } ->
-      let index =
-        Pinc_Bytecode.Externals.find_index name |> function
-        | None ->
-            Pinc_Diagnostics.raise_error
-              expr.expression_loc
-              ("Unbound external function `" ^ name ^ "`")
-        | Some i -> i
-      in
-      let expected_parameters = Pinc_Bytecode.Externals.expected_parameters index in
-      let parameters = List.length parameters in
-      let t =
-        if not @@ Int.equal expected_parameters parameters then
-          Pinc_Diagnostics.raise_error
-            expr.expression_loc
-            ("External function %%"
-            ^ name
-            ^ "%% expected "
-            ^ string_of_int expected_parameters
-            ^ " parameters, but got "
-            ^ string_of_int parameters)
-        else
-          emit t @@ Pinc_Bytecode.Instruction.I_Get_Builtin index
-      in
-      t
-  | UppercaseIdentifierExpression _ -> raise_notrace TODO
-  | Array a ->
-      let t = Array.fold_left compile_expr t a in
-      let t = emit_constant t @@ Pinc_Bytecode.Value.Int (Array.length a) in
-      emit t @@ Pinc_Bytecode.Instruction.I_Array
-  | Record map ->
-      let bindings = StringMap.bindings map in
-      let keys, values = List.split bindings in
-      let emit_key t key = emit_constant t (Pinc_Bytecode.Value.String key) in
-      let t = List.fold_left emit_key t keys in
-      let emit_value t (_, expr) = compile_expr t expr in
-      let t = List.fold_left emit_value t values in
-      let length = List.length keys in
-      let t = emit t @@ Pinc_Bytecode.Instruction.I_Record length in
-      t
-  | Function { identifier; parameters; body } ->
-      let t = add_frame t in
-      let t =
-        match identifier with
-        | None -> t
-        | Some (Pinc_Types.Ast.Lowercase_Id (name, _)) ->
-            let symbol_table, _symbol =
-              SymbolTable.define_function_symbol t.symbol_table ~name
-            in
-            { t with symbol_table }
-      in
-      let t =
-        List.fold_left
-          (fun t (Pinc_Types.Ast.Lowercase_Id (name, _)) ->
-            fst @@ define_symbol t name ~is_mutable:false)
-          t
-          parameters
-      in
-      let t =
-        match body.expression_desc with
-        | Pinc_Types.Ast.BlockExpression stmts -> List.fold_left compile_stmt t stmts
-        | _ ->
-            let t = compile_expr t body in
-            emit t @@ Pinc_Bytecode.Instruction.I_Return
-      in
-      let t =
-        if match_last_instruction t I_Pop then (
-          let t = remove_last_instruction t in
-          emit t @@ Pinc_Bytecode.Instruction.I_Return)
-        else
-          t
-      in
-      let t =
-        if not @@ match_last_instruction t I_Return then (
-          let t = emit t @@ Pinc_Bytecode.Instruction.I_Null in
-          emit t @@ Pinc_Bytecode.Instruction.I_Return)
-        else
-          t
-      in
-      let free_variables = SymbolTable.free_variables t.symbol_table in
-      let num_locals = SymbolTable.length t.symbol_table in
-      let t, frame = pop_frame t in
-      let t = List.fold_left emit_get_symbol t free_variables in
+and compile_char t c = emit_constant t (Pinc_Bytecode.Value.Char c)
+and compile_int t i = emit_constant t (Pinc_Bytecode.Value.Int i)
+and compile_float t f = emit_constant t (Pinc_Bytecode.Value.Float f)
 
-      let num_free_variables = List.length free_variables in
-      let num_parameters = List.length parameters in
-      let instructions = Dynarray.to_array @@ frame.instructions in
-      let fn_addr, t =
-        add_constant t
-        @@ Pinc_Bytecode.Value.Function
-             { fn_addr = -1; num_locals; num_parameters; instructions }
-      in
-      let t =
-        emit t @@ Pinc_Bytecode.Instruction.I_Closure (fn_addr, num_free_variables)
-      in
+and compile_bool t b =
+  if b then
+    emit t Pinc_Bytecode.Instruction.I_True
+  else
+    emit t Pinc_Bytecode.Instruction.I_False
+
+and compile_lowercase_identifier t ~loc id =
+  let t, symbol = get_symbol t ~loc id in
+  emit_get_symbol t symbol
+
+and compile_external_function t ~loc ~name ~parameters =
+  let index =
+    Pinc_Bytecode.Externals.find_index name |> function
+    | None -> Pinc_Diagnostics.raise_error loc ("Unbound external function `" ^ name ^ "`")
+    | Some i -> i
+  in
+  let expected_parameters = Pinc_Bytecode.Externals.expected_parameters index in
+  let parameters = List.length parameters in
+  let t =
+    if not @@ Int.equal expected_parameters parameters then
+      Pinc_Diagnostics.raise_error
+        loc
+        ("External function %%"
+        ^ name
+        ^ "%% expected "
+        ^ string_of_int expected_parameters
+        ^ " parameters, but got "
+        ^ string_of_int parameters)
+    else
+      emit t @@ Pinc_Bytecode.Instruction.I_Get_Builtin index
+  in
+  t
+
+and compile_array t array =
+  let t = Array.fold_left compile_expr t array in
+  let t = emit_constant t @@ Pinc_Bytecode.Value.Int (Array.length array) in
+  emit t @@ Pinc_Bytecode.Instruction.I_Array
+
+and compile_record t record =
+  let bindings = StringMap.bindings record in
+  let keys, values = List.split bindings in
+  let emit_key t key = emit_constant t (Pinc_Bytecode.Value.String key) in
+  let t = List.fold_left emit_key t keys in
+  let emit_value t (_, expr) = compile_expr t expr in
+  let t = List.fold_left emit_value t values in
+  let length = List.length keys in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Record length in
+  t
+
+and compile_block_expression t stmts =
+  let t = add_scope t in
+  let t = List.fold_left compile_stmt t stmts in
+  let t =
+    if match_last_instruction t I_Pop then
+      remove_last_instruction t
+    else
       t
-  | FunctionCall { function_definition; arguments } ->
-      let t = compile_expr t function_definition in
-      let t = List.fold_left compile_expr t arguments in
-      let num_arguments = List.length arguments in
-      let t = emit t @@ Pinc_Bytecode.Instruction.I_Call num_arguments in
+  in
+  let t = pop_scope t in
+  t
+
+and compile_function t ~identifier ~parameters ~body =
+  let t = add_frame t in
+  let t =
+    match identifier with
+    | None -> t
+    | Some (Pinc_Types.Ast.Lowercase_Id (name, _)) ->
+        let symbol_table, _symbol =
+          SymbolTable.define_function_symbol t.symbol_table ~name
+        in
+        { t with symbol_table }
+  in
+  let t =
+    List.fold_left
+      (fun t (Pinc_Types.Ast.Lowercase_Id (name, _)) ->
+        fst @@ define_symbol t name ~is_mutable:false)
       t
-  | TagExpression _ -> raise_notrace TODO
-  | ForInExpression { index; iterator; reverse; iterable; body } ->
-      compile_loop_expression t ~index ~iterator ~reverse ~iterable ~body
-  | TemplateExpression node -> compile_template_node t node
-  | BlockExpression stmts ->
-      let t = add_scope t in
-      let t = List.fold_left compile_stmt t stmts in
-      let t =
-        if match_last_instruction t I_Pop then
-          remove_last_instruction t
-        else
-          t
-      in
-      let t = pop_scope t in
+      parameters
+  in
+  let t =
+    match body.expression_desc with
+    | Pinc_Types.Ast.BlockExpression stmts -> List.fold_left compile_stmt t stmts
+    | _ ->
+        let t = compile_expr t body in
+        emit t @@ Pinc_Bytecode.Instruction.I_Return
+  in
+  let t =
+    if match_last_instruction t I_Pop then (
+      let t = remove_last_instruction t in
+      emit t @@ Pinc_Bytecode.Instruction.I_Return)
+    else
       t
-  | ConditionalExpression { condition; consequent; alternate } ->
-      compile_conditional_expression t ~condition ~consequent ~alternate
-  | UnaryExpression (op, right) -> compile_unary_expression t ~op ~right
-  | BinaryExpression (left, op, right) -> compile_binary_expression t ~left ~op ~right
+  in
+  let t =
+    if not @@ match_last_instruction t I_Return then (
+      let t = emit t @@ Pinc_Bytecode.Instruction.I_Null in
+      emit t @@ Pinc_Bytecode.Instruction.I_Return)
+    else
+      t
+  in
+  let free_variables = SymbolTable.free_variables t.symbol_table in
+  let num_locals = SymbolTable.length t.symbol_table in
+  let t, frame = pop_frame t in
+  let t = List.fold_left emit_get_symbol t free_variables in
+
+  let num_free_variables = List.length free_variables in
+  let num_parameters = List.length parameters in
+  let instructions = Dynarray.to_array @@ frame.instructions in
+  let fn_addr, t =
+    add_constant t
+    @@ Pinc_Bytecode.Value.Function
+         { fn_addr = -1; num_locals; num_parameters; instructions }
+  in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Closure (fn_addr, num_free_variables) in
+  t
+
+and compile_function_call t ~fn ~arguments =
+  let t = compile_expr t fn in
+  let t = List.fold_left compile_expr t arguments in
+  let num_arguments = List.length arguments in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Call num_arguments in
+  t
 
 and compile_unary_expression t ~op ~right =
   let t = compile_expr t right in
@@ -461,6 +558,7 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
 and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let (Lowercase_Id (iterator, _)) = iterator in
   let t = add_scope t in
+  let t = enter_loop t in
   let t, iterator_symbol = define_symbol t iterator ~is_mutable:false in
   let t, length_symbol = define_symbol t ".length" ~is_mutable:false in
   (* Index *)
@@ -472,6 +570,10 @@ and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let t = emit_constant t @@ Pinc_Bytecode.Value.Int 0 in
   let t, index_symbol = define_symbol t index_identifier ~is_mutable:false in
   let t = emit_set_symbol t index_symbol in
+  (* Iterations *)
+  let t = emit_constant t @@ Pinc_Bytecode.Value.Int 0 in
+  let t, n_iterations_symbol = define_symbol t ".n_iterations" ~is_mutable:false in
+  let t = emit_set_symbol t n_iterations_symbol in
   (* Iterable *)
   let t = compile_expr t iterable in
   let t, iterable_symbol = define_symbol t ".iterable" ~is_mutable:false in
@@ -480,13 +582,19 @@ and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Length in
   let t = emit_set_symbol t length_symbol in
   (* Set Iterator *)
-  let jump_address = Dynarray.length @@ current_instructions t in
+  let loop_start_address = Dynarray.length @@ current_instructions t in
   let t = emit_get_symbol t iterable_symbol in
   let t = emit_get_symbol t index_symbol in
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Index in
   let t = emit_set_symbol t iterator_symbol in
   (* Run body *)
   let t = compile_expr t body in
+  (* Increment and set number of iterations *)
+  let t = emit_constant t @@ Pinc_Bytecode.Value.Int 1 in
+  let t = emit_get_symbol t n_iterations_symbol in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Add in
+  let t = emit_set_symbol t n_iterations_symbol in
+  let after_body_address = Dynarray.length @@ current_instructions t in
   (* Increment and set new index *)
   let t = emit_constant t @@ Pinc_Bytecode.Value.Int 1 in
   let t = emit_get_symbol t index_symbol in
@@ -496,12 +604,42 @@ and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let t = emit_get_symbol t index_symbol in
   let t = emit_get_symbol t length_symbol in
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Greater_Equal in
-  let t = emit t @@ Pinc_Bytecode.Instruction.I_Jump_If_False jump_address in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Jump_If_False loop_start_address in
+  (* Fixup continue and break statements *)
+  let loop_end_address = Dynarray.length @@ current_instructions t in
   (* Create array with values left on stack *)
-  let t = emit_get_symbol t length_symbol in
+  let t = emit_get_symbol t n_iterations_symbol in
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Array in
+  let t =
+    fixup_continue_break_address
+      t
+      ~continue_address:after_body_address
+      ~break_address:loop_end_address
+  in
+  let t = exit_loop t in
   let t = pop_scope t in
   t
+
+and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
+  match stmt.statement_desc with
+  | BreakStatement -> compile_break_stmt t
+  | ContinueStatement -> compile_continue_stmt t
+  | LetGroupStatement definitions -> compile_let_group_stmt t definitions
+  | LetStatement definition -> compile_let_stmt ~predefined:[] t definition
+  | MutationStatement (id, expr) -> compile_mutation_stmt t ~id ~expr
+  | ExpressionStatement expr -> compile_expression_stmt t ~expr
+
+and compile_break_stmt t =
+  let loop_level = loop_level t in
+  let t = emit t (Pinc_Bytecode.Instruction.I_Jump 0xFFFFFFF) in
+  let offset = last_instruction_offset t in
+  add_break_instruction t ~offset ~n:loop_level
+
+and compile_continue_stmt t =
+  let loop_level = loop_level t in
+  let t = emit t (Pinc_Bytecode.Instruction.I_Jump 0xFFFFFFF) in
+  let offset = last_instruction_offset t in
+  add_continue_instruction t ~offset ~n:loop_level
 
 and compile_let_stmt ~predefined t definition =
   let ~is_optional:_, ~is_mutable, Pinc_Types.Ast.Lowercase_Id (name, _), body =
@@ -518,42 +656,40 @@ and compile_let_stmt ~predefined t definition =
   let t = emit t Pinc_Bytecode.Instruction.I_Pop in
   t
 
-and compile_stmt t (stmt : Pinc_Types.Ast.statement) =
-  match stmt.statement_desc with
-  | BreakStatement _ -> raise_notrace TODO
-  | ContinueStatement _ -> raise_notrace TODO
-  | LetGroupStatement let_definitions ->
-      let t, predefined =
-        List.fold_left
-          (fun (t, symbols) definition ->
-            let ~is_optional:_, ~is_mutable, Pinc_Types.Ast.Lowercase_Id (name, _), _ =
-              definition
-            in
-            let t, symbol = define_symbol t name ~is_mutable in
-            (t, (name, symbol) :: symbols))
-          (t, [])
-          let_definitions
-      in
-      List.fold_left (compile_let_stmt ~predefined) t let_definitions
-  | LetStatement definition -> compile_let_stmt ~predefined:[] t definition
-  | MutationStatement (Lowercase_Id (name, loc), expr) ->
-      let t, symbol = get_symbol ~loc t name in
-      let t =
-        match SymbolTable.Symbol.is_mutable symbol with
-        | true ->
-            let t = compile_expr t expr in
-            emit_set_symbol t symbol
-        | false ->
-            Pinc_Diagnostics.raise_error
-              loc
-              ("Trying to update a non mutable variable `" ^ name ^ "`.")
-      in
-      let t = emit t @@ Pinc_Bytecode.Instruction.I_Null in
-      let t = emit t Pinc_Bytecode.Instruction.I_Pop in
-      t
-  | ExpressionStatement e ->
-      let t = compile_expr t e in
-      emit t Pinc_Bytecode.Instruction.I_Pop
+and compile_expression_stmt t ~expr =
+  let t = compile_expr t expr in
+  emit t Pinc_Bytecode.Instruction.I_Pop
+
+and compile_mutation_stmt t ~id ~expr =
+  let (Lowercase_Id (name, loc)) = id in
+  let t, symbol = get_symbol ~loc t name in
+  let t =
+    match SymbolTable.Symbol.is_mutable symbol with
+    | true ->
+        let t = compile_expr t expr in
+        emit_set_symbol t symbol
+    | false ->
+        Pinc_Diagnostics.raise_error
+          loc
+          ("Trying to update a non mutable variable `" ^ name ^ "`.")
+  in
+  let t = emit t @@ Pinc_Bytecode.Instruction.I_Null in
+  let t = emit t Pinc_Bytecode.Instruction.I_Pop in
+  t
+
+and compile_let_group_stmt t definitions =
+  let t, predefined =
+    List.fold_left
+      (fun (t, symbols) definition ->
+        let ~is_optional:_, ~is_mutable, Pinc_Types.Ast.Lowercase_Id (name, _), _ =
+          definition
+        in
+        let t, symbol = define_symbol t name ~is_mutable in
+        (t, (name, symbol) :: symbols))
+      (t, [])
+      definitions
+  in
+  List.fold_left (compile_let_stmt ~predefined) t definitions
 
 and compile_template_node _t (node : Pinc_Types.Ast.template_node) =
   match node.template_node_desc with
@@ -575,6 +711,9 @@ let compile (ast : Pinc_Types.Ast.t) =
         instructions = Dynarray.create ();
         previous_instruction = empty_instruction;
         last_instruction = empty_instruction;
+        loop_level = 0;
+        break_instructions = [];
+        continue_instructions = [];
       };
     ]
   in

@@ -115,8 +115,8 @@ and statement = {
 }
 
 and statement_desc =
-  | BreakStatement of int
-  | ContinueStatement of int
+  | BreakStatement
+  | ContinueStatement
   | LetStatement of
       (is_optional:bool * is_mutable:bool * lowercase_identifier * expression)
   | LetGroupStatement of

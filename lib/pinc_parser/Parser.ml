@@ -446,25 +446,11 @@ module Rules = struct
       (* PARSING BREAK STATEMENT *)
       | Token.KEYWORD_BREAK ->
           next t;
-          let num_loops =
-            match t.token.typ with
-            | Token.INT i ->
-                next t;
-                i
-            | _ -> 1
-          in
-          Some (Parsetree.P_BreakStatement num_loops)
+          Some Parsetree.P_BreakStatement
       (* PARSING CONTINUE STATEMENT *)
       | Token.KEYWORD_CONTINUE ->
           next t;
-          let num_loops =
-            match t.token.typ with
-            | Token.INT i ->
-                next t;
-                i
-            | _ -> 1
-          in
-          Some (Parsetree.P_ContinueStatement num_loops)
+          Some Parsetree.P_ContinueStatement
       (* PARSING LET STATEMENT *)
       | Token.KEYWORD_LET ->
           let rec parse_let_definitions ~expect_function acc t =

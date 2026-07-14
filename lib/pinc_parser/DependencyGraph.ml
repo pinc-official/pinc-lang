@@ -36,7 +36,7 @@ let rec collect_expr acc (expr : Pinc_Types.Ast.expression) =
 
 and collect_stmt acc (stmt : Pinc_Types.Ast.statement) =
   match stmt.statement_desc with
-  | BreakStatement _ | ContinueStatement _ -> acc
+  | BreakStatement | ContinueStatement -> acc
   | LetGroupStatement let_definitions ->
       List.fold_left
         (fun acc (~is_optional:_, ~is_mutable:_, _, e) -> collect_expr acc e)

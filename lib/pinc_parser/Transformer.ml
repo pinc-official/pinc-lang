@@ -489,8 +489,8 @@ and transform_expression env (exression : Parsetree.expression) =
   in
   (env, { expression_loc = exression.expression_loc; expression_desc = desc })
 
-and transform_break_stmt env s = (env, BreakStatement s)
-and transform_continue_stmt env s = (env, ContinueStatement s)
+and transform_break_stmt env = (env, BreakStatement)
+and transform_continue_stmt env = (env, ContinueStatement)
 
 and transform_let_payload env payload =
   let ~is_optional, ~is_mutable, id, expr = payload in
@@ -528,8 +528,8 @@ and transform_expression_stmt env s =
 and transform_statement env (statement : Parsetree.statement) =
   let env, desc =
     match statement.statement_desc with
-    | P_BreakStatement s -> transform_break_stmt env s
-    | P_ContinueStatement s -> transform_continue_stmt env s
+    | P_BreakStatement -> transform_break_stmt env
+    | P_ContinueStatement -> transform_continue_stmt env
     | P_LetStatement (~is_optional, ~is_mutable, id, expr) ->
         transform_let env ~is_optional ~is_mutable id expr
     | P_LetGroupStatement let_definitions -> transform_let_group env let_definitions

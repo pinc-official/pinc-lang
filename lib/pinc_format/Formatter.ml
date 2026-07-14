@@ -447,23 +447,8 @@ and format_expression (exression : Parsetree.expression) =
   else
     desc
 
-and format_break_stmt i =
-  let num =
-    if i = 1 then
-      empty
-    else
-      space ^^ string (string_of_int i)
-  in
-  string "break" ^^ num
-
-and format_continue_stmt i =
-  let num =
-    if i = 1 then
-      empty
-    else
-      space ^^ string (string_of_int i)
-  in
-  string "continue" ^^ num
+and format_break_stmt = string "break"
+and format_continue_stmt = string "continue"
 
 and format_let_body ~is_optional ~is_mutable id expr =
   let maybe_mutable =
@@ -509,8 +494,8 @@ and format_statement ~last (statement : Parsetree.statement) =
   let annotations = format_annotations statement.statement_annotations in
   let desc =
     match statement.statement_desc with
-    | P_BreakStatement s -> format_break_stmt s ^^ semi
-    | P_ContinueStatement s -> format_continue_stmt s ^^ semi
+    | P_BreakStatement -> format_break_stmt ^^ semi
+    | P_ContinueStatement -> format_continue_stmt ^^ semi
     | P_LetStatement (~is_optional, ~is_mutable, id, expr) ->
         format_let ~is_optional ~is_mutable id expr ^^ semi
     | P_LetGroupStatement let_definitions -> format_let_group let_definitions ^^ semi

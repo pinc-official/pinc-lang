@@ -78,8 +78,8 @@ and eval_statement ~state statement =
   | Ast.LetGroupStatement let_definitions -> eval_let_group ~state let_definitions
   | Ast.MutationStatement (Lowercase_Id ident, expression) ->
       eval_mutation ~state ~ident expression
-  | Ast.BreakStatement _ -> raise_notrace (Loop_Break state)
-  | Ast.ContinueStatement _ -> raise_notrace (Loop_Continue state)
+  | Ast.BreakStatement -> raise_notrace (Loop_Break state)
+  | Ast.ContinueStatement -> raise_notrace (Loop_Continue state)
   | Ast.ExpressionStatement expression -> expression |> eval_expression ~state
 
 and eval_expression ~state expression =

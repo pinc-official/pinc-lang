@@ -120,8 +120,8 @@ and statement = {
 }
 
 and statement_desc =
-  | P_BreakStatement of int
-  | P_ContinueStatement of int
+  | P_BreakStatement
+  | P_ContinueStatement
   | P_LetStatement of
       (is_optional:bool * is_mutable:bool * lowercase_identifier * expression)
   | P_LetGroupStatement of
