@@ -1004,5 +1004,5 @@ let eval bytecode =
   in
   let t = make ~resolved_functions ~instructions ~constants in
   let result = call_current_instruction t in
-  result.stack |> Stack.last_popped_element |> Value.to_string
+  result.stack |> Stack.top |> Value.to_string
 ;;

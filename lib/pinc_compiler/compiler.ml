@@ -5,7 +5,7 @@ type emitted_instruction = {
   instruction : Pinc_Bytecode.Instruction.t;
 }
 
-type scope = {
+type frame = {
   instructions : Pinc_Bytecode.Instruction.t Dynarray.t;
   last_instruction : emitted_instruction;
   previous_instruction : emitted_instruction;
@@ -14,70 +14,70 @@ type scope = {
 type t = {
   constants : Pinc_Bytecode.Value.t Dynarray.t;
   symbol_table : SymbolTable.t;
-  scopes : scope list;
+  frames : frame list;
 }
 
 let empty_instruction = { offset = 0; instruction = I_Null }
 
-let current_scope t =
-  match t.scopes with
+let current_frame t =
+  match t.frames with
   | [] -> assert false
   | scope :: _ -> scope
 ;;
 
 let current_instructions t =
-  let scope = current_scope t in
-  scope.instructions
+  let frame = current_frame t in
+  frame.instructions
 ;;
 
 let last_instruction t =
-  let scope = current_scope t in
-  scope.last_instruction.instruction
+  let frame = current_frame t in
+  frame.last_instruction.instruction
 ;;
 
 let last_instruction_offset t =
-  let scope = current_scope t in
-  scope.last_instruction.offset
+  let frame = current_frame t in
+  frame.last_instruction.offset
 ;;
 
 let set_last_instruction t offset instruction =
-  match t.scopes with
+  match t.frames with
   | [] -> assert false
-  | scope :: scopes ->
-      let scope' =
+  | frame :: frames ->
+      let frame' =
         {
-          scope with
-          previous_instruction = scope.last_instruction;
+          frame with
+          previous_instruction = frame.last_instruction;
           last_instruction = { offset; instruction };
         }
       in
-      { t with scopes = scope' :: scopes }
+      { t with frames = frame' :: frames }
 ;;
 
 let replace_instruction t offset instruction =
-  match t.scopes with
+  match t.frames with
   | [] -> assert false
-  | scope :: _ ->
-      Dynarray.set scope.instructions offset instruction;
+  | frame :: _ ->
+      Dynarray.set frame.instructions offset instruction;
       t
 ;;
 
 let remove_last_instruction t =
-  match t.scopes with
+  match t.frames with
   | [] -> assert false
-  | scope :: scopes ->
-      Dynarray.remove_last scope.instructions;
-      let scope' = { scope with last_instruction = scope.previous_instruction } in
-      { t with scopes = scope' :: scopes }
+  | frame :: frames ->
+      Dynarray.remove_last frame.instructions;
+      let frame' = { frame with last_instruction = frame.previous_instruction } in
+      { t with frames = frame' :: frames }
 ;;
 
 let match_last_instruction t check =
-  let scope = current_scope t in
-  scope.last_instruction.instruction == check
+  let frame = current_frame t in
+  frame.last_instruction.instruction == check
 ;;
 
-let add_scope t =
-  let scope =
+let add_frame t =
+  let frame =
     {
       instructions = Dynarray.create ();
       previous_instruction = empty_instruction;
@@ -86,17 +86,20 @@ let add_scope t =
   in
   {
     t with
-    scopes = scope :: t.scopes;
-    symbol_table = SymbolTable.add_scope t.symbol_table;
+    frames = frame :: t.frames;
+    symbol_table = SymbolTable.add_frame t.symbol_table;
   }
 ;;
 
-let pop_scope t =
-  match t.scopes with
+let pop_frame t =
+  match t.frames with
   | [] -> assert false
-  | scope :: scopes ->
-      ({ t with scopes; symbol_table = SymbolTable.pop_scope t.symbol_table }, scope)
+  | frame :: frames ->
+      ({ t with frames; symbol_table = SymbolTable.pop_frame t.symbol_table }, frame)
 ;;
+
+let add_scope t = { t with symbol_table = SymbolTable.add_scope t.symbol_table }
+let pop_scope t = { t with symbol_table = SymbolTable.pop_scope t.symbol_table }
 
 let add_constant t constant =
   let () = Dynarray.add_last t.constants constant in
@@ -105,9 +108,9 @@ let add_constant t constant =
 ;;
 
 let emit t opcode =
-  let scope = current_scope t in
-  let offset = Dynarray.length scope.instructions in
-  Dynarray.add_last scope.instructions opcode;
+  let frame = current_frame t in
+  let offset = Dynarray.length frame.instructions in
+  Dynarray.add_last frame.instructions opcode;
   let t = set_last_instruction t offset opcode in
   t
 ;;
@@ -134,24 +137,24 @@ let get_symbol ~loc t name =
 
 let emit_get_symbol t symbol =
   let instruction =
-    match SymbolTable.Symbol.scope symbol with
-    | SymbolTable.Scope.Global -> Pinc_Bytecode.Instruction.I_Get_Global symbol.address
-    | SymbolTable.Scope.Local -> Pinc_Bytecode.Instruction.I_Get_Local symbol.address
-    | SymbolTable.Scope.Free -> Pinc_Bytecode.Instruction.I_Get_Free symbol.address
-    | SymbolTable.Scope.Function -> Pinc_Bytecode.Instruction.I_Current_Closure
+    match SymbolTable.Symbol.kind symbol with
+    | SymbolTable.Kind.Global -> Pinc_Bytecode.Instruction.I_Get_Global symbol.address
+    | SymbolTable.Kind.Local -> Pinc_Bytecode.Instruction.I_Get_Local symbol.address
+    | SymbolTable.Kind.Free -> Pinc_Bytecode.Instruction.I_Get_Free symbol.address
+    | SymbolTable.Kind.Function -> Pinc_Bytecode.Instruction.I_Current_Closure
   in
   emit t instruction
 ;;
 
 let emit_set_symbol t symbol =
   let instruction =
-    match SymbolTable.Symbol.scope symbol with
-    | SymbolTable.Scope.Global ->
+    match SymbolTable.Symbol.kind symbol with
+    | SymbolTable.Kind.Global ->
         Pinc_Bytecode.Instruction.I_Set_Global (SymbolTable.Symbol.address symbol)
-    | SymbolTable.Scope.Local ->
+    | SymbolTable.Kind.Local ->
         Pinc_Bytecode.Instruction.I_Set_Local (SymbolTable.Symbol.address symbol)
-    | SymbolTable.Scope.Free -> assert false
-    | SymbolTable.Scope.Function -> assert false
+    | SymbolTable.Kind.Free -> assert false
+    | SymbolTable.Kind.Function -> assert false
   in
   let t = emit t instruction in
   t
@@ -235,7 +238,7 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       let t = emit t @@ Pinc_Bytecode.Instruction.I_Record length in
       t
   | Function { identifier; parameters; body } ->
-      let t = add_scope t in
+      let t = add_frame t in
       let t =
         match identifier with
         | None -> t
@@ -254,7 +257,7 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       in
       let t =
         match body.expression_desc with
-        | Pinc_Types.Ast.BlockExpression _ -> compile_expr t body
+        | Pinc_Types.Ast.BlockExpression stmts -> List.fold_left compile_stmt t stmts
         | _ ->
             let t = compile_expr t body in
             emit t @@ Pinc_Bytecode.Instruction.I_Return
@@ -275,12 +278,12 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
       in
       let free_variables = SymbolTable.free_variables t.symbol_table in
       let num_locals = SymbolTable.length t.symbol_table in
-      let t, scope = pop_scope t in
+      let t, frame = pop_frame t in
       let t = List.fold_left emit_get_symbol t free_variables in
 
       let num_free_variables = List.length free_variables in
       let num_parameters = List.length parameters in
-      let instructions = Dynarray.to_array @@ scope.instructions in
+      let instructions = Dynarray.to_array @@ frame.instructions in
       let fn_addr, t =
         add_constant t
         @@ Pinc_Bytecode.Value.Function
@@ -300,7 +303,17 @@ let rec compile_expr t (expr : Pinc_Types.Ast.expression) =
   | ForInExpression { index; iterator; reverse; iterable; body } ->
       compile_loop_expression t ~index ~iterator ~reverse ~iterable ~body
   | TemplateExpression node -> compile_template_node t node
-  | BlockExpression stmts -> List.fold_left compile_stmt t stmts
+  | BlockExpression stmts ->
+      let t = add_scope t in
+      let t = List.fold_left compile_stmt t stmts in
+      let t =
+        if match_last_instruction t I_Pop then
+          remove_last_instruction t
+        else
+          t
+      in
+      let t = pop_scope t in
+      t
   | ConditionalExpression { condition; consequent; alternate } ->
       compile_conditional_expression t ~condition ~consequent ~alternate
   | UnaryExpression (op, right) -> compile_unary_expression t ~op ~right
@@ -447,7 +460,7 @@ and compile_conditional_expression t ~condition ~consequent ~alternate =
 
 and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let (Lowercase_Id (iterator, _)) = iterator in
-  (* TODO: Add scope *)
+  let t = add_scope t in
   let t, iterator_symbol = define_symbol t iterator ~is_mutable:false in
   let t, length_symbol = define_symbol t ".length" ~is_mutable:false in
   (* Index *)
@@ -474,12 +487,6 @@ and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   let t = emit_set_symbol t iterator_symbol in
   (* Run body *)
   let t = compile_expr t body in
-  let t =
-    if match_last_instruction t I_Pop then
-      remove_last_instruction t
-    else
-      t
-  in
   (* Increment and set new index *)
   let t = emit_constant t @@ Pinc_Bytecode.Value.Int 1 in
   let t = emit_get_symbol t index_symbol in
@@ -493,6 +500,7 @@ and compile_loop_expression t ~index ~iterator ~reverse:_ ~iterable ~body =
   (* Create array with values left on stack *)
   let t = emit_get_symbol t length_symbol in
   let t = emit t @@ Pinc_Bytecode.Instruction.I_Array in
+  let t = pop_scope t in
   t
 
 and compile_let_stmt ~predefined t definition =
@@ -561,7 +569,7 @@ let compile_declaration (decl : Pinc_Types.Ast.declaration) t =
 ;;
 
 let compile (ast : Pinc_Types.Ast.t) =
-  let scopes =
+  let frames =
     [
       {
         instructions = Dynarray.create ();
@@ -573,7 +581,7 @@ let compile (ast : Pinc_Types.Ast.t) =
   let constants = Dynarray.create () in
   let () = Dynarray.ensure_capacity constants 2048 in
   let symbol_table = SymbolTable.make () in
-  let t = { constants; symbol_table; scopes } in
+  let t = { constants; symbol_table; frames } in
   let t = StringMap.fold (fun _ -> compile_declaration) ast t in
 
   Pinc_Bytecode.Bytecode.serialize

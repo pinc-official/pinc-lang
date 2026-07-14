@@ -12,7 +12,6 @@
   0022 I_Null
   0023 I_Pop
   0024 I_Get_Global 0x00000001 (00000001)
-  0029 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Shadowing
@@ -32,7 +31,6 @@
   0028 I_Null
   0029 I_Pop
   0030 I_Get_Global 0x00000001 (00000001)
-  0035 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . UnboundIdentifier
@@ -67,7 +65,6 @@
   0015 I_Pop
   0016 I_Get_Global 0x00000000 (00000000)
   0021 I_Call 0
-  0026 I_Pop
 
   $ NO_COLOR="1" print_instructions . MutableBindings
   [CONSTANTS]
@@ -136,7 +133,6 @@
   0148 I_Call 0
   0153 I_Constant 0x00000009 (00000009)
   0158 I_Array
-  0159 I_Pop
 
   $ NO_COLOR="1" print_instructions . WrongMutation
   
@@ -148,4 +144,16 @@
     49 │   };
   
   Trying to update a non mutable variable `a`.
+  [1]
+
+  $ NO_COLOR="1" print_instructions . ScopeError
+  
+  ERROR in file ./bindings.pi:59:3-10
+  
+    58 │   };
+    59 │   local_x
+       │   ^^^^^^^
+    60 │ }
+  
+  Unbound identifier `local_x`
   [1]

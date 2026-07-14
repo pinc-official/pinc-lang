@@ -4,3 +4,12 @@ component Loop {
     item * index
   }
 }
+
+component LoopNested {
+  let array = [[1, 2], [3, 4], [5, 6]];
+  for (index, items in array) {
+    for (index2, item in items) {
+      index + index2 + item
+    }
+  }
+}

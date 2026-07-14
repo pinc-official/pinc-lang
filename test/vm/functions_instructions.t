@@ -12,7 +12,6 @@
   0015 I_Pop
   0016 I_Get_Global 0x00000000 (00000000)
   0021 I_Call 0
-  0026 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Function
@@ -41,7 +40,6 @@
   0015 I_Pop
   0016 I_Get_Global 0x00000000 (00000000)
   0021 I_Call 0
-  0026 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . FunctionCurried
@@ -73,7 +71,6 @@
   0032 I_Get_Global 0x00000001 (00000001)
   0037 I_Call 0
   0042 I_Call 0
-  0047 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . FunctionScope
@@ -125,7 +122,6 @@
   0066 I_Get_Global 0x00000003 (00000003)
   0071 I_Call 0
   0076 I_Add
-  0077 I_Pop
 
   $ NO_COLOR="1" print_instructions . FunctionArguments
   [CONSTANTS]
@@ -166,7 +162,6 @@
   0052 I_Constant 0x00000004 (00000004)
   0057 I_Call 1
   0062 I_Add
-  0063 I_Pop
 
   $ NO_COLOR="1" print_instructions . FunctionClosure
   [CONSTANTS]
@@ -237,7 +232,6 @@
   0053 I_Constant 0x00000007 (00000007)
   0058 I_Constant 0x00000008 (00000008)
   0063 I_Call 2
-  0068 I_Pop
 
   $ NO_COLOR="1" print_instructions . RecursiveFunction
   [CONSTANTS]
@@ -313,7 +307,6 @@
   0021 I_Constant 0x00000009 (00000009)
   0026 I_Constant 0x0000000A (00000010)
   0031 I_Call 2
-  0036 I_Pop
 
   $ NO_COLOR="1" print_instructions . MutuallyRecursiveFunction
   [CONSTANTS]
@@ -363,4 +356,3 @@
   0032 I_Get_Global 0x00000000 (00000000)
   0037 I_Constant 0x00000006 (00000006)
   0042 I_Call 1
-  0047 I_Pop

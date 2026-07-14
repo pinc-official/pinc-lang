@@ -18,13 +18,11 @@
   0030 I_True
   0031 I_Constant 0x00000006 (00000006)
   0036 I_Record 4
-  0041 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . RecordEmpty
   [INSTRUCTIONS]
   0000 I_Record 0
-  0005 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . RecordNested
@@ -75,7 +73,6 @@
   0101 I_Record 3
   0106 I_True
   0107 I_Record 4
-  0112 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . RecordNested
@@ -126,7 +123,6 @@
   0101 I_Record 3
   0106 I_True
   0107 I_Record 4
-  0112 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . RecordAccessDot
@@ -155,7 +151,6 @@
   0052 I_Dot_Index
   0053 I_Constant 0x00000006 (00000006)
   0058 I_Dot_Index
-  0059 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . RecordAccessBracket
@@ -184,4 +179,3 @@
   0052 I_Index
   0053 I_Constant 0x00000006 (00000006)
   0058 I_Index
-  0059 I_Pop

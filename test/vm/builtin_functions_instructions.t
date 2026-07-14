@@ -31,7 +31,6 @@
   0037 I_Constant 0x00000004 (00000004)
   0042 I_Array
   0043 I_Call 1
-  0048 I_Pop
 
   $ NO_COLOR="1" print_instructions . BuiltinFunctionStringLength
   [CONSTANTS]
@@ -45,7 +44,6 @@
   0012 I_Get_Global 0x00000000 (00000000)
   0017 I_Constant 0x00000000 (00000000)
   0022 I_Call 1
-  0027 I_Pop
 
   $ NO_COLOR="1" print_instructions . BuiltinFunctionStringSub
   [CONSTANTS]
@@ -63,4 +61,3 @@
   0022 I_Constant 0x00000001 (00000001)
   0027 I_Constant 0x00000002 (00000002)
   0032 I_Call 3
-  0037 I_Pop

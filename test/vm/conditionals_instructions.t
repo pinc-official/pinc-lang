@@ -5,7 +5,6 @@
   0006 I_True
   0007 I_Jump 0x00000005 (00000005)
   0012 I_Null
-  0013 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . IfTrueElse
@@ -15,7 +14,6 @@
   0006 I_True
   0007 I_Jump 0x00000005 (00000005)
   0012 I_False
-  0013 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . IfFalse
@@ -25,7 +23,6 @@
   0006 I_True
   0007 I_Jump 0x00000005 (00000005)
   0012 I_Null
-  0013 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . IfFalseElse
@@ -35,4 +32,3 @@
   0006 I_True
   0007 I_Jump 0x00000005 (00000005)
   0012 I_False
-  0013 I_Pop

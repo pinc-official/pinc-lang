@@ -7,7 +7,6 @@
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Constant 0x00000001 (00000001)
   0010 I_Add
-  0011 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Sub
@@ -19,7 +18,6 @@
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Constant 0x00000001 (00000001)
   0010 I_Sub
-  0011 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Div
@@ -31,7 +29,6 @@
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Constant 0x00000001 (00000001)
   0010 I_Div
-  0011 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Mul
@@ -43,7 +40,6 @@
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Constant 0x00000001 (00000001)
   0010 I_Mul
-  0011 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Mod
@@ -55,7 +51,6 @@
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Constant 0x00000001 (00000001)
   0010 I_Mod
-  0011 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Pow
@@ -67,7 +62,6 @@
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Constant 0x00000001 (00000001)
   0010 I_Pow
-  0011 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . MinusInt
@@ -77,7 +71,6 @@
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Minus
-  0006 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . MinusFloat
@@ -87,7 +80,6 @@
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
   0005 I_Minus
-  0006 I_Pop
 
 
   $ NO_COLOR="1" print_instructions . Math
@@ -118,4 +110,3 @@
   0041 I_Constant 0x00000007 (00000007)
   0046 I_Minus
   0047 I_Add
-  0048 I_Pop

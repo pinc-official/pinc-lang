@@ -49,3 +49,12 @@ component WrongMutation {
   };
   a
 }
+
+component ScopeError {
+  let a = {
+    let local_x = 1;
+    let local_y = 2;
+    local_x + local_y
+  };
+  local_x
+}

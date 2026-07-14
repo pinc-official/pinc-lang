@@ -4,7 +4,6 @@
   
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
-  0005 I_Pop
 
   $ NO_COLOR="1" print_instructions . StringConcat
   [CONSTANTS]
@@ -18,7 +17,6 @@
   0010 I_Concat
   0011 I_Constant 0x00000002 (00000002)
   0016 I_Concat
-  0017 I_Pop
 
   $ NO_COLOR="1" print_instructions . StringInterpolation
   [CONSTANTS]
@@ -36,7 +34,6 @@
   0022 I_Concat
   0023 I_Constant 0x00000002 (00000002)
   0028 I_Concat
-  0029 I_Pop
 
   $ NO_COLOR="1" print_instructions . EmptyString
   [CONSTANTS]
@@ -44,4 +41,3 @@
   
   [INSTRUCTIONS]
   0000 I_Constant 0x00000000 (00000000)
-  0005 I_Pop
